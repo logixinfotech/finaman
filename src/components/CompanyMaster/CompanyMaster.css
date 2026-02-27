@@ -1,0 +1,137 @@
+/* Global Styles */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f4f6f8;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+h3 {
+    font-size: 1.5rem;
+    color: #444;
+    margin-bottom: 10px;
+}
+
+.company-form {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+h3 {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+/* Section Styling */
+.form-section {
+    margin-bottom: 30px;
+}
+
+.form-section h3 {
+    margin-top: 0;
+}
+
+/* Grid Layout for Form Fields */
+.MuiGrid-item {
+    margin-bottom: 20px;
+}
+
+/* Form Field Spacing */
+.MuiTextField-root,
+.MuiFormControl-root {
+    margin-bottom: 20px;
+}
+
+.MuiInputLabel-root {
+    font-size: 1rem;
+}
+
+/* Button Styles */
+.MuiButton-root {
+    padding: 10px 20px;
+    background-color: #3f51b5;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 20px;
+    border-radius: 4px;
+}
+
+.MuiButton-root:hover {
+    background-color: #303f9f;
+}
+
+/* Input Fields Styling */
+input[type="date"],
+input[type="number"],
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+textarea {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px;
+    width: 100%;
+    margin-top: 5px;
+}
+
+input[type="date"]:focus,
+input[type="number"]:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus {
+    outline: none;
+    border-color: #3f51b5;
+}
+
+/* Form Control and Select Styles */
+.MuiFormControl-root {
+    width: 100%;
+}
+
+.MuiSelect-root {
+    width: 100%;
+    padding: 10px;
+}
+
+.MuiSelect-icon {
+    right: 10px;
+}
+
+/* Icon Buttons Styling */
+.MuiIconButton-root {
+    margin-right: 10px;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .MuiGrid-item {
+        width: 100%;
+    }
+
+    .MuiTextField-root,
+    .MuiFormControl-root {
+        width: 100%;
+    }
+
+    .MuiButton-root {
+        width: 100%;
+    }
+}
+
+@media screen and (max-width: 480px) {
+
+    .MuiTextField-root,
+    .MuiFormControl-root {
+        width: 100%;
+    }
+
+    .MuiButton-root {
+        width: 100%;
+    }
+}

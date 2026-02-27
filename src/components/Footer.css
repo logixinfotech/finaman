@@ -1,0 +1,82 @@
+/* ===============================
+   ERP FOOTER - THEME CONTROLLED
+================================ */
+.erp-footer {
+  height: 40px;
+  background: var(--bg-footer);
+  border-top: 1px solid var(--border-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 12px;
+  color: var(--text-main);
+  box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.06);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+/* ===============================
+   LEFT SIDE
+================================ */
+.erp-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.erp-footer-brand {
+  font-weight: 700;
+  color: var(--bg-active);
+  /* ✅ Accent from theme */
+}
+
+.erp-footer-copy {
+  color: var(--text-muted);
+}
+
+/* ===============================
+   CENTER INFO
+================================ */
+.erp-footer-center {
+  display: flex;
+  gap: 14px;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.footer-badge {
+  background: var(--accent-soft);
+  color: var(--bg-active);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--accent-hover);
+}
+
+/* ===============================
+   RIGHT SIDE
+================================ */
+.erp-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* ===============================
+   TOP ACCENT STRIP (THEME)
+================================ */
+.erp-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg,
+      var(--bg-active),
+      var(--accent-hover));
+}

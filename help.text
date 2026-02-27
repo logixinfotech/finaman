@@ -1,0 +1,7 @@
+run
+npm start
+close
+
+cmd adim to 
+netstat -ano | findstr :4000
+taskkill /PID 12345 /F

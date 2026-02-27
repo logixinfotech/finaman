@@ -1,0 +1,96 @@
+/* src/components/WhatsAppForm.css */
+.whatsapp-form-container {
+  position: fixed; /* Keep the form in place */
+  top: 50%; /* Center vertically */
+  left: 50%; /* Center horizontally */
+  transform: translate(-50%, -50%); /* Adjust positioning */
+  width: 100%;
+  max-width: 500px; /* Set max width */
+  background-color: #ffffff; /* White background */
+  border-radius: 10px; /* Rounded corners */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  padding: 20px; /* Spacing inside the container */
+  z-index: 1000; /* Ensure it's on top */
+  border: 1px solid #e0e0e0; /* Light grey border */
+}
+
+.whatsapp-form-container h2 {
+  margin-top: 0;
+  font-size: 24px; /* Larger title text */
+  color: #075e54; /* WhatsApp green */
+  text-align: center; /* Center align title */
+}
+
+.whatsapp-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.whatsapp-form label {
+  margin-bottom: 5px;
+  font-weight: bold; /* Bold labels */
+  color: #333; /* Dark text color */
+}
+
+.whatsapp-form input,
+.whatsapp-form textarea {
+  margin-bottom: 15px; /* More spacing between elements */
+  padding: 12px; /* Increased padding */
+  border: 1px solid #d3d3d3; /* Light grey border */
+  border-radius: 8px; /* Rounded corners */
+  font-size: 16px; /* Larger font size */
+  width: 100%; /* Full width */
+  box-sizing: border-box; /* Include padding in width */
+}
+
+.whatsapp-form textarea {
+  height: 150px; /* Increased height for message box */
+  resize: vertical; /* Allow vertical resizing */
+}
+
+.whatsapp-form input:focus,
+.whatsapp-form textarea:focus {
+  border-color: #25d366; /* WhatsApp green border on focus */
+  outline: none; /* Remove default outline */
+}
+
+.whatsapp-form button {
+  display: flex;
+  align-items: center; /* Center icon and text */
+  justify-content: center; /* Center content */
+  padding: 12px 24px; /* Increased padding */
+  background-color: #25d366; /* WhatsApp green background */
+  color: #ffffff; /* White text */
+  border: none;
+  border-radius: 8px; /* Rounded corners */
+  cursor: pointer;
+  font-size: 16px; /* Larger font size */
+  transition: background-color 0.3s ease; /* Smooth background color change */
+}
+
+.whatsapp-form button:hover {
+  background-color: #1ebea5; /* Slightly darker green on hover */
+}
+
+/* Close button styles */
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  font-size: 28px; /* Larger close button */
+  color: #333;
+  cursor: pointer;
+  transition: color 0.3s ease; /* Smooth color change */
+}
+
+.close-btn:hover {
+  color: #25d366; /* Change color on hover to WhatsApp green */
+}
+
+/* Send icon styling */
+.send-icon {
+  margin-left: 10px; /* Space between text and icon */
+  font-size: 20px; /* Size of the icon */
+}

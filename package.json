@@ -3,12 +3,41 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@fortawesome/fontawesome-svg-core": "^7.1.0",
+    "@fortawesome/free-solid-svg-icons": "^7.1.0",
+    "@fortawesome/react-fontawesome": "^3.1.1",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/material": "^5.16.7",
+    "@pwa/manifest": "^1.1.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.1",
+    "axios": "^1.7.5",
+    "chart.js": "^4.5.1",
+    "dayjs": "^1.11.19",
+    "formik": "^2.4.9",
+    "jspdf": "^3.0.4",
+    "lucide-react": "^0.563.0",
     "react": "^18.3.1",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-chartjs-2": "^5.3.1",
+    "react-csv": "^2.2.2",
     "react-dom": "^18.3.1",
+    "react-icons": "^5.3.0",
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.30.3",
     "react-scripts": "5.0.1",
+    "react-signature-canvas": "^1.1.0-alpha.2",
+    "react-toastify": "^11.0.5",
+    "recharts": "^3.7.0",
+    "styled-components": "^6.1.12",
+    "sweetalert2": "^11.26.17",
+    "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
@@ -34,5 +63,14 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "autoprefixer": "^10.4.24",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19"
   }
 }
