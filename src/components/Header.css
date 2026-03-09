@@ -182,8 +182,7 @@ background: linear-gradient(
     transform: translateY(0);
   }
 }
-
-/* ===== Header ===== */
+ 
 .np-header {
   display: flex;
   justify-content: space-between;
@@ -212,8 +211,7 @@ background: linear-gradient(
   font-size: 11px;
   font-weight: 600;
 }
-
-/* ===== Filters ===== */
+ 
 .np-filters {
   display: flex;
   gap: 8px;
@@ -242,8 +240,7 @@ background: linear-gradient(
 .np-filter-btn.active {
   background: var(--accent-color, #2563eb);
   color: #ffffff;
-}
-/* ===================== PAGE LAYOUT ===================== */
+} 
 .notifications-page {
   padding: 22px;
 }
@@ -255,8 +252,7 @@ background: linear-gradient(
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
   overflow: hidden;
 }
-
-/* ===================== HEADER ===================== */
+ 
 .np-header {
   display: flex;
   align-items: center;
@@ -288,9 +284,7 @@ background: linear-gradient(
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-}
-
-/* ===================== FILTERS (SEGMENTED) ===================== */
+} 
 .np-filters {
   margin: 10px 14px;
   background: var(--bg-main);
@@ -322,9 +316,7 @@ background: linear-gradient(
   background: var(--bg-active);
   color: #fff;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
-}
-
-/* ===================== LIST ===================== */
+} 
 .np-list,
 .np-page-list {
   flex: 1;
@@ -341,9 +333,7 @@ background: linear-gradient(
 .np-page-list::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 6px;
-}
-
-/* ===================== GROUP ===================== */
+} 
 .np-group {
   margin-top: 6px;
 }
@@ -354,9 +344,7 @@ background: linear-gradient(
   color: #6b7280;
   padding: 6px 16px;
   text-transform: uppercase;
-}
-
-/* ===================== ITEM ===================== */
+} 
 .np-item {
   display: flex;
   gap: 12px;
@@ -374,9 +362,7 @@ background: linear-gradient(
   background: #f3f4f6;
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-}
-
-/* ===== UNREAD (PREMIUM) ===== */
+} 
 .np-item.unread {
   background: linear-gradient(
     90deg,
@@ -384,9 +370,7 @@ background: linear-gradient(
     transparent
   );
   border-left: 4px solid var(--bg-active);
-}
-
-/* ===== SOFT PULSE ===== */
+} 
 @keyframes softPulse {
   0% {
     box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.25);
@@ -402,8 +386,7 @@ background: linear-gradient(
 .np-item.unread {
   animation: softPulse 2.4s infinite;
 }
-
-/* ===================== ICON ===================== */
+ 
 .np-icon {
   min-width: 32px;
   height: 32px;
@@ -419,9 +402,7 @@ background: linear-gradient(
 
 .np-item:hover .np-icon {
   transform: scale(1.08);
-}
-
-/* ===================== CONTENT ===================== */
+} 
 .np-content {
   flex: 1;
 }
@@ -438,16 +419,13 @@ background: linear-gradient(
   color: #6b7280;
   margin-top: 2px;
 }
-
-/* ===================== EMPTY ===================== */
+ 
 .np-empty {
   text-align: center;
   padding: 40px 0;
   font-size: 13px;
   color: #9ca3af;
-}
-
-/* ===================== FOOTER ===================== */
+} 
 .np-footer {
   padding: 12px;
   text-align: center;
@@ -462,9 +440,7 @@ background: linear-gradient(
 
 .np-footer:hover {
   background: #e0e7ff;
-}
-
-/* ===================== BELL BLINK (ICON ONLY) ===================== */
+} 
 .notification-icon.blink {
   animation: blink 1s infinite;
 }
@@ -473,9 +449,7 @@ background: linear-gradient(
   50% {
     opacity: 0.4;
   }
-}
-
-/* ===================== DARK THEME ===================== */
+} 
 .theme-dark .notifications-card {
   background: #0f172a;
 }

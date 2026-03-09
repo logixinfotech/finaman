@@ -19,18 +19,13 @@ function Footer({ activeModule }) {
   const appName = "FINAMAN ERP";
 
   return (
-    <footer className="erp-footer">
-
-      {/* LEFT: COMPANY & APP */}
+    <footer className="erp-footer"> 
       <div className="erp-footer-left">
         <span className="erp-footer-brand">
           © {new Date().getFullYear()} {companyName}
         </span>
         <span className="erp-footer-copy">| {appName}</span>
-      </div>
-
-
-      {/* RIGHT: VERSION & LIVE TIME */}
+      </div> 
       <div className="erp-footer-right">
         <span>Version: {appVersion}</span>
         <span>{dateTime}</span>

@@ -14,10 +14,10 @@ const getApiUrl = () => {
   }
 
   if (hostname.startsWith("192.168.1.")) {
-    return "http://192.168.1.42:63558";
+    return "http://192.168.1.42:63554";
   }
 
-  return "http://122.160.143.110:63558";
+  return "http://122.160.143.110:63554";
 };
 
 const config = {

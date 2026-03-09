@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-
+import { initERPShortcuts } from "./utils/erpShortcuts";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
@@ -11,17 +11,17 @@ import { fetchMasmnuData } from './utils/api';
 import "./App.css";
 
 function App() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!sessionStorage.getItem("token");
-  }); 
+  });
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("finaman-theme") || "theme-light";
-  }); 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false); 
+  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeModule, setActiveModule] = useState(null);
   const [tabs, setTabs] = useState([]);
-  const [activeTabId, setActiveTabId] = useState(null); 
+  const [activeTabId, setActiveTabId] = useState(null);
   const [menusFromBackend, setMenusFromBackend] = useState([]);
   useEffect(() => {
     const root = document.documentElement;
@@ -34,48 +34,69 @@ function App() {
     root.classList.add(theme);
     localStorage.setItem("finaman-theme", theme);
   }, [theme]);
- 
+
+  useEffect(() => {
+    const cleanup = initERPShortcuts({
+      onSave: () => console.log("Save Triggered"),
+      onNew: () => console.log("New Triggered"),
+      onClose: () => console.log("Close Tab"),
+onSearch: () => {
+  const tableSearch = document.querySelector("#table-search");
+  const globalSearch = document.querySelector("#global-search");
+
+  if (tableSearch) {
+    tableSearch.focus();
+  } else if (globalSearch) {
+    globalSearch.focus();
+  }
+},
+      onEsc: () => console.log("ESC Pressed")
+    });
+
+    return cleanup;
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
     }
   }, [isAuthenticated, navigate]);
   useEffect(() => {
-  const loadMenus = async () => {
-    try {
-      const token = sessionStorage.getItem("token");
-      const data = await fetchMasmnuData(token);
+    const loadMenus = async () => {
+      try {
+        const token = sessionStorage.getItem("token");
+        const data = await fetchMasmnuData(token);
 
-      setMenusFromBackend(data || []);
-    } catch (error) {
-      console.error("Error loading menus:", error);
+        setMenusFromBackend(data || []);
+      } catch (error) {
+        console.error("Error loading menus:", error);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadMenus();
     }
+  }, [isAuthenticated]);
+
+  const handleModuleClick = (module) => {
+    setActiveModule(module);
+
+    const moduleTab = {
+      id: `mod-${module.masmod_id}`,
+      label: module.mod_name,
+      type: "module",
+      module,
+      appl_name: null,
+    };
+
+    setTabs((prev) => {
+      const withoutOldModule = prev.filter((t) => t.type !== "module");
+      return [moduleTab, ...withoutOldModule];
+    });
+
+    setActiveTabId(moduleTab.id);
+    navigate("/app");
   };
-
-  if (isAuthenticated) {
-    loadMenus();
-  }
-}, [isAuthenticated]);
- 
-const handleModuleClick = (module) => {
-  setActiveModule(module);
-
-  const moduleTab = {
-    id: `mod-${module.masmod_id}`,
-    label: module.mod_name,
-    type: "module",
-    module,
-    appl_name: null,
-  };
-
-  setTabs((prev) => { 
-    const withoutOldModule = prev.filter((t) => t.type !== "module");
-    return [moduleTab, ...withoutOldModule];
-  });
-
-  setActiveTabId(moduleTab.id);
-  navigate("/app");
-}; 
   const handleOpenPageFromMenu = (menuItem) => {
     const tabId = `page-${menuItem.masmnu_id}`;
 
@@ -94,9 +115,9 @@ const handleModuleClick = (module) => {
       ];
     });
 
-    setActiveTabId(tabId); 
+    setActiveTabId(tabId);
     navigate(`/app?page=${menuItem.appl_name}`);
-  }; 
+  };
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const page = params.get("page");
@@ -107,7 +128,7 @@ const handleModuleClick = (module) => {
     if (existingTab) {
       setActiveTabId(existingTab.id);
     }
-  }, [tabs]); 
+  }, [tabs]);
   const handleChangeActiveTab = (tabId) => {
     setActiveTabId(tabId);
 
@@ -143,51 +164,57 @@ const handleModuleClick = (module) => {
   };
 
   const activeTab = tabs.find((t) => t.id === activeTabId) || null;
- 
+
   const handleLogout = () => {
     sessionStorage.clear();
     setIsAuthenticated(false);
     setTabs([]);
     setActiveModule(null);
     navigate("/login", { replace: true });
-  }; 
+  };
 const AppShell = () => (
   <div className={`app-layout ${theme}`}>
-    
-    {/* LEFT SIDE – FULL HEIGHT SIDEBAR */}
-    <div className={`layout-sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onMenuItemClick={handleModuleClick}
-        onToggleSidebar={toggleSidebar}
-      />
-    </div>
 
-    {/* RIGHT SIDE – HEADER + CONTENT + FOOTER */}
-    <div className="layout-main">
-      
-      <Header
-        theme={theme}
-        setTheme={setTheme}
-        onLogout={handleLogout}
-        onOpenPage={handleOpenPageFromMenu}
-        allMenus={menusFromBackend}  
-      />
+    {/* MAIN BODY */}
+    <div className="app-body">
 
-      <div className="layout-content">
-        <Dashboard
-          activeModule={activeModule}
-          tabs={tabs}
-          activeTab={activeTab}
-          onOpenPage={handleOpenPageFromMenu}
-          onChangeActiveTab={handleChangeActiveTab}
-          onCloseTab={handleCloseTab}
-          setTabs={setTabs}
+      <div className={`layout-sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onMenuItemClick={handleModuleClick}
+          onToggleSidebar={toggleSidebar}
         />
       </div>
 
-      <Footer activeModule={activeModule} />
+      <div className="layout-main flex-1">
+
+        <Header
+          theme={theme}
+          setTheme={setTheme}
+          onLogout={handleLogout}
+          onOpenPage={handleOpenPageFromMenu}
+          allMenus={menusFromBackend}
+        />
+
+        <div className="layout-content">
+          <Dashboard
+            activeModule={activeModule}
+            tabs={tabs}
+            activeTab={activeTab}
+            onOpenPage={handleOpenPageFromMenu}
+            onChangeActiveTab={handleChangeActiveTab}
+            onCloseTab={handleCloseTab}
+            setTabs={setTabs}
+          />
+        </div>
+
+      </div>
+
     </div>
+
+    {/* FOOTER FULL WIDTH */}
+    <Footer activeModule={activeModule} />
+
   </div>
 );
 
@@ -202,9 +229,7 @@ const AppShell = () => (
             <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />
           )
         }
-      />
-
-      <Route
+      />      <Route
         path="/app"
         element={
           isAuthenticated ? <AppShell /> : <Navigate to="/login" replace />

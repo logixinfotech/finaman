@@ -24,8 +24,7 @@ const useButtonShortcut = (keyConfig, onClick, disabled) => {
   useEffect(() => {
     const handler = (e) => {
       if (disabled) return;
-
-      // CTRL / CMD + S
+ 
       if (
         keyConfig === "save" &&
         (e.ctrlKey || e.metaKey) &&
@@ -33,9 +32,7 @@ const useButtonShortcut = (keyConfig, onClick, disabled) => {
       ) {
         e.preventDefault();
         onClick?.();
-      }
-
-      // ESC
+      } 
       if (keyConfig === "cancel" && e.key === "Escape") {
         e.preventDefault();
         onClick?.();
@@ -47,14 +44,13 @@ const useButtonShortcut = (keyConfig, onClick, disabled) => {
   }, [keyConfig, onClick, disabled]);
 };
 
-/* ===== ACTION BUTTONS ===== */
-
+ 
 export const AddButton = ({ onClick, disabled }) => {
   useButtonShortcut("save", onClick, disabled);
 
   return (
     <BaseButton
-      label="Add (Ctrl + S)"
+      label="Save (Ctrl + S)"
       className="save"
       onClick={onClick}
       disabled={disabled}
