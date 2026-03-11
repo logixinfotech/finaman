@@ -1,4 +1,3 @@
-// src/utils/erpShortcuts.js
 
 let isLoading = false;
 let modalElement = null;
@@ -14,7 +13,6 @@ export const registerERPModal = (element) => {
 export const unregisterERPModal = () => {
   modalElement = null;
 };
-
 export const initERPShortcuts = ({
   onSave,
   onNew,
@@ -89,10 +87,6 @@ export const initERPShortcuts = ({
 
     const key = (e.key || "").toLowerCase();
 
-    /* -----------------------------
-       BLOCK DEFAULT BROWSER KEYS
-    ----------------------------- */
-
     if (e.ctrlKey) {
       const blocked = ["KeyN", "KeyS", "KeyW", "KeyF", "KeyR"];
       if (blocked.includes(e.code)) {
@@ -100,55 +94,36 @@ export const initERPShortcuts = ({
         e.stopPropagation();
       }
     }
-
-    /* Disable Refresh */
     if (e.key === "F5" || (e.ctrlKey && key === "r")) {
       e.preventDefault();
       return;
     }
 
-    /* -----------------------------
-       ERP SHORTCUTS
-    ----------------------------- */
-
-    /* ADD FORM (Ctrl + A) */
-    if (e.ctrlKey && e.code === "KeyA" && !isInputField(e.target)) {
+    if (e.key === "F2") {
       e.preventDefault();
       onNew && onNew();
       return;
     }
-
-    /* SAVE */
     if (e.ctrlKey && e.code === "KeyS") {
       e.preventDefault();
       onSave && onSave();
       return;
     }
-
-    /* CLOSE TAB */
     if (e.ctrlKey && e.code === "KeyW") {
       e.preventDefault();
       onClose && onClose();
       return;
     }
-
-    /* SEARCH */
     if (e.ctrlKey && e.code === "KeyF") {
       e.preventDefault();
       onSearch && onSearch();
       return;
     }
 
-    /* ESC */
     if (e.key === "Escape") {
       onEsc && onEsc();
       return;
     }
-
-    /* -----------------------------
-       ENTER FIELD NAVIGATION
-    ----------------------------- */
-
     if (e.key === "Enter") {
 
       if (e.target?.tagName?.toLowerCase() === "textarea") {

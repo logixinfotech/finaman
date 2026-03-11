@@ -1,10 +1,8 @@
 import { Plus, Paperclip, Pencil } from "lucide-react";
 import { useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
-import { createUser, updateUser } from "../../utils/api"; 
+import { createUser, updateUser } from "../../utils/api";  
 
-
-import useEnterAsTab from "../Reusable/useEnterAsTab";
 import {
   AddButton,
   UpdateButton,
@@ -12,23 +10,19 @@ import {
 } from "../Reusable/ActionButon";
 
 const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
-  const [formData, setFormData] = useState(
-    editData || {
-      user_type: "",
-      user_group: "",
-      user_name: "",
-      user_id: "",
-      password: "",
-      setting_pass: "",
-      signature: "",
-    }
-  );
+  const [formData, setFormData] = useState({
+    user_type: editData?.user_type || "",
+    user_group: editData?.user_group || "",
+    user_name: editData?.user_name || "",
+    user_id: editData?.user_id || "",
+    password: editData?.password || "",
+    setting_pass: editData?.setting_pass || "",
+    signature: editData?.signature || "",
+  });
 
   const sigPadRef = useRef(null);
-    const [loading, setLoading] = useState(false);
-  const [showSignPad, setShowSignPad] = useState(false);
-
-  const handleEnterAsTab = useEnterAsTab(".user-master-form");
+  const [loading, setLoading] = useState(false);
+  const [showSignPad, setShowSignPad] = useState(false); 
   const isEditMode = !!editData;
 
   const handleChange = (e) => {
@@ -41,23 +35,14 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
 
   const inputClass =
     "px-3 py-[10px] text-sm border border-gray-300 rounded-lg transition focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20";
-
   const labelClass = "text-xs font-medium text-gray-500";
-
   const sectionCard =
     "bg-white p-5 rounded-[14px] shadow-[0_4px_14px_rgba(0,0,0,0.04)]";
-  const handleSave = async () => {
-    try {
-      const payload = {
-        user_type: formData.user_type,
-        user_group: formData.user_group,
-        user_name: formData.user_name,
-        user_id: formData.user_id,
-        password: formData.password,
-        setting_pass: formData.setting_pass,
-        signature: formData.signature,
-      };
 
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const payload = { ...formData };
       let response;
 
       if (isEditMode) {
@@ -72,9 +57,10 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
       } else {
         alert(response.message);
       }
-
     } catch (error) {
       alert("Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,11 +72,8 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
             {isEditMode ? "Edit User Master" : "Add User Master"}
           </h2>
         </div>
-
-        <div
-          className="user-master-form flex flex-col gap-7"
-          onKeyDown={handleEnterAsTab}
-        >
+ 
+        <div className="user-master-form flex flex-col gap-7">
           <div className={sectionCard}>
             <div className="text-[15px] font-semibold mb-4 text-blue-600">
               User Information
@@ -167,7 +150,8 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
                 />
               </div>
             </div>
-          </div> 
+          </div>
+          
           <div className={sectionCard}>
             <div className="text-[15px] font-semibold mb-4 text-blue-600">
               Security
@@ -195,14 +179,14 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
                   className={inputClass}
                 />
               </div>
+
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Signature</label>
-
                 <div className="flex items-center gap-2">
                   <input
                     value={formData.signature ? "✔ Signature Attached" : ""}
                     readOnly
-                    className={`${inputClass} h-[34px]`}
+                    className={`${inputClass} h-[34px] flex-1`}
                   />
                   <label className="h-[34px] w-[34px] flex items-center justify-center border rounded bg-gray-100 hover:bg-gray-200 cursor-pointer">
                     <Paperclip size={14} />
@@ -213,13 +197,9 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-
                         const reader = new FileReader();
                         reader.onloadend = () => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            signature: reader.result,
-                          }));
+                          setFormData((prev) => ({ ...prev, signature: reader.result }));
                         };
                         reader.readAsDataURL(file);
                       }}
@@ -233,16 +213,10 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
                     <Pencil size={14} />
                   </button>
 
-                  {/* Clear */}
                   {formData.signature && (
                     <button
                       type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          signature: "",
-                        }))
-                      }
+                      onClick={() => setFormData((prev) => ({ ...prev, signature: "" }))}
                       className="h-[34px] px-2 text-xs border rounded bg-red-50 hover:bg-red-100 text-red-600"
                     >
                       ✕
@@ -252,6 +226,7 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
               </div>
             </div>
           </div>
+
           <div className="flex justify-end gap-3 pt-2">
             {isEditMode ? (
               <UpdateButton onClick={handleSave} disabled={loading} />
@@ -260,64 +235,33 @@ const AddUserMaster = ({ onSave, onCancel, editData, onOpenPage }) => {
             )}
             <CancelButton onClick={onCancel} />
           </div>
-
         </div>
       </div>
 
-      {/* ================= SIGNATURE MODAL ================= */}
+      {/* Signature Modal Logic Remains Same */}
       {showSignPad && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow-lg w-[450px]">
-            <h3 className="text-sm font-semibold mb-3 text-blue-600">
-              Draw Signature
-            </h3>
-
+            <h3 className="text-sm font-semibold mb-3 text-blue-600">Draw Signature</h3>
             <SignatureCanvas
               ref={sigPadRef}
               penColor="black"
-              canvasProps={{
-                width: 400,
-                height: 150,
-                className: "border rounded",
-              }}
+              canvasProps={{ width: 400, height: 150, className: "border rounded" }}
             />
-
             <div className="flex justify-end gap-3 mt-4">
-              <button
-                type="button"
-                onClick={() => sigPadRef.current.clear()}
-                className="px-3 py-1 text-xs bg-gray-200 rounded"
-              >
-                Clear
-              </button>
-
-              <button
-                type="button"
+              <button type="button" onClick={() => sigPadRef.current.clear()} className="px-3 py-1 text-xs bg-gray-200 rounded">Clear</button>
+              <button 
+                type="button" 
                 onClick={() => {
-                  const data =
-                    sigPadRef.current
-                      .getTrimmedCanvas()
-                      .toDataURL("image/png");
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    signature: data,
-                  }));
-
+                  const data = sigPadRef.current.getTrimmedCanvas().toDataURL("image/png");
+                  setFormData((prev) => ({ ...prev, signature: data }));
                   setShowSignPad(false);
-                }}
+                }} 
                 className="px-3 py-1 text-xs bg-blue-600 text-white rounded"
               >
                 Save
               </button>
-
-              <button
-                type="button"
-                onClick={() => setShowSignPad(false)}
-                className="px-3 py-1 text-xs bg-red-500 text-white rounded"
-              >
-                Cancel
-              </button>
+              <button type="button" onClick={() => setShowSignPad(false)} className="px-3 py-1 text-xs bg-red-500 text-white rounded">Cancel</button>
             </div>
           </div>
         </div>

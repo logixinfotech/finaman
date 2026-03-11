@@ -157,10 +157,7 @@ const ERPPrintPreview = ({
 
         </div>
 
-      </div>
-
-      {/* ================= PRINT CSS ================= */}
-
+      </div> 
       <style>
         {`
         @media print {

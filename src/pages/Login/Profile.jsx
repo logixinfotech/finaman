@@ -1,5 +1,28 @@
+import { useEffect, useState } from "react";
+import { fetchUserProfile } from "../../utils/api";
+
 const ProfilePage = () => {
-  const user = JSON.parse(sessionStorage.getItem("user"));
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await fetchUserProfile();
+        setUser(data);
+      } catch (error) {
+        console.error("Profile load error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
+
+  if (loading) {
+    return <div className="profile-loading">Loading profile...</div>;
+  }
 
   if (!user) {
     return <div className="profile-loading">No user data found</div>;
@@ -25,13 +48,13 @@ const ProfilePage = () => {
 
         <div className="profile-divider" />
 
-        {/* Details */}
         <div className="profile-section">
           <ProfileRow label="User ID" value={user.user_id} />
           <ProfileRow label="User Master ID" value={user.userma_id} />
           <ProfileRow label="Role" value={user.role} />
           <ProfileRow label="Company Code" value={user.com_code} />
         </div>
+
       </div>
     </div>
   );

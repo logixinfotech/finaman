@@ -12,6 +12,15 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [username, setUsername] = useState("");
+
+  useEffect(() => {
+    const user = JSON.parse(sessionStorage.getItem("user"));
+
+    if (user) {
+      setUsername(user.user_name || user.username || user.user_id);
+    }
+  }, []);
 
   const searchRef = useRef(null);
   const menuRef = useRef(null);
@@ -42,8 +51,7 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-  // Search Filter
+ 
   useEffect(() => {
     if (!searchText.trim()) {
       setSearchResults([]);
@@ -76,27 +84,26 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
   };
 
   useEffect(() => {
-  const handleShortcut = (e) => {
-    if (e.ctrlKey && e.key.toLowerCase() === "k") {
-      e.preventDefault();
-      if (searchRef.current) {
-        searchRef.current.focus();
-        setShowSearch(true);
+    const handleShortcut = (e) => {
+      if (e.ctrlKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        if (searchRef.current) {
+          searchRef.current.focus();
+          setShowSearch(true);
+        }
       }
-    }
-  };
+    };
 
-  window.addEventListener("keydown", handleShortcut);
-  return () => window.removeEventListener("keydown", handleShortcut);
-}, []);
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
   return (
     <header
       className="relative z-[500] h-[50px] w-full flex items-center justify-between px-4 shadow-md"
       style={{
         background: "var(--sidebar-top-bg)",
       }}
-    >
-      {/* LEFT : Logo */}
+    > 
       <div className="flex items-center gap-3">
         <div className="h-8 w-8 flex items-center justify-center rounded-full border border-white/40 bg-white/10 backdrop-blur-sm p-1">
           <img
@@ -114,7 +121,7 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
             Process Manufacturing
           </span>
         </div>
-      </div> 
+      </div>
       <div className="relative w-[260px] hidden md:block">
         <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 text-xs" />
 
@@ -142,23 +149,18 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
                   setSearchText("");
                 }}
                 className={`px-3 py-2 text-sm cursor-pointer transition-colors
-                ${
-                  index === highlightIndex
+                ${index === highlightIndex
                     ? "bg-blue-600 text-white"
                     : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
+                  }`}
               >
                 {item.bar_name}
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      {/* RIGHT : Actions */}
-      <div className="flex items-center gap-2">
-
-        {/* Theme */}
+      </div> 
+      <div className="flex items-center gap-2"> 
         <div className="flex bg-white/10 rounded-full p-1 border border-white/10">
           <button
             onClick={toggleLightDark}
@@ -173,15 +175,12 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
           >
             <FaPalette />
           </button>
-        </div>
-
-        {/* Notification */}
+        </div> 
         <div className="relative" ref={notifyRef}>
           <div
             onClick={() => setShowNotifications(!showNotifications)}
-            className={`relative p-2 rounded-full cursor-pointer bg-white/10 hover:bg-white/20 transition border border-white/10 text-white ${
-              blink ? "animate-pulse opacity-60" : ""
-            }`}
+            className={`relative p-2 rounded-full cursor-pointer bg-white/10 hover:bg-white/20 transition border border-white/10 text-white ${blink ? "animate-pulse opacity-60" : ""
+              }`}
           >
             <FaBell className="text-lg" />
 
@@ -211,8 +210,6 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
             </div>
           )}
         </div>
-
-        {/* User */}
         <div className="relative group">
           <div
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -220,11 +217,11 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
             className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-white/20 hover:bg-white/30 border border-white/10 cursor-pointer transition backdrop-blur-md"
           >
             <div className="h-7 w-7 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-xs">
-              S
+              {username?.charAt(0).toUpperCase()}
             </div>
 
             <span className="text-white text-sm font-semibold hidden lg:block">
-              Suman
+              {username}
             </span>
           </div>
 

@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ChevronsRight,
   X,
+  Inbox,
 } from "lucide-react";
 
 const Table = ({
@@ -39,20 +40,17 @@ const Table = ({
 
   const [sortField, setSortField] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [lockedColumns, setLockedColumns] = useState([]);
 
   const [showColumnMenu, setShowColumnMenu] = useState(false);
-
-  /* COLUMN ORDER STATE */
   const [columnOrder, setColumnOrder] = useState(columns.map(c => c.key));
-
-  /* COLUMN WIDTH STATE */
-  const [columnWidths, setColumnWidths] = useState({});
 
   const [visibleColumns, setVisibleColumns] = useState(() =>
     columns.reduce((a, c) => ({ ...a, [c.key]: true }), {})
   );
 
-  /* CLICK OUTSIDE COLUMN MENU */
+  const [columnWidths, setColumnWidths] = useState({});
+
   useEffect(() => {
     const handler = (e) => {
       if (columnMenuRef.current && !columnMenuRef.current.contains(e.target)) {
@@ -63,7 +61,6 @@ const Table = ({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  /* KEYBOARD SHORTCUTS */
   useEffect(() => {
 
     const handleKey = (e) => {
@@ -180,30 +177,53 @@ const Table = ({
       setSortOrder("asc");
     }
 
+
   };
 
-  let leftOffset = 0;
+  const toggleLockColumn = (key) => {
+    setLockedColumns((prev) =>
+      prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : [...prev, key]
+    );
+  };
+
+  // let leftOffset = 0;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-
-      {/* HEADER */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-slate-50">
+    <div className="bg-white border border-slate-200 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+      <div
+        // className="flex items-center justify-between px-4 py-3 border-b"
+        className="flex items-center justify-between px-4 py-2 border-b bg-gradient-to-r from-white to-slate-50"
+      // style={{ background: "var(--bg-secondary)" }}
+      >
 
         <div className="flex items-center gap-3">
-          <div className="text-sm font-semibold text-slate-700 border-l-4 border-blue-600 pl-3">
+
+          <div
+            className="text-sm font-semibold tracking-wide border-l-4 pl-3 uppercase"
+            style={{
+              color: "var(--text-main)",
+              borderColor: "var(--bg-active)"
+            }}
+          >
             {title}
           </div>
-          <div className="text-xs text-slate-500">
+
+          <div
+            className="text-xs font-medium"
+            style={{ color: "var(--bg-active)" }}
+          >
             {processedData.length} Records
           </div>
+
         </div>
 
         <div className="flex items-center gap-2">
 
           <div className="relative">
 
-            <Search size={14} className="absolute left-2 top-2 text-slate-400"/>
+            <Search size={14} className="absolute left-2 top-2 text-slate-400" />
 
             <input
               ref={searchRef}
@@ -213,8 +233,7 @@ const Table = ({
                 setSearchText(e.target.value);
                 setPage(1);
               }}
-              className="h-8 pl-7 pr-7 text-xs border rounded-md w-44 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              className="h-8 pl-7 pr-7 text-xs border border-slate-300 rounded-md w-44 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
 
             {searchText && (
               <X
@@ -235,19 +254,19 @@ const Table = ({
 
           {onRefresh && (
             <button
-              className="h-8 w-8 flex items-center justify-center border rounded hover:bg-slate-100"
+              className="h-8 w-8 flex items-center justify-center rounded-md bg-slate-100 hover:bg-blue-100 transition"
               onClick={onRefresh}
             >
-              <RefreshCw size={14}/>
+              <RefreshCw size={14} />
             </button>
           )}
 
           <div className="relative" ref={columnMenuRef}>
             <button
-              className="h-8 w-8 flex items-center justify-center border rounded hover:bg-slate-100"
+              className="h-8 w-8 flex items-center justify-center rounded-md bg-slate-100 hover:bg-blue-100 transition"
               onClick={() => setShowColumnMenu((p) => !p)}
             >
-              <Settings size={14}/>
+              <Settings size={14} />
             </button>
 
             {showColumnMenu && (
@@ -257,22 +276,34 @@ const Table = ({
                 </div>
 
                 {columns.map((c) => (
-                  <label
+                  <div
                     key={c.key}
-                    className="flex items-center gap-2 text-xs py-1 cursor-pointer"
+                    className="flex items-center justify-between text-xs py-1"
                   >
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns[c.key]}
-                      onChange={() =>
-                        setVisibleColumns((p) => ({
-                          ...p,
-                          [c.key]: !p[c.key],
-                        }))
-                      }
-                    />
-                    {c.label}
-                  </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[c.key]}
+                        onChange={() =>
+                          setVisibleColumns((p) => ({
+                            ...p,
+                            [c.key]: !p[c.key],
+                          }))
+                        }
+                      />
+                      {c.label}
+                    </label>
+
+                    <button
+                      onClick={() => toggleLockColumn(c.key)}
+                      className={`text-[10px] px-2 py-0.5 rounded ${lockedColumns.includes(c.key)
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-slate-100 text-slate-600"
+                        }`}
+                    >
+                      {lockedColumns.includes(c.key) ? "Locked" : "Lock"}
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -280,12 +311,11 @@ const Table = ({
 
           {onToggleFilter && (
             <button
-              className={`h-8 w-8 flex items-center justify-center border rounded ${
-                showForm ? "bg-blue-50 border-blue-500" : ""
-              }`}
+              className={`h-8 w-8 flex items-center justify-center border rounded ${showForm ? "bg-blue-50 border-blue-500" : ""
+                }`}
               onClick={onToggleFilter}
             >
-              <Filter size={14}/>
+              <Filter size={14} />
             </button>
           )}
 
@@ -305,118 +335,146 @@ const Table = ({
 
         <table className="w-full text-xs border-collapse">
 
-          <thead className="bg-slate-100 sticky top-0 z-10">
-
+          <thead className="bg-slate-200/80 backdrop-blur sticky top-0 z-10 border-b border-slate-300">
             <tr>
+              {(() => {
+                let leftOffset = 0;
 
-              {orderedColumns.map((c) => {
-
-                if (!visibleColumns[c.key]) return null;
-
-                const width = columnWidths[c.key] || 150;
-
-                const frozen = c.freeze;
-
-                const style = frozen
-                  ? { position: "sticky", left: leftOffset, zIndex: 5, background: "#f1f5f9" }
-                  : {};
-
-                if (frozen) leftOffset += width;
-
-                return (
-
-                  <th
-                    key={c.key}
-                    draggable
-                    onDragStart={() => handleDragStart(c.key)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(c.key)}
-                    onClick={() => handleSort(c.key)}
-                    style={{ width, ...style }}
-                    className="px-3 py-2 border font-semibold text-slate-700 text-left whitespace-nowrap relative"
-                  >
-
-                    {c.label}
-
-                    {sortField === c.key && (
-                      <span className="text-[10px] ml-1">
-                        {sortOrder === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-
-                    {/* RESIZE HANDLE */}
-                    <div
-                      onMouseDown={(e) => startResize(e, c.key)}
-                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
-                    />
-
-                  </th>
-
-                );
-
-              })}
-
-              {actions && (
-                <th className="px-3 py-2 border text-right">
-                  Actions
-                </th>
-              )}
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {paginatedData.map((row) => (
-
-              <tr
-                key={row[rowKey]}
-                onClick={() => onRowClick?.(row)}
-                className={`border hover:bg-slate-50 cursor-pointer transition ${
-                  selectedRow?.[rowKey] === row[rowKey]
-                    ? "bg-blue-50 border-l-4 border-blue-600"
-                    : ""
-                }`}
-              >
-
-                {orderedColumns.map((c) => {
-
+                return orderedColumns.map((c) => {
                   if (!visibleColumns[c.key]) return null;
 
                   const width = columnWidths[c.key] || 150;
+                  const frozen = lockedColumns.includes(c.key);
+
+                  const style = frozen
+                    ? {
+                      position: "sticky",
+                      left: leftOffset,
+                      zIndex: 30,
+                      background: "#ffffff",
+                      boxShadow: "2px 0 5px rgba(0,0,0,0.05)",
+                    }
+                    : {};
+
+                  if (frozen) leftOffset += width;
 
                   return (
-
-                    <td
+                    <th
                       key={c.key}
-                      style={{ width }}
-                      className="px-3 py-2 border whitespace-nowrap"
+                      draggable
+                      onDragStart={() => handleDragStart(c.key)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleDrop(c.key)}
+                      onClick={() => handleSort(c.key)}
+                      style={{ width, ...style }}
+                      className="px-3 py-2 border-b border-slate-300 font-semibold text-slate-800 text-left whitespace-nowrap relative tracking-wide bg-slate-100"
                     >
-                      {c.render ? c.render(row) : row[c.key]}
-                    </td>
+                      <div className="flex items-center gap-1">
+                        {c.label}
+                        {lockedColumns.includes(c.key) && (
+                          <span className="text-[11px]">🔒</span>
+                        )}
+                      </div>
 
+                      {sortField === c.key && (
+                        <span className="text-[10px] ml-1">
+                          {sortOrder === "asc" ? "▲" : "▼"}
+                        </span>
+                      )}
+
+                      <div
+                        onMouseDown={(e) => startResize(e, c.key)}
+                        className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
+                      />
+                    </th>
                   );
+                });
+              })()}
 
-                })}
-
-                {actions && (
-                  <td className="px-3 py-2 border text-right">
-                    {actions(row)}
-                  </td>
-                )}
-
+              {actions && (
+                <th className="px-3 py-2 border text-right">Actions</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedData.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={
+                    orderedColumns.filter((c) => visibleColumns[c.key]).length +
+                    (actions ? 1 : 0)
+                  }
+                  className="p-0"
+                >
+                  <div className="flex items-center justify-center min-h-[350px]">
+                    <div className="flex flex-col items-center gap-4 text-slate-500">
+                      <div className="bg-slate-100 p-6 rounded-full shadow-inner">
+                        <Inbox size={48} className="text-slate-400" />
+                      </div>
+                      <div className="text-base font-semibold tracking-wide">
+                        No Records Found
+                      </div>
+                    </div>
+                  </div>
+                </td>
               </tr>
+            ) : (
+              paginatedData.map((row, index) => {
+                let leftOffset = 0;
 
-            ))}
+                return (
+                  <tr
+                    key={row[rowKey]}
+                    onClick={() => onRowClick?.(row)}
+                    className={`border-b border-slate-200 hover:bg-blue-50 transition duration-150 cursor-pointer ${selectedRow?.[rowKey] === row[rowKey]
+                      ? "bg-blue-50 border-l-4 border-blue-600"
+                      : index % 2 === 0
+                        ? "bg-white"
+                        : "bg-slate-50/50"
+                      }`}
+                  >
+                    {orderedColumns.map((c) => {
+                      if (!visibleColumns[c.key]) return null;
 
+                      const width = columnWidths[c.key] || 150;
+                      const frozen = lockedColumns.includes(c.key);
+
+                      const style = frozen
+                        ? {
+                          position: "sticky",
+                          left: leftOffset,
+                          background: "#ffffff",
+                          zIndex: 10
+                        }
+                        : {};
+
+                      if (frozen) leftOffset += width;
+
+                      return (
+                        <td
+                          key={c.key}
+                          style={{ width, ...style }}
+                          className="px-3 py-2 border-b border-slate-200 whitespace-nowrap"
+                        >
+                          {c.render ? c.render(row) : row[c.key]}
+                        </td>
+                      );
+                    })}
+
+                    {actions && (
+                      <td className="px-3 py-2 border-b border-slate-200 text-right">
+                        {actions(row)}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
           </tbody>
 
         </table>
 
       </div>
-
-      {/* PAGINATION */}
       <div className="flex items-center justify-between px-4 py-2 border-t bg-slate-50 text-xs">
 
         <div className="flex items-center gap-2">
@@ -438,11 +496,11 @@ const Table = ({
         <div className="flex items-center gap-1">
 
           <button className="p-1 border rounded" disabled={page === 1} onClick={() => setPage(1)}>
-            <ChevronsLeft size={14}/>
+            <ChevronsLeft size={14} />
           </button>
 
           <button className="p-1 border rounded" disabled={page === 1} onClick={() => setPage(page - 1)}>
-            <ChevronLeft size={14}/>
+            <ChevronLeft size={14} />
           </button>
 
           <span className="px-2 font-medium">
@@ -450,11 +508,11 @@ const Table = ({
           </span>
 
           <button className="p-1 border rounded" disabled={page === totalPages} onClick={() => setPage(page + 1)}>
-            <ChevronRight size={14}/>
+            <ChevronRight size={14} />
           </button>
 
           <button className="p-1 border rounded" disabled={page === totalPages} onClick={() => setPage(totalPages)}>
-            <ChevronsRight size={14}/>
+            <ChevronsRight size={14} />
           </button>
 
         </div>

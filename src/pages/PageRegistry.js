@@ -1,14 +1,30 @@
-import Master from "./Master";
-import TestingRequisition from "./TestingRequisition";
-import EmployeeMaster from "./EmployeeMaster";
-import CompanyMasterPage from "./CompanyMaster/CompanyMasterPage";
-import BusinessHealthSnapshot from "../components/Dashboard/BusinessHealthSnapshot";
-import MenuMasterPage from "./MenuMasterPage";
-import AddUserMaster from "../components/UserMaster/AddUserMaster";
-import NotificationsPage from "./NotificationsPage";
-import ProfilePage from "./Login/Profile";
-import UserGroupMasterPage from "./UserGroupMasterPage";
-import UserAuthenticationPage from "./UserAuthenticationPage";
+import React from "react";
+
+const Master = React.lazy(() => import("./Master"));
+const TestingRequisition = React.lazy(() => import("./TestingRequisition"));
+const EmployeeMaster = React.lazy(() => import("./EmployeeMaster"));
+const CompanyMasterPage = React.lazy(() =>
+    import("./CompanyMaster/CompanyMasterPage")
+);
+const BusinessHealthSnapshot = React.lazy(() =>
+    import("../components/Dashboard/BusinessHealthSnapshot")
+);
+const MenuMasterPage = React.lazy(() => import("./MenuMasterPage"));
+const AddUserMaster = React.lazy(() =>
+    import("../components/UserMaster/AddUserMaster")
+);
+const NotificationsPage = React.lazy(() =>
+    import("./NotificationsPage")
+);
+const ProfilePage = React.lazy(() =>
+    import("./Login/Profile")
+);
+const UserGroupMasterPage = React.lazy(() =>
+    import("./UserGroupMasterPage")
+);
+const UserAuthenticationPage = React.lazy(() =>
+    import("./UserAuthenticationPage")
+);
 
 const PageRegistry = {
     Master,
@@ -22,7 +38,6 @@ const PageRegistry = {
     PROFILE: ProfilePage,
     USERGROUP: UserGroupMasterPage,
     MASUSR: UserAuthenticationPage,
-
 };
 
 export default PageRegistry;

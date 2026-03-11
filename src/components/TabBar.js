@@ -1,4 +1,4 @@
-import React from "react";
+
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"; // Updated import for v13
 import "./TabBar.css";
 
@@ -12,9 +12,7 @@ function TabBar({
     const handleDragEnd = (result) => {
         if (!result.destination) return; // No destination means no move
 
-        const items = Array.from(tabs); // Make a copy of the tabs array
-
-        // Prevent moving the first tab (Dashboard)
+        const items = Array.from(tabs)
         if (result.source.index === 0 || result.destination.index === 0) {
             return;  // Prevent moving the first tab
         }
@@ -33,8 +31,6 @@ function TabBar({
                 label: `New Tab ${tabs.length + 1}`,
                 type: "page", // Default type for new tabs
             };
-
-            // Insert the new tab after the first tab (index 1)
             const updatedTabs = [...tabs];
             updatedTabs.splice(1, 0, newTab);  // Insert the new tab at index 1
             onReorderTabs(updatedTabs);  // Update the tabs order
@@ -75,8 +71,6 @@ function TabBar({
                                             <span className="chrome-tab-title">
                                                 {tab.label}
                                             </span>
-
-                                            {/* ✅ Only pages are closable, first module tab not */}
                                             {tab.type !== "module" && (
                                                 <span
                                                     className="chrome-tab-close"

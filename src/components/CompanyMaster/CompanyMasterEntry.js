@@ -1,6 +1,4 @@
-import React, { useState } from "react";
-
-// Company Master Form for adding a new company
+import  { useState } from "react"; 
 const CompanyMasterEntryPage = () => {
     const [formData, setFormData] = useState({
         company_name: "",
@@ -26,18 +24,14 @@ const CompanyMasterEntryPage = () => {
         license_info: "",
     });
 
-    const [formError, setFormError] = useState(null);
-
-    // Handle form input change
+    const [formError, setFormError] = useState(null); 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
             ...formData,
             [name]: value,
         });
-    };
-
-    // Validate form fields
+    }; 
     const validateForm = () => {
         if (!formData.company_name || !formData.trade_name) {
             setFormError("Company Name and Trade Name are required.");
@@ -45,9 +39,7 @@ const CompanyMasterEntryPage = () => {
         }
         setFormError(null);
         return true;
-    };
-
-    // Handle form submission
+    }; 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!validateForm()) return;
