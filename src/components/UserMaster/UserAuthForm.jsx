@@ -48,7 +48,7 @@ const UserAuthFilterForm = ({
     </div>
   );
 };
- 
+
 const UserAuthForm = ({ selectedUser, onCancel }) => {
   const [allMenus, setAllMenus] = useState([]);
   const [modules, setModules] = useState([]);
@@ -58,15 +58,15 @@ const UserAuthForm = ({ selectedUser, onCancel }) => {
 
   const handleEnterAsTab = useEnterAsTab(".user-auth-form");
 
-useEffect(() => {
-  loadModules();
-}, []);
+  useEffect(() => {
+    loadModules();
+  }, []);
 
-useEffect(() => {
-  if (selectedUser) {
-    loadMenus();
-  }
-}, [selectedUser]);
+  useEffect(() => {
+    if (selectedUser) {
+      loadMenus();
+    }
+  }, [selectedUser]);
   const loadModules = async () => {
     try {
       const data = await fetchSidebarMenu();
@@ -74,65 +74,65 @@ useEffect(() => {
     } catch (err) {
       console.error("Module load error:", err);
     }
-  }; 
-const loadMenus = async (filterParams = {}) => {
-  try {
-    const menuData = await fetchMenuMasterList(filterParams);
+  };
+  const loadMenus = async (filterParams = {}) => {
+    try {
+      const menuData = await fetchMenuMasterList(filterParams);
 
-    const formatted = (menuData || []).map((row) => ({
-      masmnu_id: row.masmnu_id,
-      masmod_id: row.masmod_id,
-      mod_name: row.mod_name,
-      menu_name: row.pad_name,
-      item_type: row.item_type,
+      const formatted = (menuData || []).map((row) => ({
+        masmnu_id: row.masmnu_id,
+        masmod_id: row.masmod_id,
+        mod_name: row.mod_name,
+        menu_name: row.pad_name,
+        item_type: row.item_type,
 
-      Add_right: false,
-      Mod_right: false,
-      Del_right: false,
-      Prt_right: false,
-      App_right: false,
+        Add_right: false,
+        Mod_right: false,
+        Del_right: false,
+        Prt_right: false,
+        App_right: false,
 
-      Add_days: 0,
-      Mod_days: 0,
-      Del_days: 0,
-    }));
+        Add_days: 0,
+        Mod_days: 0,
+        Del_days: 0,
+      }));
 
-    // 🔥 LOAD EXISTING PERMISSIONS
-    if (selectedUser?.userma_id) {
-      const existing = await fetchUserPermissions(
-        selectedUser.userma_id
-      );
-
-      const merged = formatted.map((menu) => {
-        const found = existing.find(
-          (e) => e.Masmnu_id === menu.masmnu_id
+      // 🔥 LOAD EXISTING PERMISSIONS
+      if (selectedUser?.userma_id) {
+        const existing = await fetchUserPermissions(
+          selectedUser.userma_id
         );
 
-        if (found) {
-          return {
-            ...menu,
-            Add_right: found.Add_right,
-            Mod_right: found.Mod_right,
-            Del_right: found.Del_right,
-            Prt_right: found.Prt_right,
-            App_right: found.App_right,
-            Mod_days: found.Mod_days,
-            Del_days: found.Del_days,
-          };
-        }
+        const merged = formatted.map((menu) => {
+          const found = existing.find(
+            (e) => e.Masmnu_id === menu.masmnu_id
+          );
 
-        return menu;
-      });
+          if (found) {
+            return {
+              ...menu,
+              Add_right: found.Add_right,
+              Mod_right: found.Mod_right,
+              Del_right: found.Del_right,
+              Prt_right: found.Prt_right,
+              App_right: found.App_right,
+              Mod_days: found.Mod_days,
+              Del_days: found.Del_days,
+            };
+          }
 
-      setAllMenus(merged);
-    } else {
-      setAllMenus(formatted);
+          return menu;
+        });
+
+        setAllMenus(merged);
+      } else {
+        setAllMenus(formatted);
+      }
+
+    } catch (err) {
+      console.error("Menu load error:", err);
     }
-
-  } catch (err) {
-    console.error("Menu load error:", err);
-  }
-};
+  };
   const applyFilter = async () => {
     await loadMenus(filters);
   };
@@ -140,7 +140,7 @@ const loadMenus = async (filterParams = {}) => {
   const clearFilter = async () => {
     setFilters({});
     await loadMenus();
-  }; 
+  };
   const togglePermission = (masmnu_id, key) => {
     setAllMenus((prev) =>
       prev.map((row) =>
@@ -290,34 +290,34 @@ const loadMenus = async (filterParams = {}) => {
         />
       ),
     },
-  ]; 
-const handleSave = async () => {
-  try {
-    const filteredPermissions = allMenus.filter(
-      (p) =>
-        p.Add_right ||
-        p.Mod_right ||
-        p.Del_right ||
-        p.Prt_right ||
-        p.App_right
-    );
+  ];
+  const handleSave = async () => {
+    try {
+      const filteredPermissions = allMenus.filter(
+        (p) =>
+          p.Add_right ||
+          p.Mod_right ||
+          p.Del_right ||
+          p.Prt_right ||
+          p.App_right
+      );
 
-    const payload = {
-      userma_id: selectedUser.userma_id,
-      permissions: filteredPermissions,
-    };
+      const payload = {
+        userma_id: selectedUser.userma_id,
+        permissions: filteredPermissions,
+      };
 
-    await saveUserPermissions(payload);
+      await saveUserPermissions(payload);
 
-    alert("Permissions Saved Successfully ✅");
-    onCancel();
+      alert("Permissions Saved Successfully ✅");
+      onCancel();
 
-  } catch (err) {
-    console.error("Save error:", err);
-    alert("Error saving permissions");
-  }
-};
- 
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Error saving permissions");
+    }
+  };
+
   return (
     <div className="">
       <div

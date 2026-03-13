@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import CompanyMasterForm from "./CompanyMasterEntry";
 import CompanyMasterFilterForm from "./CompanyMasterList";
 import Table from "../../components/Reusable/Table";
@@ -9,17 +9,16 @@ import {
   confirmDelete,
 } from "../../components/Reusable/alert";
 import { Pencil, Trash2 } from "lucide-react";
-
+import IconButton from "../../components/Reusable/IconButton";
+import { Printer } from "lucide-react";
 import {
   getCompanyList,
   createCompany,
   updateCompany,
   deleteCompany,
 } from "../../utils/api";
-
-import useEnterAsTab from "../../components/Reusable/useEnterAsTab";
-import { useNavigate } from "react-router-dom";
-
+import { initERPShortcuts } from "../../utils/erpShortcuts";
+ 
 const initialState = {
   company_id: null,
   company_name: "",
@@ -37,8 +36,8 @@ const initialState = {
   country: "",
 };
 const companyPrintSections = [
-
   {
+    type: "fields",
     title: "Basic Information",
     fields: [
       { label: "Company Name", key: "company_name" },
@@ -49,6 +48,7 @@ const companyPrintSections = [
   },
 
   {
+    type: "fields",
     title: "Contact Information",
     fields: [
       { label: "Phone", key: "phone_number" },
@@ -60,13 +60,33 @@ const companyPrintSections = [
   },
 
   {
+    type: "fields",
     title: "Legal Details",
     fields: [
       { label: "GSTIN", key: "gstin_number" },
       { label: "PAN", key: "pan_number" }
     ]
   }
-
+];
+const columns = [
+  { key: "company_name", label: "Company Name" },
+  { key: "trade_name", label: "Trade Name" },
+  { key: "company_type", label: "Type" },
+  { key: "registration_number", label: "Reg. No" },
+  { key: "phone_number", label: "Phone" },
+  { key: "email_address", label: "Email" },
+  { key: "gstin_number", label: "GSTIN" },
+  { key: "pan_number", label: "PAN" },
+  { key: "primary_business_sector", label: "Business Sector" },
+  {
+    key: "company_status",
+    label: "Status",
+    render: (row) => (
+      <span className={`status-badge ${row.company_status?.toLowerCase()}`}>
+        {row.company_status}
+      </span>
+    )
+  }
 ];
 const CompanyMasterPage = () => {
   const [list, setList] = useState([]);
@@ -77,47 +97,26 @@ const CompanyMasterPage = () => {
   const [showFilter, setShowFilter] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [printData, setPrintData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadCompanyList();
-  }, []);
-
-  const loadCompanyList = async (filterParams = {}) => {
+  const loadCompanyList = useCallback(async (filterParams = {}) => {
     try {
       const data = await getCompanyList(filterParams);
       setList(data || []);
-    } catch (err) {
-      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleAdd = () => {
-    setSelectedRow(null);
-    setFormData(initialState);
-    setShowForm(true);
-  };
-
-  useEffect(() => {
-    const handleShortcut = (e) => {
-
-      if (e.key === "F2") {
-
-        const tag = document.activeElement.tagName.toLowerCase();
-        if (tag === "input" || tag === "textarea") return;
-
-        e.preventDefault();
-        handleAdd();
-      }
-    };
-
-    window.addEventListener("keydown", handleShortcut);
-
-    return () => {
-      window.removeEventListener("keydown", handleShortcut);
-    };
   }, []);
 
+  useEffect(() => {
+    loadCompanyList();
+  }, [loadCompanyList]);
 
+const handleAdd = useCallback(() => {
+  setSelectedRow(null);
+  setFormData(initialState);
+  setShowForm(true);
+}, []);
 
 
   const handleEdit = (row) => {
@@ -138,7 +137,10 @@ const CompanyMasterPage = () => {
     setFormData(mappedRow);
     setShowForm(true);
   };
-
+  const handlePrint = (row) => {
+    setPrintData(row);
+    setShowPreview(true);
+  };
   const handleDelete = async (row) => {
     const confirmed = await confirmDelete({
       title: `Delete "${row.company_name}"?`,
@@ -159,25 +161,36 @@ const CompanyMasterPage = () => {
       alertError("Delete failed", "Something went wrong");
     }
   };
-
+  const [saving, setSaving] = useState(false);
   const handleSave = async () => {
 
-    if (!formData.company_name) {
-      alertError("Validation", "Company Name  ");
-      return;
-    }
+    if (saving) return;
 
     try {
 
+      setSaving(true);
+
+      let response;
+
       if (formData.company_id) {
-        await updateCompany(formData.company_id, formData);
+        response = await updateCompany(formData.company_id, formData);
       } else {
-        await createCompany(formData);
+        response = await createCompany(formData);
+      }
+
+      if (!response.success) {
+
+        if (response.field) {
+          alertError("Validation", response.message);
+        } else {
+          alertError("Error", response.message);
+        }
+
+        return;
       }
 
       await loadCompanyList(filters);
-
-      setPrintData(formData);
+      setPrintData({ ...formData });
       setShowPreview(true);
       setShowForm(false);
 
@@ -189,8 +202,15 @@ const CompanyMasterPage = () => {
       });
 
     } catch (err) {
-      alertError("Error", "Something went wrong while saving");
+
+      alertError("Error", "Something went wrong");
+
+    } finally {
+
+      setSaving(false);
+
     }
+
   };
 
   const applyFilter = async () => {
@@ -200,42 +220,19 @@ const CompanyMasterPage = () => {
   const clearFilter = async () => {
     setFilters({});
     await loadCompanyList();
-  };
-  const navigate = useNavigate();
+  }; 
 
-  useEnterAsTab("form", {
-    save: handleSave,              // Ctrl + S
-    newEntry: handleAdd,           // F2
-    closeTab: () => navigate(-1),  // Ctrl + W
-    focusSearch: () =>
-      document.getElementById("searchInput")?.focus(),  // Ctrl + F
-    closeModal: () => setShowForm(false),  // ESC
+useEffect(() => {
+  const cleanup = initERPShortcuts({
+    onNew: handleAdd,
+    onSave: handleSave,
+    onEsc: () => setShowForm(false),
   });
 
-  const columns = [
-    { key: "company_name", label: "Company Name" },
-    { key: "trade_name", label: "Trade Name" },
-    { key: "company_type", label: "Type" },
-    { key: "registration_number", label: "Reg. No" },
-    { key: "phone_number", label: "Phone" },
-    { key: "email_address", label: "Email" },
-    { key: "gstin_number", label: "GSTIN" },
-    { key: "pan_number", label: "PAN" },
-    { key: "primary_business_sector", label: "Business Sector" },
-    {
-      key: "company_status",
-      label: "Status",
-      render: (row) => (
-        <span className={`status-badge ${row.company_status?.toLowerCase()}`}>
-          {row.company_status}
-        </span>
-      )
-    }
-  ];
-
+  return cleanup;
+}, [handleAdd, handleSave]);
   return (
-    <div className="company-master-page">
-
+    <div>
       {showPreview ? (
         <ERPPrintPreview
           title="Company Details"
@@ -252,6 +249,7 @@ const CompanyMasterPage = () => {
           setFormData={setFormData}
           onSave={handleSave}
           onCancel={() => setShowForm(false)}
+          saving={saving}
         />
 
       ) : (
@@ -276,59 +274,40 @@ const CompanyMasterPage = () => {
             />
           }
 
-          headerAction={
-            <button
-              onClick={handleAdd}
-              className="
-      flex items-center gap-2
-      px-4 py-2
-      rounded-lg
-      bg-gradient-to-r from-emerald-500 to-green-600
-      hover:from-emerald-600 hover:to-green-700
-      text-white text-sm font-semibold
-      shadow-md hover:shadow-lg
-      transition-all duration-200
-      active:scale-95
-    "
-              title="Add Company"
-            >
-              <span className="text-lg leading-none">＋</span>
-              Add (F2)
-            </button>
-          }
+          onAdd={handleAdd} actions={(row) => (
+            <div className="flex gap-2 justify-end">
 
-          actions={(row) => (
-            <div className="flex items-center justify-end gap-2">
-
-              {/* EDIT BUTTON */}
-              <button
+              <IconButton
+                variant="edit"
+                title="Edit"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleEdit(row);
                 }}
-                className="h-8 w-8 flex items-center justify-center rounded-lg
-                 bg-blue-50 text-blue-600
-                 hover:bg-blue-100 hover:shadow-md
-                 transition-all duration-200"
-                title="Edit"
               >
-                <Pencil size={16} />
-              </button>
+                <Pencil size={14} />
+              </IconButton>
 
-              {/* DELETE BUTTON */}
-              <button
+              <IconButton
+                variant="delete"
+                title="Delete"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDelete(row);
                 }}
-                className="h-8 w-8 flex items-center justify-center rounded-lg
-                 bg-red-50 text-red-600
-                 hover:bg-red-100 hover:shadow-md
-                 transition-all duration-200"
-                title="Delete"
               >
-                <Trash2 size={16} />
-              </button>
+                <Trash2 size={14} />
+              </IconButton>
+              <IconButton
+                variant="print"
+                title="Print"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrint(row);
+                }}
+              >
+                <Printer size={14} />
+              </IconButton>
 
             </div>
           )}

@@ -65,7 +65,6 @@ function AppShell({
 }
  function App() {
   const navigate = useNavigate();
-
   const [isAuthenticated, setIsAuthenticated] = useState(() =>
     !!sessionStorage.getItem("token")
   );
@@ -92,23 +91,22 @@ function AppShell({
 
     root.classList.add(theme);
     localStorage.setItem("finaman-theme", theme);
-  }, [theme]); 
-  useEffect(() => {
-    const cleanup = initERPShortcuts({
-      onSave: () => console.log("Save Triggered"),
-      onNew: () => console.log("New Triggered"),
-      onClose: () => console.log("Close Tab"),
-      onSearch: () => {
-        const tableSearch = document.querySelector("#table-search");
-        const globalSearch = document.querySelector("#global-search");
-        if (tableSearch) tableSearch.focus();
-        else if (globalSearch) globalSearch.focus();
-      },
-      onEsc: () => console.log("ESC Pressed"),
-    });
+  }, [theme]);  
 
-    return cleanup;
-  }, []); 
+useEffect(() => {
+  const cleanup = initERPShortcuts({
+    onSearch: () => {
+      const tableSearch = document.querySelector("#table-search");
+      const globalSearch = document.querySelector("#global-search");
+
+      if (tableSearch) tableSearch.focus();
+      else if (globalSearch) globalSearch.focus();
+    }
+  });
+
+  return cleanup;
+}, []);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
@@ -156,7 +154,7 @@ const handleModuleClick = (module) => {
 
     const updatedTabs = [moduleTab, ...withoutOldModule];
 
-    setActiveTabId(moduleTabId); // 🔥 activate immediately
+    setActiveTabId(moduleTabId);  
 
     return updatedTabs;
   });

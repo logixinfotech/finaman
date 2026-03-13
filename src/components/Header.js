@@ -13,6 +13,37 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
   const [showSearch, setShowSearch] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [username, setUsername] = useState("");
+ 
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    if (!showSearch || searchResults.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIndex((prev) => (prev + 1) % searchResults.length);
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex((prev) =>
+        prev === 0 ? searchResults.length - 1 : prev - 1
+      );
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const selected = searchResults[highlightIndex];
+      if (selected) {
+        onOpenPage(selected);
+        setShowSearch(false);
+        setSearchText("");
+      }
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [showSearch, searchResults, highlightIndex, onOpenPage]);
 
   useEffect(() => {
     const user = JSON.parse(sessionStorage.getItem("user"));
@@ -139,26 +170,26 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
         />
 
         {showSearch && searchResults.length > 0 && (
-          <div className="absolute top-10 w-full bg-white dark:bg-slate-900 rounded-lg shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-            {searchResults.map((item, index) => (
-              <div
-                key={item.masmnu_id}
-                onClick={() => {
-                  onOpenPage(item);
-                  setShowSearch(false);
-                  setSearchText("");
-                }}
-                className={`px-3 py-2 text-sm cursor-pointer transition-colors
-                ${index === highlightIndex
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  }`}
-              >
-                {item.bar_name}
-              </div>
-            ))}
-          </div>
-        )}
+  <div className="absolute top-10 w-full bg-white dark:bg-slate-900 rounded-lg shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+    {searchResults.map((item, index) => (
+      <div
+        key={item.masmnu_id}
+        onClick={() => {
+          onOpenPage(item);
+          setShowSearch(false);
+          setSearchText("");
+        }}
+        className={`px-3 py-2 text-sm cursor-pointer transition-colors
+          ${index === highlightIndex
+            ? "bg-blue-600 text-white"
+            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+      >
+        {item.bar_name}
+      </div>
+    ))}
+  </div>
+)}
       </div> 
       <div className="flex items-center gap-2"> 
         <div className="flex bg-white/10 rounded-full p-1 border border-white/10">

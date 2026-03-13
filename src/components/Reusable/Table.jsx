@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import TableExport from "./TableExport";
+import { HeaderAddButton } from "./ActionButon";
 
 import {
   RefreshCw,
@@ -22,8 +23,8 @@ const Table = ({
   onRowClick,
   selectedRow,
   onRefresh,
+  onAdd,
   actions,
-  headerAction,
   showForm,
   formComponent,
   onToggleFilter,
@@ -61,29 +62,49 @@ const Table = ({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+useEffect(() => {
+
+  const handleKey = (e) => {
+
+    // Ctrl + F → Focus Search
+    if (e.ctrlKey && e.key === "f") {
+      e.preventDefault();
+      searchRef.current?.focus();
+    }
+
+    // Ctrl + R → Refresh
+    if (e.ctrlKey && e.key === "r") {
+      e.preventDefault();
+      onRefresh?.();
+    }
+
+    // F2 → Add New Record
+    if (e.key === "F2") {
+
+      const tag = document.activeElement.tagName.toLowerCase();
+
+      // prevent when typing in input/textarea
+      if (tag === "input" || tag === "textarea") return;
+
+      e.preventDefault();
+
+      if (onAdd) {
+        onAdd();
+      }
+
+    }
+
+  };
+
+  window.addEventListener("keydown", handleKey);
+
+  return () => window.removeEventListener("keydown", handleKey);
+
+}, [onRefresh, onAdd]);
+
   useEffect(() => {
-
-    const handleKey = (e) => {
-
-      if (e.ctrlKey && e.key === "f") {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-
-      if (e.ctrlKey && e.key === "r") {
-        e.preventDefault();
-        onRefresh?.();
-      }
-
-    };
-
-    window.addEventListener("keydown", handleKey);
-
-    return () => window.removeEventListener("keydown", handleKey);
-
-  }, [onRefresh]);
-
-  /* COLUMN DRAG REORDER */
+    setColumnOrder(columns.map(c => c.key));
+  }, [columns]);
   const dragCol = useRef(null);
 
   const handleDragStart = (key) => {
@@ -102,8 +123,6 @@ const Table = ({
 
     setColumnOrder(newOrder);
   };
-
-  /* COLUMN RESIZE */
   const startResize = (e, key) => {
 
     const startX = e.clientX;
@@ -129,8 +148,6 @@ const Table = ({
     window.addEventListener("mouseup", onUp);
 
   };
-
-  /* DATA PROCESSING */
   const processedData = useMemo(() => {
 
     let rows = [...data];
@@ -176,10 +193,7 @@ const Table = ({
       setSortField(key);
       setSortOrder("asc");
     }
-
-
   };
-
   const toggleLockColumn = (key) => {
     setLockedColumns((prev) =>
       prev.includes(key)
@@ -187,16 +201,10 @@ const Table = ({
         : [...prev, key]
     );
   };
-
-  // let leftOffset = 0;
-
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
       <div
-        // className="flex items-center justify-between px-4 py-3 border-b"
-        className="flex items-center justify-between px-4 py-2 border-b bg-gradient-to-r from-white to-slate-50"
-      // style={{ background: "var(--bg-secondary)" }}
-      >
+        className="flex items-center justify-between px-4 py-2 border-b bg-gradient-to-r from-white to-slate-50" >
 
         <div className="flex items-center gap-3">
 
@@ -318,8 +326,7 @@ const Table = ({
               <Filter size={14} />
             </button>
           )}
-
-          {headerAction}
+          {onAdd && <HeaderAddButton onClick={onAdd} />}
 
         </div>
       </div>
@@ -329,8 +336,6 @@ const Table = ({
           {formComponent}
         </div>
       )}
-
-      {/* TABLE */}
       <div className="overflow-auto max-h-[60vh]">
 
         <table className="w-full text-xs border-collapse">

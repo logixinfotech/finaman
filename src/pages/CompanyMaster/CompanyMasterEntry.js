@@ -15,7 +15,7 @@ const fTabMap = {
   email: "contact",
   website: "contact",
 };
-const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
+const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel, saving }) => {
   const isEditMode = !!formData.company_id;
   const [activeTab, setActiveTab] = useState("basic");
   const [errors, setErrors] = useState({});
@@ -33,7 +33,7 @@ const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
     if (index < inputRefs.current.length - 1) {
       inputRefs.current[index + 1].focus();
     } else {
-      handleNext(); // switch tab
+      handleNext();
       setTimeout(() => {
         if (inputRefs.current[0]) inputRefs.current[0].focus();
       }, 50);
@@ -87,7 +87,6 @@ const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
   const errorText = "text-[10px] text-red-500 mt-1";
 
   return (
-    // <div className="w-full bg-white rounded-xl shadow-lg border border-gray-200 flex flex-col min-h-[500px]">
     <div className="
   w-full
   max-w-7xl mx-auto
@@ -97,10 +96,8 @@ const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
   border border-slate-200
   flex flex-col
   min-h-[calc(100vh-160px)]
-">
-      {/* Header */}
-      <div
-        className="px-5 py-3 rounded-t-xl flex justify-between items-center text-white"
+"><div
+  className="px-5 py-1.5 rounded-t-xl flex justify-between items-center text-white"
         style={{ background: "var(--sidebar-top-bg)" }}
       >
         <div>
@@ -120,8 +117,6 @@ const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
           {isEditMode ? "EDIT MODE" : "NEW ENTRY"}
         </span>
       </div>
-
-      {/* Basic Info */}
       <div className="p-5 bg-gray-50 border-b border-gray-200">
         <div className="grid xl:grid-cols-4 md:grid-cols-2 grid-cols-1 gap-4">
 
@@ -170,8 +165,6 @@ const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
 
         </div>
       </div>
-
-      {/* Tabs */}
       <div className="w-full border-b border-gray-300 bg-gray-200">
 
         <div className="grid grid-cols-4 text-xs font-medium">
@@ -197,8 +190,6 @@ const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
           })}
         </div>
       </div>
-
-      {/* TAB CONTENT (scrollable) */}
       <div className="p-5 bg-gray-50 flex-1 overflow-y-auto">
 
         {activeTab === "basic" && (
@@ -309,48 +300,49 @@ const CompanyMasterForm = ({ formData, setFormData, onSave, onCancel }) => {
             )
         )}
       </div>
+<div className="flex justify-between items-center px-5 py-2 border-t bg-white"> 
+  <div className="flex gap-3">
 
-      {/* FIXED ACTION BAR */}
-      <div className="flex justify-between items-center px-5 py-3 border-t bg-white">
+    {activeTab !== "basic" && (
+      <button
+        onClick={handlePrevious}
+        className="px-4 py-1 text-xs rounded-md bg-[var(--accent-soft)] hover:bg-[var(--accent-hover)] transition"
+      >
+        ← Previous
+      </button>
+    )}
 
-        <div>
-          {activeTab !== "basic" && (
-            <button
-              onClick={handlePrevious}
-              className="px-4 py-1 text-xs rounded-md bg-[var(--accent-soft)] hover:bg-[var(--accent-hover)] transition"
-            >
-              ← Previous
-            </button>
-          )}
-        </div>
+    {activeTab !== "contact" && (
+      <button
+        onClick={handleNext}
+        className="px-4 py-1 text-xs rounded-md bg-[var(--accent-soft)] hover:bg-[var(--accent-hover)] transition"
+      >
+        Next →
+      </button>
+    )}
 
-        <div className="flex gap-3">
+  </div> 
+  <div className="flex gap-3">
 
-          {activeTab !== "contact" && (
-            <button
-              onClick={handleNext}
-              className="px-4 py-1 text-xs rounded-md bg-[var(--accent-soft)] hover:bg-[var(--accent-hover)] transition"
-            >
-              Next →
-            </button>
-          )}
+    {isEditMode ? (
+      <UpdateButton
+        className="bg-[var(--bg-active)] hover:opacity-90"
+        disabled={saving}
+        onClick={handleSubmit}
+      />
+    ) : (
+      <AddButton
+        className="bg-[var(--bg-active)] hover:opacity-90"
+        disabled={saving}
+        onClick={handleSubmit}
+      />
+    )}
 
-          {isEditMode ? (
-            <UpdateButton
-              className="bg-[var(--bg-active)] hover:opacity-90"
-              onClick={handleSubmit}
-            />
-          ) : (
-            <AddButton
-              className="bg-[var(--bg-active)] hover:opacity-90"
-              onClick={handleSubmit}
-            />
-          )}
+    <CancelButton onClick={onCancel} />
 
-          <CancelButton onClick={onCancel} />
+  </div>
 
-        </div>
-      </div>
+</div>
 
     </div>
   );

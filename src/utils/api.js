@@ -1,14 +1,33 @@
-import axios from 'axios';
-import config from '../config';
+import Swal from "sweetalert2";
+import axios from "axios";
+import config from "../config";  
 
-// Create an Axios instance
 const api = axios.create({
     baseURL: config.apiUrl,
     headers: {
         'Content-Type': 'application/json',
     },
     timeout: 10000,
+}); 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+
+    if (error.response && error.response.status === 401) {
+      sessionStorage.clear();
+      Swal.fire({
+  icon: "warning",
+  title: "Session Expired",
+  text: "You have been logged in from another device.",
+  confirmButtonText: "Go to Login",
+  confirmButtonColor: "#3085d6",
+}).then(() => {
+  window.location.href = "/login";
 });
+    }
+    return Promise.reject(error);
+  }
+);
  
 export const authenticateUser = async ({ com_code, user_id, user_pass }) => {
   try {
@@ -51,7 +70,7 @@ export const fetchSidebarMenu = async (token) => {
         console.log('Fetching sidebar menu with token:', token);
         const response = await api.get('/api/masmod', {
             headers: {
-                Authorization: sessionStorage.getItem("token"), // No Bearer token here
+                Authorization: sessionStorage.getItem("token"), 
             },
         });
         return response.data;
@@ -60,8 +79,7 @@ export const fetchSidebarMenu = async (token) => {
         throw error;
     }
 };
-
-// Fetching masmnu data (additional function for other parts of the app)
+ 
 export const fetchMasmnuData = async (token) => {
     try {
         console.log('Fetching masmnu data with token:', token);
@@ -80,7 +98,7 @@ export const getCompanyList = async () => {
     try {
         const response = await api.get('/api/companymaster', {
             headers: {
-                Authorization: sessionStorage.getItem('token'), // No Bearer token here
+                Authorization: sessionStorage.getItem('token'),  
             },
         });
         return response.data;
@@ -91,39 +109,76 @@ export const getCompanyList = async () => {
 };
  
 export const createCompany = async (companyData) => {
-    try {
-        const response = await api.post('/api/companymaster', companyData, {
-            headers: {
-                Authorization: sessionStorage.getItem('token'), // No Bearer token here
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Error creating company:', error.response ? error.response.data : error.message);
-        throw error;
+  try {
+
+    const response = await api.post(
+      "/api/companymaster",
+      companyData,
+      {
+        headers: {
+          Authorization: sessionStorage.getItem("token"),
+        },
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    console.error(
+      "Error creating company:",
+      error.response ? error.response.data : error.message
+    ); 
+    if (error.response && error.response.data) {
+      return error.response.data;
     }
+
+    return {
+      success: false,
+      message: "Server error"
+    };
+  }
 };
 
-// Function to update company details
+
 export const updateCompany = async (companyId, companyData) => {
-    try {
-        const response = await api.put(`/api/companymaster/${companyId}`, companyData, {
-            headers: {
-                Authorization: sessionStorage.getItem('token'), // No Bearer token here
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Error updating company:', error.response ? error.response.data : error.message);
-        throw error;
+  try {
+
+    const response = await api.put(
+      `/api/companymaster/${companyId}`,
+      companyData,
+      {
+        headers: {
+          Authorization: sessionStorage.getItem("token"),
+        },
+      }
+    );
+
+    return response.data;
+
+  } catch (error) {
+
+    console.error(
+      "Error updating company:",
+      error.response ? error.response.data : error.message
+    );
+
+    if (error.response && error.response.data) {
+      return error.response.data;
     }
+
+    return {
+      success: false,
+      message: "Server error"
+    };
+  }
 };
  
 export const deleteCompany = async (companyId) => {
     try {
         const response = await api.delete(`/api/companymaster/${companyId}`, {
             headers: {
-                Authorization: sessionStorage.getItem('token'), // No Bearer token here
+                Authorization: sessionStorage.getItem('token'),  
             },
         });
         return response.data;
@@ -209,7 +264,7 @@ export const fetchUsers = async () => {
     },
   });
 
-  return response.data.data; // IMPORTANT
+  return response.data.data;  
 };
 export const saveUserPermissions = async (payload) => {
   const token = sessionStorage.getItem("token");

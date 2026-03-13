@@ -24,12 +24,8 @@ const res = await authenticateUser({
 });
 
 const token = res?.token || res?.Token;
-if (!token) throw new Error("Token not received");
-
-// ✅ SAVE TOKEN
-sessionStorage.setItem("token", token);
-
-// ✅ SAVE USER (THIS WAS MISSING)
+if (!token) throw new Error("Token not received"); 
+sessionStorage.setItem("token", token); 
 sessionStorage.setItem("user", JSON.stringify(res.user));
 
 onLoginSuccess();
@@ -38,13 +34,13 @@ onLoginSuccess();
       setError("Invalid Company Code / User ID / Password");
     } finally {
       setLoading(false);
+      
     }
   }; 
 
   return (
     <div className="login-bg">
-      <form className="login-card" onSubmit={handleLogin}>
-        {/* Header */}
+      <form className="login-card" onSubmit={handleLogin}> 
         <div className="login-header">
           <img
             src="/finaman-logo.png"
@@ -70,9 +66,7 @@ onLoginSuccess();
             onChange={(e) => setComCode(e.target.value)}
             required
           />
-        </div>
-
-        {/* User ID */}
+        </div> 
         <div className="login-input">
           <User size={18} />
           <input
@@ -81,9 +75,7 @@ onLoginSuccess();
             onChange={(e) => setUserId(e.target.value)}
             required
           />
-        </div>
-
-        {/* Password */}
+        </div> 
         <div className="login-input">
           <Lock size={18} />
           <input
@@ -100,9 +92,7 @@ onLoginSuccess();
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </span>
-        </div>
-
-        {/* Button */}
+        </div> 
         <button className="login-btn" disabled={loading}>
           {loading ? "Authenticating..." : "Login"}
         </button>
