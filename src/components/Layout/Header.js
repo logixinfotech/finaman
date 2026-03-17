@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FaBell, FaMoon, FaSun, FaPalette, FaSearch } from "react-icons/fa";
-import { useNotifications } from "../theme/NotificationContext";
-import NotificationPanel from "../pages/NotificationPanel";
+import { useNotifications } from "../../theme/NotificationContext";
+import NotificationPanel from "../../pages/NotificationPanel";
 
 function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
   const { unreadCount } = useNotifications();
@@ -13,37 +13,37 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
   const [showSearch, setShowSearch] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [username, setUsername] = useState("");
- 
-useEffect(() => {
-  const handleKeyDown = (e) => {
-    if (!showSearch || searchResults.length === 0) return;
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHighlightIndex((prev) => (prev + 1) % searchResults.length);
-    }
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!showSearch || searchResults.length === 0) return;
 
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlightIndex((prev) =>
-        prev === 0 ? searchResults.length - 1 : prev - 1
-      );
-    }
-
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const selected = searchResults[highlightIndex];
-      if (selected) {
-        onOpenPage(selected);
-        setShowSearch(false);
-        setSearchText("");
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightIndex((prev) => (prev + 1) % searchResults.length);
       }
-    }
-  };
 
-  window.addEventListener("keydown", handleKeyDown);
-  return () => window.removeEventListener("keydown", handleKeyDown);
-}, [showSearch, searchResults, highlightIndex, onOpenPage]);
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightIndex((prev) =>
+          prev === 0 ? searchResults.length - 1 : prev - 1
+        );
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const selected = searchResults[highlightIndex];
+        if (selected) {
+          onOpenPage(selected);
+          setShowSearch(false);
+          setSearchText("");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showSearch, searchResults, highlightIndex, onOpenPage]);
 
   useEffect(() => {
     const user = JSON.parse(sessionStorage.getItem("user"));
@@ -82,7 +82,7 @@ useEffect(() => {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
- 
+
   useEffect(() => {
     if (!searchText.trim()) {
       setSearchResults([]);
@@ -134,7 +134,7 @@ useEffect(() => {
       style={{
         background: "var(--sidebar-top-bg)",
       }}
-    > 
+    >
       <div className="flex items-center gap-3">
         <div className="h-8 w-8 flex items-center justify-center rounded-full border border-white/40 bg-white/10 backdrop-blur-sm p-1">
           <img
@@ -170,28 +170,28 @@ useEffect(() => {
         />
 
         {showSearch && searchResults.length > 0 && (
-  <div className="absolute top-10 w-full bg-white dark:bg-slate-900 rounded-lg shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-    {searchResults.map((item, index) => (
-      <div
-        key={item.masmnu_id}
-        onClick={() => {
-          onOpenPage(item);
-          setShowSearch(false);
-          setSearchText("");
-        }}
-        className={`px-3 py-2 text-sm cursor-pointer transition-colors
+          <div className="absolute top-10 w-full bg-white dark:bg-slate-900 rounded-lg shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+            {searchResults.map((item, index) => (
+              <div
+                key={item.masmnu_id}
+                onClick={() => {
+                  onOpenPage(item);
+                  setShowSearch(false);
+                  setSearchText("");
+                }}
+                className={`px-3 py-2 text-sm cursor-pointer transition-colors
           ${index === highlightIndex
-            ? "bg-blue-600 text-white"
-            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          }`}
-      >
-        {item.bar_name}
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+              >
+                {item.bar_name}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    ))}
-  </div>
-)}
-      </div> 
-      <div className="flex items-center gap-2"> 
+      <div className="flex items-center gap-2">
         <div className="flex bg-white/10 rounded-full p-1 border border-white/10">
           <button
             onClick={toggleLightDark}
@@ -206,7 +206,7 @@ useEffect(() => {
           >
             <FaPalette />
           </button>
-        </div> 
+        </div>
         <div className="relative" ref={notifyRef}>
           <div
             onClick={() => setShowNotifications(!showNotifications)}

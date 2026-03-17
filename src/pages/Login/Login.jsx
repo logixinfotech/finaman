@@ -17,30 +17,30 @@ function LoginPage({ onLoginSuccess }) {
     setError("");
 
     try {
-const res = await authenticateUser({
-  com_code: comCode,
-  user_id: userId,
-  user_pass: password,
-});
+      const res = await authenticateUser({
+        com_code: comCode,
+        user_id: userId,
+        user_pass: password,
+      });
 
-const token = res?.token || res?.Token;
-if (!token) throw new Error("Token not received"); 
-sessionStorage.setItem("token", token); 
-sessionStorage.setItem("user", JSON.stringify(res.user));
+      const token = res?.token || res?.Token;
+      if (!token) throw new Error("Token not received");
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("user", JSON.stringify(res.user));
 
-onLoginSuccess();
+      onLoginSuccess();
 
     } catch {
       setError("Invalid Company Code / User ID / Password");
     } finally {
       setLoading(false);
-      
+
     }
-  }; 
+  };
 
   return (
     <div className="login-bg">
-      <form className="login-card" onSubmit={handleLogin}> 
+      <form className="login-card" onSubmit={handleLogin}>
         <div className="login-header">
           <img
             src="/finaman-logo.png"
@@ -57,7 +57,7 @@ onLoginSuccess();
         </div>
 
         {error && <div className="login-error">{error}</div>}
- 
+
         <div className="login-input">
           <Building2 size={18} />
           <input
@@ -66,7 +66,7 @@ onLoginSuccess();
             onChange={(e) => setComCode(e.target.value)}
             required
           />
-        </div> 
+        </div>
         <div className="login-input">
           <User size={18} />
           <input
@@ -75,7 +75,7 @@ onLoginSuccess();
             onChange={(e) => setUserId(e.target.value)}
             required
           />
-        </div> 
+        </div>
         <div className="login-input">
           <Lock size={18} />
           <input
@@ -93,9 +93,13 @@ onLoginSuccess();
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </span>
         </div> 
-        <button className="login-btn" disabled={loading}>
-          {loading ? "Authenticating..." : "Login"}
-        </button>
+<button 
+  type="submit"  
+  className="login-btn" 
+  disabled={loading}
+>
+  {loading ? "Authenticating..." : "Login"}
+</button>
 
         <div className="login-footer">
           © {new Date().getFullYear()} Finaman ERP

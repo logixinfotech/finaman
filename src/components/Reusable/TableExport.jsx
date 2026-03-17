@@ -84,9 +84,7 @@ const TableExport = ({ title, columns, data, visibleColumns }) => {
   };
 
   return (
-    <div className="relative" ref={ref}>
-      
-      {/* Export Button */}
+    <div className="relative" ref={ref}> 
       <button
         className="h-7 w-7 flex items-center justify-center rounded-md
         border border-gray-300 bg-white text-gray-600
@@ -111,7 +109,7 @@ const TableExport = ({ title, columns, data, visibleColumns }) => {
 
           <ExportItem
             icon={<Eye size={14} className="text-blue-600" />}
-            label="Preview Print"
+            label="Preview"
             active={selected === "preview"}
             onClick={() => openPrintWindow("preview")}
           />

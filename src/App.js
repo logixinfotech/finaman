@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { initERPShortcuts } from "./utils/erpShortcuts";
-import Header from "./components/Header";
-import Sidebar from "./components/Sidebar";
-import Dashboard from "./components/Dashboard";
-import Footer from "./components/Footer";
+import Header from "./components/Layout/Header";
+import Sidebar from "./components/Layout/Sidebar";
+import Dashboard from "./components/Layout/Dashboard";
+import Footer from "./components/Layout/Footer";
 import LoginPage from "./pages/Login/Login";
 import { fetchMasmnuData } from "./utils/api";
 import "./App.css";
- 
+
 function AppShell({
   theme,
   sidebarCollapsed,
@@ -63,7 +63,7 @@ function AppShell({
     </div>
   );
 }
- function App() {
+function App() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(() =>
     !!sessionStorage.getItem("token")
@@ -77,7 +77,7 @@ function AppShell({
   const [activeModule, setActiveModule] = useState(null);
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
-  const [menusFromBackend, setMenusFromBackend] = useState([]); 
+  const [menusFromBackend, setMenusFromBackend] = useState([]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -91,27 +91,37 @@ function AppShell({
 
     root.classList.add(theme);
     localStorage.setItem("finaman-theme", theme);
-  }, [theme]);  
+  }, [theme]);
 
+  useEffect(() => {
+    const cleanup = initERPShortcuts({
+      onSearch: () => {
+        const tableSearch = document.querySelector("#table-search");
+        const globalSearch = document.querySelector("#global-search");
+
+        if (tableSearch) tableSearch.focus();
+        else if (globalSearch) globalSearch.focus();
+      }
+    });
+
+    return cleanup;
+  }, []);
 useEffect(() => {
-  const cleanup = initERPShortcuts({
-    onSearch: () => {
-      const tableSearch = document.querySelector("#table-search");
-      const globalSearch = document.querySelector("#global-search");
+  const disableAutocomplete = () => {
+    const inputs = document.querySelectorAll("input");
 
-      if (tableSearch) tableSearch.focus();
-      else if (globalSearch) globalSearch.focus();
-    }
-  });
+    inputs.forEach((input) => {
+      input.setAttribute("autocomplete", "off");
+    });
+  };
 
-  return cleanup;
+  disableAutocomplete();
 }, []);
-
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
     }
-  }, [isAuthenticated, navigate]); 
+  }, [isAuthenticated, navigate]);
   useEffect(() => {
     const loadMenus = async () => {
       try {
@@ -128,39 +138,39 @@ useEffect(() => {
     if (isAuthenticated) {
       loadMenus();
     }
-  }, [isAuthenticated]); 
-const handleModuleClick = (module) => {
-  const moduleTabId = `mod-${module.masmod_id}`;
+  }, [isAuthenticated]);
+  const handleModuleClick = (module) => {
+    const moduleTabId = `mod-${module.masmod_id}`;
 
-  setActiveModule(module);
+    setActiveModule(module);
 
-  setTabs((prev) => {
-    const existing = prev.find((t) => t.id === moduleTabId);
+    setTabs((prev) => {
+      const existing = prev.find((t) => t.id === moduleTabId);
 
-    if (existing) {
-      setActiveTabId(existing.id);
-      return prev;
-    }
+      if (existing) {
+        setActiveTabId(existing.id);
+        return prev;
+      }
 
-    const moduleTab = {
-      id: moduleTabId,
-      label: module.mod_name,
-      type: "module",
-      module,
-      appl_name: null,
-    };
+      const moduleTab = {
+        id: moduleTabId,
+        label: module.mod_name,
+        type: "module",
+        module,
+        appl_name: null,
+      };
 
-    const withoutOldModule = prev.filter((t) => t.type !== "module");
+      const withoutOldModule = prev.filter((t) => t.type !== "module");
 
-    const updatedTabs = [moduleTab, ...withoutOldModule];
+      const updatedTabs = [moduleTab, ...withoutOldModule];
 
-    setActiveTabId(moduleTabId);  
+      setActiveTabId(moduleTabId);
 
-    return updatedTabs;
-  });
+      return updatedTabs;
+    });
 
-  navigate("/app");
-};
+    navigate("/app");
+  };
   const handleOpenPageFromMenu = (menuItem) => {
     const baseId = `page-${menuItem.masmnu_id}`;
 
@@ -189,7 +199,7 @@ const handleModuleClick = (module) => {
     if (window.location.pathname + window.location.search !== targetUrl) {
       navigate(targetUrl);
     }
-  }; 
+  };
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const page = params.get("page");
@@ -200,7 +210,7 @@ const handleModuleClick = (module) => {
     if (existingTab) {
       setActiveTabId(existingTab.id);
     }
-  }, [tabs]); 
+  }, [tabs]);
   const handleChangeActiveTab = (tabId) => {
     setActiveTabId(tabId);
 
@@ -213,7 +223,7 @@ const handleModuleClick = (module) => {
     if (window.location.pathname + window.location.search !== targetUrl) {
       navigate(targetUrl);
     }
-  }; 
+  };
   const handleCloseTab = (tabId) => {
     setTabs((prev) => {
       const remaining = prev.filter((t) => t.id !== tabId);
@@ -231,7 +241,7 @@ const handleModuleClick = (module) => {
 
       return remaining;
     });
-  }; 
+  };
   const toggleSidebar = () => {
     setSidebarCollapsed((p) => !p);
   };
@@ -244,7 +254,7 @@ const handleModuleClick = (module) => {
     setTabs([]);
     setActiveModule(null);
     navigate("/login", { replace: true });
-  }; 
+  };
   return (
     <Routes>
       <Route

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, memo } from "react";
-import { fetchSidebarMenu } from "../utils/api";
+import { fetchSidebarMenu } from "../../utils/api";
 import DynamicIcon from "./DynamicIcon";
 import { FaBars } from "react-icons/fa";
 
@@ -41,6 +41,28 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
     },
     [onMenuItemClick]
   );
+
+  /* ===============================
+   SIDEBAR ICON COLOR PALETTE
+================================ */
+
+  const iconColors = [
+    "#3b82f6", "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
+    "#f97316", "#eab308", "#22c55e", "#10b981", "#14b8a6",
+    "#06b6d4", "#0ea5e9", "#60a5fa", "#818cf8", "#a78bfa",
+    "#f472b6", "#fb7185", "#fdba74", "#facc15", "#4ade80",
+    "#34d399", "#2dd4bf", "#22d3ee", "#38bdf8", "#93c5fd"
+  ];
+
+  function getIconColor(name) {
+    let hash = 0;
+
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    return iconColors[Math.abs(hash % iconColors.length)];
+  }
 
   return (
     <aside
@@ -119,8 +141,15 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
               <div
                 className={`flex items-center justify-center transition-transform duration-200 group-hover:scale-110
                 ${collapsed ? "w-full" : "w-6"}`}
+                // style={{
+                //   color: isActive ? "var(--text-active)" : "var(--icon-color)",
+                //   fontSize: "18px"
+                // }}
                 style={{
-                  color: isActive ? "var(--text-active)" : "var(--icon-color)",
+                  color: isActive ? "#fff" : getIconColor(module.mod_name),
+                  background: isActive ? "rgba(255,255,255,.15)" : "rgba(255,255,255,.05)",
+                  borderRadius: "8px",
+                  padding: "4px",
                   fontSize: "18px"
                 }}
               >

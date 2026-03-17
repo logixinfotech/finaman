@@ -21,6 +21,7 @@ const Table = ({
   columns = [],
   rowKey = "id",
   onRowClick,
+  onRowDoubleClick,
   selectedRow,
   onRefresh,
   onAdd,
@@ -34,7 +35,7 @@ const Table = ({
 
   const searchRef = useRef(null);
   const columnMenuRef = useRef(null);
-
+const tableContainerRef = useRef(null);
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
@@ -62,45 +63,39 @@ const Table = ({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-useEffect(() => {
+  
+  useEffect(() => {
 
-  const handleKey = (e) => {
+    const handleKey = (e) => {
+ 
+      if (e.ctrlKey && e.key === "f") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } 
+      if (e.ctrlKey && e.key === "r") {
+        e.preventDefault();
+        onRefresh?.();
+      } 
+      if (e.key === "F2") {
 
-    // Ctrl + F → Focus Search
-    if (e.ctrlKey && e.key === "f") {
-      e.preventDefault();
-      searchRef.current?.focus();
-    }
+        const tag = document.activeElement.tagName.toLowerCase(); 
+        if (tag === "input" || tag === "textarea") return;
 
-    // Ctrl + R → Refresh
-    if (e.ctrlKey && e.key === "r") {
-      e.preventDefault();
-      onRefresh?.();
-    }
+        e.preventDefault();
 
-    // F2 → Add New Record
-    if (e.key === "F2") {
+        if (onAdd) {
+          onAdd();
+        }
 
-      const tag = document.activeElement.tagName.toLowerCase();
-
-      // prevent when typing in input/textarea
-      if (tag === "input" || tag === "textarea") return;
-
-      e.preventDefault();
-
-      if (onAdd) {
-        onAdd();
       }
 
-    }
+    };
 
-  };
+    window.addEventListener("keydown", handleKey);
 
-  window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
 
-  return () => window.removeEventListener("keydown", handleKey);
-
-}, [onRefresh, onAdd]);
+  }, [onRefresh, onAdd]);
 
   useEffect(() => {
     setColumnOrder(columns.map(c => c.key));
@@ -176,10 +171,10 @@ useEffect(() => {
 
   const totalPages = Math.ceil(processedData.length / pageSize) || 1;
 
-  const paginatedData = processedData.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+const paginatedData = processedData.slice(
+  0,
+  page * pageSize
+);
 
   const orderedColumns = columnOrder
     .map(key => columns.find(c => c.key === key))
@@ -200,7 +195,28 @@ useEffect(() => {
         ? prev.filter((k) => k !== key)
         : [...prev, key]
     );
+  };useEffect(() => {
+  const container = tableContainerRef.current;
+  if (!container) return;
+
+  const handleScroll = () => {
+    const { scrollTop, scrollHeight, clientHeight } = container;
+
+    // when user reaches bottom
+    if (scrollTop + clientHeight >= scrollHeight - 10) {
+      setPage((prev) => {
+        if (prev < totalPages) {
+          return prev + 1;
+        }
+        return prev;
+      });
+    }
   };
+
+  container.addEventListener("scroll", handleScroll);
+
+  return () => container.removeEventListener("scroll", handleScroll);
+}, [totalPages]);
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
       <div
@@ -431,6 +447,7 @@ useEffect(() => {
                   <tr
                     key={row[rowKey]}
                     onClick={() => onRowClick?.(row)}
+                    onDoubleClick={() => onRowDoubleClick?.(row)}
                     className={`border-b border-slate-200 hover:bg-blue-50 transition duration-150 cursor-pointer ${selectedRow?.[rowKey] === row[rowKey]
                       ? "bg-blue-50 border-l-4 border-blue-600"
                       : index % 2 === 0

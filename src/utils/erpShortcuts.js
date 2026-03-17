@@ -51,13 +51,23 @@ export const initERPShortcuts = ({
     );
   };
 
-  const focusNext = (current) => {
-    const elements = getFocusableFields();
-    const index = elements.indexOf(current);
-    if (index > -1 && elements[index + 1]) {
-      elements[index + 1].focus();
+const focusNext = (current) => {
+  const elements = getFocusableFields();
+  const index = elements.indexOf(current);
+
+  if (index > -1 && elements[index + 1]) { 
+    elements[index + 1].focus();
+  } else {
+    // NEW LOGIC: If this is the last input, find and click the submit button
+    const form = current.closest("form");
+    if (form) { 
+      const submitBtn = form.querySelector('button[type="submit"], .login-btn');
+      if (submitBtn) {
+        submitBtn.click();
+      }
     }
-  };
+  }
+};
 
   const focusPrev = (current) => {
     const elements = getFocusableFields();
@@ -124,22 +134,26 @@ export const initERPShortcuts = ({
       onEsc && onEsc();
       return;
     }
-    if (e.key === "Enter") {
+  if (e.key === "Enter") {
 
-      if (e.target?.tagName?.toLowerCase() === "textarea") {
-        return;
-      }
+  if (e.target.closest("[data-dropdown-open='true']")) {
+    return;
+  }
 
-      if (!isInputField(e.target)) return;
+  if (e.target?.tagName?.toLowerCase() === "textarea") {
+    return;
+  }
 
-      e.preventDefault();
+  if (!isInputField(e.target)) return;
 
-      if (e.shiftKey) {
-        focusPrev(e.target);
-      } else {
-        focusNext(e.target);
-      }
-    }
+  e.preventDefault();
+
+  if (e.shiftKey) {
+    focusPrev(e.target);
+  } else {
+    focusNext(e.target);
+  }
+}
   };
 
   window.addEventListener("keydown", handleKeyDown);

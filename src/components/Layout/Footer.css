@@ -1,70 +1,117 @@
 /* ================= ERP FOOTER ================= */
 
 .erp-footer {
-  height: 20px;
-  min-height: 20px;
+
+  height: 22px;
+  min-height: 22px;
+
   background: var(--bg-footer);
+
   border-top: 1px solid var(--border-main);
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: 0 10px;
+  padding: 0 12px;
+
   font-size: 11px;
   line-height: 1;
 
   color: var(--text-main);
 
-  box-shadow: 0 -1px 6px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 -1px 6px rgba(15, 23, 42, .05);
 
   position: sticky;
   bottom: 0;
+
   z-index: 10;
 
   overflow: hidden;
-} 
+
+}
+
+/* LEFT */
+
 .erp-footer-left {
+
   display: flex;
   align-items: center;
   gap: 6px;
+
   white-space: nowrap;
+
 }
 
 .erp-footer-brand {
+
   font-weight: 600;
   color: var(--bg-active);
+
 }
 
 .erp-footer-copy {
+
   color: var(--text-muted);
   font-size: 10px;
-} 
-.erp-footer-center {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 
-  color: var(--text-main);
-  font-weight: 500;
-  font-size: 10px;
 }
 
-/* ===== BADGES ===== */
+/* CENTER */
+
+.erp-footer-center {
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 10px;
+
+}
+
+/* BADGE */
 
 .footer-badge {
-  background: var(--accent-soft);
-  color: var(--bg-active);
 
-  padding: 1px 7px;
+  padding: 2px 8px;
+
   border-radius: 999px;
 
   font-size: 9px;
-  line-height: 1;
+  font-weight: 600;
+
+  background: var(--accent-soft);
 
   border: 1px solid var(--accent-hover);
-} 
+
+  color: var(--bg-active);
+
+}
+
+/* SERVER BADGE */
+
+.footer-badge.server {
+
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
+
+}
+
+/* DATABASE BADGE */
+
+.footer-badge.database {
+
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
+
+}
+
+/* RIGHT */
+
 .erp-footer-right {
+
   display: flex;
   align-items: center;
   gap: 8px;
@@ -73,9 +120,28 @@
   font-size: 10px;
 
   white-space: nowrap;
-} 
+
+}
+
+.footer-version {
+
+  font-weight: 600;
+  color: var(--text-main);
+
+}
+
+.footer-datetime {
+
+  font-family: monospace;
+
+}
+
+/* TOP BORDER ACCENT */
+
 .erp-footer::before {
+
   content: "";
+
   position: absolute;
 
   top: 0;
@@ -84,9 +150,8 @@
   height: 2px;
   width: 100%;
 
-  background: linear-gradient(
-    90deg,
-    var(--bg-active),
-    var(--accent-hover)
-  );
+  background: linear-gradient(90deg,
+      var(--bg-active),
+      var(--accent-hover));
+
 }

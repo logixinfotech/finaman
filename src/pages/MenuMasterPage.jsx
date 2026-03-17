@@ -1,4 +1,4 @@
-import { useEffect, useState,useCallback} from "react";
+import { useEffect, useState, useCallback } from "react";
 import MenuMasterForm from "../components/MenuMasterPage/MenuMasterForm";
 import MenuMasterFilterForm from "../components/MenuMasterPage/MenuMasterFilterForm";
 import Table from "../components/Reusable/Table";
@@ -52,20 +52,19 @@ const columns = [
 ];
 
 const MenuMasterPage = () => {
-
   const [modules, setModules] = useState([]);
   const [list, setList] = useState([]);
   const [selectedRow, setSelectedRow] = useState(null);
   const [formData, setFormData] = useState(initialState);
   const [showForm, setShowForm] = useState(false);
-
+  const [mode, setMode] = useState("add");
   const [filters, setFilters] = useState({});
   const [showFilter, setShowFilter] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const token = sessionStorage.getItem("token"); 
+  const token = sessionStorage.getItem("token");
   const loadMenuList = useCallback(async (filterParams = {}) => {
     try {
       const data = await fetchMenuMasterList(filterParams);
@@ -75,7 +74,7 @@ const MenuMasterPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []); 
+  }, []);
   const loadModules = useCallback(async () => {
     try {
       const data = await fetchSidebarMenu();
@@ -92,7 +91,7 @@ const MenuMasterPage = () => {
     loadMenuList();
     loadModules();
 
-  }, [token, loadMenuList, loadModules]); 
+  }, [token, loadMenuList, loadModules]);
   const handleAdd = useCallback(() => {
     setSelectedRow(null);
     setFormData({
@@ -103,15 +102,13 @@ const MenuMasterPage = () => {
     setShowForm(true);
   }, []);
 
-
-  // 🔹 Edit
   const handleEdit = (row) => {
     setSelectedRow(row);
     setFormData(row);
     setShowForm(true);
   };
 
- 
+
   const handleDelete = async (row) => {
 
     const confirmed = await confirmDelete({
@@ -138,7 +135,7 @@ const MenuMasterPage = () => {
     }
 
   };
- 
+
   const handleSave = async () => {
 
     if (saving) return;
@@ -182,28 +179,31 @@ const MenuMasterPage = () => {
 
     }
 
-  }; 
+  };
   const handleCancel = () => {
     setFormData(initialState);
     setSelectedRow(null);
     setShowForm(false);
   };
 
-
-  // 🔹 Filter Apply
   const applyFilter = async () => {
     await loadMenuList(filters);
   };
 
-
-  // 🔹 Clear Filter
   const clearFilter = async () => {
     setFilters({});
     await loadMenuList();
   };
+  const handleView = (row) => {
+    setSelectedRow(row);
 
+    setFormData({
+      ...row
+    });
 
-  // 🔹 ERP Shortcuts
+    setMode("view");
+    setShowForm(true);
+  };
   useEffect(() => {
 
     const cleanup = initERPShortcuts({
@@ -214,7 +214,7 @@ const MenuMasterPage = () => {
 
     return cleanup;
 
-  }, [handleAdd, handleSave]); 
+  }, [handleAdd, handleSave]);
   return (
     <div>
 
@@ -226,7 +226,10 @@ const MenuMasterPage = () => {
           setFormData={setFormData}
           onSave={handleSave}
           onCancel={handleCancel}
+          mode={mode}
           saving={saving}
+          onModify={() => setMode("edit")}
+
         />
 
       ) : (
@@ -241,7 +244,7 @@ const MenuMasterPage = () => {
 
           showForm={showFilter}
           onToggleFilter={() => setShowFilter(p => !p)}
-
+          onRowDoubleClick={handleView}
           formComponent={
             <MenuMasterFilterForm
               modules={modules}
