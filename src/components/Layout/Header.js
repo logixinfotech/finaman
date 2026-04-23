@@ -1,287 +1,240 @@
-import { useEffect, useRef, useState } from "react";
-import { FaBell, FaMoon, FaSun, FaPalette, FaSearch } from "react-icons/fa";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { FaBell, FaMoon, FaSun, FaPalette, FaSearch, FaUser, FaSignOutAlt, FaMapMarkerAlt } from "react-icons/fa";
 import { useNotifications } from "../../theme/NotificationContext";
 import NotificationPanel from "../../pages/NotificationPanel";
 
 function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
   const { unreadCount } = useNotifications();
-  const [blink, setBlink] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+
   const [username, setUsername] = useState("");
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!showSearch || searchResults.length === 0) return;
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setHighlightIndex((prev) => (prev + 1) % searchResults.length);
-      }
-
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setHighlightIndex((prev) =>
-          prev === 0 ? searchResults.length - 1 : prev - 1
-        );
-      }
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const selected = searchResults[highlightIndex];
-        if (selected) {
-          onOpenPage(selected);
-          setShowSearch(false);
-          setSearchText("");
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showSearch, searchResults, highlightIndex, onOpenPage]);
-
-  useEffect(() => {
-    const user = JSON.parse(sessionStorage.getItem("user"));
-
-    if (user) {
-      setUsername(user.user_name || user.username || user.user_id);
-    }
-  }, []);
+  const [companyInfo, setCompanyInfo] = useState({ name: "Demo Company Private Limited", loc: "Uttar Pradesh" });
 
   const searchRef = useRef(null);
   const menuRef = useRef(null);
   const userChipRef = useRef(null);
   const notifyRef = useRef(null);
 
+  const filteredResults = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) return [];
+    return allMenus
+      .filter((m) => m.menu_hide !== "Y" && m.bar_name.toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [searchText, allMenus]);
+
+  const handleOpenPage = useCallback((item) => {
+    onOpenPage(item);
+    setShowSearch(false);
+    setSearchText("");
+  }, [onOpenPage]);
+
   useEffect(() => {
-    if (unreadCount > 0) {
-      const interval = setInterval(() => setBlink((p) => !p), 1000);
-      return () => clearInterval(interval);
+    const user = JSON.parse(sessionStorage.getItem("user"));
+    if (user) {
+      setUsername(user.user_name || user.username || user.user_id || "User");
+      if (user.com_name || user.com_code) {
+        setCompanyInfo({
+          name: user.com_name || user.com_code,
+          loc: user.location || "Noida, UP"
+        });
+      }
     }
-    setBlink(false);
-  }, [unreadCount]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target) && !userChipRef.current.contains(e.target)) {
-        setIsMenuOpen(false);
-      }
-      if (notifyRef.current && !notifyRef.current.contains(e.target)) {
-        setShowNotifications(false);
-      }
-      if (searchRef.current && !searchRef.current.parentElement.contains(e.target)) {
-        setShowSearch(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   useEffect(() => {
-    if (!searchText.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    const filtered = allMenus
-      .filter(
-        (m) =>
-          m.menu_hide !== "Y" &&
-          m.bar_name.toLowerCase().includes(searchText.toLowerCase())
-      )
-      .slice(0, 8);
-
-    setSearchResults(filtered);
-  }, [searchText, allMenus]);
-
-  const toggleLightDark = () =>
-    setTheme(theme === "theme-dark" ? "theme-light" : "theme-dark");
-
-  const toggleAccentColor = () => {
-    const themes = [
-      "theme-green",
-      "theme-blue",
-      "theme-purple",
-      "theme-teal",
-      "theme-orange",
-    ];
-    setTheme(themes[(themes.indexOf(theme) + 1) % themes.length] || "theme-blue");
-  };
-
-  useEffect(() => {
-    const handleShortcut = (e) => {
+    const handleKeyDown = (e) => {
       if (e.ctrlKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        if (searchRef.current) {
-          searchRef.current.focus();
-          setShowSearch(true);
+        setShowSearch(true);
+        searchRef.current?.focus();
+      }
+
+      if (showSearch && filteredResults.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setHighlightIndex((p) => (p + 1) % filteredResults.length);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setHighlightIndex((p) => (p === 0 ? filteredResults.length - 1 : p - 1));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          handleOpenPage(filteredResults[highlightIndex]);
         }
       }
     };
 
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
-  }, []);
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target) && !userChipRef.current?.contains(e.target)) setIsMenuOpen(false);
+      if (notifyRef.current && !notifyRef.current.contains(e.target)) setShowNotifications(false);
+      if (searchRef.current && !searchRef.current.parentElement.contains(e.target)) setShowSearch(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSearch, filteredResults, highlightIndex, handleOpenPage]);
+
+  const toggleLightDark = (e) => {
+    e.stopPropagation();
+    setTheme(theme === "theme-dark" ? "theme-light" : "theme-dark");
+  };
+
+  const toggleAccentColor = (e) => {
+    e.stopPropagation();
+    const themes = [ 
+      "theme-blue", 
+      "theme-teal", "theme-corporate" 
+    ];
+    const nextTheme = themes[(themes.indexOf(theme) + 1) % themes.length] || "theme-blue";
+    setTheme(nextTheme);
+  };
+
   return (
-    <header
-      className="relative z-[500] h-[50px] w-full flex items-center justify-between px-4 shadow-md"
+    <header className="relative z-[500] h-[52px] w-full flex items-center justify-between px-5 shadow-lg border-b border-white/5"
       style={{
-        background: "var(--sidebar-top-bg)",
+        background: "var(--sidebar-top-bg)"
       }}
     >
+      {/* LEFT - BRAND */}
       <div className="flex items-center gap-3">
-        <div className="h-8 w-8 flex items-center justify-center rounded-full border border-white/40 bg-white/10 backdrop-blur-sm p-1">
-          <img
-            src="/finaman-logo.png"
-            alt="Logo"
-            className="h-full w-full object-contain"
-          />
+
+        {/* LOGO */}
+        <div className="h-9 w-9 flex items-center justify-center rounded-xl bg-white/10 border border-white/20 shadow-md hover:scale-105 transition">
+          <img src="/finaman-logo.png" alt="Logo" className="h-5 w-5 object-contain" />
         </div>
 
-        <div className="flex flex-col text-white leading-tight">
-          <span className="text-sm font-bold tracking-wide">
+        {/* BRAND TEXT */}
+        <div className="flex flex-col leading-tight">
+          <span className="text-sm font-bold tracking-tight uppercase text-white">
             FINAMAN ERP
           </span>
-          <span className="text-[9px] opacity-80 uppercase tracking-widest">
-            Process Manufacturing
+          <span className="text-[10px] text-white/50 font-medium tracking-wide">
+            Process Manufacturing Managment Software
           </span>
         </div>
       </div>
-      <div className="relative w-[260px] hidden md:block">
-        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 text-xs" />
 
-        <input
-          ref={searchRef}
-          type="text"
-          placeholder="Search menu... (Ctrl + K)"
-          value={searchText}
-          onFocus={() => setShowSearch(true)}
-          onChange={(e) => {
-            setSearchText(e.target.value);
-            setHighlightIndex(0);
-          }}
-          className="w-full pl-9 pr-3 py-1.5 rounded-full bg-white/15 border border-white/20 text-white placeholder-white/60 outline-none focus:bg-white/25 focus:ring-1 focus:ring-white/30 transition-all text-sm backdrop-blur-md"
-        />
+      {/* CENTER - COMPANY */}
 
-        {showSearch && searchResults.length > 0 && (
-          <div className="absolute top-10 w-full bg-white dark:bg-slate-900 rounded-lg shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-            {searchResults.map((item, index) => (
-              <div
-                key={item.masmnu_id}
-                onClick={() => {
-                  onOpenPage(item);
-                  setShowSearch(false);
-                  setSearchText("");
-                }}
-                className={`px-3 py-2 text-sm cursor-pointer transition-colors
-          ${index === highlightIndex
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  }`}
-              >
-                {item.bar_name}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex bg-white/10 rounded-full p-1 border border-white/10">
-          <button
-            onClick={toggleLightDark}
-            className="p-1.5 rounded-full text-white hover:bg-white/20 transition"
-          >
-            {theme === "theme-dark" ? <FaSun /> : <FaMoon />}
-          </button>
+      {/* CENTER - COMPANY (CLEAN) */}
+      <div className="hidden lg:flex flex-col items-center justify-center">
 
-          <button
-            onClick={toggleAccentColor}
-            className="p-1.5 rounded-full text-white hover:bg-white/20 transition"
-          >
-            <FaPalette />
-          </button>
+
+
+        {/* 🔴 COMPANY NAME */}
+        <span className="relative inline-block text-[14px] font-bold uppercase tracking-wide text-gray-300">
+          {companyInfo.name}
+
+          <span className="absolute left-0 -bottom-[2px] w-full h-[1px] bg-gray-500"></span>
+        </span>
+
+        {/* META */}
+        <div className="flex items-center gap-2 mt-1 text-[10px] italic font-semibold text-white/90">
+          <span className="flex items-center gap-1">
+            <FaMapMarkerAlt className="text-[10px]" />
+            {companyInfo.loc}
+          </span>
+
+          <span className="opacity-40">|</span>
+
+          <span className="italic font-semibold text-white/90">
+            FY 2026-27
+          </span>
+
         </div>
-        <div className="relative" ref={notifyRef}>
-          <div
-            onClick={() => setShowNotifications(!showNotifications)}
-            className={`relative p-2 rounded-full cursor-pointer bg-white/10 hover:bg-white/20 transition border border-white/10 text-white ${blink ? "animate-pulse opacity-60" : ""
-              }`}
-          >
-            <FaBell className="text-lg" />
+      </div>
 
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1 py-0.5 rounded-full">
-                {unreadCount}
-              </span>
+      {/* RIGHT: Actions */}
+      <div className="flex items-center gap-4">
+        {/* Search */}
+        <div className="relative group hidden md:block">
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white  text-[10px]" />
+          <input
+            ref={searchRef}
+            type="text"
+            placeholder="Search... (Ctrl+K)"
+            value={searchText}
+            onFocus={() => setShowSearch(true)}
+            onChange={(e) => { setSearchText(e.target.value); setHighlightIndex(0); }}
+            className="w-[180px] focus:w-[240px] pl-8 pr-3 py-1.5 rounded bg-white/20 focus:bg-white/30 border border-white/10 text-white placeholder-white/40 outline-none focus:bg-white/15 transition-all text-xs"
+          />
+          {showSearch && filteredResults.length > 0 && (
+            <div className="absolute top-10 w-full bg-white rounded shadow-2xl border border-slate-200 overflow-hidden">
+              {filteredResults.map((item, index) => (
+                <div key={item.masmnu_id} onClick={() => handleOpenPage(item)} className={`px-3 py-2 text-xs cursor-pointer ${index === highlightIndex ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"}`}>
+                  {item.bar_name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Notifications */}
+          <div className="relative" ref={notifyRef}>
+            <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 rounded-full hover:bg-white/20 transition text-white/80 hover:text-white relative">
+              <FaBell className="text-lg" />
+              {unreadCount > 0 && <span className="absolute top-1 right-1 bg-red-600 text-[9px] font-bold px-1 rounded-full">{unreadCount}</span>}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 z-[1000]">
+                <NotificationPanel
+                  onOpenAll={() => handleOpenPage({ masmnu_id: "NOTIFICATIONS", bar_name: "Notifications", appl_name: "NOTIFICATIONS_PAGE" })}
+                  onNavigate={(link) => { setShowNotifications(false); handleOpenPage(link); }}
+                />
+              </div>
             )}
           </div>
 
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 z-[1000]">
-              <NotificationPanel
-                onOpenAll={() => {
-                  setShowNotifications(false);
-                  onOpenPage({
-                    masmnu_id: "NOTIFICATIONS",
-                    bar_name: "Notifications",
-                    appl_name: "NOTIFICATIONS_PAGE",
-                  });
-                }}
-                onNavigate={(link) => {
-                  setShowNotifications(false);
-                  onOpenPage(link);
-                }}
-              />
-            </div>
-          )}
-        </div>
-        <div className="relative group">
-          <div
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            ref={userChipRef}
-            className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-white/20 hover:bg-white/30 border border-white/10 cursor-pointer transition backdrop-blur-md"
-          >
-            <div className="h-7 w-7 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-xs">
-              {username?.charAt(0).toUpperCase()}
-            </div>
-
-            <span className="text-white text-sm font-semibold hidden lg:block">
-              {username}
-            </span>
-          </div>
-
-          {isMenuOpen && (
+          {/* User Chip */}
+          <div className="relative">
             <div
-              ref={menuRef}
-              className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-slate-100 py-2"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              ref={userChipRef}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 cursor-pointer transition border border-white/10"
             >
-              <button
-                onClick={() =>
-                  onOpenPage({
-                    masmnu_id: "PROFILE",
-                    bar_name: "Profile",
-                    appl_name: "PROFILE",
-                  })
-                }
-                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-              >
-                Profile
-              </button>
-
-              <button
-                onClick={onLogout}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-              >
-                Log Out
-              </button>
+              <div className="h-7 w-7 rounded bg-white/30 text-white flex items-center justify-center font-bold text-xs uppercase">
+                {username?.charAt(0)}
+              </div>
+              <span className="text-white text-xs font-semibold hidden sm:block uppercase tracking-tight">{username}</span>
             </div>
-          )}
+
+            {isMenuOpen && (
+              <div ref={menuRef} className="absolute right-0 mt-2 w-48 bg-white rounded shadow-xl border border-slate-100 py-1 overflow-hidden">
+                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Settings</p>
+                </div>
+
+                <button onClick={toggleLightDark} className="w-full flex items-center justify-between px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors">
+                  <span className="flex items-center gap-2">
+                    {theme === "theme-dark" ? <FaSun className="text-orange-500" /> : <FaMoon className="text-blue-500" />} Mode
+                  </span>
+                  <span className="text-[10px] opacity-40 uppercase font-bold">{theme.split("-")[1]}</span>
+                </button>
+
+                <button onClick={toggleAccentColor} className="w-full flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50">
+                  <FaPalette className="text-teal-500" /> Change Accent
+                </button>
+
+                <hr className="my-1 border-slate-100" />
+
+                <button onClick={() => handleOpenPage({ masmnu_id: "PROFILE", bar_name: "Profile", appl_name: "PROFILE" })} className="w-full flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50">
+                  <FaUser className="opacity-40" /> Profile
+                </button>
+                <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2 text-xs text-red-600 hover:bg-red-50 font-bold">
+                  <FaSignOutAlt /> Log Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

@@ -17,13 +17,13 @@ const ERPPrintPreview = ({
 
   const memoSections = useMemo(() => sections, [sections]);
 
-const handlePrint = useReactToPrint({
-  contentRef: printRef,
-  documentTitle: title || "ERP Document"
-});
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: title || "ERP Document"
+  });
 
   return (
-    <div className="w-full bg-gray-100 flex flex-col items-center py-10"> 
+    <div className="w-full bg-gray-100 flex flex-col items-center py-10">
       <div className="w-[820px] flex justify-between items-center mb-5 print:hidden">
 
         <div className="text-sm font-semibold text-gray-600">
@@ -57,11 +57,11 @@ const handlePrint = useReactToPrint({
           </button>
 
         </div>
-      </div> 
+      </div>
       <div
         ref={printRef}
         className="print-area bg-white w-[820px] min-h-[1123px] border border-gray-300 px-12 py-10 text-[13px] leading-relaxed"
-      > 
+      >
         <div className="flex justify-between items-start border-b pb-6 mb-8">
 
           <div className="flex items-start gap-4">
@@ -99,10 +99,18 @@ const handlePrint = useReactToPrint({
             size={70}
           />
 
-        </div> 
+        </div>
         <div className="space-y-8">
 
           {memoSections.map((section, index) => {
+
+            if (section.type === "custom") {
+              return (
+                <div key={index}>
+                  {section.render(data)}
+                </div>
+              );
+            }
 
             if (section.type === "table") {
 
@@ -214,7 +222,7 @@ const handlePrint = useReactToPrint({
             );
 
           })}
-        </div> 
+        </div>
         <div className="border-t mt-12 pt-4 text-xs text-gray-400 flex justify-between">
 
           <span>
@@ -228,7 +236,7 @@ const handlePrint = useReactToPrint({
         </div>
 
       </div>
- 
+
       <style>
         {`
         @media print {

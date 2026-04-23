@@ -42,10 +42,6 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
     [onMenuItemClick]
   );
 
-  /* ===============================
-   SIDEBAR ICON COLOR PALETTE
-================================ */
-
   const iconColors = [
     "#3b82f6", "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
     "#f97316", "#eab308", "#22c55e", "#10b981", "#14b8a6",
@@ -71,7 +67,7 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
       style={{
         background: "var(--bg-sidebar)",
         borderColor: "var(--border-main)",
-        color: "var(--text-main)"
+        color: "var(--sidebar-text)"
       }}
     >
       <div
@@ -118,7 +114,7 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
               ${isActive ? "shadow-sm" : ""}`}
               style={{
                 background: isActive ? "var(--bg-active)" : "transparent",
-                color: isActive ? "var(--text-active)" : "var(--text-main)"
+                color: isActive ? "var(--text-active)" : "var(--sidebar-text)"
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {

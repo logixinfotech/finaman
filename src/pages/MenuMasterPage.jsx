@@ -1,17 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
-import MenuMasterForm from "../components/MenuMasterPage/MenuMasterForm";
-import MenuMasterFilterForm from "../components/MenuMasterPage/MenuMasterFilterForm";
-import Table from "../components/Reusable/Table";
-import "../components/MenuMasterPage/MenuMaster.css";
+import MenuMasterForm from "./Modules/MainMenu/MenuMasterPage/MenuMasterForm";
+import MenuMasterFilterForm from "./Modules/MainMenu/MenuMasterPage/MenuMasterFilterForm";
+import Table from "../components/Reusable/table/Table";
+import "./Modules/MainMenu/MenuMasterPage/MenuMaster.css";
 import {
   showToast,
   alertError,
   confirmDelete,
 } from "../components/Reusable/alert";
-import { initERPShortcuts } from "../utils/erpShortcuts";
-
-import { Pencil, Trash2 } from "lucide-react";
-import IconButton from "../components/Reusable/IconButton";
+import { setERPHandlers } from "../utils/erpShortcuts";   
 import {
   fetchMenuMasterList,
   createMasmnu,
@@ -19,6 +16,8 @@ import {
   deleteMasmnu,
   fetchSidebarMenu
 } from "../utils/api";
+import { useERPMode } from "../components/Reusable/form/useFormMode"; 
+
 const initialState = {
   masmnu_id: null,
   masmod_id: "",
@@ -33,13 +32,14 @@ const initialState = {
   appl_para: "",
   menu_hide: "",
 };
+
 const columns = [
   { key: "masmnu_id", label: "ID" },
-  { key: "mod_name", label: "Module" },
-  { key: "pad_name", label: "Menu Name" },
+  { key: "mod_name", label: "Module" }, 
+  { key: "pad_name", label: "Section" }, 
+  { key: "bar_name", label: "Menu Name" }, 
   { key: "item_type", label: "Item Type" },
   { key: "srl_no", label: "Serial No" },
-  { key: "bar_name", label: "Bar Name" },
   {
     key: "menu_hide",
     label: "Hidden",
@@ -51,22 +51,33 @@ const columns = [
   },
 ];
 
-const MenuMasterPage = () => {
+const MenuMasterPage = ({ tab }) => {
   const [modules, setModules] = useState([]);
   const [list, setList] = useState([]);
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [formData, setFormData] = useState(initialState);
-  const [showForm, setShowForm] = useState(false);
-  const [mode, setMode] = useState("add");
   const [filters, setFilters] = useState({});
   const [showFilter, setShowFilter] = useState(false);
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const token = sessionStorage.getItem("token");
+  const [loading, setLoading] = useState(true); 
+const {
+    mode,
+    formData, setFormData,
+    showForm, setShowForm,
+    saving,
+    handleView, handleAdd, handleModify, performSave, handleEditCancel,
+    isEditMode,
+    rights // 1. Destructure rights here
+  } = useERPMode(
+    initialState,
+    async (data) =>
+      data.masmnu_id
+        ? await updateMasmnu(data.masmnu_id, data)
+        : await createMasmnu(data),
+    () => loadMenuList(filters),
+    tab.appl_name // 2. Pass the application name for rights fetching
+  );
+ 
   const loadMenuList = useCallback(async (filterParams = {}) => {
     try {
+      setLoading(true);
       const data = await fetchMenuMasterList(filterParams);
       setList(data || []);
     } catch (err) {
@@ -75,6 +86,7 @@ const MenuMasterPage = () => {
       setLoading(false);
     }
   }, []);
+
   const loadModules = useCallback(async () => {
     try {
       const data = await fetchSidebarMenu();
@@ -84,167 +96,85 @@ const MenuMasterPage = () => {
     }
   }, []);
 
-
   useEffect(() => {
-    if (!token) return;
-
     loadMenuList();
     loadModules();
-
-  }, [token, loadMenuList, loadModules]);
-  const handleAdd = useCallback(() => {
-    setSelectedRow(null);
-    setFormData({
-      ...initialState,
-      pad_type: "1",
-      appl_type: "F",
-    });
-    setShowForm(true);
-  }, []);
-
-  const handleEdit = (row) => {
-    setSelectedRow(row);
-    setFormData(row);
-    setShowForm(true);
+  }, [loadMenuList, loadModules]); 
+  const handleSave = async () => {
+    const response = await performSave("masmnu_id");
+    if (response?.success) {
+      showToast({
+        icon: "success",
+        title: isEditMode ? "Updated successfully" : "Added successfully",
+      });
+      loadMenuList(filters);
+    } else if (response?.message) {
+      alertError("Save failed", response.message);
+    }
   };
 
-
   const handleDelete = async (row) => {
-
+    const id = row?.masmnu_id || formData?.masmnu_id;
     const confirmed = await confirmDelete({
-      title: `Delete "${row.pad_name}"?`,
+      title: `Delete "${row?.bar_name || formData?.bar_name}"?`,
       text: "This action cannot be undone",
     });
 
     if (!confirmed) return;
 
     try {
-
-      await deleteMasmnu(row.masmnu_id);
-      await loadMenuList(filters);
-
-      showToast({
-        icon: "success",
-        title: "Deleted successfully",
-      });
-
+      const res = await deleteMasmnu(id);
+      if (res.success) {
+        showToast({ icon: "success", title: "Deleted successfully" });
+        setShowForm(false);
+        loadMenuList(filters);
+      }
     } catch (err) {
-
       alertError("Delete failed", "Something went wrong");
-
     }
-
-  };
-
-  const handleSave = async () => {
-
-    if (saving) return;
-
-    try {
-
-      setSaving(true);
-
-      let res;
-
-      if (formData.masmnu_id) {
-        res = await updateMasmnu(formData.masmnu_id, formData);
-      } else {
-        res = await createMasmnu(formData);
-      }
-
-      if (!res?.success) {
-
-        alertError("Save failed", res?.message || "Something went wrong");
-        return;
-
-      }
-
-      await loadMenuList(filters);
-      setShowForm(false);
-
-      showToast({
-        icon: "success",
-        title: formData.masmnu_id
-          ? "Updated successfully"
-          : "Added successfully",
-      });
-
-    } catch (err) {
-
-      alertError("Error", "Something went wrong");
-
-    } finally {
-
-      setSaving(false);
-
-    }
-
-  };
-  const handleCancel = () => {
-    setFormData(initialState);
-    setSelectedRow(null);
-    setShowForm(false);
-  };
-
-  const applyFilter = async () => {
-    await loadMenuList(filters);
-  };
-
-  const clearFilter = async () => {
-    setFilters({});
-    await loadMenuList();
-  };
-  const handleView = (row) => {
-    setSelectedRow(row);
-
-    setFormData({
-      ...row
-    });
-
-    setMode("view");
-    setShowForm(true);
-  };
+  }; 
   useEffect(() => {
-
-    const cleanup = initERPShortcuts({
+    setERPHandlers({
       onNew: handleAdd,
       onSave: handleSave,
+      onModify: handleModify,
       onEsc: () => setShowForm(false),
     });
+  }, [handleAdd, handleSave, handleModify]);
 
-    return cleanup;
+  const applyFilter = () => loadMenuList(filters);
+  const clearFilter = () => {
+    setFilters({});
+    loadMenuList();
+  };
 
-  }, [handleAdd, handleSave]);
   return (
     <div>
-
       {showForm ? (
-
         <MenuMasterForm
           modules={modules}
           formData={formData}
           setFormData={setFormData}
           onSave={handleSave}
-          onCancel={handleCancel}
+          onCancel={() => setShowForm(false)}
+          onDelete={() => handleDelete(formData)}
           mode={mode}
           saving={saving}
-          onModify={() => setMode("edit")}
-
+          onModify={handleModify}
+          onEditCancel={handleEditCancel}  
+          rights={rights}
         />
-
       ) : (
-
         <Table
           title="Menu List"
           data={list}
           columns={columns}
           rowKey="masmnu_id"
-          selectedRow={selectedRow}
+          loading={loading}
           onRefresh={() => loadMenuList(filters)}
-
           showForm={showFilter}
-          onToggleFilter={() => setShowFilter(p => !p)}
-          onRowDoubleClick={handleView}
+          onToggleFilter={() => setShowFilter((p) => !p)}
+          onRowDoubleClick={(row) => handleView(row)}
           formComponent={
             <MenuMasterFilterForm
               modules={modules}
@@ -254,41 +184,10 @@ const MenuMasterPage = () => {
               onClear={clearFilter}
             />
           }
-
-          onAdd={handleAdd}
-
-          actions={(row) => (
-            <div className="flex gap-2 justify-end">
-
-              <IconButton
-                variant="edit"
-                title="Edit"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEdit(row);
-                }}
-              >
-                <Pencil size={14} />
-              </IconButton>
-
-              <IconButton
-                variant="delete"
-                title="Delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(row);
-                }}
-              >
-                <Trash2 size={14} />
-              </IconButton>
-
-            </div>
-          )}
-
+         onAdd={rights.add === 1 ? handleAdd : null}
+      
         />
-
       )}
-
     </div>
   );
 };

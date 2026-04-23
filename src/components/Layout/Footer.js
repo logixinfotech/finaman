@@ -36,7 +36,7 @@ function Footer({ activeModule }) {
 
   return (
 
-    <footer className="erp-footer"> 
+    <footer className="erp-footer">
       <div className="erp-footer-left">
 
         <span className="erp-footer-brand">
@@ -48,18 +48,7 @@ function Footer({ activeModule }) {
         </span>
 
       </div>
- 
-      <div className="erp-footer-center">
 
-        <span className="footer-badge server">
-          Server {serverStatus}
-        </span>
-
-        <span className="footer-badge database">
-          DB {dbStatus}
-        </span>
-
-      </div> 
       <div className="erp-footer-right">
 
         <span className="footer-version">

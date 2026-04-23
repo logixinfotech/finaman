@@ -2,80 +2,57 @@ import {
   AddButton,
   UpdateButton,
   CancelButton,
+  DiscardButton, 
   DeleteButton,
   PrintButton,
   HeaderAddButton
-} from "../ActionButon";
+} from "../button/ActionButon";
 
 const ERPFooter = ({
-  isAddMode,
-  isViewMode,
-  isEditMode,
-  saving,
-  handleSubmit,
-  onModify,
-  onDelete,
-  onPrint,
-  onCancel,
-  formData,
-  onNewEntry,
-  canPrint,
-  showPrevious,
-  showNext,
-  onPrevious,
-  onNext
-}) => {
+  isAddMode, isViewMode, isEditMode,
+  saving, handleSubmit, onModify, onDelete,
+  onPrint, onEditCancel, onCancel, formData,
+  onNewEntry, canPrint, rights
+}) => { 
+  const CommonActions = (
+    <>
+      <DeleteButton 
+        onClick={onDelete} 
+        disabled={isViewMode ? rights?.del !== 1 : !canPrint} 
+      />
+      <PrintButton 
+        onClick={() => onPrint(formData)} 
+        disabled={isViewMode ? rights?.print !== 1 : !canPrint} 
+      />
+      
+    </>
+  );
 
-  return (
-    <div className="flex justify-between items-center px-5 py-2 border-t bg-white">
-      <div className="flex gap-3">
-        {showPrevious && (
-          <button
-            onClick={onPrevious}
-            className="px-4 py-1 text-xs rounded-md bg-[var(--accent-soft)] hover:bg-[var(--accent-hover)] transition"
-          >
-            ← Previous
-          </button>
-        )}
-        {showNext && (
-          <button
-            onClick={onNext}
-            className="px-4 py-1 text-xs rounded-md bg-[var(--accent-soft)] hover:bg-[var(--accent-hover)] transition"
-          >
-            Next →
-          </button>
-        )}
-
-      </div>
-      <div className="flex gap-3"> 
+  return ( 
+    <div className="flex justify-center items-center px-6 py-2.5 border-t bg-slate-50/80 backdrop-blur-sm rounded-b-xl w-full">
+      <div className="flex items-center gap-2">         
         {isAddMode && (
-          <AddButton
-            disabled={saving}
-            onClick={handleSubmit}
-          />
-        )}
- 
+          <>
+            <AddButton isAdding={true} disabled={saving} onClick={handleSubmit} />
+            <DiscardButton onClick={onEditCancel} />
+            {CommonActions}            
+          </>
+        )} 
         {isViewMode && (
           <>
-            <HeaderAddButton onClick={onNewEntry} />
-            <UpdateButton onClick={onModify} isEditing={false} />
-            <DeleteButton onClick={onDelete} />
-            {canPrint && <PrintButton onClick={() => onPrint(formData)} />}           
+            <HeaderAddButton onClick={onNewEntry} disabled={rights?.add !== 1} />
+            <UpdateButton onClick={onModify} isEditing={false} disabled={rights?.mod !== 1} />
+            {CommonActions} 
+            <CancelButton onClick={onCancel} />           
           </>
         )} 
         {isEditMode && (
           <>
-            <UpdateButton
-              disabled={saving}
-              onClick={handleSubmit}
-              isEditing={true}  
-            />
-            <DeleteButton onClick={onDelete} />
-            <PrintButton onClick={() => onPrint(formData)} disabled={!canPrint} />
+            <UpdateButton disabled={saving} onClick={handleSubmit} isEditing={true} />
+            <DiscardButton onClick={onEditCancel} />
+            {CommonActions}            
           </>
         )}
-
-        <CancelButton onClick={onCancel} />
       </div>
     </div>
   );

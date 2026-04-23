@@ -36,8 +36,7 @@ export const alertSuccess = (title, text = "") => {
     text,
   });
 };
-
-/* ================= ERROR ================= */
+ 
 
 export const alertError = (title, text = "") => {
   return baseSwal.fire({
@@ -45,9 +44,7 @@ export const alertError = (title, text = "") => {
     title,
     text,
   });
-};
-
-/* ================= WARNING ================= */
+}; 
 
 export const alertWarning = (title, text = "") => {
   return baseSwal.fire({
@@ -55,9 +52,7 @@ export const alertWarning = (title, text = "") => {
     title,
     text,
   });
-};
-
-/* ================= CONFIRM DELETE ================= */
+}; 
 
 export const confirmDelete = async ({
   title = "Are you sure?",
@@ -90,6 +85,27 @@ export const confirmSave = async ({
     showCancelButton: true,
     confirmButtonText: confirmText,
     cancelButtonText: "Cancel",
+  });
+
+  return res.isConfirmed;
+};
+/* ================= CONFIRM DISCARD (For Dirty Check) ================= */
+
+export const confirmWarning = async ({
+  title = "Unsaved Changes",
+  text = "You have modified the data. Do you really want to discard these changes?",
+  confirmButtonText = "Yes, Discard",
+  cancelButtonText = "No, Stay"
+}) => {
+  const res = await baseSwal.fire({
+    icon: "warning",
+    title,
+    text,
+    showCancelButton: true,
+    confirmButtonText,
+    cancelButtonText,
+    confirmButtonColor: "#ef4444", // Red color for 'Discard' to show it's a destructive action
+    cancelButtonColor: "#94a3b8",
   });
 
   return res.isConfirmed;

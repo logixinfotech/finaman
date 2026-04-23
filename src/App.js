@@ -6,15 +6,14 @@ import Sidebar from "./components/Layout/Sidebar";
 import Dashboard from "./components/Layout/Dashboard";
 import Footer from "./components/Layout/Footer";
 import LoginPage from "./pages/Login/Login";
-import { fetchMasmnuData } from "./utils/api";
+import { fetchMasmnuData, logoutUser } from "./utils/api";
 import "./App.css";
-
+import Swal from "sweetalert2";
 function AppShell({
   theme,
   sidebarCollapsed,
   toggleSidebar,
   handleModuleClick,
-  handleLogout,
   setTheme,
   menusFromBackend,
   activeModule,
@@ -25,6 +24,20 @@ function AppShell({
   handleCloseTab,
   setTabs,
 }) {
+  const handleLogout = async () => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You will be logged out!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Logout",
+      cancelButtonText: "Cancel",
+    });
+
+    if (result.isConfirmed) {
+      await logoutUser(); // 🔥 API call + session clear
+    }
+  };
   return (
     <div className={`app-layout ${theme}`}>
       <div className="app-body">
@@ -68,7 +81,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() =>
     !!sessionStorage.getItem("token")
   );
-
   const [theme, setTheme] = useState(
     () => localStorage.getItem("finaman-theme") || "theme-light"
   );
@@ -106,17 +118,17 @@ function App() {
 
     return cleanup;
   }, []);
-useEffect(() => {
-  const disableAutocomplete = () => {
-    const inputs = document.querySelectorAll("input");
+  useEffect(() => {
+    const disableAutocomplete = () => {
+      const inputs = document.querySelectorAll("input");
 
-    inputs.forEach((input) => {
-      input.setAttribute("autocomplete", "off");
-    });
-  };
+      inputs.forEach((input) => {
+        input.setAttribute("autocomplete", "off");
+      });
+    };
 
-  disableAutocomplete();
-}, []);
+    disableAutocomplete();
+  }, []);
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
@@ -178,22 +190,61 @@ useEffect(() => {
       t.id.startsWith(baseId)
     );
 
-    const duplicateNumber = samePageTabs.length + 1;
+    let updatedTabs = [...tabs];
 
-    const newTabId = `${baseId}-${duplicateNumber}`;
+    // 🟢 First time open
+    if (samePageTabs.length === 0) {
+      const newTabId = `${baseId}-1`;
 
-    const newTab = {
-      id: newTabId,
-      label: `${menuItem.bar_name} (${duplicateNumber})`,
-      type: "page",
-      module: activeModule,
-      appl_name: menuItem.appl_name,
-      duplicateIndex: duplicateNumber,
-    };
+      const newTab = {
+        id: newTabId,
+        label: menuItem.bar_name, // ✅ NO SERIAL
+        type: "page",
+        module: activeModule,
+        appl_name: menuItem.appl_name,
+        duplicateIndex: 1,
+      };
 
-    setTabs((prev) => [...prev, newTab]);
-    setActiveTabId(newTabId);
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(newTabId);
+    }
 
+    // 🔴 Duplicate open
+    else {
+      // 🔥 Step 1: Rename existing tabs
+      updatedTabs = updatedTabs.map((tab) => {
+        if (tab.id.startsWith(baseId)) {
+          const index = tab.duplicateIndex || 1;
+          return {
+            ...tab,
+            label: `${menuItem.bar_name} (${index})`,
+            duplicateIndex: index,
+          };
+        }
+        return tab;
+      });
+
+      // 🔥 Step 2: New tab add
+      const newIndex = samePageTabs.length + 1;
+
+      const newTabId = `${baseId}-${newIndex}`;
+
+      const newTab = {
+        id: newTabId,
+        label: `${menuItem.bar_name} (${newIndex})`,
+        type: "page",
+        module: activeModule,
+        appl_name: menuItem.appl_name,
+        duplicateIndex: newIndex,
+      };
+
+      updatedTabs.push(newTab);
+
+      setTabs(updatedTabs);
+      setActiveTabId(newTabId);
+    }
+
+    // 🔗 URL sync
     const targetUrl = `/app?page=${menuItem.appl_name}`;
 
     if (window.location.pathname + window.location.search !== targetUrl) {
@@ -248,13 +299,7 @@ useEffect(() => {
 
   const activeTab = tabs.find((t) => t.id === activeTabId) || null;
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    setIsAuthenticated(false);
-    setTabs([]);
-    setActiveModule(null);
-    navigate("/login", { replace: true });
-  };
+
   return (
     <Routes>
       <Route
@@ -277,7 +322,6 @@ useEffect(() => {
               sidebarCollapsed={sidebarCollapsed}
               toggleSidebar={toggleSidebar}
               handleModuleClick={handleModuleClick}
-              handleLogout={handleLogout}
               setTheme={setTheme}
               menusFromBackend={menusFromBackend}
               activeModule={activeModule}

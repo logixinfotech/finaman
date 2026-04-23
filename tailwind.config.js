@@ -3,7 +3,11 @@ module.exports = {
   content: ["./src/**/*.{js,jsx}"],
   theme: {
     extend: {
+      screens: {
+        '3xl': '2200px', // Customize the pixel value as needed
+      },
       colors: {
+
         bgMain: "var(--bg-main)",
         bgFooter: "var(--bg-footer)",
         bgSidebar: "var(--bg-sidebar)",
