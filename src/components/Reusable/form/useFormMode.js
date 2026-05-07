@@ -1,37 +1,23 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { alertError, alertWarning, showToast, confirmWarning } from '../alert'; 
+// Import your new utility
+import { getRights } from  '../../../utils/permissions'
 
 export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
-const [mode, setMode] = useState("view");
+  const [mode, setMode] = useState("view");
   const [formData, setFormData] = useState(initialState);
   const [originalData, setOriginalData] = useState(null);
-const [showForm, setShowForm] = useState(true);
+  const [showForm, setShowForm] = useState(true);
   const [saving, setSaving] = useState(false);
   const [canPrint, setCanPrint] = useState(false); 
+  const rights = useMemo(() => getRights(appl_name), [appl_name]);
+
+  const canAdd = rights.add === 1;
+  const canModify = rights.mod === 1; 
   const isDirty = useMemo(() => {
     if (mode === "view") return false;
     return JSON.stringify(formData) !== JSON.stringify(originalData);
   }, [formData, originalData, mode]);
- 
-  const rights = useMemo(() => {
-    try {
-      const user = JSON.parse(sessionStorage.getItem("user") || "{}");
-      const allPerms = JSON.parse(sessionStorage.getItem("permissions") || "null");
-      const isAdmin = user?.role?.toLowerCase() === "admin";
-      if (isAdmin) return { add: 1, mod: 1, del: 1, print: 1, modDays: 0 };
-      const raw = allPerms?.[appl_name] || { add: 0, mod: 0, del: 0, print: 0, modDays: 0 };
-      return {
-        add: Number(raw.add || 0), mod: Number(raw.mod || 0),
-        del: Number(raw.del || 0), print: Number(raw.print || 0),
-        modDays: Number(raw.modDays || 0)
-      };
-    } catch (e) {
-      return { add: 0, mod: 0, del: 0, print: 0, modDays: 0 };
-    }
-  }, [appl_name]);
-
-  const canAdd = rights.add === 1;
-  const canModify = rights.mod === 1;
 
   const isWithinLimit = useCallback((recordDate, limit) => {
     if (!recordDate || limit === 0) return true;
@@ -41,7 +27,7 @@ const [showForm, setShowForm] = useState(true);
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) <= limit;
   }, []);
 
-  // Handlers (Enhanced)
+  // Handlers
   const handleAdd = useCallback(() => {
     if (!canAdd) {
       alertError("Access Denied", `You do not have permission to ADD in ${appl_name}`);
@@ -67,66 +53,68 @@ const [showForm, setShowForm] = useState(true);
     setOriginalData({ ...formData });
     setMode("edit");
     setCanPrint(false);
-  }, [formData, canModify, rights.modDays, isWithinLimit]); 
-const handleEditCancel = useCallback(async () => { 
-  if (isDirty) {
-    const confirmed = await confirmWarning({
-      title: "Discard Changes?",
-      text: "You have unsaved changes. Do you want to reset the form?",
-      confirmButtonText: "Yes, Reset",
-      cancelButtonText: "No, Stay"
-    });
+  }, [formData, canModify, rights.modDays, isWithinLimit]);
 
-    if (confirmed) {
-      setFormData(originalData || initialState);
-      showToast({ icon: "info", title: "Form Reset" });
-    }
-    return; 
-  } 
-  if (!showForm) { 
-    setShowForm(true); 
-  } else { 
-    if (mode === "add") {
-      setShowForm(false); // Add mode se exit karke list pe jao
-    } else if (mode === "edit") {
-      setMode("view");    // Edit se wapas View mode pe aao
-    } else if (mode === "view") {
-      setShowForm(false); // View mode se exit karke list pe jao
-    }
-  }
-}, [isDirty, mode, originalData, initialState, showForm]);
+  const handleEditCancel = useCallback(async () => {
+    if (isDirty) {
+      const confirmed = await confirmWarning({
+        title: "Discard Changes?",
+        text: "You have unsaved changes. Do you want to reset the form?",
+        confirmButtonText: "Yes, Reset",
+        cancelButtonText: "No, Stay"
+      });
 
-useEffect(() => {
-  const handleEsc = (event) => { 
-    if (event.key === "Escape") { 
-      if (mode === "add" || mode === "edit") {
-        console.log("ESC disabled in Add/Edit mode");
-        return; 
+      if (confirmed) {
+        setFormData(originalData || initialState);
+        showToast({ icon: "info", title: "Form Reset" });
       }
-      const tag = document.activeElement.tagName.toLowerCase();
-      if (tag === "input" || tag === "textarea") {
-        // Input se focus hatane ke liye Esc use ho sakta hai
-        document.activeElement.blur();
-        return;
-      }
-      
-      handleEditCancel();
+      return;
     }
-  };
-  window.addEventListener("keydown", handleEsc);
-  return () => window.removeEventListener("keydown", handleEsc);
-}, [handleEditCancel, mode]); // showForm hataya taaki humesha chale
+    if (!showForm) {
+      setShowForm(true);
+    } else {
+      if (mode === "add") {
+        setShowForm(false);
+      } else if (mode === "edit") {
+        setMode("view");
+      } else if (mode === "view") {
+        setShowForm(false);
+      }
+    }
+  }, [isDirty, mode, originalData, initialState, showForm]);
 
-  const performSave = useCallback(async (idField) => {
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === "Escape") {
+        if (mode === "add" || mode === "edit") return;
+        const tag = document.activeElement.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea") {
+          document.activeElement.blur();
+          return;
+        }
+        handleEditCancel();
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [handleEditCancel, mode]);
+
+// In useFormMode.js - update performSave to accept optional override data
+const performSave = useCallback(async (idField, overrideData = null) => {
     if (saving) return { success: false };
     setSaving(true);
     try {
       const isEdit = mode === "edit";
-      if (!formData || Object.keys(formData).length === 0) throw new Error("No data to save");
       
-      const response = await onSaveApi(formData, isEdit);
+      // ✅ Use overrideData if passed, otherwise fall back to hook's formData
+      const dataToSave = overrideData || formData;
+      
+      if (!dataToSave || Object.keys(dataToSave).length === 0) 
+        throw new Error("No data to save");
+
+      const response = await onSaveApi(dataToSave, isEdit);
       if (response.success) {
-        const savedData = response.data || formData;
+        const savedData = response.data || dataToSave;
         setFormData(savedData);
         setOriginalData(savedData);
         setMode("view");
@@ -145,18 +133,19 @@ useEffect(() => {
     }
   }, [saving, mode, formData, onSaveApi, loadList]);
 
-const handleView = useCallback((data) => {
+  const handleView = useCallback((data) => {
     setFormData(data);
     setOriginalData(data);
     setMode("view");
-    setShowForm(true); // Form open karein
+    setShowForm(true);
     setCanPrint(rights.print === 1);
   }, [rights.print]);
+
   return {
     mode, setMode, formData, setFormData,
     showForm, setShowForm, saving, canPrint,
     rights, isDirty,
-    handleView, 
+    handleView,
     handleAdd, handleModify, handleEditCancel, performSave,
     isAddMode: mode === "add",
     isViewMode: mode === "view",

@@ -120,205 +120,197 @@ const columns = [
   }
 ];
 
-const CompanyMasterPage = ({ tab }) => {
-  const [list, setList] = useState([]);
+const CompanyMasterPage = ({ tab }) => { 
+  const [list,         setList]         = useState([]);
+  const [loading,      setLoading]      = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [filters, setFilters] = useState({});
-  const [showFilter, setShowFilter] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [page,         setPage]         = useState(1);
+  const [pageSize,     setPageSize]     = useState(100);
+  const [filters,      setFilters]      = useState({});
+  const [showFilter,   setShowFilter]   = useState(false);
+ const [formTab, setFormTab] = useState("basic"); 
   const [showPreview, setShowPreview] = useState(false);
-  const [printData, setPrintData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [totalRecords, setTotalRecords] = useState(0);  
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [printData,   setPrintData]   = useState(null); 
   const {
     mode,
-    formData, setFormData,
-    showForm, setShowForm,
-    saving, canPrint, rights,
-    handleView, handleAdd, handleModify, performSave, handleEditCancel,
-    isEditMode
+    formData,   setFormData,
+    showForm,   setShowForm,
+    saving,     rights,     canPrint,
+    handleView, handleAdd,  handleModify,
+    performSave, handleEditCancel,
+    isEditMode,
   } = useERPMode(
- initialState,
-    async (data) => data.company_id ? await updateCompany(data.company_id, data) : await createCompany(data),
-    () => loadCompanyList(filters),
-     tab?.appl_name
-); 
-const loadCompanyList = useCallback(async (currentFilters, currentPage, currentPageSize) => {
-  try {
-    setLoading(true);
-
-    const response = await getCompanyList({
-      page: currentPage,
-      pageSize: currentPageSize,
-      filters: currentFilters,
-    });
-
-    setList(response.data || []);
-    setTotalRecords(response.total || 0);
-
-  } catch (error) {
-    console.error("Load Failed", error);
-  } finally {
-    setLoading(false);
-  }
-}, []);
-
-useEffect(() => {
-  loadCompanyList(filters, page, pageSize);
-}, [page, pageSize, filters]);
+    initialState,
+    async (data, isEdit) => {
+      if (isEdit) {
+        return await updateCompany(data.company_id, data);
+      } else {
+        return await createCompany(data);
+      }
+    },
+    () => loadCompanyList(filters, page, pageSize),
+    tab?.appl_name
+  );
+ 
+  const handleTabChange = useCallback((targetTab) => {
+    if (targetTab === "search") setShowForm(false);
+    if (targetTab === "entry") setShowForm(true);
+  }, [setShowForm]);
+ 
+  const loadCompanyList = useCallback(async (
+    currentFilters = {},
+    currentPage    = 1,
+    currentPageSize = 100
+  ) => {
+    try {
+      setLoading(true);
+      const response = await getCompanyList({
+        page:     currentPage,
+        pageSize: currentPageSize,
+        filters:  currentFilters,
+      });
+      setList(Array.isArray(response.data) ? response.data : response?.data?.data || []);
+      setTotalRecords(response.total ?? response?.data?.total ?? 0);
+    } catch (err) {
+      alertError("Fetch Error", "Failed to load companies");
+    } finally {
+      setLoading(false);
+    }
+  }, []); 
+  useEffect(() => {
+    loadCompanyList(filters, page, pageSize);
+  }, [page, pageSize, filters, loadCompanyList]); 
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
       setFormData(list[currentIndex]);
     }
-  }, [currentIndex, list, showForm, mode]);
-
-  const handleRowSelect = (row) => {
-    const index = list.findIndex(
-      (item) => item.company_id === row.company_id
-    );
-
-    if (index !== -1) {
-      setCurrentIndex(index);
-      setFormData(list[index]);
-    }
-
+  }, [currentIndex, list, showForm, mode, setFormData]);
+ 
+  const handleRowSelect = useCallback((row) => {
+    const index = list.findIndex(item => item.company_id === row.company_id);
+    if (index !== -1) setCurrentIndex(index);
     handleView(row);
-  };
-  const handleNextRecord = () => {
-    setCurrentIndex((prev) => (prev < list.length - 1 ? prev + 1 : prev));
-  };
-const handlePageChange = (newPage, newPageSize) => {
-  if (newPage === page && newPageSize === pageSize) return;
-
-  setPage(newPage);
-  if (newPageSize !== pageSize) {
-    setPageSize(newPageSize);
-    setPage(1);
-  }
-};
-  const handlePrevRecord = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
-  };
-
-  const handleFirstRecord = () => {
-    setCurrentIndex(0);
-  };
-
-  const handleLastRecord = () => {
-    setCurrentIndex(list.length - 1);
-  };
-const handleSave = async () => {
-  const response = await performSave("company_id");
-
-  if (response?.success) {
-    showToast({
-      icon: "success",
-      title: isEditMode ? "Updated successfully" : "Added successfully",
-    }); 
-    await loadCompanyList(filters, page, pageSize);
-     
-  } else if (response?.message) {
-    alertError("Error", response.message);
-  }
-};
-const handleSearch = (searchTerm) => {
-  setFilters(prev => ({
-    ...prev,
-    company_name: searchTerm
-  }));
-  setPage(1);
-};
-
-const applyFilter = () => {
-  setPage(1);
-};
-
-const clearFilter = () => {
-  setFilters({});
-  setPage(1);
-};
-  const handleDelete = async (row) => {
-    const id = row?.company_id || formData?.company_id;
-    if (!id) return alertError("Error", "ID missing");
+    setShowForm(true);
+  }, [list, handleView, setShowForm]); 
+  const handleSave = useCallback(async () => {
+    const response = await performSave("company_id");
+    if (response?.success) {
+      showToast({
+        icon:  "success",
+        title: isEditMode ? "Updated successfully" : "Added successfully",
+      });
+      await loadCompanyList(filters, page, pageSize);
+    } else if (response?.message) {
+      alertError("Error", response.message);
+    }
+  }, [performSave, isEditMode, loadCompanyList, filters, page, pageSize]); 
+  const handleDelete = useCallback(async (row) => {
+    const id   = row?.company_id ?? formData?.company_id;
+    const name = row?.company_name ?? formData?.company_name;
+    if (!id) return alertError("Error", "Company ID missing");
 
     const confirmed = await confirmDelete({
-      title: `Delete "${row?.company_name || formData?.company_name}"?`,
-      text: "This action cannot be undone",
+      title: `Delete "${name}"?`,
+      text:  "This action cannot be undone.",
     });
-
     if (!confirmed) return;
 
     const res = await deleteCompany(id);
-
-    if (res.success) {
+    if (res?.success) {
       showToast({ icon: "success", title: "Deleted successfully" });
       setShowForm(false);
-      loadCompanyList(filters, page, pageSize);
+      await loadCompanyList(filters, page, pageSize);
+    } else {
+      alertError("Error", res?.message ?? "Delete failed");
     }
-  };
-  const handlePrint = (row) => {
-    setPrintData(row || formData);
+  }, [formData, setShowForm, loadCompanyList, filters, page, pageSize]);
+ 
+
+  const handlePrint = useCallback((row) => {
+    setPrintData(row ?? formData);
     setShowPreview(true);
-  };
+  }, [formData]);
+ 
+
+  const handleSearch = useCallback((searchTerm) => {
+    setFilters(prev => ({ ...prev, company_name: searchTerm }));
+    setPage(1);
+  }, []);
+
+
+  const applyFilter = useCallback(() => {
+    setPage(1);
+  }, []);
+
+  const clearFilter = useCallback(() => {
+    setFilters({});
+    setPage(1);
+  }, []);
+
+const handlePageChange = useCallback((newPage, newPageSize) => {
+  setPageSize(newPageSize);
+  setPage(newPage);
+  // No need to manually call loadCompanyList here; the useEffect handles it
+}, []);
+ 
   useEffect(() => {
     setERPHandlers({
-      onNextRecord: handleNextRecord,
-      onPrevRecord: handlePrevRecord,
-      onFirstRecord: handleFirstRecord,
-      onLastRecord: handleLastRecord,
-      onNew: handleAdd,
+      onNextRecord:  () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
+      onPrevRecord:  () => setCurrentIndex(p => Math.max(p - 1, 0)),
+      onFirstRecord: () => setCurrentIndex(0),
+      onLastRecord:  () => setCurrentIndex(list.length - 1),
+      onNew:  handleAdd,
       onSave: handleSave,
-      onEsc: () => setShowForm(false),
+      onEsc:  () => setShowForm(false),
     });
-  }, [currentIndex, list]);
- 
-  const currentRecord = totalRecords > 0 ? currentIndex + 1 : 0;
-
+  }, [list, handleAdd, handleSave, setShowForm]); 
+  const currentRecord = totalRecords > 0 ? currentIndex + 1 : 0; 
   return (
     <div>
-
       {showPreview ? (
         <ERPPrintPreview
           title="Company Details"
           data={printData}
           sections={companyPrintSections}
           logo="/finaman-logo.png"
+          defaultTemplate="detail"
+          watermark="DRAFT"
           onBack={() => setShowPreview(false)}
         />
-      ) : showForm ? (
-        <CompanyMasterForm
-          formData={formData}
-          setFormData={setFormData}
-          onSave={handleSave}
-          onCancel={() => setShowForm(false)}
-          onDelete={handleDelete}
-          onPrint={handlePrint}
-          mode={mode}
-          saving={saving}
-          canPrint={canPrint}
-          onNewEntry={handleAdd}
-          onModify={handleModify}
-          currentRecord={currentRecord}
-          totalRecords={totalRecords}
-          onEditCancel={handleEditCancel}
-            rights={rights}
-        />
-      ) : (
+
+      ) : showForm ? ( 
+<CompanyMasterForm
+  formData={formData}
+  setFormData={setFormData}
+  mode={mode}
+  onSave={handleSave}
+  onCancel={() => setShowForm(false)}
+  onDelete={handleDelete}
+  onPrint={handlePrint}
+  onModify={handleModify}
+  onNewEntry={handleAdd}
+  onEditCancel={handleEditCancel}
+  saving={saving}
+  rights={rights}
+  canPrint={canPrint}
+  currentRecord={currentRecord}
+  totalRecords={totalRecords}
+  activeTab={formTab}           
+  onFormTabChange={setFormTab}    
+  onHeaderTabChange={handleTabChange} 
+/>   ) : (
         <Table
-          title="Company List"
+          title="Company Master"
           data={list}
           columns={columns}
           rowKey="company_id"
-          loading={loading}
-         onRefresh={() => loadCompanyList(filters, page, pageSize)}
-onSearch={handleSearch}
+          loading={loading} 
+          onAdd={rights?.add === 1 ? handleAdd : null}
+          onRefresh={() => loadCompanyList(filters, page, pageSize)}
+          onSearch={handleSearch} 
           showForm={showFilter}
           onToggleFilter={() => setShowFilter(p => !p)}
-serverPagination={true} // Toggle this based on your needs
-      totalRecords={totalRecords}
-      onPageChange={handlePageChange} 
-      defaultPageSize={pageSize}
           formComponent={
             <CompanyMasterFilterForm
               filters={filters}
@@ -326,27 +318,31 @@ serverPagination={true} // Toggle this based on your needs
               onApply={applyFilter}
               onClear={clearFilter}
             />
-          }
+          } 
+          serverPagination={true}
+          totalRecords={totalRecords}
+          onPageChange={handlePageChange}
+          defaultPageSize={pageSize}
+ 
+          onRowDoubleClick={handleRowSelect}
+     onDeleteMultiple={async (ids) => {
+  const confirmed = await confirmDelete({
+    title: `Delete ${ids.length} record${ids.length > 1 ? "s" : ""}?`,
+    text: "This action cannot be undone.",
+  });
+  if (!confirmed) return;
 
-         onAdd={rights.add === 1 ? handleAdd : null}
-          onRowDoubleClick={(row) => handleRowSelect(row)}
-          onDeleteMultiple={async (ids) => {
-            const confirmed = await confirmDelete({
-              title: `Delete ${ids.length} records?`,
-              text: "This action cannot be undone",
-            });
-
-            if (!confirmed) return;
-            await Promise.all(ids.map(id => deleteCompany(id)));
-
-            showToast({ icon: "success", title: "Deleted successfully" });
-
-            loadCompanyList(filters);
-          }}
-  
-        />
+  try {
+    setLoading(true); // Ensure loading state is triggered
+    await Promise.all(ids.map(id => deleteCompany(id)));
+    showToast({ icon: "success", title: "Deleted successfully" });
+  } catch (err) {
+    alertError("Delete Error", "Some records could not be deleted");
+  } finally { 
+    await loadCompanyList(filters, page, pageSize);
+  }
+}}        />
       )}
-
     </div>
   );
 };

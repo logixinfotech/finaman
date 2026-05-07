@@ -135,6 +135,23 @@ const UserGroupMasterPage = ({ tab }) => {
           onAdd={rights.add === 1 ? handleAdd : null}
 
           onRowDoubleClick={handleRowSelect}
+          onDeleteMultiple={async (ids) => {
+            const confirmed = await confirmDelete({
+              title: `Delete ${ids.length} record${ids.length > 1 ? "s" : ""}?`,
+              text: "This action cannot be undone.",
+            });
+
+            if (!confirmed) return;
+
+            await Promise.all(ids.map(id => deleteUserGroup(id)));
+
+            showToast({
+              icon: "success",
+              title: "Deleted successfully"
+            });
+
+            loadGroups();
+          }}
         />
       )}
     </div>

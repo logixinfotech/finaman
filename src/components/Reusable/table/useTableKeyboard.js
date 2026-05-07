@@ -121,5 +121,5 @@ export function useTableKeyboard({
 
     container.addEventListener("keydown", handler);
     return () => container.removeEventListener("keydown", handler);
-  }, [containerRef]); // only containerRef — everything else via cbRef
+  }, [containerRef]); 
 }

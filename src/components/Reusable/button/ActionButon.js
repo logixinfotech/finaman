@@ -1,110 +1,170 @@
-import { useEffect } from "react";
-import { Plus, Printer, Save, Pencil, Trash2, ArrowLeft, XCircle } from "lucide-react";
-export const BaseButton = ({ children, className = "", onClick, disabled = false, shortcut, type = "button", id }) => {
-  return (
-    <button
-      id={id}
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-semibold shadow-sm transition-all active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400 disabled:border-gray-200 disabled:shadow-none disabled:cursor-not-allowed ${className}`}
-    >
-      {children}
-      {shortcut && <span className="ml-0.5 text-[9px] opacity-60 border border-current px-1 rounded">{shortcut}</span>}
-    </button>
-  );
-};
-
+import React, { useEffect } from "react";
+import {
+  Plus, Printer, Save, Pencil,
+  Trash2, ArrowLeft, XCircle, Loader2,
+} from "lucide-react";
+ 
+export const BaseButton = ({
+  children, className = "", onClick, disabled = false,
+  loading = false, shortcut, type = "button", id,
+}) => (
+  <button
+    id={id}
+    type={type}
+    onClick={onClick}
+    disabled={disabled || loading}
+    className={`
+      relative inline-flex items-center justify-center gap-1.5
+      h-[34px] px-3.5 min-w-[80px] rounded-[5px]
+      text-[12px] font-medium tracking-[0.01em]
+      transition-all duration-150
+      active:scale-[0.97]
+      focus:outline-none focus:ring-2 focus:ring-offset-1
+      disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
+      ${className}
+    `}
+  >
+    {loading ? (
+      <Loader2 size={13} className="animate-spin" />
+    ) : (
+      <>
+        {children}
+        {shortcut && (
+          <span className="
+            ml-1 font-mono text-[9px] tracking-[0.04em]
+            px-[5px] py-[1px] rounded-[3px]
+            bg-white/20 text-current opacity-70
+          ">
+            {shortcut}
+          </span>
+        )}
+      </>
+    )}
+  </button>
+); 
 const useButtonShortcut = (keyConfig, onClick, disabled) => {
   useEffect(() => {
+    if (disabled || !onClick) return;
     const handler = (e) => {
-      if (disabled) return;
-      const code = e.code;
-      if (e.altKey) {
-        if (keyConfig === "add" && code === "KeyA") { e.preventDefault(); onClick?.(); }
-        if (keyConfig === "modify" && code === "KeyM") { e.preventDefault(); onClick?.(); }
-        if (keyConfig === "delete" && code === "KeyD") { e.preventDefault(); onClick?.(); }
-        if (keyConfig === "save" && code === "KeyS") { e.preventDefault(); onClick?.(); }
-        if (keyConfig === "print" && code === "KeyP") { e.preventDefault(); onClick?.(); }
+      const isAlt = e.altKey;
+      if (isAlt) {
+        if (keyConfig === "add"    && e.code === "KeyA") { e.preventDefault(); onClick(); }
+        if (keyConfig === "modify" && e.code === "KeyM") { e.preventDefault(); onClick(); }
+        if (keyConfig === "delete" && e.code === "KeyD") { e.preventDefault(); onClick(); }
+        if (keyConfig === "save"   && e.code === "KeyS") { e.preventDefault(); onClick(); }
+        if (keyConfig === "print"  && e.code === "KeyP") { e.preventDefault(); onClick(); }
       }
-      if (keyConfig === "cancel" && e.key === "Escape") { e.preventDefault(); onClick?.(); }
+      if (keyConfig === "cancel" && e.key === "Escape") { e.preventDefault(); onClick(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [keyConfig, onClick, disabled]);
 };
  
-export const AddButton = ({ onClick, disabled, isAdding = false }) => {
+const Kbd = ({ label, dark = false }) => (
+  <span className={`
+    ml-1 font-mono text-[9px] tracking-[0.04em] leading-none
+    px-[5px] py-[2px] rounded-[3px]
+    ${dark
+      ? "bg-white/[0.18] text-white/70"
+      : "bg-black/[0.08] text-current opacity-60"
+    }
+  `}>
+    {label}
+  </span>
+); 
+// ── SAVE / ADD (filled emerald)
+export const AddButton = ({ onClick, disabled, loading, isAdding = false }) => {
   useButtonShortcut(isAdding ? "save" : "add", onClick, disabled);
   return (
-    <BaseButton 
-      onClick={onClick} 
-      disabled={disabled} 
-      shortcut={isAdding ? "Alt+S" : "Alt+A"} 
-      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+    <BaseButton
+      onClick={onClick} disabled={disabled} loading={loading}
+      className="bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500 border border-emerald-700/30"
     >
-      {isAdding ? <Save size={14} /> : <Plus size={14} />}
+      {isAdding ? <Save size={13} /> : <Plus size={13} />}
       {isAdding ? "Save" : "Add"}
+      <Kbd label={isAdding ? "Alt+S" : "Alt+A"} dark />
     </BaseButton>
   );
 };
 
-export const HeaderAddButton = AddButton; 
+export const HeaderAddButton = AddButton;
 
-// Requirement: Modify turns into Save
-export const UpdateButton = ({ onClick, disabled, isEditing = false }) => {
+// ── UPDATE / MODIFY
+export const UpdateButton = ({ onClick, disabled, loading, isEditing = false }) => {
   useButtonShortcut(isEditing ? "save" : "modify", onClick, disabled);
   return (
     <BaseButton
-      onClick={onClick}
-      disabled={disabled}
-      shortcut={isEditing ? "Alt+S" : "Alt+M"}
-      className={isEditing ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}
+      onClick={onClick} disabled={disabled} loading={loading}
+      className={
+        isEditing
+          ? "bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500 border border-emerald-700/30"
+          : "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500 border border-blue-700/30"
+      }
     >
-      {isEditing ? <Save size={14} /> : <Pencil size={14} />}
-      {isEditing ? "Save" : "Modify"}
+      {isEditing ? <Save size={13} /> : <Pencil size={13} />}
+      {isEditing ? "Update" : "Modify"}
+      <Kbd label={isEditing ? "Alt+S" : "Alt+M"} dark />
     </BaseButton>
   );
 };
 
-// Requirement: Discard button (shown as "Cancel" in UI)
+// ── DISCARD / CANCEL (neutral outlined)
 export const DiscardButton = ({ onClick, disabled }) => {
   useButtonShortcut("cancel", onClick, disabled);
   return (
-    <BaseButton 
-      onClick={onClick} 
-      disabled={disabled} 
-      shortcut="Alt+C" 
-      className="bg-slate-200 hover:bg-slate-300 text-slate-700"
+    <BaseButton
+      onClick={onClick} disabled={disabled}
+      className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:border-slate-400 focus:ring-slate-200"
     >
-      <XCircle size={14} /> Cancel
+      <XCircle size={13} />
+      Cancel
+      <Kbd label="Esc" />
     </BaseButton>
   );
 };
 
-export const DeleteButton = ({ onClick, disabled }) => {
+// ── DELETE (filled red)
+export const DeleteButton = ({ onClick, disabled, loading }) => {
   useButtonShortcut("delete", onClick, disabled);
   return (
-    <BaseButton onClick={onClick} disabled={disabled} shortcut="Alt+D" className="bg-red-600 hover:bg-red-700 text-white">
-      <Trash2 size={14} /> Delete
+    <BaseButton
+      onClick={onClick} disabled={disabled} loading={loading}
+      className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 border border-red-700/30"
+    >
+      <Trash2 size={13} />
+      Delete
+      <Kbd label="Alt+D" dark />
     </BaseButton>
   );
 };
 
-export const PrintButton = ({ onClick, disabled }) => {
+// ── PRINT / PREVIEW (soft indigo outlined)
+export const PrintButton = ({ onClick, disabled, loading }) => {
   useButtonShortcut("print", onClick, disabled);
   return (
-    <BaseButton onClick={onClick} disabled={disabled} shortcut="Alt+P" className="bg-purple-600 hover:bg-purple-700 text-white">
-      <Printer size={14} /> Preview
+    <BaseButton
+      onClick={onClick} disabled={disabled} loading={loading}
+      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 focus:ring-indigo-300"
+    >
+      <Printer size={13} />
+      Preview
+      <Kbd label="Alt+P" />
     </BaseButton>
   );
 };
 
+// ── EXIT / CLOSE (slate soft)
 export const CancelButton = ({ onClick }) => {
   useButtonShortcut("cancel", onClick);
   return (
-    <BaseButton onClick={onClick} shortcut="Esc" className="bg-slate-200 hover:bg-slate-300 text-slate-800">
-      <ArrowLeft size={14} /> Exit
+    <BaseButton
+      onClick={onClick}
+      className="bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 hover:border-slate-300 focus:ring-slate-200"
+    >
+      <ArrowLeft size={13} />
+      Exit
+      <Kbd label="Esc" />
     </BaseButton>
   );
 };

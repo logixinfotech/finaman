@@ -7,9 +7,7 @@ const baseSwal = Swal.mixin({
   cancelButtonColor: "#94a3b8",
   buttonsStyling: true,
   reverseButtons: true,
-});
-
-/* ================= TOAST ================= */
+}); 
 
 export const showToast = ({
   icon = "success",

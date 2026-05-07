@@ -8,7 +8,7 @@ const ERPAutocomplete = ({
   onKeyDown,
   className = "",
   disabled = false, 
-  showAddIfNoMatch = false,
+  showAddIfNoMatch = false, // Kept for backward compatibility
   addLabel = "Add New",
   onAddClick
 }) => {
@@ -63,38 +63,55 @@ const ERPAutocomplete = ({
     setShow(false);
     setHighlightIndex(-1);
   };
-
-  const handleKey = (e) => {
-    if (!show) {
-      if (onKeyDown) onKeyDown(e);
+ 
+  const handleKey = (e) => { 
+  if (e.key === "Backspace") {
+    const value = e.target.value; 
+    if (!value || value.length === 0) {
+      if (onKeyDown) {
+        onKeyDown(e); // 🔥 delegate to parent navigation
+      }
       return;
     }
+  } 
+  if (!show) {
+    if (onKeyDown) onKeyDown(e);
+    return;
+  }
 
-    if (e.key === "ArrowDown") {
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    setHighlightIndex((prev) =>
+      prev < filtered.length - 1 ? prev + 1 : prev
+    );
+  }
+
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    setHighlightIndex((prev) => (prev > 0 ? prev - 1 : 0));
+  }
+
+if (e.key === "Enter") {
+    if (highlightIndex >= 0) { 
       e.preventDefault();
-      setHighlightIndex((prev) =>
-        prev < filtered.length - 1 ? prev + 1 : prev
-      );
-    }
-
-    if (e.key === "ArrowUp") {
+      selectOption(filtered[highlightIndex]);
+    } else if (filtered.length === 1) { 
       e.preventDefault();
-      setHighlightIndex((prev) => (prev > 0 ? prev - 1 : 0));
+      selectOption(filtered[0]);
+    } else { 
+      // 🔥 THE FIX: Close the dropdown before moving focus
+      setShow(false); 
+      setHighlightIndex(-1);
+      
+      if (onKeyDown) onKeyDown(e); // This moves focus to the next input
     }
+  }
 
-    if (e.key === "Enter") {
-      if (highlightIndex >= 0) {
-        e.preventDefault();
-        selectOption(filtered[highlightIndex]);
-      } else if (filtered.length === 1) {
-        e.preventDefault();
-        selectOption(filtered[0]);
-      }
-    }
-    if (e.key === "Escape") {
-      setShow(false);
-    }
-  };
+  if (e.key === "Escape") {
+    setShow(false);
+  }
+};
+
   return (
     <div ref={wrapperRef} className="relative">
       <input
@@ -112,7 +129,7 @@ const ERPAutocomplete = ({
 
       {show && (
         <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow max-h-52 overflow-auto text-xs">
- 
+          
           {filtered.length > 0 ? (
             filtered.map((opt, i) => (
               <div
@@ -131,21 +148,18 @@ const ERPAutocomplete = ({
             <div className="px-3 py-2 text-gray-400">
               No results found
             </div>
-          )} 
-          {showAddIfNoMatch &&
-            value &&
-            filtered.length === 0 &&
-            !disabled && (
-              <div
-                className="px-3 py-2 border-t text-blue-600 font-medium cursor-pointer hover:bg-blue-50"
-                onMouseDown={(e) => {
-                  e.preventDefault(); 
-                  if (onAddClick) onAddClick(value);
-                }}
-              >
-                + {addLabel} "{value}"
-              </div>
-            )}
+          )}  
+          {onAddClick && !disabled && (
+            <div
+              className="px-3 py-2 border-t text-blue-600 font-medium cursor-pointer hover:bg-blue-50 sticky bottom-0 bg-white"
+              onMouseDown={(e) => {
+                e.preventDefault(); 
+                if (onAddClick) onAddClick(value);
+              }}
+            >
+              + {addLabel} {value ? `"${value}"` : ""}
+            </div>
+          )}
         </div>
       )}
     </div>

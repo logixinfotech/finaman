@@ -21,10 +21,8 @@ const HolidayMasterForm = ({
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode = mode === "add";
-
-  // Error state for validation feedback
+  const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
   const [errors, setErrors] = useState({});
-
   const requiredFields = ["date", "purpose"];
 
   useEffect(() => {
@@ -50,12 +48,10 @@ const HolidayMasterForm = ({
   };
 
   const getInputClass = (isDisabled, fieldName) =>
-    `w-full h-[26px] px-2 text-[13px] border rounded-sm outline-none transition-colors ${
-      errors[fieldName] ? "border-red-500" : "border-gray-300"
-    } ${
-      isDisabled
-        ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
-        : "bg-white focus:border-blue-500"
+    `w-full h-[30px] px-2 text-[16px] border rounded-md outline-none transition-colors ${errors[fieldName] ? "border-red-500" : "border-gray-300"
+    } ${isDisabled
+      ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
+      : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`;
 
   const handleValidateAndSave = useCallback(() => {
@@ -70,7 +66,7 @@ const HolidayMasterForm = ({
 
       // Special check: Agar date me "/" ya "_" jaise mask characters aa rahe hain toh usko bhi empty mano
       if (field === "date" && val && typeof val === "string") {
-        const cleanVal = val.replace(/[^a-zA-Z0-9]/g, "").trim(); 
+        const cleanVal = val.replace(/[^a-zA-Z0-9]/g, "").trim();
         if (cleanVal === "") {
           isEmpty = true;
         }
@@ -84,11 +80,11 @@ const HolidayMasterForm = ({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      
+
       // Better Focus Logic: Use wrapper IDs or names
       setTimeout(() => {
         let targetInput = null;
-        
+
         if (firstEmptyField === "date") {
           const dateWrapper = document.getElementById("date-input-wrapper");
           if (dateWrapper) {
@@ -100,7 +96,7 @@ const HolidayMasterForm = ({
 
         if (targetInput) targetInput.focus();
       }, 50); // Minor delay ensures DOM is ready
-      
+
       return; // Stop execution yahi par, aage save nahi hoga
     }
 
@@ -162,7 +158,7 @@ const HolidayMasterForm = ({
   return (
     <div
       className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
-      style={{ background: isViewMode ? "#eef1f6" : "#ffffff" }}
+      style={{ fontFamily: FONT }}
     >
       <ERPHeader
         title="Holiday Master"
@@ -173,24 +169,12 @@ const HolidayMasterForm = ({
       />
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">
-        <div
-          id="holiday-form-container"
-          className="w-full max-w-[800px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden"
-        >
-          <div
-            className="text-[15px] font-medium px-3 py-1.5 border-b bg-slate-50 text-slate-800"
-            style={{ background: isViewMode ? "#eef1f6" : "#ffffff" }}
-          >
-            Holiday Details
-          </div>
-
-          <div
-            className="p-3 grid grid-cols-1 gap-y-3"
-            style={{ background: isViewMode ? "#eef1f6" : "#ffffff" }}
-          >
+        <div id="holiday-form-container" className="w-full max-w-[800px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
+          <div className="p-3 grid grid-cols-1 gap-y-3">
             {/* DATE FIELD - Added ID wrapper for reliable focusing */}
+            <div className="flex flex-col sm:flex-row sm:gap-4 w-full">
             <div id="date-input-wrapper" className="flex flex-col sm:flex-row items-center px-1 w-full">
-              <label className="text-slate-700 text-[12px] font-bold sm:w-[120px] shrink-0">
+              <label className="text-black-800 text-[15px] w-[80px] shrink-0">
                 Date <span className="text-red-500">*</span>
               </label>
               <div className="flex-1 max-w-[120px]">
@@ -206,7 +190,7 @@ const HolidayMasterForm = ({
 
             {/* PURPOSE FIELD - Added name prop */}
             <div className="flex flex-col sm:flex-row items-center px-1 w-full">
-              <label className="text-slate-700 text-[12px] font-bold sm:w-[120px] shrink-0">
+              <label className="text-black-800 text-[15px] sm:w-[80px] shrink-0">
                 Purpose <span className="text-red-500">*</span>
               </label>
               <div className="flex-1 w-full">
@@ -222,10 +206,13 @@ const HolidayMasterForm = ({
                 />
               </div>
             </div>
+            </div>
+
+            
 
             {/* REMARKS FIELD */}
             <div className="flex flex-col sm:flex-row items-start px-1 w-full">
-              <label className="text-slate-700 text-[12px] font-bold sm:w-[120px] shrink-0 mt-1">
+              <label className="text-black-800 text-[15px] w-[80px] shrink-0 mt-1">
                 Remarks
               </label>
               <div className="flex-1 w-full">
@@ -235,7 +222,7 @@ const HolidayMasterForm = ({
                   disabled={isViewMode}
                   onChange={(e) => handleChange("remarks", e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className={`${getInputClass(isViewMode, "remarks")} h-auto py-1`}
+                  className={`${getInputClass(isViewMode, "remarks")} h-[40px] py-2`}
                   placeholder="Enter additional remarks"
                 />
               </div>

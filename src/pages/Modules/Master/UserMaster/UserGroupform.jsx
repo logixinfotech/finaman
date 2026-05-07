@@ -18,14 +18,15 @@ const UserGroupForm = ({
   totalRecords,
   rights,
   onEditCancel,
-  activeTab = "entry", // Added
-  onTabChange,         // Added
+  activeTab = "entry",  
+  onTabChange,          
 }) => {
   const isViewMode = mode === "view";
   const isAddMode = mode === "add";
   const isEditMode = mode === "edit";
   const requiredFields = ["group_name"];
- 
+   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
+
   useEffect(() => {
     if (isAddMode || isEditMode) {
       setTimeout(() => {
@@ -37,8 +38,8 @@ const UserGroupForm = ({
   }, [isAddMode, isEditMode]);
 
   const styles = useMemo(() => ({
-    input: `w-full h-[30px] px-2 text-xs rounded border outline-none transition-all ${
-      isViewMode ? "bg-gray-100 text-gray-500 border-gray-200" : "bg-white border-gray-300 focus:border-blue-500"
+    input: `w-full h-[30px] px-2 text-[16px]  rounded-md border outline-none transition-colors ${
+      isViewMode ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed" : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`,
   }), [isViewMode]);
 
@@ -78,7 +79,7 @@ const UserGroupForm = ({
   }, [isViewMode, handleValidateAndSave]);
 
   return (
-    <div className="w-full max-w-[700px] mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-[calc(100vh-150px)] overflow-hidden">
+    <div className="w-full max-w-[700px] mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-[calc(100vh-150px)] overflow-hidden font-sans" style={{ fontFamily: FONT }}>
       <ERPHeader
         title={title || "USER GROUP MASTER"}
         isAddMode={isAddMode}
@@ -90,10 +91,11 @@ const UserGroupForm = ({
       />
 
       <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
-        <div id="usergroup-form-container" className="bg-white p-6 rounded-lg border shadow-sm grid grid-cols-1 gap-4 w-full">
+        
+        <div id="usergroup-form-container" className=" w-full max-w-[800px] h-fit bg-white p-6 rounded-md border border-slate-200 shadow-sm rounded-md overflow-hidden grid grid-cols-1 gap-4 w-full">
           {/* Group Name */}
-          <div className="flex items-center gap-4 w-full max-w-2xl">
-            <label className="w-32 text-[12px] font-bold text-gray-500 uppercase shrink-0">
+          <div className="flex items-center gap-4 w-full  flex-col sm:flex-row px-1">
+            <label className="text-black-800 text-[15px] w-[100px] shrink-0">
               {nameLabel || "Group Name"} <span className="text-red-500">*</span>
             </label>
             <input
@@ -104,13 +106,12 @@ const UserGroupForm = ({
               disabled={isViewMode}
               placeholder="Enter group name"
             />
-          </div>
-
-          {/* Remarks */}
-          <div className="flex items-start gap-4 w-full max-w-2xl">
-            <label className="w-32 text-[12px] font-bold text-gray-500 uppercase mt-2 shrink-0">Remarks</label>
+          </div> 
+          <div className="flex flex-col sm:flex-row items-center px-1">
+            
+            <label className="text-black-800 text-[15px] w-[110px] mt-2 shrink-0">Remarks</label>
             <textarea
-              className={`${styles.input} h-20 py-2`}
+              className={`${styles.input} h-[40px] py-3`}
               value={formData.remarks || ""}
               onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
               onKeyDown={handleKeyDown}

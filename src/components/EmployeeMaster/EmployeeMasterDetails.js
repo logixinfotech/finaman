@@ -1,44 +1,4 @@
-export const tabs = ["basic", "organization", "documents", "salary"];
-
-export const designationOptions = [
-  "Software Engineer",
-  "Senior Software Engineer",
-  "Team Lead",
-  "Project Manager",
-  "HR Executive"
-];
-
-export const departmentOptions = [
-  "IT",
-  "HR",
-  "Finance",
-  "Sales",
-  "Marketing",
-];
-
-export const documentTypes = [
-  "Aadhaar Card",
-  "PAN Card",
-  "Voter ID",
-  "Passport",
-  "Driving License",
-  "10th / 12th Marksheets",
-  "Diploma / Degree Certificates",
-  "Post-Graduation Certificates",
-  "Professional Certificates",
-  "Skill Certifications",
-  "Previous Employment Letters",
-  "Relieving Letter",
-  "Experience Certificate",
-  "Salary Slips (Last 3 months)",
-  "PF/ESI Number",
-  "Rent Agreement",
-  "Bank Passbook",
-  "Offer Letter",
-  "Appointment Letter",
-  "Joining Report"
-];
-
+export const tabs = ["basic", "organization", "documents" ]; 
 export const labelClass =
   "text-[10px] font-bold text-gray-500 uppercase mb-1 block tracking-tight";
 
@@ -46,10 +6,11 @@ export const fieldGroups = {
   basic: {
     "Personal Information": [
       { key: "Title", label: "Title", type: "select", options: ["Mr.", "Mrs.", "Ms.", "Miss", "Dr."] },
+      { key: "Gender", label: "Gender", type: "select", options: ["Male", "Female", "Other"] },
       { key: "First Name", label: "First Name", type: "text" },
       { key: "Last Name", label: "Last Name", type: "text" },
       { key: "DOB", label: "DOB", type: "date" },
-      { key: "Gender", label: "Gender", type: "select", options: ["Male", "Female", "Other"] }
+      
     ],
     "Educational Details": [
       { key: "Qualification", label: "Qualification", type: "text" },
@@ -96,8 +57,9 @@ export const fieldGroups = {
     ],
     "Bank Details": [
       { key: "Bank Name", label: "Bank Name", type: "text" },
+       { key: "Bank Ifsc", label: "Bank Ifsc", type: "text" },
       { key: "Bank Address", label: "Bank Address", type: "text" },
-      { key: "Bank Ifsc", label: "Bank Ifsc", type: "text" },
+     
       { key: "Bank Account", label: "Bank Account", type: "text" }
     ]
   },
@@ -105,8 +67,7 @@ export const fieldGroups = {
     "Employment": [
       { key: "Employee Type", label: "Emp. Type", type: "text" },
       { key: "Employee Code", label: "Emp. Code", type: "text" },
-      { key: "Punch Card No", label: "Punch Card No", type: "text" },
-      { key: "Joining Date", label: "Joining Date", type: "date" },
+      { key: "Punch Card No", label: "Punch Card No", type: "text" }, 
       { key: "Confirm Date", label: "Confirm Date", type: "date" },
       { key: "Grade", label: "Grade", type: "select" },
       { key: "Division", label: "Division", type: "select" },
@@ -114,6 +75,11 @@ export const fieldGroups = {
       { key: "Department", label: "Department", type: "select"},
       { key: "Designation", label: "Designation", type: "select"},
       { key: "Reporting to", label: "Reporting to", type: "select" }
+    ],
+     "Dates And Status": [
+      { key: "Status Join Date", label: "Join Date", type: "date" },
+      { key: "Status Leaving Date", label: "Leaving Date", type: "date" },
+      { key: "Status Reason", label: "Reason", type: "text" }
     ],
     "PF Details": [
       { key: "EPF Number", label: "EPF Number", type: "text" },
@@ -124,16 +90,31 @@ export const fieldGroups = {
       { key: "ESIC Number", label: "ESIC Number", type: "text" },
       { key: "EDLI Join Date", label: "Join Date", type: "date" },
 
-      { key: "Gratuity Number", label: "Gratuity Number", type: "text" }
+      { key: "Gratuity Number", label: "Gratuity Number", type: "number" }
     ],
-    "Dates And Status": [
-      { key: "Status Join Date", label: "Join Date", type: "date" },
-      { key: "Status Leaving Date", label: "Leaving Date", type: "date" },
-      { key: "Status Reason", label: "Reason", type: "text" }
+   
+     "Earnings": [
+      { key: "Basic Salary", label: "Basic Salary", type: "number" },
+      { key: "HRA", label: "HRA", type: "text" },
+      { key: "DA", label: "DA", type: "text" },
+      { key: "Conveyance", label: "Conveyance", type: "text" },
+      { key: "Medical", label: "Medical", type: "text" },
+      { key: "Special allowance", label: "Special allowance", type: "text" }
+    ],
+    "Deductions": [
+      { key: "PF", label: "PF", type: "text" },
+      { key: "ESI", label: "ESI", type: "text" },
+      { key: "Professional Tax", label: "Professional Tax", type: "text" },
+      { key: "TDS", label: "TDS", type: "number" }
+    ],
+    "Employer Contribution": [
+      { key: "Employer PF", label: "Employer PF", type: "text" },
+      { key: "Employer ESI", label: "Employer ESI", type: "text" }
     ],
     "Other": [
+      { key: "Leave allow", label: "Leave allow", type: "leave-selector" },
       { key: "Remarks", label: "Remarks", type: "text" },
-      { key: "Leave allow", label: "Leave allow", type: "text" },
+      
       { key: "Applicable for", label: "Applicable for", type: "text" }
     ]
   },
@@ -144,24 +125,5 @@ export const fieldGroups = {
       { key: "Emerg_Mobile", label: "Mobile", type: "text" }
     ]
   },
-  salary: {
-    Earnings: [
-      { key: "Basic Salary", label: "Basic Salary", type: "text" },
-      { key: "HRA", label: "HRA", type: "text" },
-      { key: "DA", label: "DA", type: "text" },
-      { key: "Conveyance", label: "Conveyance", type: "text" },
-      { key: "Medical", label: "Medical", type: "text" },
-      { key: "Special allowance", label: "Special allowance", type: "text" }
-    ],
-    Deductions: [
-      { key: "PF", label: "PF", type: "text" },
-      { key: "ESI", label: "ESI", type: "text" },
-      { key: "Professional Tax", label: "Professional Tax", type: "text" },
-      { key: "TDS", label: "TDS", type: "text" }
-    ],
-    "Employer Contribution": [
-      { key: "Employer PF", label: "Employer PF", type: "text" },
-      { key: "Employer ESI", label: "Employer ESI", type: "text" }
-    ]
-  }
+   
 };

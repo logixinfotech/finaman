@@ -2,6 +2,7 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import config from "../config";
 import { handleApi } from "./apiHandler";
+import { transformToBackend } from "./employeeMapper";
 
 const api = axios.create({
   baseURL: config.apiUrl,
@@ -127,6 +128,8 @@ export const deleteUser = (id) =>
 export const updateUserAuth = (id) =>
   handleApi(() => api.delete(`//api/user/permissions/${id}`));
 
+//------------------------------------Holiday Master --------------------------------------------------------
+
 export const fetchHolidays = async () => {
   try {
     const res = await api.get("/api/holiday");
@@ -153,7 +156,8 @@ export const updateHoliday = (id, data) =>
 
 export const deleteHoliday = (id) =>
   handleApi(() => api.delete(`/api/holiday/${id}`));
-// User Group APIs
+ 
+//------------------------------------ User Group Master --------------------------------------------------------
 export const fetchUserGroups = () =>
   handleApi(() => api.get("/api/user/groups"));
 
@@ -312,7 +316,9 @@ export const fetchStates = async () => {
   const response = await api.get('/api/states');
   return response.data;
 };
-// ================= PAYROLL ATTENDANCE =================
+
+//------------------------------------ PAYROLL ATTENDANCE--------------------------------------------------------
+
 
 export const getAttendanceList = (params) =>
   handleApi(() =>
@@ -346,7 +352,45 @@ export const saveEmployee = (data) =>
 export const getActledList = () =>
   handleApi(() => api.get("/api/employee/actled"));
 
-// ---------------------------------------- SHIFT MASTER ENDPOINTS ----------------------------------------------
+export const createEmployee = async (data) => {
+  try {
+    const res = await api.post("/api/employee/actled", {
+      employeeData: JSON.stringify(data),
+    }); 
+    return res.data;  
+  } catch (err) {
+    return {
+      success: false,
+      message:
+        err.response?.data?.message ||
+        err.message ||
+        "Database error",
+    };
+  }
+};
+
+export const updateEmployee = async (id, data) => {
+  try {
+    const res = await api.put(`/api/employee/actled/${id}`, {
+      employeeData: JSON.stringify(data),
+    });
+
+    return res.data;
+  } catch (err) {
+    return {
+      success: false,
+      message:
+        err.response?.data?.message ||
+        err.message,
+    };
+  }
+};
+
+export const deleteEmployee = (id) => {
+  return api.delete(`/api/employee/actled/${id}`);
+};
+
+// ──────────────────────────────────────────────────HIFT MASTER ENDPOINTS ─────────────────────────────────── 
 
  export const fetchShifts = () =>
   handleApi(() => api.get("/api/shiftmaster"));  
@@ -360,7 +404,7 @@ export const getActledList = () =>
  export const deleteShift = (id) =>
   handleApi(() => api.delete(`/api/shiftmaster/${id}`));  
 
- // ---------------------------------------- OVER TIME ENTRY ----------------------------------------------
+ // ─────────────────────────────────────────── VER TIME ENTRY ───────────────────────────────────── 
 
  export const fetchOTRules = () =>
   handleApi(() => api.get("/api/overtime-entry"));
@@ -373,3 +417,242 @@ export const updateOTRule = (id, data) =>
 
 export const deleteOTRule = (id) =>
   handleApi(() => api.delete(`/api/overtime-entry/${id}`));
+
+// ───────────────────────────────────────────── HIFT ALLOCATION ENDPOINTS ────────────────────────────────────── 
+
+export const fetchAllocations = () =>
+  handleApi(() => api.get("/api/shiftmaster/shiftallocation"));
+
+export const createAllocation = (data) =>
+  handleApi(() => api.post("/api/shiftmaster/shiftallocation", data));
+
+export const updateAllocation = (id, data) =>
+  handleApi(() => api.put(`/api/shiftmaster/shiftallocation/${id}`, data)); 
+export const deleteAllocation = (id) =>
+  handleApi(() => api.delete(`/api/shiftmaster/shiftallocation/${id}`));
+
+// ────────────────────────────────────────────  EEKOFF MASTER ──────────────────────────────────── 
+
+
+export const getWeekOff = () =>
+  handleApi(() => api.get("/api/weekoff"));
+
+export const createWeekOff = (data) =>
+  handleApi(() => api.post("/api/weekoff", data));
+
+export const updateWeekOff = (id, data) =>
+  handleApi(() => api.put(`/api/weekoff/${id}`, data));
+
+export const deleteWeekOff = (id) =>
+  handleApi(() => api.delete(`/api/weekoff/${id}`));
+
+// ───────────────────────────────────────── ttendance Regularization  ───────────────────────────────────── 
+
+
+export const getAttendRegular = () =>
+  handleApi(() => api.get("/api/attendregular"));
+
+export const createAttendRegular = (data) =>
+  handleApi(() => api.post("/api/attendregular", data));
+
+export const updateAttendRegular = (id, data) =>
+  handleApi(() => api.put(`/api/attendregular/${id}`, data));
+
+export const deleteAttendRegular = (id) =>
+  handleApi(() => api.delete(`/api/attendregular/${id}`));
+
+
+// ────────────────────────────────────── EAVE TYPES ──────────────────────────────────────────────────
+ 
+export const getLeaveTypes = () => 
+  handleApi(() => api.get("/api/leavetypes"));
+
+ export const createLeaveType = (data) => 
+  handleApi(() => api.post("/api/leavetypes", data));
+
+export const updateLeaveType = (id, data) => 
+  handleApi(() => api.put(`/api/leavetypes/${id}`, data));
+
+export const deleteLeaveType = (id) => 
+  handleApi(() => api.delete(`/api/leavetypes/${id}`));
+
+// ─────────────────────────────────────  EAVE Balance ──────────────────────────────────────────────────
+
+export const getLeaveBalance = () => 
+  handleApi(() => api.get("/api/leavetypes/balance"));
+
+export const createLeaveBalance = (data) =>
+  handleApi(() => api.post("/api/leavetypes/balance", data));
+
+// ───────────────────────────────────────── EAVE Request ──────────────────────────────────────────────────
+
+export const getLeaveRequests     = ()         =>
+  handleApi(() => api.get("/api/leaverequest"));
+
+export const createLeaveRequest   = (data)     =>
+  handleApi(() => api.post("/api/leaverequest", data));
+
+export const updateLeaveRequest = (id, data) =>
+  handleApi(() => api.put(`/api/leaverequest/${id}`, data));
+
+export const deleteLeaveRequest   = (id)       =>
+  handleApi(() => api.delete(`/api/leaverequest/${id}`));
+
+// ──────────────────────────────────────── INCOME HEADS ──────────────────────────────────────────────────────────
+
+
+export const fetchIncomeHeads = () =>
+  handleApi(() => api.get("/api/salary-master/income-heads"));
+
+export const createIncomeHead = (data) =>
+  handleApi(() => api.post("/api/salary-master/income-heads", data));
+
+export const updateIncomeHead = (id, data) =>
+  handleApi(() => api.put(`/api/salary-master/income-heads/${id}`, data));
+
+export const deleteIncomeHead = (id) =>
+  handleApi(() => api.delete(`/api/salary-master/income-heads/${id}`));
+
+// ─────────────────────────────────────────── DEDUCTION HEADS ───────────────────────────────────────────────────────
+
+
+export const fetchDeductionHeads = () =>
+  handleApi(() => api.get("/api/salary-master/deduction-heads"));
+
+export const createDeductionHead = (data) =>
+  handleApi(() => api.post("/api/salary-master/deduction-heads", data));
+
+export const updateDeductionHead = (id, data) =>
+  handleApi(() => api.put(`/api/salary-master/deduction-heads/${id}`, data));
+
+export const deleteDeductionHead = (id) =>
+  handleApi(() => api.delete(`/api/salary-master/deduction-heads/${id}`));
+
+// ───────────────────────────────────────── SALARY TEMPLATE  ────────────────────────────
+
+export const fetchSalaryTemplates = () =>
+  handleApi(() => api.get("/api/salary-master/salary-templates"));
+
+export const fetchActiveIncomeHeads = () =>
+  handleApi(() => api.get("/api/salary-master/income-heads?status=Active"));
+
+export const fetchActiveDeductionHeads = () =>
+  handleApi(() => api.get("/api/salary-master/deduction-heads?status=Active"));
+// ──────────────────────────────────────── SALARY TEMPLATES ──────────────────────────────────────────────────────
+ 
+export const createSalaryTemplate = (data) =>
+  handleApi(() => api.post("/api/salary-master/salary-templates", data));
+
+export const updateSalaryTemplate = (id, data) =>
+  handleApi(() => api.put(`/api/salary-master/salary-templates/${id}`, data));
+
+export const deleteSalaryTemplate = (id) =>
+  handleApi(() => api.delete(`/api/salary-master/salary-templates/${id}`));
+
+// ───────────────────────────────────────── FORMULA ENGINE ────────────────────────────────────────────────────────
+export const fetchFormulaEngine = () =>
+  handleApi(() => api.get("/api/salary-master/formula-engine"));
+
+export const createFormula = (data) =>
+  handleApi(() => api.post("/api/salary-master/formula-engine", data));
+
+export const updateFormula = (id, data) =>
+  handleApi(() => api.put(`/api/salary-master/formula-engine/${id}`, data));
+
+export const deleteFormula = (id) =>
+  handleApi(() => api.delete(`/api/salary-master/formula-engine/${id}`));
+
+
+// ───────────────────────────────────────── Approval Workflow ────────────────────────────────────────────────────────
+export const getApprovalWorkflow    = ()         => 
+  handleApi(() => api.get("/api/Approvalflow"));
+
+export const createApprovalWorkflow = (data)     => 
+  handleApi(() => api.post("/api/Approvalflow", data));
+
+export const updateApprovalWorkflow = (id, data) =>
+   handleApi(() => api.put(`/api/Approvalflow/${id}`, data));
+
+export const deleteApprovalWorkflow = (id)       => 
+  handleApi(() => api.delete(`/api/Approvalflow/${id}`));
+
+
+// ────────────────────────────────────────── Approval Transaction ──────────────────────────────────────────────────
+
+export const getPendingRequests = (approverId) =>
+  handleApi(() => api.get(`/api/ApprovalTransaction/pending/${approverId}`));
+
+export const approvalAction = (data) =>
+  handleApi(() => api.post("/api/ApprovalTransaction/action", data));
+
+export const getApprovalTransactions   = ()          =>
+  handleApi(() => api.get("/api/ApprovalTransaction"));
+
+export const getTransactionsByRequest  = (requestId) =>
+  handleApi(() => api.get(`/api/ApprovalTransaction/by-request/${requestId}`));
+
+export const createApprovalTransaction = (data)      =>
+  handleApi(() => api.post("/api/ApprovalTransaction", data));
+
+export const updateApprovalTransaction = (id, data)  =>
+  handleApi(() => api.put(`/api/ApprovalTransaction/${id}`, data));
+
+export const deleteApprovalTransaction = (id)        =>
+  handleApi(() => api.delete(`/api/ApprovalTransaction/${id}`));
+
+// ──────────────────────────────────────── Leave Accrual & Carry Forward ────────────────────────────────────────
+export const getLeaveAccruals               = ()              =>
+  handleApi(() => api.get("/api/LeaveAccrual"));
+
+export const createLeaveAccrual             = (data)         =>
+  handleApi(() => api.post("/api/LeaveAccrual", data));
+
+export const updateLeaveAccrual             = (id, data)     =>
+  handleApi(() => api.put(`/api/LeaveAccrual/${id}`, data));
+
+export const deleteLeaveAccrual             = (id)           =>
+  handleApi(() => api.delete(`/api/LeaveAccrual/${id}`));
+
+// ────────────────────────────────────────── Leave Encashment ──────────────────────────────────────────────────────
+export const getLeaveEncashments            = ()              =>
+  handleApi(() => api.get("/api/LeaveEncashment"));
+
+export const createLeaveEncashment          = (data)         =>
+  handleApi(() => api.post("/api/LeaveEncashment", data));
+
+export const updateLeaveEncashment          = (id, data)     =>
+  handleApi(() => api.put(`/api/LeaveEncashment/${id}`, data));
+
+export const deleteLeaveEncashment          = (id)           =>
+  handleApi(() => api.delete(`/api/LeaveEncashment/${id}`));
+
+
+// ── PF ────────────────────────────────────────────────────
+export const fetchPFList    = ()         => handleApi(() => api.get("/api/statutory-master/?type=PF"));
+export const createPF       = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
+export const updatePF       = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
+export const deletePF       = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
+
+// ── ESI ───────────────────────────────────────────────────
+export const fetchESIList   = ()         => handleApi(() => api.get("/api/statutory-master/?type=ESI"));
+export const createESI      = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
+export const updateESI      = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
+export const deleteESI      = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
+
+// ── PT ────────────────────────────────────────────────────
+export const fetchPTList    = ()         => handleApi(() => api.get("/api/statutory-master/?type=PT"));
+export const createPT       = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
+export const updatePT       = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
+export const deletePT       = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
+
+// ── LWF ───────────────────────────────────────────────────
+export const fetchLWFList   = ()         => handleApi(() => api.get("/api/statutory-master/?type=LWF"));
+export const createLWF      = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
+export const updateLWF      = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
+export const deleteLWF      = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
+
+// ── TDS ───────────────────────────────────────────────────
+export const fetchTDSList   = ()         => handleApi(() => api.get("/api/statutory-master/tds"));
+export const createTDS      = (data)     => handleApi(() => api.post("/api/statutory-master/tds", data));
+export const updateTDS      = (id, data) => handleApi(() => api.put(`/api/statutory-master/tds/${id}`, data));
+export const deleteTDS      = (id)       => handleApi(() => api.delete(`/api/statutory-master/tds/${id}`));

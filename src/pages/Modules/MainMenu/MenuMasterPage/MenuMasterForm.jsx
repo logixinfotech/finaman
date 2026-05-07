@@ -1,60 +1,64 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
-  const inputClass = "w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs shadow-sm hover:border-gray-300 focus:border-[var(--sidebar-accent-bg)] focus:ring-2 focus:ring-[var(--sidebar-accent-bg)/20] outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed";
-  const labelClass = "text-[10px] font-semibold text-gray-500 tracking-wide uppercase";
-  const errorText = "text-[10px] text-red-500 mt-1";
+
+const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
+const inputClass = "h-[30px] px-2 text-[13px] border border-gray-300 rounded-md bg-white focus:border-blue-500 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed";
+const labelClass = "text-[12px] font-medium text-gray-600 w-[120px]";
+const errorText = "text-[10px] text-red-500 mt-0.5";
+
 const MenuMasterForm = ({
-  mode,
-  modules,
-  formData,
-  setFormData,
-  onSave,
-  onCancel,
-  saving,
-  onDelete,
-  onModify,onEditCancel, rights
-}) => { 
+  mode, modules, formData, setFormData, onSave, onCancel,
+  saving, onDelete, onModify, onEditCancel, rights,
+  currentRecord, totalRecords, activeTab, onTabChange
+}) => {
   const isView = mode === "view";
-  const isEdit = !!formData.masmnu_id; 
+  const isEdit = !!formData.masmnu_id;
+  const isAdd = mode === "add";
+
   const fieldDisabled = (fieldName) => {
-    if (isView) return true;  
+    if (isView) return true;
     if (isEdit && (fieldName === "masmod_id" || fieldName === "pad_name")) return true;
     return false;
   };
 
   const [errors, setErrors] = useState({});
-  const inputRefs = useRef([]);
-  inputRefs.current = [];
-
-  const setInputRef = (el) => {
-    if (el && !inputRefs.current.includes(el)) inputRefs.current.push(el);
-  };
-
-  const focusNextInput = (current) => {
-    const index = inputRefs.current.indexOf(current); 
-    const nextInput = inputRefs.current.slice(index + 1).find(input => !input.disabled);
-    if (nextInput) nextInput.focus();
-  };
+  const containerRef = useRef(null); 
+  useEffect(() => {
+    if (!isView) {
+      setTimeout(() => {
+        const firstInput = containerRef.current?.querySelector("input:not([disabled]), select:not([disabled])");
+        firstInput?.focus();
+      }, 150);
+    }
+  }, [mode]);
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === "ArrowDown") {
+    if (isView) return;
+    if (e.key === "Enter") {
       e.preventDefault();
-      focusNextInput(e.target);
+      const elements = Array.from(
+        containerRef.current.querySelectorAll("input:not([disabled]), select:not([disabled]), button:not([disabled])")
+      );
+      const index = elements.indexOf(e.target);
+      if (index > -1 && index < elements.length - 1) {
+        elements[index + 1].focus();
+      } else {
+        handleSubmit();
+      }
     }
   };
 
   const handleChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
   };
-
-  const requiredFields = ["masmod_id", "pad_name", "bar_name"];
 
   const validateForm = () => {
     const newErrors = {};
-    requiredFields.forEach((f) => {
-      if (!formData[f]) newErrors[f] = "Required";
-    });
+    if (!formData.masmod_id) newErrors.masmod_id = "Required";
+    if (!formData.pad_name) newErrors.pad_name = "Required";
+    if (!formData.bar_name) newErrors.bar_name = "Required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -67,161 +71,159 @@ const MenuMasterForm = ({
   const selectedModule = modules.find((m) => m.masmod_id === formData.masmod_id);
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col min-h-[calc(100vh-160px)]">
+    <div className="w-full max-w-[900px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col" style={{ fontFamily: FONT }}>
       
       <ERPHeader
-        title="Menu Master"
-        isAddMode={!isEdit && !isView}
+        title="MENU MASTER"
+        isAddMode={isAdd}
         isEditMode={isEdit && !isView}
         isViewMode={isView}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
       />
 
-      <div className="p-5 bg-gray-50 flex-1">
-        {selectedModule && (
-          <div className="mb-4 text-xs bg-blue-50 border border-blue-200 px-3 py-1 rounded-md text-blue-700 inline-block">
-            Selected Module : <b>{selectedModule.mod_name}</b>
-          </div>
-        )}
+      <div className="flex-1 p-4 flex justify-center items-start overflow-y-auto">
+        <div ref={containerRef} className="w-full bg-white border rounded-lg p-6 shadow-sm">
+          
+          {selectedModule && (
+            <div className="mb-4 text-[11px] bg-blue-50 text-blue-700 px-3 py-1 rounded border border-blue-100 inline-block">
+              Module: <strong>{selectedModule.mod_name}</strong>
+            </div>
+          )}
 
-        <div className="grid xl:grid-cols-4 md:grid-cols-2 grid-cols-1 gap-4"> 
-          <div>
-            <label className={labelClass}>Module *</label>
-            <select
-              ref={setInputRef}
-              disabled={fieldDisabled("masmod_id")}
-              className={`${inputClass} ${errors.masmod_id ? "border-red-500" : ""}`}
-              value={formData.masmod_id || ""}
-              onChange={(e) => handleChange("masmod_id", Number(e.target.value))}
-              onKeyDown={handleKeyDown}
-            >
-              <option value="">Select Module</option>
-              {modules.map((m) => (
-                <option key={m.masmod_id} value={m.masmod_id}>{m.mod_name}</option>
-              ))}
-            </select>
-            {errors.masmod_id && <p className={errorText}>{errors.masmod_id}</p>}
-          </div> 
-          <div>
-            <label className={labelClass}>Pad Name *</label>
-            <select
-              ref={setInputRef}
-              disabled={fieldDisabled("pad_name")}
-              className={`${inputClass} ${errors.pad_name ? "border-red-500" : ""}`}
-              value={formData.pad_name || ""}
-              onChange={(e) => handleChange("pad_name", e.target.value)}
-              onKeyDown={handleKeyDown}
-            >
-              <option value="">Select Pad</option>
-              <option value="Entries">Entries</option>
-              <option value="Reports">Reports</option>
-              <option value="Install">Install</option>
-              <option value="Utility">Utility</option>
-            </select>
-            {errors.pad_name && <p className={errorText}>{errors.pad_name}</p>}
-          </div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            {/* Module Select */}
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                <label className={labelClass}>Module <span className="text-red-500">*</span></label>
+                <select
+                  disabled={fieldDisabled("masmod_id")}
+                  className={`${inputClass} flex-1 ${errors.masmod_id ? "border-red-500" : ""}`}
+                  value={formData.masmod_id || ""}
+                  onChange={(e) => handleChange("masmod_id", Number(e.target.value))}
+                  onKeyDown={handleKeyDown}
+                >
+                  <option value="">Select Module</option>
+                  {modules.map((m) => (
+                    <option key={m.masmod_id} value={m.masmod_id}>{m.mod_name}</option>
+                  ))}
+                </select>
+              </div>
+              {errors.masmod_id && <p className={`${errorText} ml-[120px]`}>{errors.masmod_id}</p>}
+            </div>
 
-          <div>
-            <label className={labelClass}>Item Type</label>
-            <select
-              ref={setInputRef}
-              disabled={isView}
-              className={inputClass}
-              value={formData.item_type || ""}
-              onChange={(e) => handleChange("item_type", e.target.value)}
-              onKeyDown={handleKeyDown}
-            >
-              <option value="">Select</option>
-              <option value="M">Menu</option>
-              <option value="S">Sub Menu</option>
-              <option value="R">Report</option>
-            </select>
-          </div> 
-          <div>
-            <label className={labelClass}>Serial No</label>
-            <input className={inputClass} value={formData.srl_no || ""} disabled />
-          </div>
+            {/* Pad Name Select */}
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                <label className={labelClass}>Pad Name <span className="text-red-500">*</span></label>
+                <select
+                  disabled={fieldDisabled("pad_name")}
+                  className={`${inputClass} flex-1 ${errors.pad_name ? "border-red-500" : ""}`}
+                  value={formData.pad_name || ""}
+                  onChange={(e) => handleChange("pad_name", e.target.value)}
+                  onKeyDown={handleKeyDown}
+                >
+                  <option value="">Select Pad</option>
+                  <option value="Entries">Entries</option>
+                  <option value="Reports">Reports</option>
+                  <option value="Utility">Utility</option>
+                </select>
+              </div>
+              {errors.pad_name && <p className={`${errorText} ml-[120px]`}>{errors.pad_name}</p>}
+            </div>
 
-          <div>
-            <label className={labelClass}>Bar Serial</label>
-            <input className={inputClass} value={formData.bar_srl || ""} disabled />
-          </div>
+            <div className="flex items-center">
+              <label className={labelClass}>Item Type</label>
+              <select
+                disabled={isView}
+                className={`${inputClass} flex-1`}
+                value={formData.item_type || ""}
+                onChange={(e) => handleChange("item_type", e.target.value)}
+                onKeyDown={handleKeyDown}
+              >
+                <option value="M">Menu</option>
+                <option value="S">Sub Menu</option>
+                <option value="R">Report</option>
+              </select>
+            </div>
 
-          <div className="xl:col-span-2 md:col-span-2">
-            <label className={labelClass}>Menu Name *</label>
-            <input
-              ref={setInputRef}
-              disabled={isView}
-              className={`${inputClass} ${errors.bar_name ? "border-red-500" : ""}`}
-              value={formData.bar_name || ""}
-              onChange={(e) => handleChange("bar_name", e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            {errors.bar_name && <p className={errorText}>{errors.bar_name}</p>}
-          </div>
- 
-          <div>
-            <label className={labelClass}>Application Type</label>
-            <select
-              ref={setInputRef}
-              disabled={isView}
-              className={inputClass}
-              value={formData.appl_type || ""}
-              onChange={(e) => handleChange("appl_type", e.target.value)}
-              onKeyDown={handleKeyDown}
-            >
-              <option value="F">Form</option>
-              <option value="P">Program</option>
-              <option value="A">Application</option>
-              <option value="E">Executable</option>
-            </select>
-          </div>
+            <div className="flex items-center">
+              <label className={labelClass}>Application Type</label>
+              <select
+                disabled={isView}
+                className={`${inputClass} flex-1`}
+                value={formData.appl_type || ""}
+                onChange={(e) => handleChange("appl_type", e.target.value)}
+                onKeyDown={handleKeyDown}
+              >
+                <option value="F">Form</option>
+                <option value="P">Program</option>
+                <option value="A">Application</option>
+              </select>
+            </div>
 
-          <div>
-            <label className={labelClass}>Application Name</label>
-            <input
-              ref={setInputRef}
-              disabled={isView}
-              className={inputClass}
-              value={formData.appl_name || ""}
-              onChange={(e) => handleChange("appl_name", e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-          </div>
+            <div className="flex flex-col col-span-2">
+              <div className="flex items-center">
+                <label className={labelClass}>Menu Name <span className="text-red-500">*</span></label>
+                <input
+                  disabled={isView}
+                  className={`${inputClass} flex-1 ${errors.bar_name ? "border-red-500" : ""}`}
+                  value={formData.bar_name || ""}
+                  onChange={(e) => handleChange("bar_name", e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
+              {errors.bar_name && <p className={`${errorText} ml-[120px]`}>{errors.bar_name}</p>}
+            </div>
 
-          <div className="xl:col-span-2 md:col-span-2">
-            <label className={labelClass}>Parameters</label>
-            <input
-              ref={setInputRef}
-              disabled={isView}
-              className={inputClass}
-              value={formData.appl_para || ""}
-              onChange={(e) => handleChange("appl_para", e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-          </div>
+            <div className="flex items-center col-span-2">
+              <label className={labelClass}>File Name</label>
+              <input
+                disabled={isView}
+                className={`${inputClass} flex-1`}
+                value={formData.appl_name || ""}
+                placeholder="e.g. UserMasterPage"
+                onChange={(e) => handleChange("appl_name", e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
 
-          <div>
-            <label className={labelClass}>Is Hidden?</label>
-            <select
-              disabled={isView}
-              className={inputClass}
-              value={formData.menu_hide || "N"}
-              onChange={(e) => handleChange("menu_hide", e.target.value)}
-            >
-              <option value="N">No (Visible)</option>
-              <option value="Y">Yes (Hidden)</option>
-            </select>
+            <div className="flex items-center col-span-2">
+              <label className={labelClass}>Parameters</label>
+              <input
+                disabled={isView}
+                className={`${inputClass} flex-1`}
+                value={formData.appl_para || ""}
+                onChange={(e) => handleChange("appl_para", e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+
+            <div className="flex items-center">
+              <label className={labelClass}>Is Hidden?</label>
+              <select
+                disabled={isView}
+                className={`${inputClass} flex-1`}
+                value={formData.menu_hide || "N"}
+                onChange={(e) => handleChange("menu_hide", e.target.value)}
+                onKeyDown={handleKeyDown}
+              >
+                <option value="N">No (Visible)</option>
+                <option value="Y">Yes (Hidden)</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
       <ERPFooter
-        isAddMode={!isEdit && !isView}
+        isAddMode={isAdd}
         isEditMode={isEdit && !isView}
         isViewMode={isView}
         saving={saving}
         handleSubmit={handleSubmit}
-       onModify={rights.mod === 1 ? onModify : null} 
+        onModify={rights.mod === 1 ? onModify : null}
         onDelete={rights.del === 1 ? onDelete : null}
         onEditCancel={onEditCancel}
         onCancel={onCancel}

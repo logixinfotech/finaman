@@ -1,14 +1,34 @@
-export const hasPermission = (appl, action) => {
-  const user = JSON.parse(sessionStorage.getItem("user"));
-  const permissions = JSON.parse(sessionStorage.getItem("permissions"));
+// lib/permissions.js
+export const getRights = (appl_name) => {
+  const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+  const allPerms = JSON.parse(sessionStorage.getItem("permissions") || "{}");
+  
+  if (user?.role?.toLowerCase() === "admin") {
+    return { add: 1, mod: 1, del: 1, print: 1, modDays: 999 };
+  }
 
-  // ✅ Admin bypass
-  if (user?.role === "admin") return true;
+  const raw = allPerms[appl_name] || {};
+  return {
+    add: Number(raw.add || 0),
+    mod: Number(raw.mod || 0),
+    del: Number(raw.del || 0),
+    print: Number(raw.print || 0),
+    modDays: Number(raw.modDays || 0)
+  };
+};// export const hasPermission = (appl, action) => {
+//   const user = JSON.parse(sessionStorage.getItem("user"));
+//   const permissions = JSON.parse(sessionStorage.getItem("permissions"));
 
-  // ✅ Normal user
-  return permissions?.[appl]?.[action] === 1;
-};// // src/utils/permissions.jsT
+//   // ✅ Admin bypass
+//   if (user?.role === "admin") return true;
 
+//   // ✅ Normal user
+//   return permissions?.[appl]?.[action] === 1;
+// };
+
+
+
+// // src/utils/permissions.jsT==========================================================================
 // export const getRights = (appl_name) => {
 //   const perms = JSON.parse(sessionStorage.getItem("permissions") || "{}");
 //   return perms[appl_name] || null;

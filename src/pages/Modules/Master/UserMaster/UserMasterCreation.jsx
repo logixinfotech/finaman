@@ -25,16 +25,14 @@ const initialState = {
     user_group: "",
     setting_pass: "",
     signature: ""
-};
-// Add 'editable' and 'onCellSave' to your columns
+}; 
 const columns = [
     { 
         key: "user_name", 
         label: "User Name", 
         editable: true,
         onCellSave: async (row, key, newValue) => {
-            try {
-                // Call your existing updateUser API
+            try { 
                 const response = await updateUser(row.user_id, { ...row, [key]: newValue });
                 if (response.success) {
                     showToast({ icon: "success", title: "Updated successfully" });
@@ -81,15 +79,19 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
         try {
             setLoading(true);
             const data = await fetchUsers();
-            setList(Array.isArray(data) ? data : data?.data || []);;
+            const finalData = Array.isArray(data) ? data : data?.data || [];
+            setList(finalData);
+        } catch (err) {
+            console.error("Load users failed", err);
         } finally {
             setLoading(false);
         }
     }, []);
+
     const {
-       mode, formData, setFormData, showForm, setShowForm,
-    saving, canPrint, handleView, handleAdd,
-    handleModify, performSave, rights, isEditMode, handleEditCancel
+        mode, formData, setFormData, showForm, setShowForm,
+        saving, canPrint, handleView, handleAdd,
+        handleModify, performSave, rights, isEditMode, handleEditCancel
     } = useERPMode(
         initialState,
         async (data, isEdit) => {
@@ -99,62 +101,51 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
         tab.appl_name 
     );
 
-
-
     useEffect(() => { loadUsers(); }, [loadUsers]);
 
+    // Sync Form Data when navigating records
     useEffect(() => {
         if (showForm && mode === "view" && list.length > 0) {
             setFormData(list[currentIndex]);
         }
-    }, [currentIndex, list, showForm, mode]);
+    }, [currentIndex, list, showForm, mode, setFormData]);
 
     const handleRowSelect = (row) => {
         const index = list.findIndex(item => item.user_id === row.user_id);
-
-        if (index !== -1) {
-            setCurrentIndex(index);
-
-            setFormData({
-                ...list[index],
-                user_type: list[index].user_type || "",
-                user_group: list[index].user_group || ""
-            });
-        }
-
+        if (index !== -1) setCurrentIndex(index);
         handleView(row);
-    }; const handleSave = async () => {
-        if (!formData.user_id || !formData.password) {
-            alertError("Validation Error", "Please fill all required fields");
+    };
+
+    const handleSave = async () => {
+        // Validation check before calling performSave
+        if (!formData.user_id || !formData.password || !formData.user_type) {
+            alertError("Validation Error", "Please fill all required fields marked with *");
             return;
         }
-        const response = await performSave("user_id");
 
+        const response = await performSave("user_id", formData);
         if (response?.success) {
             showToast({
                 icon: "success",
-                title: isEditMode ? "Updated successfully" : "Added successfully",
+                title: isEditMode ? "User updated successfully" : "User added successfully",
             });
-
-            loadUsers();
-        } else {
-            alertError("Error", response?.message);
+            await loadUsers();
         }
+    }; 
+
+    const handleTabChange = (targetTab) => {
+        if (targetTab === "search") setShowForm(false);
+        if (targetTab === "entry") setShowForm(true);
     };
-// loadUsers ke baad ye add karo:
-const handleTabChange = (targetTab) => {
-    if (targetTab === "search") setShowForm(false);
-    if (targetTab === "entry") setShowForm(true);
-};
+
     const handleDelete = async (row) => {
         const confirmed = await confirmDelete({
             title: `Delete "${row.user_name}"?`,
-            text: "This action cannot be undone",
+            text: "This action will permanently remove the user login.",
         });
         if (!confirmed) return;
 
         const res = await deleteUser(row.user_id);
-
         if (res.success) {
             showToast({ icon: "success", title: "Deleted successfully" });
             loadUsers();
@@ -166,22 +157,22 @@ const handleTabChange = (targetTab) => {
         setPrintData(row || formData);
         setShowPreview(true);
     };
+
+    // Global ERP Handlers
     useEffect(() => {
         setERPHandlers({
-            onNextRecord: () =>
-                setCurrentIndex(prev => Math.min(prev + 1, list.length - 1)),
-            onPrevRecord: () =>
-                setCurrentIndex(prev => Math.max(prev - 1, 0)),
+            onNextRecord: () => setCurrentIndex(prev => Math.min(prev + 1, list.length - 1)),
+            onPrevRecord: () => setCurrentIndex(prev => Math.max(prev - 1, 0)),
             onFirstRecord: () => setCurrentIndex(0),
             onLastRecord: () => setCurrentIndex(list.length - 1),
             onNew: handleAdd,
             onSave: handleSave,
             onEsc: () => setShowForm(false),
         });
-    }, [list]);
+    }, [list, formData, handleAdd]);
 
     return (
-        <div>
+        <div className="h-full w-full">
             {showPreview ? (
                 <ERPPrintPreview
                     title="User Details"
@@ -190,45 +181,41 @@ const handleTabChange = (targetTab) => {
                     onBack={() => setShowPreview(false)}
                 />
             ) : showForm ? (
-              <AddUserMaster
-    formData={formData}
-    setFormData={setFormData}
-    onSave={handleSave}
-    onCancel={() => setShowForm(false)}
-    onDelete={handleDelete}
-    onPrint={handlePrint}
-    mode={mode}
-    saving={saving}
-    canPrint={canPrint}
-    onNewEntry={handleAdd}
-    onModify={handleModify}
-    onEditCancel={handleEditCancel}
-    rights={rights}
-    currentRecord={currentIndex + 1}
-    totalRecords={list.length}
-    onOpenPage={onOpenPage}
-    activeTab="entry"
-    onTabChange={handleTabChange}
-/>
+                <AddUserMaster
+                    formData={formData}
+                    setFormData={setFormData}
+                    onSave={handleSave}
+                    onCancel={() => setShowForm(false)}
+                    onDelete={handleDelete}
+                    onPrint={handlePrint}
+                    mode={mode}
+                    saving={saving}
+                    canPrint={canPrint}
+                    onNewEntry={handleAdd}
+                    onModify={handleModify}
+                    onEditCancel={handleEditCancel}
+                    rights={rights}
+                    currentRecord={currentIndex + 1}
+                    totalRecords={list.length}
+                    onOpenPage={onOpenPage}
+                    activeTab="entry"
+                    onTabChange={handleTabChange}
+                />
             ) : (
                 <Table
-    title="User Master"
-    data={list}
-    columns={columns}
-    rowKey="user_id"
-    loading={loading}
-    onRefresh={() => loadUsers()}
-    onAdd={rights.add === 1 ? handleAdd : null}
-    onRowDoubleClick={handleRowSelect}
+                    title="User Master"
+                    data={list}
+                    columns={columns}
+                    rowKey="user_id"
+                    loading={loading}
+                    onRefresh={loadUsers}
+                    onAdd={rights.add === 1 ? handleAdd : null}
+                    onRowDoubleClick={handleRowSelect}
                     onDeleteMultiple={async (ids) => {
-                        const confirmed = await confirmDelete({
-                            title: `Delete ${ids.length} users?`,
-                            text: "This action cannot be undone",
-                        });
-
+                        const confirmed = await confirmDelete({ title: `Delete ${ids.length} users?` });
                         if (!confirmed) return;
                         await Promise.all(ids.map(id => deleteUser(id)));
-                         showToast({ icon: "success", title: "Deleted successfully" });
+                        showToast({ icon: "success", title: "Bulk delete successful" });
                         loadUsers();
                     }}
                 />

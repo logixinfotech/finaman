@@ -7,20 +7,19 @@ import { confirmDelete, showToast, alertError } from "../../../../components/Reu
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 
 const initialState = {
-  shift_id: null,
   shift_name: "",
   start_time: "",
   end_time: "",
-  grace_in_minutes: 0,
-  grace_out_minutes: 0,
-  full_day_hours: 8.0,
-  half_day_hours: 4.0,
+  grace_in_minutes: "",
+  grace_out_minutes: "",
+  full_day_hours: "",
+  half_day_hours: "",
   is_night_shift: 0,
 };
 
 const columns = [
   { key: "shift_name", label: "Shift Name" },
-  { key: "start_time", label: "Start Time" },
+  { key: "start_time", label: "Start Time" }, // Must match the key in API JSON
   { key: "end_time", label: "End Time" },
   { key: "full_day_hours", label: "Hours" },
 ];
@@ -43,14 +42,14 @@ const ShiftMaster = ({ tab }) => {
     },
     () => loadShifts(), 
     tab.appl_name
-  );
-// ShiftMaster.jsx ke loadShifts function ko aise update karein:
+  ); 
 const loadShifts = useCallback(async () => {
   try {
     setLoading(true);
     const data = await fetchShifts();
     const finalData = Array.isArray(data) ? data : data?.data || [];
     setList(finalData); 
+    console.log("API Response Data:", finalData);
     if (finalData.length > 0) {
       setFormData(finalData[0]);
       setCurrentIndex(0);
@@ -62,9 +61,7 @@ const loadShifts = useCallback(async () => {
   }
 }, [setFormData]);
 
-  useEffect(() => { loadShifts(); }, []);
-
-  // Record change logic
+  useEffect(() => { loadShifts(); }, []); 
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
       setFormData(list[currentIndex]);
@@ -82,16 +79,18 @@ const loadShifts = useCallback(async () => {
     handleView(row);
   };
 
-const handleSave = async (updatedData) => { 
-  const response = await performSave("shift_id", updatedData); 
-  if (response?.success) { 
+const handleSave = async (updatedData) => {
+  console.log("Saving data:", updatedData); // 👈 add this
+  const response = await performSave("shift_id", updatedData);
+  if (response?.success) {
     await loadShifts();
   }
 };
 
   const handleDelete = async (row) => {
+    console.log("Deleting ID:", row.shift_id); // Verify this isn't undefined
     const confirmed = await confirmDelete({ title: `Delete Shift "${row.shift_name}"?` });
-    if (confirmed) {
+    if (confirmed) { 
       const res = await deleteShift(row.shift_id);
       if (res.success) {
         showToast({ icon: "success", title: "Deleted" });
@@ -115,7 +114,7 @@ const handleSave = async (updatedData) => {
     <div className="h-full w-full">
       {showForm ? (
         <ShiftMasterForm
-          initialData={formData} // Hook's formData
+          initialData={formData} 
           onSave={handleSave}
           onCancel={() => setShowForm(false)}
           onDelete={handleDelete}

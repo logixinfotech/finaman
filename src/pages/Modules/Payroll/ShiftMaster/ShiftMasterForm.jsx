@@ -3,7 +3,7 @@ import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 
 const ShiftMasterForm = ({
-  mode = "view",  
+  mode = "view",
   onSave,
   onCancel,
   onDelete,
@@ -14,22 +14,22 @@ const ShiftMasterForm = ({
   currentRecord,
   totalRecords,
   rights,
-  activeTab = "entry", 
-  onTabChange, 
-  initialData = {} 
-}) => { 
+  activeTab = "entry",
+  onTabChange,
+  initialData = {}
+}) => {
   const [formData, setFormData] = useState(initialData);
   const [errors, setErrors] = useState({});
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode = mode === "add";
+   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 
-  const requiredFields = [  "start_time", "end_time"];
-useEffect(() => {
+ const requiredFields = ["shift_name", "start_time", "end_time"];
+  useEffect(() => {
     setFormData(initialData);
-  }, [initialData]);
-  // Form load hote hi pehle input par focus
+  }, [initialData]); 
   useEffect(() => {
     if (isAddMode || isEditMode) {
       setTimeout(() => {
@@ -52,12 +52,10 @@ useEffect(() => {
   };
 
   const getInputClass = (isDisabled, fieldName) =>
-    `w-full h-[26px] px-2 text-[13px] border rounded-sm outline-none transition-colors ${
-      errors[fieldName] ? "border-red-500" : "border-gray-300"
-    } ${
-      isDisabled
-        ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
-        : "bg-white focus:border-blue-500"
+    `w-full h-[30px] px-2 text-[16px] border rounded-md outline-none transition-colors ${errors[fieldName] ? "border-red-500" : "border-gray-300"
+    } ${isDisabled
+      ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
+      : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`;
 
   const handleValidateAndSave = useCallback(() => {
@@ -81,8 +79,8 @@ useEffect(() => {
           if (targetInput) targetInput.focus();
         }
       }, 50);
-      return; 
-    } 
+      return;
+    }
     if (onSave) onSave(formData);
   }, [formData, onSave, isViewMode, requiredFields]);
 
@@ -119,7 +117,7 @@ useEffect(() => {
         const targetType = target.type;
         let shouldJumpBack = false;
 
-        if (targetType === "time") { 
+        if (targetType === "time") {
           if (target.value === "" && !target.validity.badInput) {
             shouldJumpBack = true;
           }
@@ -151,7 +149,7 @@ useEffect(() => {
   );
 
   return (
-    <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans">
+    <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
       <ERPHeader
         title="SHIFT ENTRY "
         isAddMode={isAddMode}
@@ -164,31 +162,27 @@ useEffect(() => {
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">
         <div id="shift-form-container" className="w-full max-w-[800px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
-          <div className="text-[15px] font-medium px-3 py-1.5 border-b bg-slate-50 text-slate-800">
-            Shift Master Details
-          </div>
-
           <div className="p-3 grid grid-cols-1 gap-y-3">
             {/* Shift Name */}
             <div className="flex flex-col sm:flex-row items-center px-1">
-              <label className="text-slate-700 text-[12px] font-bold sm:w-[150px] shrink-0">Shift Name *</label>
+              <label className="text-black-800 text-[15px] w-[100px] shrink-0">Shift Name <span className="text-red-500">*</span></label>
               <div className="flex-1 w-full">
-            <input
-  type="text"
-  name="shift_name" // <--- Yeh missing ya galat nahi hona chahiye
-  value={formData.shift_name || ""}
-  disabled={isViewMode}
-  onChange={(e) => handleChange("shift_name", e.target.value)}
-  onKeyDown={handleKeyDown}
-  className={getInputClass(isViewMode, "shift_name")}
-/>
+                <input
+                  type="text"
+                  name="shift_name"  
+                  value={formData.shift_name || ""}
+                  disabled={isViewMode}
+                  onChange={(e) => handleChange("shift_name", e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className={getInputClass(isViewMode, "shift_name")}
+                />
               </div>
             </div>
 
             {/* Start & End Time */}
             <div className="flex flex-col sm:flex-row sm:gap-4 w-full">
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1">
-                <label className="text-slate-700 text-[12px] font-bold sm:w-[150px] shrink-0">Start Time *</label>
+                <label className="text-black-800 text-[15px] w-[100px] shrink-0">Start Time <span className="text-red-500">*</span></label>
                 <div className="flex-1 w-full">
                   <input
                     type="time"
@@ -202,7 +196,7 @@ useEffect(() => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1 mt-3 sm:mt-0">
-                <label className="text-slate-700 text-[12px] font-bold sm:w-[90px] shrink-0">End Time *</label>
+                <label className="text-black-800 text-[15px] sm:w-[100px] shrink-0">End Time <span className="text-red-500">*</span></label>
                 <div className="flex-1 w-full">
                   <input
                     type="time"
@@ -220,7 +214,7 @@ useEffect(() => {
             {/* Grace Mins */}
             <div className="flex flex-col sm:flex-row sm:gap-4 w-full">
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1">
-                <label className="text-slate-700 text-[12px] font-bold sm:w-[150px] shrink-0">Grace In (Mins)</label>
+                <label className="text-black-800 text-[15px]  w-[100px] shrink-0">Grace In</label>
                 <div className="flex-1 w-full">
                   <input
                     type="number"
@@ -234,7 +228,7 @@ useEffect(() => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1 mt-3 sm:mt-0">
-                <label className="text-slate-700 text-[12px] font-bold sm:w-[90px] shrink-0">Grace Out</label>
+                <label className="text-black-800 text-[15px]  sm:w-[100px] shrink-0">Grace Out</label>
                 <div className="flex-1 w-full">
                   <input
                     type="number"
@@ -252,7 +246,7 @@ useEffect(() => {
             {/* Day Hours */}
             <div className="flex flex-col sm:flex-row sm:gap-4 w-full">
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1">
-                <label className="text-slate-700 text-[12px] font-bold sm:w-[150px] shrink-0">Full Day Hrs</label>
+                <label className="text-black-800 text-[15px] w-[100px] shrink-0">Full Day Hrs</label>
                 <div className="flex-1 w-full">
                   <input
                     type="number"
@@ -267,7 +261,7 @@ useEffect(() => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1 mt-3 sm:mt-0">
-                <label className="text-slate-700 text-[12px] font-bold sm:w-[90px] shrink-0">Half Day Hrs</label>
+                <label className="text-black-800 text-[15px] sm:w-[100px] shrink-0">Half Day Hrs</label>
                 <div className="flex-1 w-full">
                   <input
                     type="number"
@@ -285,7 +279,7 @@ useEffect(() => {
 
             {/* Night Shift Checkbox */}
             <div className="flex items-center px-1 mt-1">
-              <label className="text-slate-700 text-[12px] font-bold sm:w-[150px] shrink-0 cursor-pointer" htmlFor="is_night_shift">Night Shift</label>
+              <label className="text-black-800 text-[15px] w-[100px] shrink-0 cursor-pointer" htmlFor="is_night_shift">Night Shift</label>
               <input
                 type="checkbox"
                 id="is_night_shift"

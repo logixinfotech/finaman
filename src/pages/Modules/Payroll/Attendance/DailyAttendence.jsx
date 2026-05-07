@@ -21,7 +21,6 @@ const initialState = {
 };
 
 const columns = [
-  { key: "log_id", label: "Log ID" },
   { key: "employee_id", label: "Employee ID" },
   { key: "punch_type", label: "Type" },
   { key: "in_time", label: "In Time" },

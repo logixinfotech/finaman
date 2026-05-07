@@ -5,6 +5,8 @@ import ERPFooter from "../../components/Reusable/form/FooterForm";
 import ERPDateInput from "../../components/Reusable/input/Date";
 import ERPAutocomplete from "../../components/Reusable/input/ERPAutocomplete";
 import { tabs, fieldGroups } from "./EmployeeMasterDetails";
+import LeaveTypeSelector from "./LeaveTypeSelector";
+import { fetchUserGroupsByType } from "../../utils/api";
 import {
   validateEmployeeForm,
   validateSingleField,
@@ -20,13 +22,15 @@ const widthConfig = {
   "Title": "w-[60px]",
   "Pin Code": "w-[70px]",
   "Mobile No": "w-[130px]",
-  "Gender": "w-[70px]",
+  "Gender": "w-[120px]",
   "Relation": "pl-5 w-[800px]",
-  "Married": "pl-6 w-[800%]",
+  "Married": "pl-6 w-[80px]",
   "Spouse": "pl-6 w-[700px]",
   "Father Name": "w-[500px]",
-  "First Name": "w-[500px]"
+  "First Name": "w-[500px]",
+  "DOB": "w-[120px]",
 };
+
 
 const TabIcon = memo(({ tab, isActive }) => {
   const baseClass = "inline mr-1.5 text-[12px]";
@@ -60,6 +64,7 @@ const EmployeeMasterForm = ({
   totalRecords,
   onPrint,
   onEditCancel,
+  rights,
 }) => {
   const isAddMode = mode === "add";
   const isViewMode = mode === "view";
@@ -68,13 +73,45 @@ const EmployeeMasterForm = ({
   const [activeTab, setActiveTab] = useState("basic");
   const [errors, setErrors] = useState({});
   const [attachments, setAttachments] = useState({});
-
+  const [groupOptions, setGroupOptions] = useState({
+    division: [],
+    department: [],
+    designation: [],
+    grade: [],
+    reporting: []
+  });
   const formDataRef = useRef(formData);
   useEffect(() => {
     formDataRef.current = formData;
   }, [formData]);
 
   const photoInputRef = useRef(null);
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const div = await fetchUserGroupsByType("DIV");
+        const dept = await fetchUserGroupsByType("DEP");
+        const desg = await fetchUserGroupsByType("DESG");
+        const grade = await fetchUserGroupsByType("GRADE");
+        const reporting = await fetchUserGroupsByType("RME");
+
+
+        setGroupOptions({
+          division: div.data || [],
+          department: dept.data || [],
+          designation: desg.data || [],
+          grade: grade.data || [],
+          reporting: reporting.data || []
+
+        });
+
+      } catch (err) {
+        console.log("Dropdown error", err);
+      }
+    };
+
+    loadGroups();
+  }, []);
 
   useEffect(() => {
     setTimeout(() => {
@@ -109,6 +146,7 @@ const EmployeeMasterForm = ({
       let value = rawValue;
       const nameStr = field.toLowerCase();
 
+      // ✅ number validations
       if (
         nameStr.includes("mobile") ||
         nameStr.includes("phone") ||
@@ -119,9 +157,35 @@ const EmployeeMasterForm = ({
         value = value.toString().toUpperCase().slice(0, 10);
       }
 
+      // ✅ IMPORTANT: dropdown mapping (NAME → ID)
+      if (
+        ["Division", "Department", "Designation", "Grade", "Reporting to"].includes(field)
+      ) {
+        const groupMap = {
+          Division: groupOptions.division,
+          Department: groupOptions.department,
+          Designation: groupOptions.designation,
+          Grade: groupOptions.grade,
+          "Reporting to": groupOptions.reporting,
+        };
+
+        const list = groupMap[field] || [];
+
+        const selected = list.find(
+          (g) => g.group_name?.trim() === rawValue?.trim()
+        );
+
+        console.log("FIELD:", field);
+        console.log("RAW VALUE:", rawValue);
+        console.log("SELECTED:", selected);
+
+        value = selected ? selected.group_id : null;
+      }
+
       setFormData((prev) => {
         let updated = { ...prev, [field]: value };
 
+        // ✅ Same as Correspondence
         if (field === "Same as Correspondence") {
           if (value === true) {
             updated["P_Adress Line"] = updated["C_Adress Line"] || "";
@@ -138,6 +202,7 @@ const EmployeeMasterForm = ({
           }
         }
 
+        // ✅ Married logic
         if (field === "Married" && value === "No") {
           updated["Spouse"] = "";
           updated["Aniversary"] = "";
@@ -146,6 +211,7 @@ const EmployeeMasterForm = ({
         return updated;
       });
 
+      // ✅ validation
       const err = validateSingleField(field, value);
       if (err) setErrors((prev) => ({ ...prev, [field]: err }));
       else {
@@ -156,7 +222,7 @@ const EmployeeMasterForm = ({
         });
       }
     },
-    [setFormData]
+    [setFormData, groupOptions] // ✅🔥 THIS IS THE MAIN FIX
   );
 
   const handlePhotoUpload = (e) => {
@@ -171,13 +237,11 @@ const EmployeeMasterForm = ({
     "Department",
   ];
 
-const getInputClass = (isDisabled) =>
-  `w-full h-[32px] px-2 text-[14px] border border-gray-300 rounded-md outline-none ${
-    isDisabled
+  const getInputClass = (isDisabled) =>
+    `w-full h-[32px] px-2 text-[16px] border border-gray-300 rounded-md outline-none ${isDisabled
       ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
-      : "bg-white focus:border-blue-500"
-  }`;
-
+      : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+    }`;
   const handleKeyDown = useCallback(
     (e) => {
       if (isViewMode) return;
@@ -240,9 +304,27 @@ const getInputClass = (isDisabled) =>
     }
 
     if (type === "select") {
+      let options = fieldObj.options || [];
+
+      if (field === "Division") {
+        options = groupOptions.division.map(g => g.group_name);
+      }
+      if (field === "Department") {
+        options = groupOptions.department.map(g => g.group_name);
+      }
+      if (field === "Designation") {
+        options = groupOptions.designation.map(g => g.group_name);
+      }
+      if (field === "Grade") {
+        options = groupOptions.grade.map(g => g.group_name);
+      }
+      if (field === "Reporting to") {
+        options = groupOptions.reporting.map(g => g.group_name);
+      }
+
       return (
         <ERPAutocomplete
-          options={fieldObj.options || []}
+          options={options}
           value={formData[field] || ""}
           disabled={fieldDisabled}
           onChange={(val) => handleChange(field, val)}
@@ -250,6 +332,23 @@ const getInputClass = (isDisabled) =>
         />
       );
     }
+
+   // EmployeeMasterForm.jsx mein:
+if (type === "leave-selector") {
+  return (
+    <LeaveTypeSelector
+      value={formData["Leave allow"] || []}
+      onChange={(selectedIds, selectedNames) => {
+        setFormData(prev => ({ 
+          ...prev, 
+          "Leave allow": selectedIds,      // IDs → balance mein jayenge
+          "Leave allow names": selectedNames // Names → ACTLED mein jayenge
+        }));
+      }}
+      disabled={isViewMode}
+    />
+  );
+}
 
     if (type === "checkbox") {
       return (
@@ -273,7 +372,8 @@ const getInputClass = (isDisabled) =>
         disabled={fieldDisabled}
         onChange={(e) => handleChange(field, e.target.value)}
         onKeyDown={handleKeyDown}
-style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}      />
+        style={{ whiteSpace: "nowrap" }}
+      />
     );
   };
 
@@ -292,7 +392,7 @@ style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}  
 
   return (
     <div
-      className="w-full h-full sm:h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden"
+      className="w-full h-full sm:h-[calc(100vh-120px)] bg-[#eef1f6] flex flex-col overflow-hidden"
       style={{ background: isViewMode ? "#eef1f6" : "#ffffff" }}
     >
       <ERPHeader
@@ -416,18 +516,21 @@ style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}  
 
                         const isFullWidth =
                           nameStr.includes("employee name") ||
+                          nameStr.includes("mother") ||
+                          nameStr.includes("father") ||
+                          nameStr.includes("email") ||
+                          nameStr.includes("address") ||
+                          nameStr.includes("bank account") ||
+                          nameStr === "leave allow" ||
                           nameStr === "address line" ||
                           nameStr === "passport" ||
                           nameStr === "same as correspondence" ||
                           nameStr === "contact person";
-
-                        // 👉 Logic for variable width
                         const customInputWidth = widthConfig[label];
 
                         return (
                           <div
                             key={fieldKey}
-                            // original wrapper classes bilkul same hain
                             className={`flex flex-col sm:flex-row items-start sm:items-center px-1 text-[15px] flex-grow ${isFullWidth ? "w-full" : "w-[49%]"
                               }`}
                           >
@@ -439,8 +542,8 @@ style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}  
                             </label>
 
                             <div
-                              // Yahan flex-1 ke saath widthConfig apply ho rahi hai
-                              className="flex-1 w-full px-1 relative" style={{
+                              className={`flex min-w-0 ${customInputWidth ? customInputWidth : "flex-1"} px-1 w-full relative`}
+                              style={{
                                 background: isViewMode ? "#eef1f6" : "#ffffff",
                               }}
                             >
@@ -478,6 +581,7 @@ style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}  
         onNewEntry={onNewEntry}
         onPrint={onPrint}
         onEditCancel={onEditCancel}
+        rights={rights}
       />
     </div>
   );

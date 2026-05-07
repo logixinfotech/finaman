@@ -1,13 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import MenuMasterForm from "./Modules/MainMenu/MenuMasterPage/MenuMasterForm";
 import MenuMasterFilterForm from "./Modules/MainMenu/MenuMasterPage/MenuMasterFilterForm";
-import Table from "../components/Reusable/table/Table";
-import "./Modules/MainMenu/MenuMasterPage/MenuMaster.css";
-import {
-  showToast,
-  alertError,
-  confirmDelete,
-} from "../components/Reusable/alert";
+import Table from "../components/Reusable/table/Table"; 
+import { useERPMode } from "../components/Reusable/form/useFormMode";
+import { showToast, confirmDelete, alertError } from "../components/Reusable/alert"; 
+ 
 import { setERPHandlers } from "../utils/erpShortcuts";   
 import {
   fetchMenuMasterList,
@@ -15,8 +12,7 @@ import {
   updateMasmnu,
   deleteMasmnu,
   fetchSidebarMenu
-} from "../utils/api";
-import { useERPMode } from "../components/Reusable/form/useFormMode"; 
+} from "../utils/api";  
 
 const initialState = {
   masmnu_id: null,
@@ -50,31 +46,17 @@ const columns = [
     ),
   },
 ];
+ 
 
+ 
 const MenuMasterPage = ({ tab }) => {
   const [modules, setModules] = useState([]);
   const [list, setList] = useState([]);
   const [filters, setFilters] = useState({});
   const [showFilter, setShowFilter] = useState(false);
-  const [loading, setLoading] = useState(true); 
-const {
-    mode,
-    formData, setFormData,
-    showForm, setShowForm,
-    saving,
-    handleView, handleAdd, handleModify, performSave, handleEditCancel,
-    isEditMode,
-    rights // 1. Destructure rights here
-  } = useERPMode(
-    initialState,
-    async (data) =>
-      data.masmnu_id
-        ? await updateMasmnu(data.masmnu_id, data)
-        : await createMasmnu(data),
-    () => loadMenuList(filters),
-    tab.appl_name // 2. Pass the application name for rights fetching
-  );
- 
+  const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   const loadMenuList = useCallback(async (filterParams = {}) => {
     try {
       setLoading(true);
@@ -96,10 +78,35 @@ const {
     }
   }, []);
 
+  const {
+    mode, formData, setFormData, showForm, setShowForm, saving,
+    handleView, handleAdd, handleModify, performSave, handleEditCancel,
+    isEditMode, rights
+  } = useERPMode(
+    initialState,
+    async (data) => data.masmnu_id ? await updateMasmnu(data.masmnu_id, data) : await createMasmnu(data),
+    () => loadMenuList(filters),
+    tab.appl_name
+  );
+
   useEffect(() => {
     loadMenuList();
     loadModules();
-  }, [loadMenuList, loadModules]); 
+  }, [loadMenuList, loadModules]);
+
+  // Sync Form Data when navigating records via Footer/Header
+  useEffect(() => {
+    if (showForm && mode === "view" && list.length > 0) {
+      setFormData(list[currentIndex]);
+    }
+  }, [currentIndex, list, showForm, mode, setFormData]);
+
+  const handleRowSelect = (row) => {
+    const index = list.findIndex(item => item.masmnu_id === row.masmnu_id);
+    if (index !== -1) setCurrentIndex(index);
+    handleView(row);
+  };
+
   const handleSave = async () => {
     const response = await performSave("masmnu_id");
     if (response?.success) {
@@ -119,7 +126,6 @@ const {
       title: `Delete "${row?.bar_name || formData?.bar_name}"?`,
       text: "This action cannot be undone",
     });
-
     if (!confirmed) return;
 
     try {
@@ -132,24 +138,32 @@ const {
     } catch (err) {
       alertError("Delete failed", "Something went wrong");
     }
-  }; 
+  };
+
+  const handleTabChange = (targetTab) => {
+    if (targetTab === "search") setShowForm(false);
+    if (targetTab === "entry") setShowForm(true);
+  };
+
+  // Global ERP Navigation Handlers
   useEffect(() => {
     setERPHandlers({
+      onNextRecord: () => setCurrentIndex(prev => Math.min(prev + 1, list.length - 1)),
+      onPrevRecord: () => setCurrentIndex(prev => Math.max(prev - 1, 0)),
+      onFirstRecord: () => setCurrentIndex(0),
+      onLastRecord: () => setCurrentIndex(list.length - 1),
       onNew: handleAdd,
       onSave: handleSave,
       onModify: handleModify,
       onEsc: () => setShowForm(false),
     });
-  }, [handleAdd, handleSave, handleModify]);
+  }, [list, formData, handleAdd]);
 
   const applyFilter = () => loadMenuList(filters);
-  const clearFilter = () => {
-    setFilters({});
-    loadMenuList();
-  };
+  const clearFilter = () => { setFilters({}); loadMenuList(); };
 
   return (
-    <div>
+    <div className="h-full w-full">
       {showForm ? (
         <MenuMasterForm
           modules={modules}
@@ -161,8 +175,12 @@ const {
           mode={mode}
           saving={saving}
           onModify={handleModify}
-          onEditCancel={handleEditCancel}  
+          onEditCancel={handleEditCancel}
           rights={rights}
+          currentRecord={currentIndex + 1}
+          totalRecords={list.length}
+          activeTab="entry"
+          onTabChange={handleTabChange}
         />
       ) : (
         <Table
@@ -174,7 +192,7 @@ const {
           onRefresh={() => loadMenuList(filters)}
           showForm={showFilter}
           onToggleFilter={() => setShowFilter((p) => !p)}
-          onRowDoubleClick={(row) => handleView(row)}
+          onRowDoubleClick={handleRowSelect}
           formComponent={
             <MenuMasterFilterForm
               modules={modules}
@@ -184,8 +202,7 @@ const {
               onClear={clearFilter}
             />
           }
-         onAdd={rights.add === 1 ? handleAdd : null}
-      
+          onAdd={rights.add === 1 ? handleAdd : null}
         />
       )}
     </div>

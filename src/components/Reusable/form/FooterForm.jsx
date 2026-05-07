@@ -1,11 +1,11 @@
-import {
-  AddButton,
-  UpdateButton,
-  CancelButton,
+import { 
+  AddButton, 
+  UpdateButton, 
+  CancelButton, 
   DiscardButton, 
-  DeleteButton,
-  PrintButton,
-  HeaderAddButton
+  DeleteButton, 
+  PrintButton, 
+  HeaderAddButton 
 } from "../button/ActionButon";
 
 const ERPFooter = ({
@@ -14,6 +14,7 @@ const ERPFooter = ({
   onPrint, onEditCancel, onCancel, formData,
   onNewEntry, canPrint, rights
 }) => { 
+
   const CommonActions = (
     <>
       <DeleteButton 
@@ -24,13 +25,13 @@ const ERPFooter = ({
         onClick={() => onPrint(formData)} 
         disabled={isViewMode ? rights?.print !== 1 : !canPrint} 
       />
-      
     </>
   );
 
-  return ( 
-    <div className="flex justify-center items-center px-6 py-2.5 border-t bg-slate-50/80 backdrop-blur-sm rounded-b-xl w-full">
-      <div className="flex items-center gap-2">         
+  return (  
+    <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 px-6 py-3 border-t bg-slate-50/90 backdrop-blur-md rounded-b-xl w-full min-h-[60px]">
+       
+      <div className="flex flex-wrap items-center justify-center gap-2">         
         {isAddMode && (
           <>
             <AddButton isAdding={true} disabled={saving} onClick={handleSubmit} />
@@ -38,6 +39,7 @@ const ERPFooter = ({
             {CommonActions}            
           </>
         )} 
+
         {isViewMode && (
           <>
             <HeaderAddButton onClick={onNewEntry} disabled={rights?.add !== 1} />
@@ -46,6 +48,7 @@ const ERPFooter = ({
             <CancelButton onClick={onCancel} />           
           </>
         )} 
+
         {isEditMode && (
           <>
             <UpdateButton disabled={saving} onClick={handleSubmit} isEditing={true} />
