@@ -9,6 +9,7 @@ import LoginPage from "./pages/Login/Login";
 import { fetchMasmnuData, logoutUser } from "./utils/api";
 import "./App.css";
 import Swal from "sweetalert2";
+import NotificationToast from "./components/Layout/Notification/NotificationToast";
 function AppShell({
   theme,
   sidebarCollapsed,
@@ -73,6 +74,7 @@ function AppShell({
       </div>
 
       <Footer activeModule={activeModule} />
+    <NotificationToast  onOpenPage={handleOpenPageFromMenu} />
     </div>
   );
 }

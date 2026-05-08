@@ -1,107 +1,111 @@
 /**
- * NotificationPanel.jsx
- * ─────────────────────────────────────────────────────────────
- * Dropdown panel that opens from the bell icon.
- * Features:
- *   • Category filter tabs (All, Payroll, Accounts, …)
- *   • Grouped Today / Yesterday / Earlier
- *   • Unread highlight + blue dot indicator
- *   • Mark-all and Clear-all in header
- *   • Framer Motion slide + scale entrance
- *   • Click-outside to close (handled by parent)
+ * NotificationPanel.jsx  (pages/NotificationPanel.jsx)
+ * ─────────────────────────────────────────────────────────────────
+ * Your existing Header already does:
  *
- * Props:
- *   isOpen      boolean
- *   onClose     () => void
- *   onOpenAll   () => void  — navigates to full NotificationsPage
- *   onNavigate  (url: string) => void
- * ─────────────────────────────────────────────────────────────
+ *   import NotificationPanel from "../../pages/NotificationPanel";
+ *   <NotificationPanel
+ *     onOpenAll={() => onOpenPage({ masmnu_id:"NOTIFICATIONS", bar_name:"Notifications", appl_name:"NOTIFICATIONS_PAGE" })}
+ *     onNavigate={(link) => { setShowNotifications(false); onOpenPage(link); }}
+ *   />
+ *
+ * onNavigate receives the appl_name string from notification.action_url,
+ * so it opens the correct tab in your PageRegistry system.
+ * ─────────────────────────────────────────────────────────────────
  */
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bell, CheckCheck, Trash2, VolumeX, Volume2,
-  Info, CheckCircle, AlertTriangle, AlertCircle,
+  CheckCheck, Trash2, VolumeX, Volume2, Bell,
+  RefreshCw, Wifi, WifiOff,
 } from "lucide-react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-
 import { useNotifications, CATEGORIES } from "../theme/NotificationContext";
-import { groupByDay } from "../components/Layout/Notification/useNotificationTime";
 
 dayjs.extend(relativeTime);
 
-// ─── Type → icon map ─────────────────────────────────────────
-const TYPE_ICONS = {
-  info:    <Info    size={14} />,
-  success: <CheckCircle size={14} />,
-  warning: <AlertTriangle size={14} />,
-  error:   <AlertCircle size={14} />,
-};
+// ─── Day grouping helper ──────────────────────────────────────────
+function groupByDay(list) {
+  const groups = { Today: [], Yesterday: [], Earlier: [] };
+  const today = dayjs().startOf("day");
+  const yesterday = today.subtract(1, "day");
+  list.forEach((n) => {
+    const d = dayjs(n.created_at);
+    if (d.isSame(today, "day"))     groups.Today.push(n);
+    else if (d.isSame(yesterday, "day")) groups.Yesterday.push(n);
+    else groups.Earlier.push(n);
+  });
+  return groups;
+}
 
-// ─── Single notification row ─────────────────────────────────
-const NotifRow = ({ n, onRead, onNavigate, onDismiss }) => {
+// ─── Single row ───────────────────────────────────────────────────
+const NotifRow = ({ n, onRead, onDismiss, onNavigate }) => {
   const cat = CATEGORIES[n.category] || CATEGORIES.system;
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -10, transition: { duration: 0.15 } }}
+      exit={{ opacity: 0, x: -8 }}
       onClick={() => {
         onRead(n.id);
-        if (n.action_url) onNavigate?.(n.action_url);
+        // action_url = appl_name in your tab system
+        if (n.action_url) {
+          onNavigate?.({
+            masmnu_id: n.action_url,
+            bar_name: n.title,
+            appl_name: n.action_url,
+          });
+        }
       }}
       className={`
         group flex items-start gap-3 px-3 py-2.5 rounded-xl
         cursor-pointer transition-colors duration-150
         ${n.is_read
-          ? "hover:bg-slate-100 dark:hover:bg-slate-800"
-          : "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50"
+          ? "hover:bg-white/5"
+          : "bg-blue-500/10 hover:bg-blue-500/15"
         }
       `}
     >
-      {/* Category icon */}
+      {/* Icon */}
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
-        style={{ background: cat.bg }}
+        style={{ background: cat.bg + "33" }}
       >
         {cat.icon}
       </div>
 
-      {/* Body */}
+      {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={`text-sm leading-snug truncate ${
-          n.is_read
-            ? "text-slate-600 dark:text-slate-300 font-normal"
-            : "text-slate-800 dark:text-white font-medium"
+        <p className={`text-[13px] leading-snug truncate ${
+          n.is_read ? "text-white/60 font-normal" : "text-white font-semibold"
         }`}>
           {n.title}
         </p>
-
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-[11px] text-slate-400">
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[10px] text-white/35">
             {dayjs(n.created_at).fromNow()}
           </span>
           <span
-            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border"
-            style={{ color: cat.color, borderColor: cat.color + "33", background: cat.bg }}
+            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+            style={{ color: cat.color, background: cat.bg + "30" }}
           >
             {cat.label}
           </span>
         </div>
       </div>
 
-      {/* Right: unread dot + dismiss on hover */}
+      {/* Unread dot + dismiss */}
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         {!n.is_read && (
-          <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5" />
+          <span className="w-2 h-2 rounded-full bg-blue-400 mt-1.5" />
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onDismiss(n.id); }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded"
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-white/80 p-0.5 rounded text-xs"
           title="Dismiss"
         >
           ✕
@@ -111,167 +115,163 @@ const NotifRow = ({ n, onRead, onNavigate, onDismiss }) => {
   );
 };
 
-// ─── Main Panel ──────────────────────────────────────────────
-const NotificationPanel = ({ isOpen, onClose, onOpenAll, onNavigate }) => {
+// ─── Main Panel ───────────────────────────────────────────────────
+const NotificationPanel = ({ onOpenAll, onNavigate }) => {
   const {
-    notifications,
-    unreadCount,
-    muted,
-    markAsRead,
-    markAllAsRead,
-    dismissById,
-    clearAll,
-    toggleMute,
+    notifications, unreadCount, connected,
+    muted, markAsRead, markAllAsRead,
+    dismissById, clearAll, toggleMute, fetchNotifications,
   } = useNotifications();
 
   const [activeFilter, setActiveFilter] = useState("all");
 
-  // Filter list
   const filtered = notifications.filter((n) => {
     if (activeFilter === "unread") return !n.is_read;
-    if (activeFilter !== "all")    return n.category === activeFilter;
+    if (activeFilter !== "all")   return n.category === activeFilter;
     return true;
   });
 
   const recent = filtered.slice(0, 8);
   const groups = groupByDay(recent);
 
-  const categoryFilters = [
+  // Build filter tabs: All + Unread + categories that have at least 1 notification
+  const activeCats = [...new Set(notifications.map((n) => n.category))];
+  const filterTabs = [
     { key: "all",    label: "All" },
-    { key: "unread", label: "Unread" },
-    ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label })),
+    { key: "unread", label: `Unread${unreadCount > 0 ? ` (${unreadCount})` : ""}` },
+    ...activeCats
+      .filter((c) => CATEGORIES[c])
+      .map((c) => ({ key: c, label: CATEGORIES[c].label })),
   ];
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          key="panel"
-          initial={{ opacity: 0, y: -8, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0,  scale: 1 }}
-          exit={{ opacity: 0, y: -6,  scale: 0.97 }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          style={{ transformOrigin: "top right" }}
-          className="
-            absolute right-0 top-full mt-2 z-50
-            w-80 flex flex-col
-            bg-white dark:bg-slate-900
-            border border-slate-200 dark:border-slate-700
-            rounded-2xl shadow-2xl overflow-hidden
-          "
-        >
-          {/* ── Header ── */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-            <Bell size={15} className={unreadCount > 0 ? "text-blue-500 animate-pulse" : "text-slate-400"} />
-            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex-1">
-              Notifications
-            </span>
+    <div
+      className="w-[340px] flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: "var(--sidebar-top-bg, #0f172a)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        maxHeight: "520px",
+      }}
+    >
+      {/* ── Header ── */}
+      <div
+        className="flex items-center gap-2 px-4 py-3"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        <Bell
+          size={14}
+          className={unreadCount > 0 ? "text-blue-400 animate-pulse" : "text-white/40"}
+        />
+        <span className="text-sm font-bold text-white flex-1 tracking-wide uppercase" style={{ fontSize: "11px", letterSpacing: "0.08em" }}>
+          Notifications
+        </span>
 
-            {unreadCount > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold">
-                {unreadCount} new
-              </span>
-            )}
+        {/* WS status dot */}
+        <span
+          title={connected ? "Live (WebSocket)" : "Polling"}
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ background: connected ? "#22c55e" : "#f59e0b" }}
+        />
 
-            <button
-              onClick={toggleMute}
-              title={muted ? "Unmute" : "Mute"}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-            </button>
+        {unreadCount > 0 && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-400">
+            {unreadCount} new
+          </span>
+        )}
 
-            <button
-              onClick={markAllAsRead}
-              title="Mark all as read"
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <CheckCheck size={14} />
-            </button>
+        {/* Action buttons */}
+        <button onClick={fetchNotifications} title="Refresh"
+          className="text-white/30 hover:text-white/80 p-1 rounded-lg hover:bg-white/5 transition-colors">
+          <RefreshCw size={12} />
+        </button>
+        <button onClick={toggleMute} title={muted ? "Unmute" : "Mute"}
+          className="text-white/30 hover:text-white/80 p-1 rounded-lg hover:bg-white/5 transition-colors">
+          {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
+        </button>
+        <button onClick={markAllAsRead} title="Mark all read"
+          className="text-white/30 hover:text-white/80 p-1 rounded-lg hover:bg-white/5 transition-colors">
+          <CheckCheck size={12} />
+        </button>
+        <button onClick={clearAll} title="Clear all"
+          className="text-white/30 hover:text-red-400 p-1 rounded-lg hover:bg-white/5 transition-colors">
+          <Trash2 size={12} />
+        </button>
+      </div>
 
-            <button
-              onClick={clearAll}
-              title="Clear all"
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-
-          {/* ── Category filter tabs ── */}
-          <div className="flex gap-1 px-3 py-2 overflow-x-auto scrollbar-hide border-b border-slate-100 dark:border-slate-800">
-            {categoryFilters.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setActiveFilter(f.key)}
-                className={`
-                  flex-shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full
-                  border transition-all duration-150
-                  ${activeFilter === f.key
-                    ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900"
-                    : "bg-transparent text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:hover:border-slate-500 dark:text-slate-400"
-                  }
-                `}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Notification list ── */}
-          <div className="flex-1 overflow-y-auto max-h-[360px] px-2 py-2 space-y-3">
-            <AnimatePresence mode="popLayout">
-              {!recent.length ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center text-xs text-slate-400 py-10"
-                >
-                  <Bell size={28} className="mx-auto mb-2 opacity-30" />
-                  No notifications
-                </motion.div>
-              ) : (
-                Object.entries(groups).map(([label, items]) =>
-                  items.length > 0 && (
-                    <div key={label}>
-                      <p className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                        {label}
-                      </p>
-                      <div className="space-y-0.5">
-                        {items.map((n) => (
-                          <NotifRow
-                            key={n.id}
-                            n={n}
-                            onRead={markAsRead}
-                            onNavigate={onNavigate}
-                            onDismiss={dismissById}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )
-                )
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* ── Footer ── */}
+      {/* ── Filter tabs ── */}
+      <div
+        className="flex gap-1 px-3 py-2 overflow-x-auto"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", scrollbarWidth: "none" }}
+      >
+        {filterTabs.map((f) => (
           <button
-            onClick={() => { onClose(); onOpenAll?.(); }}
-            className="
-              w-full text-center text-xs font-semibold py-3
-              text-blue-600 dark:text-blue-400
-              border-t border-slate-100 dark:border-slate-800
-              hover:bg-slate-50 dark:hover:bg-slate-800
-              transition-colors
-            "
+            key={f.key}
+            onClick={() => setActiveFilter(f.key)}
+            className="flex-shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all duration-150"
+            style={{
+              background:   activeFilter === f.key ? "rgba(255,255,255,0.12)" : "transparent",
+              borderColor:  activeFilter === f.key ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
+              color:        activeFilter === f.key ? "rgba(255,255,255,0.9)"  : "rgba(255,255,255,0.4)",
+            }}
           >
-            View all notifications →
+            {f.label}
           </button>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        ))}
+      </div>
+
+      {/* ── List ── */}
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-3" style={{ scrollbarWidth: "thin" }}>
+        <AnimatePresence mode="popLayout">
+          {!recent.length ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-10"
+            >
+              <Bell size={28} className="mx-auto mb-2 text-white/15" />
+              <p className="text-xs text-white/30">No notifications</p>
+            </motion.div>
+          ) : (
+            Object.entries(groups).map(([label, items]) =>
+              items.length > 0 && (
+                <div key={label}>
+                  <p className="px-2 mb-1 text-[10px] font-bold uppercase tracking-widest text-white/25">
+                    {label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {items.map((n) => (
+                      <NotifRow
+                        key={n.id}
+                        n={n}
+                        onRead={markAsRead}
+                        onNavigate={onNavigate}
+                        onDismiss={dismissById}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            )
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Footer ── */}
+      <button
+        onClick={onOpenAll}
+        className="w-full text-center text-[11px] font-bold py-3 transition-colors tracking-wide uppercase"
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+          color: "rgba(255,255,255,0.4)",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.9)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+      >
+        View all notifications →
+      </button>
+    </div>
   );
 };
 

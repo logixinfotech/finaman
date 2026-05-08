@@ -613,6 +613,12 @@ export const updateLeaveAccrual             = (id, data)     =>
 export const deleteLeaveAccrual             = (id)           =>
   handleApi(() => api.delete(`/api/LeaveAccrual/${id}`));
 
+export const bulkSaveAccrual             = (id)           =>
+  handleApi(() => api.delete(`/api/LeaveAccrual/${id}`));
+
+export const postAccruals             = (id)           =>
+  handleApi(() => api.delete(`/api/LeaveAccrual/${id}`));
+
 // ────────────────────────────────────────── Leave Encashment ──────────────────────────────────────────────────────
 export const getLeaveEncashments            = ()              =>
   handleApi(() => api.get("/api/LeaveEncashment"));
@@ -656,3 +662,5 @@ export const fetchTDSList   = ()         => handleApi(() => api.get("/api/statut
 export const createTDS      = (data)     => handleApi(() => api.post("/api/statutory-master/tds", data));
 export const updateTDS      = (id, data) => handleApi(() => api.put(`/api/statutory-master/tds/${id}`, data));
 export const deleteTDS      = (id)       => handleApi(() => api.delete(`/api/statutory-master/tds/${id}`));
+
+

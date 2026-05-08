@@ -128,7 +128,7 @@ const PageRegistry = {
 pf_master: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PfMaster")),
 ESIMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/ESIMaster")),
 PTMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PTMaster")),
-
+TDSMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/TDSMaster")),
 
 };
 

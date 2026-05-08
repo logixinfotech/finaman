@@ -13,7 +13,7 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <NotificationProvider>
+      <NotificationProvider   wsUrl={null}  apiUrl={null}>
         <App />
       </NotificationProvider>
     </BrowserRouter>

@@ -1,51 +1,50 @@
 /**
  * NotificationToast.jsx
- * ─────────────────────────────────────────────────────────────
- * Real-time toast that pops up in the bottom-right corner
- * whenever a new notification arrives (from WebSocket push or
- * manual addNotification() call).
+ * ─────────────────────────────────────────────────────────────────
+ * Real-time toast for incoming WebSocket / addNotification() events.
  *
- * • Consumes `toastQueue` from context one-at-a-time
- * • Auto-dismisses after 5 seconds with a progress bar
- * • Click to mark as read + navigate
- * • Stacks gracefully (max 3 visible)
+ * Mount ONCE in AppShell (not Dashboard):
  *
- * Mount once near the root — typically in App.jsx or Layout.jsx:
- *   <NotificationToast onNavigate={(url) => navigate(url)} />
- * ─────────────────────────────────────────────────────────────
+ *   // In AppShell.jsx, add alongside <Footer>:
+ *   import NotificationToast from "./components/NotificationToast";
+ *   ...
+ *   <NotificationToast onOpenPage={handleOpenPageFromMenu} />
+ *
+ * onOpenPage receives the same shape as your handleOpenPageFromMenu,
+ * so clicking a toast opens the correct tab automatically.
+ * ─────────────────────────────────────────────────────────────────
  */
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ExternalLink } from "lucide-react";
-import { useNotifications, CATEGORIES } from "../theme/NotificationContext";
+import { X } from "lucide-react";
+import { useNotifications, CATEGORIES } from "../../../theme/NotificationContext";
 
-const TYPE_STYLES = {
-  success: { bar: "#22c55e" },
-  error:   { bar: "#ef4444" },
-  warning: { bar: "#f59e0b" },
-  info:    { bar: "#3b82f6" },
-  action:  { bar: "#8b5cf6" },
+const DURATION = 5000;
+
+const TYPE_ACCENT = {
+  success: "#22c55e",
+  error:   "#ef4444",
+  warning: "#f59e0b",
+  info:    "#3b82f6",
+  action:  "#8b5cf6",
 };
 
-const TOAST_DURATION = 5000; // ms
-
-const SingleToast = ({ notification: n, onDismiss, onNavigate, onMarkRead }) => {
+const SingleToast = ({ notification: n, onDismiss, onOpenPage, onMarkRead }) => {
   const [progress, setProgress] = useState(100);
-  const cat   = CATEGORIES[n.category] || CATEGORIES.system;
-  const style = TYPE_STYLES[n.type]    || TYPE_STYLES.info;
+  const cat    = CATEGORIES[n.category] || CATEGORIES.system;
+  const accent = TYPE_ACCENT[n.type]    || TYPE_ACCENT.info;
 
-  // Countdown progress bar
   useEffect(() => {
     const start = Date.now();
+    let raf;
     const tick = () => {
-      const elapsed = Date.now() - start;
-      const pct = Math.max(0, 100 - (elapsed / TOAST_DURATION) * 100);
+      const pct = Math.max(0, 100 - ((Date.now() - start) / DURATION) * 100);
       setProgress(pct);
-      if (pct > 0) requestAnimationFrame(tick);
+      if (pct > 0) raf = requestAnimationFrame(tick);
       else onDismiss();
     };
-    const raf = requestAnimationFrame(tick);
+    raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [onDismiss]);
 
@@ -54,90 +53,92 @@ const SingleToast = ({ notification: n, onDismiss, onNavigate, onMarkRead }) => 
       layout
       initial={{ opacity: 0, x: 40, scale: 0.95 }}
       animate={{ opacity: 1, x: 0,  scale: 1 }}
-      exit={{ opacity: 0,  x: 20, scale: 0.97, transition: { duration: 0.18 } }}
+      exit={{ opacity: 0,   x: 20, scale: 0.97 }}
       transition={{ type: "spring", stiffness: 380, damping: 28 }}
-      className="
-        relative w-80 overflow-hidden
-        bg-white dark:bg-slate-900
-        border border-slate-200 dark:border-slate-700
-        rounded-2xl shadow-xl
-        cursor-pointer
-      "
+      className="relative w-[300px] overflow-hidden rounded-xl cursor-pointer"
+      style={{
+        background:  "var(--sidebar-top-bg, #0f172a)",
+        border:      "1px solid rgba(255,255,255,0.1)",
+        boxShadow:   "0 8px 32px rgba(0,0,0,0.4)",
+      }}
       onClick={() => {
         onMarkRead(n.id);
-        if (n.action_url) onNavigate?.(n.action_url);
+        if (n.action_url) {
+          onOpenPage?.({
+            masmnu_id: n.action_url,
+            bar_name:  n.title,
+            appl_name: n.action_url,
+          });
+        }
         onDismiss();
       }}
     >
       {/* Progress bar */}
       <div
-        className="absolute top-0 left-0 h-0.5 transition-none"
-        style={{ width: `${progress}%`, background: style.bar }}
+        className="absolute top-0 left-0 h-[2px] transition-none"
+        style={{ width: `${progress}%`, background: accent }}
       />
 
-      <div className="flex items-start gap-3 p-4 pt-5">
+      <div className="flex items-start gap-3 px-4 pt-4 pb-3">
         {/* Icon */}
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-          style={{ background: cat.bg }}
+          style={{ background: cat.bg + "25" }}
         >
           {cat.icon}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-1">
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-              style={{ color: cat.color, background: cat.bg }}
-            >
-              {cat.label}
-            </span>
-          </div>
-          <p className="text-sm font-semibold text-slate-800 dark:text-white mt-1 leading-snug">
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+            style={{ color: cat.color, background: cat.bg + "20" }}
+          >
+            {cat.label}
+          </span>
+          <p className="text-[13px] font-semibold text-white mt-1 leading-snug line-clamp-1">
             {n.title}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+          <p className="text-[11px] text-white/40 mt-0.5 line-clamp-2 leading-relaxed">
             {n.message}
           </p>
         </div>
 
-        {/* Dismiss */}
+        {/* Close */}
         <button
           onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded flex-shrink-0 transition-colors"
+          className="text-white/25 hover:text-white/70 p-0.5 rounded flex-shrink-0 mt-0.5 transition-colors"
         >
-          <X size={14} />
+          <X size={13} />
         </button>
       </div>
 
-      {/* Action hint */}
       {n.action_url && (
-        <div className="flex items-center gap-1 px-4 pb-3 text-[11px] text-slate-400">
-          <ExternalLink size={11} />
-          Click to view
-        </div>
+        <p className="px-4 pb-2.5 text-[10px] text-white/25 font-medium">
+          Click to open →
+        </p>
       )}
     </motion.div>
   );
 };
 
-// ─── Toast Container ─────────────────────────────────────────
-const NotificationToast = ({ onNavigate }) => {
+// ─── Container ───────────────────────────────────────────────────
+const NotificationToast = ({ onOpenPage }) => {
   const { toastQueue, consumeToast, markAsRead } = useNotifications();
-
-  // Show max 3 toasts at a time
   const visible = toastQueue.slice(0, 3);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col-reverse gap-3 pointer-events-none">
+    <div
+      className="fixed z-[9999] flex flex-col-reverse gap-2"
+      style={{ bottom: "24px", right: "24px", pointerEvents: "none" }}
+    >
       <AnimatePresence mode="popLayout">
         {visible.map((n) => (
-          <div key={n.id} className="pointer-events-auto">
+          <div key={n.id} style={{ pointerEvents: "all" }}>
             <SingleToast
               notification={n}
               onDismiss={consumeToast}
-              onNavigate={onNavigate}
+              onOpenPage={onOpenPage}
               onMarkRead={markAsRead}
             />
           </div>
