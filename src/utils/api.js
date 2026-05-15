@@ -115,6 +115,29 @@ export const fetchUserProfile = async () => {
   }
 };
 
+
+export const getNotifications = (params = {}) =>
+  handleApi(() =>
+    api.get("/api/notifications", {
+      params: {
+        page:     params.page     || 1,
+        pageSize: params.pageSize || 100,
+        filter:   params.filter   || "all",   // all | unread | read
+        category: params.category || "all",   // all | payroll | accounts | ...
+      },
+    })
+  ); 
+export const getNotificationCount = () =>
+  handleApi(() => api.get("/api/notifications/count")); 
+export const markNotificationRead = (id) =>
+  handleApi(() => api.patch(`/api/notifications/${id}/read`)); 
+export const markAllNotificationsRead = () =>
+  handleApi(() => api.patch("/api/notifications/read-all"));
+ 
+export const deleteNotification = (id) =>
+  handleApi(() => api.delete(`/api/notifications/${id}`)); 
+export const deleteAllNotifications = () =>
+  handleApi(() => api.delete("/api/notifications"));
 export const fetchUsers = () =>
   handleApi(() => api.get("/api/user/users"));
 export const createUser = (data) =>
@@ -613,11 +636,11 @@ export const updateLeaveAccrual             = (id, data)     =>
 export const deleteLeaveAccrual             = (id)           =>
   handleApi(() => api.delete(`/api/LeaveAccrual/${id}`));
 
-export const bulkSaveAccrual             = (id)           =>
-  handleApi(() => api.delete(`/api/LeaveAccrual/${id}`));
+export const bulkSaveAccrual = (data) =>
+  handleApi(() => api.post("/api/LeaveAccrual/bulk", data));
 
-export const postAccruals             = (id)           =>
-  handleApi(() => api.delete(`/api/LeaveAccrual/${id}`));
+export const postAccruals = (data) =>
+  handleApi(() => api.post("/api/LeaveAccrual/post", data));
 
 // ────────────────────────────────────────── Leave Encashment ──────────────────────────────────────────────────────
 export const getLeaveEncashments            = ()              =>

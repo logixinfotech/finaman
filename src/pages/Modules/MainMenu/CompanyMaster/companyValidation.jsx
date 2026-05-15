@@ -1,100 +1,149 @@
+ 
 export const VALIDATION_RULES = {
   business_type: { required: true, message: "Select Business Type" },
   company_name: { required: true, message: "Company Name is required" },
-  email_address: { 
-    pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 
-    message: "Invalid email" 
+  email_address: {
+    pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+    message: "Invalid email"
   },
   phone_number: { pattern: /^[6-9]\d{9}$/, message: "10-digit mobile required" },
-  gstin_number: { 
-    pattern: /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/, 
-    message: "Invalid GSTIN" 
+  gstin_number: {
+    pattern: /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/,
+    message: "Invalid GSTIN"
   },
   pan_number: { pattern: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, message: "Invalid PAN" },
   bank_ifsc_code: { pattern: /^[A-Z]{4}0[A-Z0-9]{6}$/, message: "Invalid IFSC" },
   postal_code: { pattern: /^[1-9][0-9]{5}$/, message: "Invalid 6-digit PIN" }
 };
- 
+
 export const fieldGroups = {
   basic: {
-      
-  
-      "Financial Info": [ 
-      { key: "fin_year_from", label: "Fin  Year From", type: "date" },
-      { key: "fin_year_to", label: "Fin  Year To", type: "date" }
+   " Basic Info": [  { key: "company_name", label: "Company Name", type: "text" },
+  { key: "trade_name", label: "Trade Name", type: "text" },
+  { key: "business_type", label: "Business Type", type: "select", options: ["Manufacturing", "Trading", "Service", "Retail", "Multi Business"] } ], // company_name and business_type are pinned separately in the UI, so not repeating here 
+
+    "Financial Info": [
+      {
+        key: "fin_year_from",
+        label: "Fin Year From",
+        type: "date",
+
+        onChange: (value, current) => {
+          if (!value) return current;
+
+          const fromDate = new Date(value);
+
+          if (isNaN(fromDate)) return current;
+          const toDate = new Date(fromDate);
+          toDate.setFullYear(toDate.getFullYear() + 1);
+          toDate.setDate(toDate.getDate() - 1);
+
+          const formatDate = (d) => {
+            return d.toISOString().split("T")[0];
+          };
+
+          return {
+            ...current,
+            fin_year_from: formatDate(fromDate),
+            fin_year_to: formatDate(toDate),
+          };
+        },
+      },
+      { key: "fin_year_to", label: "Fin  Year To", type: "date" },
+    ],
+        "Communication": [ 
+      { key: "phone_number", label: "Phone", type: "text" },
+      { key: "alt_phone", label: "Alt. Phone", type: "text" }, 
+      { key: "email_address", label: "Email", type: "text" },
+      { key: "website_url", label: "Website", type: "text" },
     ],
 
     "Address": [
       { key: "business_address", label: "Full Address", type: "text" },
       { key: "city", label: "City", type: "text" },
-      { key: "state", label: "State", type: "select" },
-      { key: "country", label: "Country", type: "select" },
-      { key: "postal_code", label: "PIN Code", type: "text" }
-    ],  
-      "Communication": [
-      { key: "phone_number", label: "Phone", type: "text" },
-      { key: "email_address", label: "Email", type: "text" },
-      { key: "website_url", label: "Website", type: "text" }
-    ],
-
-    "Contact Person": [
+      { key: "country", label: "Country", type: "select", options: [] },  // options filled below
+      { key: "state", label: "State", type: "select", options: [] },  // options filled below
+      { key: "postal_code", label: "PIN Code", type: "text" },
+    ], 
+    "Contact Person": [ 
       { key: "contact_person", label: "Contact Person", type: "text" },
-      { key: "designation", label: "Designation", type: "text" }
-    ]
-  },
-
+      { key: "designation", label: "Designation", type: "text" },
+    ],
+  }, 
   legal: {
-    "Tax Identifiers": [
-      { key: "gst_type", label: "GST Type", type: "text" },
-      { key: "gstin_number", label: "GSTIN", type: "text" },
+    "Tax Identifiers": [ 
+      { key: "gst_type", label: "GST Type", type: "select", options: ["Regular", "Composition", "Unregistered", "SEZ"] },
+      { key: "gstin_number", label: "GSTIN", type: "text" }, 
       { key: "pan_number", label: "PAN", type: "text" },
-      { key: "cin_number", label: "CIN", type: "text" },
-      { key: "tan_no", label: "TAN", type: "text" }
+      { key: "cin_number", label: "CIN", type: "text" }, 
+      { key: "tan_no", label: "TAN", type: "text" },
     ],
 
-    "Licenses": [
+    "Licenses": [ 
       { key: "iec_code", label: "IEC Code", type: "text" },
-      { key: "msme_no", label: "MSME No", type: "text" }
+      { key: "msme_no", label: "MSME No", type: "text" },
     ],
 
-    "Compliance": [
-      { key: "fssai_no", label: "FSSAI No", type: "text" },
+    "Compliance": [ 
+      { key: "fssai_no", label: "FSSAI No", type: "text" }, 
       { key: "fssai_from", label: "Valid From", type: "date" },
-      { key: "fssai_to", label: "Valid To", type: "date" }
-    ]
-  },
-
+      { key: "fssai_to", label: "Valid To", type: "date" },
+    ],
+  }, 
   bank: {
-    "Bank Details": [
+    "Bank Details": [ 
       { key: "bank_name", label: "Bank Name", type: "text" },
+      { key: "branch_name", label: "Branch", type: "text" }, 
       { key: "bank_account_number", label: "Account No", type: "text" },
+      { key: "account_type", label: "Account Type", type: "select", options: ["Savings", "Current", "Cash Credit", "OD"] }, 
       { key: "bank_ifsc_code", label: "IFSC", type: "text" },
-      { key: "branch_name", label: "Branch", type: "text" },
-      { key: "account_type", label: "Account Type", type: "text" }
     ],
 
-    "Other": [
+    "Digital & International": [ 
       { key: "upi_id", label: "UPI ID", type: "text" },
-      { key: "swift_code", label: "SWIFT", type: "text" },
-      { key: "micr_code", label: "MICR", type: "text" }
-    ]
-  },
- 
-  tax: {
-    "Tax Settings": [
-      { key: "default_gst_rate", label: "Default GST", type: "text" },
+      { key: "swift_code", label: "SWIFT", type: "text" }, 
+      { key: "micr_code", label: "MICR", type: "text" },
+    ],
+        "Tax Settings": [ 
+      { key: "default_gst_rate", label: "Default GST", type: "select", options: ["0%", "5%", "12%", "18%", "28%"] },
       { key: "tds_applicable", label: "TDS Applicable", type: "select", options: ["Yes", "No"] },
-      { key: "tcs_applicable", label: "TCS Applicable", type: "select", options: ["Yes", "No"] }
-    ]
-  },
-
+      { key: "tcs_applicable", label: "TCS Applicable", type: "select", options: ["Yes", "No"] },
+    ],
+  },  
   system: {
-    "System Settings": [
+    "System Settings": [ 
       { key: "default_language", label: "Language", type: "text" },
-      { key: "date_format", label: "Date Format", type: "text" },
-      { key: "company_status", label: "Status", type: "text" }
-    ]
-  }
+      { key: "date_format", label: "Date Format", type: "text" }, 
+      { key: "company_status", label: "Status", type: "select", options: ["Active", "Inactive", "Suspended"] },
+    ],
+  },
+};
+
+export const widthConfig = {
+  "Account Number": "w-[200px]",
+  "Email": "w-full",
+  "GSTIN": "w-[175px]",
+  "PAN Number": "w-[115px]",
+  "TAN Number": "w-[115px]",
+  "CIN Number": "w-[185px]",
+  "IFSC Code": "w-[115px]",
+  "Account Number": "w-[160px]",
+  "MICR Code": "w-[100px]",
+  "SWIFT Code": "w-[115px]",
+  "UPI ID": "w-[150px]",
+  "FY From": "w-[130px]",
+  "FY To": "w-[130px]",
+  "Valid From": "w-[130px]",
+  "Valid To": "w-[130px]",
+  "PIN Code": "w-[80px]",
+  "Phone": "w-[145px]",
+  "Alt. Phone": "w-[145px]",
+  "City": "w-[110px]",
+  "Full Address": "w-full",
+  "Bank Address": "w-full",
+  "Email": "w-full",
+  "Alt. Email": "w-full",
+  "Website": "w-full",
 };
 
 export const fieldLabels = {
@@ -142,4 +191,5 @@ export const validateFullForm = (formData, groups) => {
   }
   return { isValid: Object.keys(errors).length === 0, errors, firstErrorTab };
 };
+
 

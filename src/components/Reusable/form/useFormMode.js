@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { alertError, alertWarning, showToast, confirmWarning } from '../alert'; 
-// Import your new utility
+import { alertError, alertWarning, showToast, confirmWarning } from '../alert';  
 import { getRights } from  '../../../utils/permissions'
 
 export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
@@ -11,7 +10,7 @@ export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
   const [saving, setSaving] = useState(false);
   const [canPrint, setCanPrint] = useState(false); 
   const rights = useMemo(() => getRights(appl_name), [appl_name]);
-
+const [activeTab, setActiveTab] = useState("entry");
   const canAdd = rights.add === 1;
   const canModify = rights.mod === 1; 
   const isDirty = useMemo(() => {
@@ -98,15 +97,12 @@ export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [handleEditCancel, mode]);
-
-// In useFormMode.js - update performSave to accept optional override data
+ 
 const performSave = useCallback(async (idField, overrideData = null) => {
     if (saving) return { success: false };
     setSaving(true);
     try {
-      const isEdit = mode === "edit";
-      
-      // ✅ Use overrideData if passed, otherwise fall back to hook's formData
+      const isEdit = mode === "edit"; 
       const dataToSave = overrideData || formData;
       
       if (!dataToSave || Object.keys(dataToSave).length === 0) 
@@ -145,7 +141,7 @@ const performSave = useCallback(async (idField, overrideData = null) => {
     mode, setMode, formData, setFormData,
     showForm, setShowForm, saving, canPrint,
     rights, isDirty,
-    handleView,
+    handleView,activeTab, setActiveTab,
     handleAdd, handleModify, handleEditCancel, performSave,
     isAddMode: mode === "add",
     isViewMode: mode === "view",

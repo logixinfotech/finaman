@@ -29,7 +29,7 @@ const DivisionMasterPage = ({ tab }) => {
         mode,
         formData, setFormData,
         showForm, setShowForm,
-        saving,
+        saving, handleEditCancel,
         handleView, handleAdd, handleModify, performSave, rights
     } = useERPMode(
         initialState,
@@ -66,6 +66,7 @@ const DivisionMasterPage = ({ tab }) => {
         const index = list.findIndex(item => item.group_id === row.group_id);
         if (index !== -1) setCurrentIndex(index);
         handleView(row);
+        setShowForm(true);
     };
 
     const handleSave = async () => {
@@ -99,7 +100,12 @@ const DivisionMasterPage = ({ tab }) => {
             onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
             onNew: handleAdd,
             onSave: handleSave,
-            onEsc: () => setShowForm(false),
+            onEsc: () => {
+                setShowForm(false);
+                if (mode === "add") {
+                    setFormData(initialState);
+                }
+            },
         });
     }, [list]);
 
@@ -111,9 +117,28 @@ const DivisionMasterPage = ({ tab }) => {
     return (
         <div>
             {showForm ? (
-                <UserGroupForm title="Division Master" nameLabel="Division Name" {...{ formData, setFormData, onSave: handleSave, onCancel: () => setShowForm(false), onDelete: handleDelete, mode, saving, onModify: handleModify, onNewEntry: handleAdd, currentRecord: currentIndex + 1, totalRecords: list.length, rights }}
+                <UserGroupForm
+                    title="Division Master"
+                    nameLabel="Division Name"
+                    formData={formData}
+                    setFormData={setFormData}
+                    onSave={handleSave}
+                    onCancel={() => {
+                        setShowForm(false);
+                        setFormData(initialState);
+                    }}
+                    onDelete={handleDelete}
+                    mode={mode}
+                    saving={saving}
+                    onModify={handleModify}
+                    onNewEntry={handleAdd}
+                    currentRecord={currentIndex + 1}
+                    totalRecords={list.length}
+                    rights={rights}
+                    onEditCancel={handleEditCancel}
                     activeTab={showForm ? "entry" : "search"}
-                    onTabChange={handleTabChange} />
+                    onTabChange={handleTabChange}
+                />
             ) : (
                 <Table
                     title="Division Master"

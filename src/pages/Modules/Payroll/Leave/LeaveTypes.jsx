@@ -101,6 +101,7 @@ const LeaveTypes = ({ tab }) => {
       onNew: handleAdd,
       onSave: () => handleSave(formData),
       onEsc: () => setShowForm(false),
+      onBackspaceNavigation: true,
     });
   }, [list, formData, handleAdd, setShowForm]);
 

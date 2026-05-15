@@ -9,11 +9,10 @@ import LoginPage from "./pages/Login/Login";
 import { fetchMasmnuData, logoutUser } from "./utils/api";
 import "./App.css";
 import Swal from "sweetalert2";
+import { useNotifications } from "./theme/NotificationContext";
 import NotificationToast from "./components/Layout/Notification/NotificationToast";
 function AppShell({
-  theme,
-  sidebarCollapsed,
-  toggleSidebar,
+  theme,sidebarCollapsed,toggleSidebar, 
   handleModuleClick,
   setTheme,
   menusFromBackend,
@@ -36,7 +35,7 @@ function AppShell({
     });
 
     if (result.isConfirmed) {
-      await logoutUser(); // 🔥 API call + session clear
+      await logoutUser();  
     }
   };
   return (
@@ -85,14 +84,13 @@ function App() {
   );
   const [theme, setTheme] = useState(
     () => localStorage.getItem("finaman-theme") || "theme-light"
-  );
-
+  ); 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeModule, setActiveModule] = useState(null);
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
   const [menusFromBackend, setMenusFromBackend] = useState([]);
-
+  const { setMenusFromBackend: syncMenusToContext } = useNotifications();
   useEffect(() => {
     const root = document.documentElement;
 
@@ -136,23 +134,22 @@ function App() {
       navigate("/login", { replace: true });
     }
   }, [isAuthenticated, navigate]);
-  useEffect(() => {
-    const loadMenus = async () => {
-      try {
-        const token = sessionStorage.getItem("token");
-        if (!token) return;
-
-        const data = await fetchMasmnuData(token);
-        setMenusFromBackend(data || []);
-      } catch (error) {
-        console.error("Error loading menus:", error);
-      }
-    };
-
-    if (isAuthenticated) {
-      loadMenus();
+useEffect(() => {
+  const loadMenus = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) return;
+      const data = await fetchMasmnuData(token);
+      setMenusFromBackend(data || []);
+      syncMenusToContext(data || []);
+      console.log("[Menus synced to context]", data?.length, "items");
+    } catch (error) {
+      console.error("Error loading menus:", error);
     }
-  }, [isAuthenticated]);
+  };
+  if (isAuthenticated) loadMenus();
+}, [isAuthenticated, syncMenusToContext]);  // ← ADD syncMenusToContext here
+ 
   const handleModuleClick = (module) => {
     const moduleTabId = `mod-${module.masmod_id}`;
 
@@ -192,9 +189,7 @@ function App() {
       t.id.startsWith(baseId)
     );
 
-    let updatedTabs = [...tabs];
-
-    // 🟢 First time open
+    let updatedTabs = [...tabs]; 
     if (samePageTabs.length === 0) {
       const newTabId = `${baseId}-1`;
 
@@ -210,8 +205,7 @@ function App() {
       setTabs((prev) => [...prev, newTab]);
       setActiveTabId(newTabId);
     }
-
-    // 🔴 Duplicate open
+ 
     else {
       // 🔥 Step 1: Rename existing tabs
       updatedTabs = updatedTabs.map((tab) => {
@@ -225,8 +219,7 @@ function App() {
         }
         return tab;
       });
-
-      // 🔥 Step 2: New tab add
+ 
       const newIndex = samePageTabs.length + 1;
 
       const newTabId = `${baseId}-${newIndex}`;
@@ -245,8 +238,7 @@ function App() {
       setTabs(updatedTabs);
       setActiveTabId(newTabId);
     }
-
-    // 🔗 URL sync
+ 
     const targetUrl = `/app?page=${menuItem.appl_name}`;
 
     if (window.location.pathname + window.location.search !== targetUrl) {
@@ -266,7 +258,6 @@ function App() {
   }, [tabs]);
   const handleChangeActiveTab = (tabId) => {
     setActiveTabId(tabId);
-
     const tab = tabs.find((t) => t.id === tabId);
 
     const targetUrl = tab?.appl_name

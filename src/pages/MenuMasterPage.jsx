@@ -80,7 +80,7 @@ const MenuMasterPage = ({ tab }) => {
 
   const {
     mode, formData, setFormData, showForm, setShowForm, saving,
-    handleView, handleAdd, handleModify, performSave, handleEditCancel,
+    handleView, handleAdd, handleModify, performSave, handleEditCancel,onNewEntry,
     isEditMode, rights
   } = useERPMode(
     initialState,
@@ -181,6 +181,7 @@ const MenuMasterPage = ({ tab }) => {
           totalRecords={list.length}
           activeTab="entry"
           onTabChange={handleTabChange}
+          onNewEntry={handleAdd}
         />
       ) : (
         <Table

@@ -178,22 +178,32 @@ const SalaryFormulaEngineForm = ({
         .sort((a, b) => {
             const aRect = a.getBoundingClientRect();
             const bRect = b.getBoundingClientRect();
-            if (Math.abs(aRect.top - bRect.top) > 5) return aRect.top - bRect.top;
+            
+            // 🔥 Yahan 5 ki jagah 18 kar dijiye taaki height difference ignore ho jaye
+            if (Math.abs(aRect.top - bRect.top) > 18) {
+                return aRect.top - bRect.top;
+            }
             return aRect.left - bRect.left;
         });
 
         const index = elements.indexOf(e.target);
 
-        if (e.key === "Enter") {
-            e.preventDefault();
-            e.stopPropagation();
-            if (index < elements.length - 1) {
-                elements[index + 1].focus();
-            } else {
-                const saveBtn = document.querySelector("[save]");
-                if (saveBtn) saveBtn.focus();
-            }
+       if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (index < elements.length - 1) {
+          elements[index + 1].focus();
+        } else {
+          // 🔥 LAST FIELD → SAVE BUTTON FOCUS
+          let submitBtn = document.querySelector("#save")||document.querySelector("#update");
+          
+      
+          if (submitBtn) {
+            submitBtn.focus();
+          }
         }
+      }
 
         if (e.key === "Backspace") {
             const el = e.target;

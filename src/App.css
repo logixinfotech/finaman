@@ -683,3 +683,13 @@ select,
   /* or any clean mono font */
   font-variant-numeric: tabular-nums;
 }
+/* ─── Selection Fix ───────────────────────────────────────────────────────── */
+input, 
+textarea, 
+select, 
+[contenteditable="true"] {
+  -webkit-user-select: text !important; /* For Safari/Chrome */
+  -moz-user-select: text !important;    /* For Firefox */
+  -ms-user-select: text !important;     /* For IE */
+  user-select: text !important;         /* Standard */
+}

@@ -1,9 +1,5 @@
-// pages/LeaveManagement/LeaveAccrual/LeaveAccrualBulk.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Bulk accrual — employee list left, 12 months grid, auto-fill, post all
-// No form needed — sab kuch ek hi table mein
-// ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useState, useCallback } from "react";
+
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   getActledList,
   getLeaveTypes,
@@ -11,19 +7,16 @@ import {
   bulkSaveAccrual,
   postAccruals,
   fetchUserGroupsByType,
+  deleteLeaveAccrual,
 } from "../../../../utils/api";
 import { showToast, confirmDelete } from "../../../../components/Reusable/alert";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
+import ERPFooter from "../../../../components/Reusable/form/FooterForm";
+import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
+import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 
-// ── Constants ────────────────────────────────────────────────────────────────
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) =>
-  String(new Date().getFullYear() - 1 + i)
-);
-
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - 1 + i));
 const AVATAR_COLORS = [
   { bg: "bg-blue-100", text: "text-blue-800" },
   { bg: "bg-purple-100", text: "text-purple-800" },
@@ -32,13 +25,11 @@ const AVATAR_COLORS = [
   { bg: "bg-pink-100", text: "text-pink-800" },
   { bg: "bg-green-100", text: "text-green-800" },
 ];
-
-const initials = (name = "") =>
-  name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-
+const initials = (name = "") => name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 const fmtNum = (n) => (parseFloat(n) || 0).toFixed(2);
 
-const LeaveTypeDropdown = ({ allLeaveTypes, selectedLTs, onToggle, onRateChange }) => {
+// ── LeaveType Dropdown ────────────────────────────────────────────────────────
+const LeaveTypeDropdown = ({ allLeaveTypes, selectedLTs, onToggle, onRateChange, disabled }) => {
   const [open, setOpen] = useState(false);
 
   const selectedNames = Object.entries(selectedLTs)
@@ -53,12 +44,13 @@ const LeaveTypeDropdown = ({ allLeaveTypes, selectedLTs, onToggle, onRateChange 
 
   return (
     <div className="relative">
-      {/* Trigger */}
       <div
-        onClick={() => setOpen((o) => !o)}
-        className="min-h-[32px] px-3 py-1 border border-slate-200 rounded-md
-                   bg-white cursor-pointer flex items-center justify-between gap-2
-                   hover:border-blue-300 transition-colors"
+        onClick={() => !disabled && setOpen((o) => !o)}
+        className={`min-h-[32px] px-3 py-1 border rounded-md bg-white
+                    flex items-center justify-between gap-2 transition-colors
+                    ${disabled
+            ? "border-slate-100 bg-[#eef1f6] cursor-not-allowed"
+            : "border-slate-200 cursor-pointer hover:border-blue-300"}`}
         style={{ minWidth: 220 }}
       >
         <div className="flex flex-wrap gap-1 flex-1">
@@ -81,82 +73,64 @@ const LeaveTypeDropdown = ({ allLeaveTypes, selectedLTs, onToggle, onRateChange 
         </svg>
       </div>
 
-      {/* Dropdown panel */}
-      {open && (
+      {open && !disabled && (
         <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-          />
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute top-full left-0 mt-1 z-50 bg-white border
                           border-slate-200 rounded-lg shadow-lg overflow-hidden"
-            style={{ minWidth: 280 }}>
-
+            style={{ minWidth: 290 }}>
             <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
               <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">
-                Select leave types &amp; set rate
+                Click row to select · Set days/month
               </p>
             </div>
-
             <div className="max-h-60 overflow-y-auto divide-y divide-slate-50">
               {allLeaveTypes.map((lt) => {
                 const isChecked = !!selectedLTs[lt.leave_type_id]?.checked;
                 const rate = selectedLTs[lt.leave_type_id]?.rate || "";
-
                 return (
                   <div key={lt.leave_type_id}
-                    className={`flex items-center gap-2 px-3 py-2.5 transition-colors
-                      ${isChecked ? "bg-blue-50/40" : "hover:bg-slate-50"}`}>
-
-                    {/* Checkbox */}
+                    onClick={() => onToggle(lt.leave_type_id)}
+                    className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer
+                                transition-colors select-none
+                                ${isChecked ? "bg-blue-50/50" : "hover:bg-slate-50"}`}>
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      onChange={() => onToggle(lt.leave_type_id)}
+                      onChange={() => { }}
+                      onClick={(e) => e.stopPropagation()}
                       className="w-3.5 h-3.5 accent-blue-600 cursor-pointer flex-shrink-0"
                     />
-
-                    {/* Leave name */}
                     <div className="flex-1 min-w-0">
                       <p className={`text-[13px] truncate
                         ${isChecked ? "font-medium text-slate-800" : "text-slate-500"}`}>
                         {lt.leave_name}
                       </p>
-                      <p className="text-[11px] text-slate-400">
-                        Max {lt.max_days} days / year
-                      </p>
+                      <p className="text-[11px] text-slate-400">Max {lt.max_days} days / year</p>
                     </div>
-
-                    {/* Inline rate input — only when checked */}
                     {isChecked && (
-                      <div className="flex items-center gap-1 bg-white border
-                                      border-blue-200 rounded-md px-2 py-1 shrink-0">
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 bg-white border
+                                   border-blue-200 rounded-md px-2 py-1 shrink-0">
                         <input
                           type="number"
                           step="0.5"
                           min="0"
                           value={rate}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            onRateChange(lt.leave_type_id, e.target.value);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => onRateChange(lt.leave_type_id, e.target.value)}
                           placeholder="0"
                           className="w-[36px] h-[18px] bg-transparent border-none
                                      outline-none text-center text-[12px] font-medium
                                      text-blue-800"
                         />
-                        <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                          /mo
-                        </span>
+                        <span className="text-[10px] text-slate-400 whitespace-nowrap">/mo</span>
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-
-            {/* Footer summary */}
             {Object.values(selectedLTs).some((v) => v?.checked) && (
               <div className="px-3 py-2 bg-slate-50 border-t border-slate-200
                               flex items-center justify-between">
@@ -164,9 +138,8 @@ const LeaveTypeDropdown = ({ allLeaveTypes, selectedLTs, onToggle, onRateChange 
                   {Object.values(selectedLTs).filter((v) => v?.checked).length} selected
                 </span>
                 <span className="text-[11px] font-medium text-blue-700
-                                 bg-blue-50 border border-blue-200
-                                 rounded-full px-2 py-0.5">
-                  {totalRate} days / month total
+                                 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                  {totalRate} days / month
                 </span>
               </div>
             )}
@@ -177,50 +150,50 @@ const LeaveTypeDropdown = ({ allLeaveTypes, selectedLTs, onToggle, onRateChange 
   );
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 const LeaveAccrualBulk = ({ tab }) => {
   const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [leaveTypes, setLeaveTypes] = useState([]);
   const [deptId, setDeptId] = useState("");
   const [deptName, setDeptName] = useState("All Departments");
   const [allLeaveTypes, setAllLeaveTypes] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [selectedLTs, setSelectedLTs] = useState({});
-  const [employees, setEmployees] = useState([]);
-  const [accrualRate, setAccrualRate] = useState("1.5"); // default per month
-  const [rows, setRows] = useState([]);    // one row per employee
-  const [selected, setSelected] = useState({});    // { empId: bool }
-  const [saving, setSaving] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [selected, setSelected] = useState({});   // ← EMPTY by default
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // ── Load employees + leave types ──────────────────────────────────────────
+  // Keep original rows for cancel/reset
+  const originalRows = useRef([]);
+
+  const { mode, setMode, handleAdd, handleModify, handleEditCancel, rights } = useERPMode(
+    {}, async () => { }, async () => { }, tab?.appl_name
+  );
+
+  const isViewMode = mode === "view";
+  const isEditMode = mode === "edit";
+  const isAddMode = mode === "add";
+
+  // ── Load master data ──────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
         const [empData, ltData, deptData] = await Promise.all([
-          getActledList(),
-          getLeaveTypes(),
-          fetchUserGroupsByType("DEP"),
+          getActledList(), getLeaveTypes(), fetchUserGroupsByType("DEP"),
         ]);
         setAllEmployees(empData || []);
-        setEmployees(empData || []);
-
         setAllLeaveTypes(ltData?.data || []);
-        setLeaveTypes(ltData?.data || []);
-
         setDepartments(deptData?.data || []);
-      } catch (err) {
-        console.error("Load error:", err);
-      }
+      } catch (err) { console.error(err); }
     };
     load();
   }, []);
 
-
-  // ── Department dropdown ─────────────────────────────────────────────────
   const deptNames = ["All Departments", ...departments.map((d) => d.group_name)];
+  const filteredEmployees = deptId
+    ? allEmployees.filter((e) => String(e.Op_id3) === deptId)
+    : allEmployees;
 
   const handleDeptChange = (val) => {
     setDeptName(val);
@@ -229,11 +202,7 @@ const LeaveAccrualBulk = ({ tab }) => {
     setDeptId(found ? String(found.group_id) : "");
   };
 
-  const filteredEmployees = deptId
-    ? allEmployees.filter((e) => String(e.Op_id3) === deptId)
-    : allEmployees;
-
-  // ── Leave type toggle + rate ────────────────────────────────────────────
+  // ── Leave type toggle ─────────────────────────────────────────────────
   const toggleLT = (ltId) => {
     setSelectedLTs((prev) => {
       if (prev[ltId]?.checked) {
@@ -241,24 +210,14 @@ const LeaveAccrualBulk = ({ tab }) => {
         delete next[ltId];
         return next;
       }
-      // Auto-calculate rate from max_days
       const lt = allLeaveTypes.find((l) => l.leave_type_id === ltId);
       const rate = lt?.max_days ? (lt.max_days / 12).toFixed(2) : "1.00";
       return { ...prev, [ltId]: { checked: true, rate } };
     });
   };
 
-  const handleRateChange = (ltId, val) => {
-    setSelectedLTs((prev) => ({
-      ...prev,
-      [ltId]: { ...prev[ltId], rate: val },
-    }));
-  };
-
-  const totalRate = Object.values(selectedLTs)
-    .filter((v) => v?.checked)
-    .reduce((s, v) => s + (parseFloat(v.rate) || 0), 0)
-    .toFixed(2);
+  const handleRateChange = (ltId, val) =>
+    setSelectedLTs((prev) => ({ ...prev, [ltId]: { ...prev[ltId], rate: val } }));
 
   const checkedLTList = Object.entries(selectedLTs)
     .filter(([, v]) => v?.checked)
@@ -268,59 +227,60 @@ const LeaveAccrualBulk = ({ tab }) => {
       rate: v.rate,
     }));
 
-  // ── Load existing accrual data when year/leaveType changes ────────────────
+  const totalRate = checkedLTList
+    .reduce((s, lt) => s + (parseFloat(lt.rate) || 0), 0)
+    .toFixed(2);
+
+  // ── Load existing accruals ────────────────────────────────────────────
   const loadAccruals = useCallback(async () => {
-    if (!year || filteredEmployees.length === 0) return;
+    if (!year || filteredEmployees.length === 0) { setRows([]); return; }
     try {
       setLoading(true);
       const res = await getLeaveAccruals({ year });
       const existing = res?.data || [];
 
-      // Build row per employee
       const newRows = filteredEmployees.map((emp) => {
         const empAccruals = existing.filter(
-          (a) => a.employee_id === emp.Actled_id
+          (a) => Number(a.employee_id) === Number(emp.Actled_id)
         );
 
-        // months: { 1: { accrual_id, days, is_posted }, ... }
+        // Build months — distribute existing accrual_days evenly
         const months = {};
+        for (let i = 1; i <= 12; i++) {
+          const match = empAccruals[0];
+          const totalDays = parseFloat(match?.accrual_days) || 0;
+          months[i] = {
+            accrual_id: match?.accrual_id || null,
+            days: totalDays ? (totalDays / 12).toFixed(2) : "",
+            is_posted: !!match?.is_posted,
+          };
+        }
+
+        const carry_forward = fmtNum(empAccruals[0]?.carry_forward || 0);
+        const isPosted = empAccruals.length > 0 && empAccruals.every((a) => a.is_posted);
+
+        // ── Build checked leave types from existing data ────────────────
+        const existingLTIds = {};
         empAccruals.forEach((a) => {
-          if (a.accrual_month) {
-            months[a.accrual_month] = {
-              accrual_id: a.accrual_id,
-              days: fmtNum(a.accrual_days),
-              is_posted: !!a.is_posted,
-            };
-          }
+          if (a.leave_type_id) existingLTIds[a.leave_type_id] = true;
         });
-
-        // carry forward from last year's accrual
-        const cfEntry = empAccruals.find((a) => !a.accrual_month);
-        const carry_forward = cfEntry
-          ? fmtNum(cfEntry.carry_forward)
-          : "0.00";
-
-        // is_posted = all 12 months posted
-        const allPosted =
-          Object.values(months).length === 12 &&
-          Object.values(months).every((m) => m.is_posted);
 
         return {
           employee_id: emp.Actled_id,
           employee_name: emp.Led_name?.trim() || "",
+          dept_name: emp.Op_name3 || "—",
           months,
           carry_forward,
-          is_posted: allPosted,
+          is_posted: isPosted,
+          existingLTIds,  // which LTs already have data
         };
       });
 
       setRows(newRows);
-      // Select all non-posted by default
-      const sel = {};
-      newRows.forEach((r) => {
-        if (!r.is_posted) sel[r.employee_id] = true;
-      });
-      setSelected(sel);
+      originalRows.current = JSON.parse(JSON.stringify(newRows));
+
+      // ✅ FIX 1: Default selected = EMPTY (no auto-check)
+      setSelected({});
     } catch (err) {
       console.error("loadAccruals error:", err);
     } finally {
@@ -328,175 +288,26 @@ const LeaveAccrualBulk = ({ tab }) => {
     }
   }, [year, deptId, allEmployees]);
 
-  useEffect(() => { loadAccruals(); }, [loadAccruals]);
+  useEffect(() => { loadAccruals(); }, [year, deptId, allEmployees]);
 
-  // ── Auto-fill all months for all non-posted employees ────────────────────
-  const handleAutoFill = () => {
-
-    if (checkedLTList.length === 0) {
-      showToast({
-        icon: "error",
-        title: "Please select leave type",
-      });
-      return;
-    }
-
-    setRows((prev) =>
-      prev.map((row) => {
-
-        if (row.is_posted) return row;
-
-        const months = { ...row.months };
-
-        for (let m = 1; m <= 12; m++) {
-
-          if (!months[m]?.is_posted) {
-
-            let totalMonthRate = 0;
-
-            checkedLTList.forEach((lt) => {
-              totalMonthRate += parseFloat(lt.rate) || 0;
-            });
-
-            months[m] = {
-              ...months[m],
-              accrual_id: months[m]?.accrual_id || null,
-              days: totalMonthRate.toFixed(2),
-              is_posted: false,
-            };
-          }
-        }
-
-        return { ...row, months };
-
-      })
-    );
-  };
-
-  // ── Update a single cell ─────────────────────────────────────────────────
-  const handleCellChange = (empId, monthNum, value) => {
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.employee_id !== empId) return row;
-        return {
-          ...row,
-          months: {
-            ...row.months,
-            [monthNum]: {
-              ...row.months[monthNum],
-              accrual_id: row.months[monthNum]?.accrual_id || null,
-              days: value,
-              is_posted: row.months[monthNum]?.is_posted || false,
-            },
-          },
-        };
-      })
-    );
-  };
-
-  // ── Update carry forward for a row ───────────────────────────────────────
-  const handleCFChange = (empId, value) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.employee_id === empId ? { ...r, carry_forward: value } : r
-      )
-    );
-  };
-
-  // ── Compute total balance = sum(months) + carry_forward ──────────────────
-  const getTotalBalance = (row) => {
-    const monthSum = Object.values(row.months).reduce(
-      (s, m) => s + (parseFloat(m.days) || 0), 0
-    );
-    const cf = parseFloat(row.carry_forward) || 0;
-    return (monthSum + cf).toFixed(2);
-  };
-
-  // ── Save (bulk upsert) ────────────────────────────────────────────────────
-  const handleSave = async () => {
-    const selectedRows = rows.filter((r) => selected[r.employee_id] && !r.is_posted);
-    if (selectedRows.length === 0) {
-      showToast({ icon: "error", title: "No employees selected" });
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = [];
-      selectedRows.forEach((row) => {
-        for (let m = 1; m <= 12; m++) {
-          const cell = row.months[m];
-          if (!cell?.days) continue;
-          checkedLTList.forEach(({ ltId, rate }) => {
-
-            payload.push({
-              accrual_id: cell.accrual_id || null,
-              employee_id: row.employee_id,
-              leave_type_id: ltId,
-              financial_year: year,
-              accrual_month: m,
-              accrual_days: parseFloat(rate) || 0,
-              carry_forward:
-                m === 1
-                  ? parseFloat(row.carry_forward) || 0
-                  : 0,
-              is_posted: 0,
-            });
-
-          });
-        }
-      });
-
-      await bulkSaveAccrual(payload);
-      showToast({ icon: "success", title: "Accruals saved successfully" });
-      await loadAccruals();
-    } catch (err) {
-      console.error("Save error:", err);
-      showToast({ icon: "error", title: "Save failed" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ── Post (finalize) ───────────────────────────────────────────────────────
-  const handlePost = async () => {
-    const selectedRows = rows.filter((r) => selected[r.employee_id] && !r.is_posted);
-    if (selectedRows.length === 0) {
-      showToast({ icon: "error", title: "No employees selected to post" });
-      return;
-    }
-
-    // Collect all accrual_ids for selected employees
-    const accrualIds = [];
-    selectedRows.forEach((row) => {
-      Object.values(row.months).forEach((cell) => {
-        if (cell?.accrual_id) accrualIds.push(cell.accrual_id);
-      });
-    });
-
-    if (accrualIds.length === 0) {
-      showToast({ icon: "error", title: "Please save first before posting" });
-      return;
-    }
-
-    setPosting(true);
-    try {
-      await postAccruals({
-        accrual_ids: accrualIds,
-        financial_year: year,
-      });
-      showToast({ icon: "success", title: `${selectedRows.length} employees posted & balance updated` });
-      await loadAccruals();
-    } catch (err) {
-      console.error("Post error:", err);
-      showToast({ icon: "error", title: "Post failed" });
-    } finally {
-      setPosting(false);
-    }
-  };
-
-  // ── Select / Deselect ────────────────────────────────────────────────────
-  const toggleSelect = (empId) =>
+  // ── When a row is selected in modify mode — pre-check its leave types ──
+  // This runs when user clicks a row checkbox
+  const handleRowSelect = (empId, row) => {
     setSelected((p) => ({ ...p, [empId]: !p[empId] }));
+
+    // ✅ FIX 2: Pre-check existing leave types for this employee
+    if (!selected[empId] && row.existingLTIds) {
+      const newLTs = { ...selectedLTs };
+      Object.keys(row.existingLTIds).forEach((ltId) => {
+        if (!newLTs[ltId]?.checked) {
+          const lt = allLeaveTypes.find((l) => l.leave_type_id === ltId);
+          const rate = lt?.max_days ? (lt.max_days / 12).toFixed(2) : "1.00";
+          newLTs[ltId] = { checked: true, rate };
+        }
+      });
+      setSelectedLTs(newLTs);
+    }
+  };
 
   const toggleSelectAll = () => {
     const nonPosted = rows.filter((r) => !r.is_posted);
@@ -506,32 +317,224 @@ const LeaveAccrualBulk = ({ tab }) => {
     setSelected(next);
   };
 
-  // ── Stats ────────────────────────────────────────────────────────────────
+  // ── Auto-fill ─────────────────────────────────────────────────────────
+  const handleAutoFill = () => {
+    if (checkedLTList.length === 0) {
+      showToast({ icon: "error", title: "Please select at least one leave type" });
+      return;
+    }
+    const rate = parseFloat(totalRate) || 0;
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.is_posted || !selected[row.employee_id]) return row;
+        const months = { ...row.months };
+        for (let m = 1; m <= 12; m++) {
+          if (!months[m]?.is_posted) {
+            months[m] = { ...months[m], days: rate.toFixed(2), is_posted: false };
+          }
+        }
+        return { ...row, months };
+      })
+    );
+  };
+
+  const handleCellChange = (empId, monthNum, value) => {
+    if (isViewMode) return;
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.employee_id !== empId) return row;
+        return {
+          ...row,
+          months: {
+            ...row.months,
+            [monthNum]: { ...row.months[monthNum], days: value, is_posted: false },
+          },
+        };
+      })
+    );
+  };
+
+  const handleCFChange = (empId, value) => {
+    if (isViewMode) return;
+    setRows((prev) =>
+      prev.map((r) => r.employee_id === empId ? { ...r, carry_forward: value } : r)
+    );
+  };
+
+  const getTotalBalance = (row) => {
+    const monthSum = Object.values(row.months).reduce((s, m) => s + (parseFloat(m.days) || 0), 0);
+    return (monthSum + (parseFloat(row.carry_forward) || 0)).toFixed(2);
+  };
+
+  // ── Save ──────────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    const selRows = rows.filter((r) => selected[r.employee_id] && !r.is_posted);
+    if (selRows.length === 0) { showToast({ icon: "error", title: "Select at least one employee" }); return; }
+    if (checkedLTList.length === 0) { showToast({ icon: "error", title: "Select at least one leave type" }); return; }
+
+    setPosting(true);
+    try {
+      const payload = [];
+      selRows.forEach((row) => {
+        checkedLTList.forEach((lt) => {
+          const totalAccrual = Object.values(row.months)
+            .reduce((s, m) => s + (parseFloat(m?.days) || 0), 0);
+          const cf = parseFloat(row.carry_forward) || 0;
+          payload.push({
+            accrual_id: row.months[1]?.accrual_id || null,
+            employee_id: row.employee_id,
+            leave_type_id: lt.ltId,
+            financial_year: Number(year),
+            accrual_type: "Yearly",
+            accrual_days: totalAccrual,
+            carry_forward: cf,
+            total_accrued: totalAccrual + cf,
+            remarks: "Bulk Accrual",
+          });
+        });
+      });
+
+      await bulkSaveAccrual(payload);
+      showToast({ icon: "success", title: `${selRows.length} employee accruals saved` });
+      await loadAccruals();
+      setMode("view");
+    } catch (err) {
+      showToast({ icon: "error", title: "Save failed" });
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleCancel = useCallback(async () => {
+
+    if (mode === "add" || mode === "edit") {
+
+      const hasChanges =
+        JSON.stringify(rows) !== JSON.stringify(originalRows.current);
+
+      // FIRST CANCEL → RESET
+      if (hasChanges) {
+
+        setRows(JSON.parse(JSON.stringify(originalRows.current)));
+        setSelected({});
+        setSelectedLTs({});
+
+        showToast({
+          icon: "info",
+          title: "Form Reset"
+        });
+
+        return;
+      }
+
+      // SECOND CANCEL / ESC → VIEW MODE
+      setMode("view");
+    }
+
+  }, [mode, rows]);
+
+
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === "Escape") {
+        handleCancel();
+      }
+    };
+    window.addEventListener("keydown", handleEscKey);
+    return () => {
+      window.removeEventListener("keydown", handleEscKey);
+    };
+  }, [handleCancel]);
+
+  // ✅ FIX 4: Delete selected rows
+  const handleDelete = async () => {
+    const selRows = rows.filter((r) => selected[r.employee_id]);
+    if (selRows.length === 0) { showToast({ icon: "error", title: "Select employee to delete" }); return; }
+
+    const confirmed = await confirmDelete({
+      title: `Delete accrual for ${selRows.length} employee(s)?`,
+    });
+    if (!confirmed) return;
+
+    try {
+      for (const row of selRows) {
+        const accrualIds = Object.values(row.months)
+          .filter((m) => m?.accrual_id)
+          .map((m) => m.accrual_id);
+        for (const id of accrualIds) {
+          await deleteLeaveAccrual(id);
+        }
+      }
+      showToast({ icon: "success", title: "Deleted successfully" });
+      await loadAccruals();
+    } catch (err) {
+      showToast({ icon: "error", title: "Delete failed" });
+    }
+  };
+
   const selectedCount = rows.filter((r) => selected[r.employee_id]).length;
   const draftCount = rows.filter((r) => !r.is_posted).length;
   const postedCount = rows.filter((r) => r.is_posted).length;
-  const totalAccrued = rows
-    .filter((r) => !r.is_posted)
-    .reduce((s, r) => {
-      return s + Object.values(r.months).reduce(
-        (ms, m) => ms + (parseFloat(m?.days) || 0), 0
-      );
-    }, 0).toFixed(1);
-
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
 
-      {/* ── Top bar ── */}
-      <div className="shrink-0 bg-white border-b border-slate-200
-                      px-5 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-[15px] font-medium text-slate-800">
-            Leave Accrual &amp; Carry Forward
-          </h1>
+      <ERPHeader
+        title="LEAVE ACCRUAL & CARRY FORWARD"
+        isAddMode={isAddMode}
+        isEditMode={isEditMode}
+        isViewMode={isViewMode}
+        activeTab="entry"
+        onTabChange={() => { }}
+        rightContent={`${rows.length} Employees`}
+      />
 
+      {/* ── Filter bar ── */}
+      <div className="shrink-0 bg-white border-b border-slate-200
+                      px-5 py-2.5 flex items-end gap-4 flex-wrap">
+
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Year</span>
+          <ERPAutocomplete
+            options={YEAR_OPTIONS}
+            value={year}
+            onChange={(v) => { if (!isViewMode) setYear(v); }}
+            className="h-[32px] w-[90px] px-2 text-[12px] border border-slate-200
+                       rounded-md bg-white text-slate-700 outline-none focus:border-blue-300"
+          />
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Department</span>
+          <ERPAutocomplete
+            options={deptNames}
+            value={deptName}
+            onChange={(v) => { if (!isViewMode) handleDeptChange(v); }}
+            className="h-[32px] w-[180px] px-2 text-[12px] border border-slate-200
+                       rounded-md bg-white text-slate-700 outline-none focus:border-blue-300"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between" style={{ minWidth: 220 }}>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Leave Types</span>
+            {parseFloat(totalRate) > 0 && (
+              <span className="text-[10px] font-medium text-blue-700">{totalRate} days/mo</span>
+            )}
+          </div>
+          <LeaveTypeDropdown
+            allLeaveTypes={allLeaveTypes}
+            selectedLTs={selectedLTs}
+            onToggle={toggleLT}
+            onRateChange={handleRateChange}
+            disabled={isViewMode}
+          />
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Status badges */}
+        <div className="flex items-center gap-2 self-end pb-0.5">
           <span className="px-2.5 py-1 rounded-full text-[11px] font-medium
                            bg-amber-50 text-amber-700 border border-amber-200">
             {draftCount} draft
@@ -541,84 +544,26 @@ const LeaveAccrualBulk = ({ tab }) => {
             {postedCount} posted
           </span>
         </div>
+
+        {!isViewMode && (
+          <button
+            onClick={handleAutoFill}
+            className="h-[32px] px-4 rounded-md text-[12px] font-medium self-end
+                       bg-slate-700 text-white hover:bg-slate-800
+                       transition-colors flex items-center gap-1.5">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6h8M6 2l4 4-4 4" stroke="white" strokeWidth="1.3"
+                strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Auto-fill selected
+          </button>
+        )}
       </div>
 
-      {/* ── Filter bar ── */}
-      <div className="shrink-0 bg-white border-b border-slate-200
-                      px-5 py-2.5 flex items-end gap-4 flex-wrap">
-
-        {/* Year */}
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">
-            Year
-          </span>
-          <ERPAutocomplete
-            options={YEAR_OPTIONS}
-            value={year}
-            onChange={setYear}
-            className="h-[32px] w-[90px] px-2 text-[12px] border border-slate-200
-                       rounded-md bg-white text-slate-700 outline-none
-                       focus:border-blue-300"
-          />
-        </div>
-
-        {/* Department */}
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">
-            Department
-          </span>
-          <ERPAutocomplete
-            options={deptNames}
-            value={deptName}
-            onChange={handleDeptChange}
-            className="h-[32px] w-[180px] px-2 text-[12px] border border-slate-200
-                       rounded-md bg-white text-slate-700 outline-none
-                       focus:border-blue-300"
-          />
-        </div>
-
-        {/* Leave Types dropdown */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between" style={{ minWidth: 220 }}>
-            <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">
-              Leave Types
-            </span>
-            {totalRate > 0 && (
-              <span className="text-[10px] font-medium text-blue-700">
-                {totalRate} days/mo total
-              </span>
-            )}
-          </div>
-          <LeaveTypeDropdown
-            allLeaveTypes={allLeaveTypes}
-            selectedLTs={selectedLTs}
-            onToggle={toggleLT}
-            onRateChange={handleRateChange}
-          />
-        </div>
-
-        <div className="flex-1" />
-
-        {/* Auto-fill */}
-        <button
-          onClick={handleAutoFill}
-          className="h-[32px] px-4 rounded-md text-[12px] font-medium
-                     bg-slate-700 text-white hover:bg-slate-800
-                     transition-colors flex items-center gap-1.5"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2 6h8M6 2l4 4-4 4" stroke="white" strokeWidth="1.3"
-              strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Auto-fill &amp; calculate
-        </button>
-      </div>
-
-      {/* ── Grid ── */}
+      {/* ── Table ── */}
       <div className="flex-1 overflow-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-48
-                          text-[13px] text-slate-400">
+          <div className="flex items-center justify-center h-48 text-[13px] text-slate-400">
             Loading...
           </div>
         ) : (
@@ -626,25 +571,24 @@ const LeaveAccrualBulk = ({ tab }) => {
             <table className="w-full border-collapse text-[12px]">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  {/* Checkbox */}
                   <th className="w-8 px-3 py-2 border-r border-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={
-                        rows.filter((r) => !r.is_posted).length > 0 &&
-                        rows.filter((r) => !r.is_posted).every((r) => selected[r.employee_id])
-                      }
-                      onChange={toggleSelectAll}
-                      className="w-3.5 h-3.5 accent-blue-600 cursor-pointer"
-                    />
+                    {!isViewMode && (
+                      <input
+                        type="checkbox"
+                        checked={
+                          rows.filter((r) => !r.is_posted).length > 0 &&
+                          rows.filter((r) => !r.is_posted).every((r) => selected[r.employee_id])
+                        }
+                        onChange={toggleSelectAll}
+                        className="w-3.5 h-3.5 accent-blue-600 cursor-pointer"
+                      />
+                    )}
                   </th>
-                  {/* Employee */}
                   <th className="text-left px-3 py-2 font-medium text-slate-500
                                  border-r border-slate-200 w-[150px] text-[11px]
                                  uppercase tracking-wide">
                     Employee
                   </th>
-                  {/* 12 months */}
                   {MONTHS.map((m, i) => (
                     <th key={m}
                       className={`px-1 py-2 text-center font-medium text-[11px]
@@ -655,19 +599,16 @@ const LeaveAccrualBulk = ({ tab }) => {
                       {m}
                     </th>
                   ))}
-                  {/* Carry forward */}
                   <th className="px-2 py-2 text-center font-medium text-[11px]
-                                 bg-blue-50 text-blue-700 border-r border-slate-200
+                                 bg-purple-50 text-purple-700 border-r border-slate-200
                                  w-[68px] uppercase tracking-wide">
-                    Carry fwd
+                    Carry Fwd
                   </th>
-                  {/* Total */}
                   <th className="px-2 py-2 text-center font-medium text-[11px]
                                  bg-green-50 text-green-700 border-r border-slate-200
                                  w-[68px] uppercase tracking-wide">
-                    Total bal.
+                    Total
                   </th>
-                  {/* Status */}
                   <th className="px-2 py-2 text-center font-medium text-[11px]
                                  text-slate-500 w-[68px] uppercase tracking-wide">
                     Status
@@ -683,25 +624,26 @@ const LeaveAccrualBulk = ({ tab }) => {
                   const total = getTotalBalance(row);
 
                   return (
-                    <tr
-                      key={row.employee_id}
-                      className={`border-b border-slate-100
+                    <tr key={row.employee_id}
+                      className={`border-b border-slate-100 transition-colors
                         ${isPosted ? "opacity-60" : ""}
-                        ${isSel && !isPosted ? "bg-blue-50/30" : "hover:bg-slate-50"}`}
-                    >
+                        ${isSel && !isPosted ? "bg-blue-50/30" : "hover:bg-slate-50"}`}>
+
                       {/* Checkbox */}
                       <td className="px-3 py-1.5 border-r border-slate-100 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSel}
-                          disabled={isPosted}
-                          onChange={() => toggleSelect(row.employee_id)}
-                          className="w-3.5 h-3.5 accent-blue-600 cursor-pointer
-                                     disabled:cursor-not-allowed"
-                        />
+                        {!isViewMode && (
+                          <input
+                            type="checkbox"
+                            checked={isSel}
+                            disabled={isPosted}
+                            onChange={() => handleRowSelect(row.employee_id, row)}
+                            className="w-3.5 h-3.5 accent-blue-600 cursor-pointer
+                                       disabled:cursor-not-allowed"
+                          />
+                        )}
                       </td>
 
-                      {/* Employee name */}
+                      {/* Employee */}
                       <td className="px-2 py-1.5 border-r border-slate-100">
                         <div className="flex items-center gap-1.5">
                           <div className={`w-6 h-6 rounded-full flex items-center
@@ -716,12 +658,12 @@ const LeaveAccrualBulk = ({ tab }) => {
                         </div>
                       </td>
 
-                      {/* 12 month cells */}
+                      {/* 12 months */}
                       {Array.from({ length: 12 }, (_, i) => {
                         const mNum = i + 1;
                         const cell = row.months[mNum];
                         const val = cell?.days || "";
-                        const cellPosted = cell?.is_posted || isPosted;
+                        const cellDis = cell?.is_posted || isPosted || isViewMode;
                         const isCurrent = mNum === new Date().getMonth() + 1;
 
                         return (
@@ -733,13 +675,11 @@ const LeaveAccrualBulk = ({ tab }) => {
                               step="0.5"
                               min="0"
                               value={val}
-                              disabled={cellPosted}
-                              onChange={(e) =>
-                                handleCellChange(row.employee_id, mNum, e.target.value)
-                              }
+                              disabled={cellDis}
+                              onChange={(e) => handleCellChange(row.employee_id, mNum, e.target.value)}
                               className={`w-[44px] h-[24px] text-center text-[12px]
                                           rounded border outline-none transition-colors
-                                          ${cellPosted
+                                          ${cellDis
                                   ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
                                   : val
                                     ? "bg-green-50 border-green-300 text-green-800 focus:border-green-400"
@@ -750,45 +690,37 @@ const LeaveAccrualBulk = ({ tab }) => {
                       })}
 
                       {/* Carry forward */}
-                      <td className="px-1 py-1.5 border-r border-slate-100 text-center
-                                     bg-blue-50/30">
+                      <td className="px-1 py-1.5 border-r border-slate-100 text-center bg-purple-50/20">
                         <input
                           type="number"
                           step="0.5"
                           min="0"
                           value={row.carry_forward}
-                          disabled={isPosted}
-                          onChange={(e) =>
-                            handleCFChange(row.employee_id, e.target.value)
-                          }
+                          disabled={isPosted || isViewMode}
+                          onChange={(e) => handleCFChange(row.employee_id, e.target.value)}
                           className={`w-[52px] h-[24px] text-center text-[12px]
                                       rounded border outline-none
-                                      ${isPosted
+                                      ${isPosted || isViewMode
                               ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                              : "bg-blue-50 border-blue-300 text-blue-800 focus:border-blue-400"}`}
+                              : "bg-purple-50 border-purple-300 text-purple-800 focus:border-purple-400"}`}
                         />
                       </td>
 
-                      {/* Total balance */}
-                      <td className="px-2 py-1.5 border-r border-slate-100 text-center
-                                     bg-green-50/30">
-                        <span className="text-[13px] font-medium text-green-800">
-                          {total}
-                        </span>
+                      {/* Total */}
+                      <td className="px-2 py-1.5 border-r border-slate-100 text-center bg-green-50/20">
+                        <span className="text-[13px] font-medium text-green-800">{total}</span>
                       </td>
 
                       {/* Status */}
                       <td className="px-2 py-1.5 text-center">
                         {isPosted ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px]
-                                           font-medium bg-green-50 text-green-700
-                                           border border-green-200">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium
+                                           bg-green-50 text-green-700 border border-green-200">
                             Posted
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px]
-                                           font-medium bg-amber-50 text-amber-700
-                                           border border-amber-200">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium
+                                           bg-amber-50 text-amber-700 border border-amber-200">
                             Draft
                           </span>
                         )}
@@ -811,50 +743,19 @@ const LeaveAccrualBulk = ({ tab }) => {
         )}
       </div>
 
-       
-
-      {/* ── Action bar ── */}
-      <div className="shrink-0 bg-white border-t border-slate-200
-                      px-5 py-2.5 flex items-center justify-between">
-        <span className="text-[12px] text-slate-500">
-          {selectedCount} employee{selectedCount !== 1 ? "s" : ""} selected
-          {checkedLTList.length > 0
-            ? ` · ${checkedLTList.map((l) => l.name).join(", ")} · ${year}`
-            : ""}
-        </span>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSave}
-            disabled={saving || selectedCount === 0}
-            className="h-[30px] px-4 rounded-md text-[12px] font-medium
-                       bg-slate-100 text-slate-700 border border-slate-300
-                       hover:bg-slate-200 disabled:opacity-50 transition-colors
-                       flex items-center gap-1.5"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="#374151"
-                strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {saving ? "Saving..." : "Save draft"}
-          </button>
-
-          <button
-            onClick={handlePost}
-            disabled={posting || selectedCount === 0}
-            className="h-[30px] px-4 rounded-md text-[12px] font-medium
-                       bg-green-700 text-white hover:bg-green-800
-                       disabled:opacity-50 transition-colors
-                       flex items-center gap-1.5"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="white"
-                strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {posting ? "Posting..." : `Post & update balance (${selectedCount})`}
-          </button>
-        </div>
-      </div>
+      <ERPFooter
+        isAddMode={isAddMode}
+        isEditMode={isEditMode}
+        isViewMode={isViewMode}
+        saving={posting}
+        handleSubmit={handleSave}
+        onModify={handleModify}
+        onEditCancel={handleCancel}
+        onDelete={selectedCount > 0 ? handleDelete : null}
+        onCancel={handleCancel}
+        onNewEntry={handleAdd}
+        rights={rights}
+      />
     </div>
   );
 };

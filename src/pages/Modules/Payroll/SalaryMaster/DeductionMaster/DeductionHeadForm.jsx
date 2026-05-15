@@ -22,10 +22,7 @@ const DeductionHeadForm = ({
   setFormData,
   onTabChange = () => {},
   initialData = {},
-  
- 
 }) => {
-
 
   const [errors, setErrors] = useState({});
 
@@ -34,10 +31,6 @@ const DeductionHeadForm = ({
   const isEditMode = mode === "edit";
 
   const requiredFields = ["name", "code", "type"];
-
-
-
-  // 🔥 AUTO FOCUS (SAME)
   useEffect(() => {
     if (isAddMode || isEditMode) {
       setTimeout(() => {
@@ -93,6 +86,27 @@ const DeductionHeadForm = ({
 
     onSave && onSave(formData);
   }, [formData, isViewMode, onSave]);
+  useEffect(() => {
+    if (mode === "add" || mode === "edit") {
+      const timer = setTimeout(() => {
+        const container = document.getElementById("deduction-form-container");
+        if (!container) return;        const firstInput = container.querySelector(
+          'input:not([disabled]), [tabindex="0"]:not([disabled])'
+        );
+
+        if (firstInput) {
+          firstInput.focus();
+          
+          if (firstInput.tagName === "INPUT" && firstInput.type === "text") {
+            const val = firstInput.value || "";
+            firstInput.setSelectionRange(val.length, val.length);
+          }
+        }
+      }, 150); 
+
+      return () => clearTimeout(timer);
+    }
+  }, [mode]);  
 
   // 🔥 KEYBOARD NAVIGATION (EXACT SAME)
   const handleKeyDown = useCallback((e) => {
@@ -116,13 +130,8 @@ const DeductionHeadForm = ({
       if (index < elements.length - 1) {
         elements[index + 1].focus();
       } else {
-        const saveBtn = Array.from(document.querySelectorAll("button"))
-          .find(
-            (btn) =>
-              (btn.textContent?.toLowerCase().includes("save") ||
-               btn.textContent?.toLowerCase().includes("update")) &&
-              !btn.disabled
-          );
+        const saveBtn = document.querySelector("#save")||document.querySelector("#update")
+         
 
         if (saveBtn) saveBtn.focus();
       }

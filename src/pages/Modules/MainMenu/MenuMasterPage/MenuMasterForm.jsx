@@ -8,12 +8,12 @@ const labelClass = "text-[12px] font-medium text-gray-600 w-[120px]";
 const errorText = "text-[10px] text-red-500 mt-0.5";
 
 const MenuMasterForm = ({
-  mode, modules, formData, setFormData, onSave, onCancel,
+  mode , modules, formData, setFormData, onSave, onCancel,
   saving, onDelete, onModify, onEditCancel, rights,
-  currentRecord, totalRecords, activeTab, onTabChange
+  currentRecord, totalRecords, activeTab, onTabChange,onNewEntry
 }) => {
   const isView = mode === "view";
-  const isEdit = !!formData.masmnu_id;
+  const isEdit = mode === "edit";
   const isAdd = mode === "add";
 
   const fieldDisabled = (fieldName) => {
@@ -44,7 +44,10 @@ const MenuMasterForm = ({
       if (index > -1 && index < elements.length - 1) {
         elements[index + 1].focus();
       } else {
-        handleSubmit();
+        const btn=document.querySelector("#save")|| document.querySelector("#update")
+        if(btn){
+          btn.focus();
+        }
       }
     }
   };
@@ -71,7 +74,7 @@ const MenuMasterForm = ({
   const selectedModule = modules.find((m) => m.masmod_id === formData.masmod_id);
 
   return (
-    <div className="w-full max-w-[900px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col" style={{ fontFamily: FONT }}>
+    <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col" style={{ fontFamily: FONT }}>
       
       <ERPHeader
         title="MENU MASTER"
@@ -86,11 +89,7 @@ const MenuMasterForm = ({
       <div className="flex-1 p-4 flex justify-center items-start overflow-y-auto">
         <div ref={containerRef} className="w-full bg-white border rounded-lg p-6 shadow-sm">
           
-          {selectedModule && (
-            <div className="mb-4 text-[11px] bg-blue-50 text-blue-700 px-3 py-1 rounded border border-blue-100 inline-block">
-              Module: <strong>{selectedModule.mod_name}</strong>
-            </div>
-          )}
+          
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-4">
             {/* Module Select */}
@@ -228,6 +227,8 @@ const MenuMasterForm = ({
         onEditCancel={onEditCancel}
         onCancel={onCancel}
         formData={formData}
+        rights={rights }
+        onNewEntry={onNewEntry}
       />
     </div>
   );

@@ -140,23 +140,31 @@ const CompanyMasterPage = ({ tab }) => {
     handleView, handleAdd,  handleModify,
     performSave, handleEditCancel,
     isEditMode,
+  activeTab, setActiveTab,
   } = useERPMode(
     initialState,
-    async (data, isEdit) => {
-      if (isEdit) {
-        return await updateCompany(data.company_id, data);
-      } else {
-        return await createCompany(data);
-      }
-    },
+   async (data, isEdit) => {
+
+  const payload = {
+    ...data,
+    appl_name: tab?.appl_name,
+  }; 
+  if (isEdit) {
+    return await updateCompany(data.company_id, payload);
+  } else {
+    return await createCompany(payload);
+  }
+},
     () => loadCompanyList(filters, page, pageSize),
     tab?.appl_name
   );
  
-  const handleTabChange = useCallback((targetTab) => {
-    if (targetTab === "search") setShowForm(false);
-    if (targetTab === "entry") setShowForm(true);
-  }, [setShowForm]);
+const handleTabChange = useCallback((targetTab) => {
+  setActiveTab(targetTab);                    // ← always track
+  if (targetTab === "search") setShowForm(false);
+  if (targetTab === "entry")  setShowForm(true);
+  // "settings" → showForm stays true, form handles swap internally
+}, [setShowForm, setActiveTab]);
  
   const loadCompanyList = useCallback(async (
     currentFilters = {},
@@ -292,6 +300,7 @@ const handlePageChange = useCallback((newPage, newPageSize) => {
   onNewEntry={handleAdd}
   onEditCancel={handleEditCancel}
   saving={saving}
+   headerActiveTab={activeTab}
   rights={rights}
   canPrint={canPrint}
   currentRecord={currentRecord}

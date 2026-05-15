@@ -6,17 +6,17 @@ import {
  
 export const BaseButton = ({
   children, className = "", onClick, disabled = false,
-  loading = false, shortcut, type = "button", id,
+  loading = false, shortcut, type = "button", 
 }) => (
   <button
-    id={id}
+    id={"update"}
     type={type}
     onClick={onClick}
     disabled={disabled || loading}
     className={`
       relative inline-flex items-center justify-center gap-1.5
-      h-[34px] px-3.5 min-w-[80px] rounded-[5px]
-      text-[12px] font-medium tracking-[0.01em]
+      h-[30px] sm:h-[34px] px-2 sm:px-3.5 min-w-[62px] sm:min-w-[80px] rounded-[5px]
+      text-[11px] sm:text-[12px]  whitespace-nowrap shrink-0 font-medium tracking-[0.01em]
       transition-all duration-150
       active:scale-[0.97]
       focus:outline-none focus:ring-2 focus:ring-offset-1
@@ -31,7 +31,7 @@ export const BaseButton = ({
         {children}
         {shortcut && (
           <span className="
-            ml-1 font-mono text-[9px] tracking-[0.04em]
+            ml-1 font-mono text-[8px] sm:text-[9px] tracking-[0.04em]
             px-[5px] py-[1px] rounded-[3px]
             bg-white/20 text-current opacity-70
           ">
@@ -74,10 +74,11 @@ const Kbd = ({ label, dark = false }) => (
   </span>
 ); 
 // ── SAVE / ADD (filled emerald)
-export const AddButton = ({ onClick, disabled, loading, isAdding = false }) => {
+export const AddButton = ({ id, onClick, disabled, loading, isAdding = false }) => {
   useButtonShortcut(isAdding ? "save" : "add", onClick, disabled);
   return (
     <BaseButton
+      id={id}
       onClick={onClick} disabled={disabled} loading={loading}
       className="bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500 border border-emerald-700/30"
     >

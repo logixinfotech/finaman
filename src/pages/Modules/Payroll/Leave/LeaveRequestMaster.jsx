@@ -161,6 +161,7 @@ const LeaveRequestMaster = ({ tab }) => {
             onNew: handleAdd,
             onSave: handleSave,
             onEsc: () => setShowForm(false),
+            onBackspaceNavigation: true,
         });
     }, [list, handleAdd, handleSave, setShowForm]);
 

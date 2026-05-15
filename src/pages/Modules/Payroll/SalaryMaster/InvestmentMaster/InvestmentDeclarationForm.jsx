@@ -214,40 +214,53 @@ const InvestmentDeclarationForm = ({
       onSave && onSave(formData);
     }, [formData, isViewMode, onSave]);
 
- const handleKeyDown = useCallback(
+const handleKeyDown = useCallback(
   (e) => {
     if (isViewMode) return;
 
-    const container = document.getElementById(
-      "investment-form-container"
-    );
-
+    const container = document.getElementById("investment-form-container");
     if (!container) return;
 
+    // 1. Saare focusable elements ko sahi order mein sort karein (with 18px tolerance)
     const elements = Array.from(
-      container.querySelectorAll(
-        "input, textarea, select, button, [tabindex='0'], [data-toggle]"
-      )
-    ).filter(
-      (el) =>
-        !el.disabled &&
-        el.offsetParent !== null
-    );
+      container.querySelectorAll("input, textarea, select, button, [tabindex='0'], [data-auto]")
+    )
+      .filter((el) => !el.disabled && el.offsetParent !== null)
+      .sort((a, b) => {
+        const aRect = a.getBoundingClientRect();
+        const bRect = b.getBoundingClientRect();
 
-    const currentIndex =
-      elements.indexOf(e.target);
+        // 18px tolerance taaki input aur toggle ek hi row mein maane jayein
+        if (Math.abs(aRect.top - bRect.top) > 18) {
+          return aRect.top - bRect.top;
+        }
+        return aRect.left - bRect.left;
+      });
+
+    const currentIndex = elements.indexOf(e.target);
 
     // =====================
-    // ENTER → NEXT FIELD
+    // ENTER → NEXT FIELD OR SAVE
     // =====================
     if (e.key === "Enter") {
       e.preventDefault();
+      e.stopPropagation();
 
-      if (
-        currentIndex <
-        elements.length - 1
-      ) {
+      if (currentIndex < elements.length - 1) {
+        // Agle field par jao
         elements[currentIndex + 1].focus();
+      } else {
+        // 🔥 LAST FIELD → SAVE BUTTON
+        // Pehle ID se dhoondho, phir text se (taaki miss na ho)
+        let saveBtn = document.querySelector("#save") || document.querySelector("#save-btn");
+        
+        if (!saveBtn) {
+          saveBtn = Array.from(document.querySelectorAll("button")).find(
+            (btn) => btn.innerText?.toLowerCase().includes("save") || btn.innerText?.toLowerCase().includes("update")
+          );
+        }
+
+        if (saveBtn) saveBtn.focus();
       }
     }
 
@@ -255,70 +268,45 @@ const InvestmentDeclarationForm = ({
     // BACKSPACE → PREVIOUS FIELD
     // =====================
     if (e.key === "Backspace") {
-      const tag =
-        e.target.tagName.toLowerCase();
+      const el = e.target;
+      const isInput = el.tagName === "INPUT" || el.tagName === "TEXTAREA";
+      const isToggleOrSelect = el.dataset.toggle === "status" || el.tagName === "SELECT" || el.hasAttribute('data-auto');
+      const value = el.value || "";
 
-      const isInput =
-        tag === "input" ||
-        tag === "textarea";
+      let shouldGoBack = false;
 
-      const isToggle =
-        e.target.dataset.toggle ===
-        "status";
+      // Agar input khali hai ya koi toggle/dropdown element hai
+      if ((isInput && value === "") || isToggleOrSelect) {
+        shouldGoBack = true;
+      }
 
-      const value =
-        e.target.value || "";
-
-      // EMPTY INPUT OR TOGGLE
-      if (
-        (isInput && value === "") ||
-        isToggle
-      ) {
+      if (shouldGoBack && currentIndex > 0) {
         e.preventDefault();
+        const prevField = elements[currentIndex - 1];
+        prevField.focus();
 
-        if (currentIndex > 0) {
-          const prevField =
-            elements[currentIndex - 1];
-
-          prevField.focus();
-
-          // cursor end pe le jane ke liye
-          if (
-            prevField.value !== undefined
-          ) {
-            const len =
-              prevField.value.length;
-
-            setTimeout(() => {
-              prevField.setSelectionRange?.(
-                len,
-                len
-              );
-            }, 0);
-          }
+        // Cursor ko text ke end mein le jane ke liye
+        if (prevField.tagName === "INPUT" && typeof prevField.setSelectionRange === "function") {
+          const len = prevField.value?.length || 0;
+          try {
+            prevField.setSelectionRange(len, len);
+          } catch {}
         }
       }
     }
 
     // =====================
-    // SPACE → TOGGLE
+    // SPACE → TOGGLE STATUS
     // =====================
-    if (
-      e.key === " " &&
-      e.target.dataset.toggle ===
-        "status"
-    ) {
+    if (e.key === " " && e.target.dataset.toggle === "status") {
       e.preventDefault();
-
       handleChange(
         "status",
-        formData.status === "Active"
-          ? "Inactive"
-          : "Active"
+        formData.status === "Active" ? "Inactive" : "Active"
       );
     }
   },
-  [isViewMode, formData]
+  [isViewMode, formData, handleChange]
 );
   return (
     <div

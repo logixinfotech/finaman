@@ -1,8 +1,10 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import { getActledList, getLeaveTypes } from "../../../../utils/api";
+import ERPDateInput from "../../../../components/Reusable/input/Date";
+import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
 
 const LeaveRequestForm = ({
   mode = "view",
@@ -21,18 +23,25 @@ const LeaveRequestForm = ({
   onTabChange,
   initialData = {},
 }) => {
-  const [localData, setLocalData]       = useState(initialData);
-  const [errors, setErrors]             = useState({});
-  const [employees, setEmployees]       = useState([]);
+  const [localData, setLocalData] = useState(initialData);
+  const [errors, setErrors] = useState({});
+  const [employees, setEmployees] = useState([]);
   const [employeeNames, setEmployeeNames] = useState([]);
-  const [leaveTypes, setLeaveTypes]     = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [leaveTypeNames, setLeaveTypeNames] = useState([]);
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
-  const isAddMode  = mode === "add";
+  const isAddMode = mode === "add";
 
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
+  const formRef = useRef(null);
+
+  useEffect(() => {
+    if (isAddMode || isEditMode) {
+      focusFirstInput(formRef);
+    }
+  }, [isAddMode, isEditMode]);
 
   // ── Fetch employees ─────────────────────────────────────
   useEffect(() => {
@@ -70,7 +79,7 @@ const LeaveRequestForm = ({
     const formatted = {
       ...initialData,
       from_date: initialData.from_date ? initialData.from_date.split("T")[0] : "",
-      to_date:   initialData.to_date   ? initialData.to_date.split("T")[0]   : "",
+      to_date: initialData.to_date ? initialData.to_date.split("T")[0] : "",
     };
 
     if (JSON.stringify(localData) !== JSON.stringify(formatted)) {
@@ -82,10 +91,10 @@ const LeaveRequestForm = ({
   // ── Auto-calculate total_days ────────────────────────────
   useEffect(() => {
     if (localData.from_date && localData.to_date) {
-      const from  = new Date(localData.from_date);
-      const to    = new Date(localData.to_date);
-      const diff  = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
-      const days  = diff > 0 ? diff : 0;
+      const from = new Date(localData.from_date);
+      const to = new Date(localData.to_date);
+      const diff = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+      const days = diff > 0 ? diff : 0;
 
       if (days !== parseFloat(localData.total_days)) {
         const updated = { ...localData, total_days: days };
@@ -95,6 +104,13 @@ const LeaveRequestForm = ({
     }
   }, [localData.from_date, localData.to_date]);
 
+  const handleKeyDown = useCallback(
+    (e) => {
+      handleERPEnterNavigation(e, formRef, isViewMode);
+    },
+    [isViewMode]
+  );
+
   // ── Field change handler ─────────────────────────────────
   const handleChange = (field, value) => {
     let updated = { ...localData };
@@ -102,10 +118,10 @@ const LeaveRequestForm = ({
     if (field === "employee_name") {
       const emp = employees.find((e) => e.Led_name?.trim() === value?.trim());
       updated.employee_name = value;
-      updated.employee_id   = emp ? Number(emp.Actled_id) : "";
+      updated.employee_id = emp ? Number(emp.Actled_id) : "";
     } else if (field === "leave_name") {
       const lt = leaveTypes.find((l) => l.leave_name === value);
-      updated.leave_name    = value;
+      updated.leave_name = value;
       updated.leave_type_id = lt ? lt.leave_type_id : "";
     } else {
       updated[field] = value;
@@ -118,7 +134,7 @@ const LeaveRequestForm = ({
     setErrors((prev) => {
       const copy = { ...prev };
       delete copy[field === "employee_name" ? "employee_id" : field];
-      delete copy[field === "leave_name"    ? "leave_type_id" : field];
+      delete copy[field === "leave_name" ? "leave_type_id" : field];
       return copy;
     });
   };
@@ -135,18 +151,18 @@ const LeaveRequestForm = ({
   // ── Status badge ─────────────────────────────────────────
   const statusColor =
     localData.status === "APPROVED" ? "bg-green-100 text-green-700 border-green-300" :
-    localData.status === "REJECTED" ? "bg-red-100 text-red-600 border-red-300"       :
-                                      "bg-yellow-100 text-yellow-700 border-yellow-300";
+      localData.status === "REJECTED" ? "bg-red-100 text-red-600 border-red-300" :
+        "bg-yellow-100 text-yellow-700 border-yellow-300";
 
   // ── Validate and save ────────────────────────────────────
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
 
     const newErrors = {};
-    if (!localData.employee_id)   newErrors.employee_id   = "Required";
+    if (!localData.employee_id) newErrors.employee_id = "Required";
     if (!localData.leave_type_id) newErrors.leave_type_id = "Required";
-    if (!localData.from_date)     newErrors.from_date      = "Required";
-    if (!localData.to_date)       newErrors.to_date        = "Required";
+    if (!localData.from_date) newErrors.from_date = "Required";
+    if (!localData.to_date) newErrors.to_date = "Required";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -156,13 +172,13 @@ const LeaveRequestForm = ({
     if (onSave) onSave(localData);
   }, [localData, onSave, isViewMode]);
 
-  const isPending  = localData.status === "PENDING";
+  const isPending = localData.status === "PENDING";
   const isApproved = localData.status === "APPROVED";
   const isRejected = localData.status === "REJECTED";
 
   return (
     <div
-      className="w-full max-w-[800px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
@@ -176,13 +192,14 @@ const LeaveRequestForm = ({
       />
 
       <div className="flex-1 p-4 overflow-y-auto">
-        <div className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
+        <div ref={formRef} className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-visible relative">
           <div className="p-5 grid grid-cols-1 gap-y-5">
 
 
             {/* ── Employee ── */}
+            <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
             <div className="flex flex-col sm:flex-row items-start px-1">
-              <label className="text-[15px] w-[140px] pt-1 shrink-0">
+              <label className="text-[15px] w-[100px] pt-1 shrink-0">
                 Employee <span className="text-red-500">*</span>
               </label>
               <div className="flex-1 w-full">
@@ -192,6 +209,7 @@ const LeaveRequestForm = ({
                   onChange={(val) => handleChange("employee_name", val)}
                   className={getInputClass(isViewMode, "employee_id")}
                   disabled={isViewMode}
+                  onKeyDown={handleKeyDown}
                 />
                 {localData.employee_id && (
                   <div className="text-[12px] text-blue-600 mt-1 ml-1">
@@ -206,7 +224,7 @@ const LeaveRequestForm = ({
 
             {/* ── Leave Type ── */}
             <div className="flex flex-col sm:flex-row items-start px-1">
-              <label className="text-[15px] w-[140px] pt-1 shrink-0">
+              <label className="text-[15px] w-[100px] pt-1 shrink-0">
                 Leave Type <span className="text-red-500">*</span>
               </label>
               <div className="flex-1 w-full">
@@ -216,26 +234,28 @@ const LeaveRequestForm = ({
                   onChange={(val) => handleChange("leave_name", val)}
                   className={getInputClass(isViewMode, "leave_type_id")}
                   disabled={isViewMode}
+                  onKeyDown={handleKeyDown}
                 />
                 {errors.leave_type_id && (
                   <span className="text-[11px] text-red-500 ml-1">Required</span>
                 )}
               </div>
             </div>
+            </div>
 
             {/* ── Dates ── */}
             <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1">
-                <label className="text-[15px] w-[140px] shrink-0">
+                <label className="text-[15px] w-[100px] shrink-0">
                   From Date <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
-                  <input
-                    type="date"
+                  <ERPDateInput
                     value={localData.from_date || ""}
                     disabled={isViewMode}
-                    onChange={(e) => handleChange("from_date", e.target.value)}
+                    onChange={(val) => handleChange("from_date", val)}
                     className={getInputClass(isViewMode, "from_date")}
+                    onKeyDown={handleKeyDown}
                   />
                   {errors.from_date && (
                     <span className="text-[11px] text-red-500">Required</span>
@@ -248,12 +268,12 @@ const LeaveRequestForm = ({
                   To Date <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
-                  <input
-                    type="date"
+                  <ERPDateInput
                     value={localData.to_date || ""}
                     disabled={isViewMode}
-                    onChange={(e) => handleChange("to_date", e.target.value)}
+                    onChange={(val) => handleChange("to_date", val)}
                     className={getInputClass(isViewMode, "to_date")}
+                    onKeyDown={handleKeyDown}
                   />
                   {errors.to_date && (
                     <span className="text-[11px] text-red-500">Required</span>
@@ -264,7 +284,7 @@ const LeaveRequestForm = ({
 
             {/* ── Total Days (auto-calculated, read-only) ── */}
             <div className="flex flex-col sm:flex-row items-center px-1">
-              <label className="text-[15px] w-[140px] shrink-0">Total Days</label>
+              <label className="text-[15px] w-[100px] shrink-0">Total Days</label>
               <div className="flex-1 w-full">
                 <input
                   type="number"
@@ -272,13 +292,14 @@ const LeaveRequestForm = ({
                   disabled
                   className={getInputClass(true, "total_days")}
                   placeholder="Auto-calculated"
+                  onKeyDown={handleKeyDown}                  
                 />
               </div>
             </div>
 
             {/* ── Reason ── */}
             <div className="flex flex-col sm:flex-row items-start px-1">
-              <label className="text-[15px] w-[140px] pt-1 shrink-0">Reason</label>
+              <label className="text-[15px] w-[100px] pt-1 shrink-0">Reason</label>
               <div className="flex-1 w-full">
                 <textarea
                   rows={3}
@@ -287,6 +308,7 @@ const LeaveRequestForm = ({
                   onChange={(e) => handleChange("reason", e.target.value)}
                   className={`${getInputClass(isViewMode, "reason")} h-[40px] py-2`}
                   placeholder="Enter reason for leave..."
+                  onKeyDown={handleKeyDown}
                 />
               </div>
             </div>

@@ -877,52 +877,120 @@ const AddUserMaster = ({
   }, [formData, isViewMode, onSave]);
 
   // KEYBOARD NAVIGATION (UPDATED)
+// KEYBOARD NAVIGATION (UPDATED)
   const handleKeyDown = useCallback((e) => {
     if (isViewMode) return;
 
     const container = document.getElementById("user-master-container");
     if (!container) return;
 
+    // Sort elements with 18px tolerance for perfect L-to-R, T-to-B navigation
     const elements = Array.from(
       container.querySelectorAll(
-        "input:not([disabled]), button:not([disabled]), [tabindex='0'], [data-auto]"
+        "input:not([disabled]), button[data-auto]:not([disabled]), [tabindex='0']"
       )
-    ).filter(el => !el.disabled);
+    )
+    .filter(el => !el.disabled && el.offsetParent !== null)
+    .sort((a, b) => {
+      const aRect = a.getBoundingClientRect();
+      const bRect = b.getBoundingClientRect();
+      if (Math.abs(aRect.top - bRect.top) > 18) return aRect.top - bRect.top;
+      return aRect.left - bRect.left;
+    });
 
     const index = elements.indexOf(e.target);
+    if (index === -1) return;
 
     // 🔴 ENTER → ALWAYS NEXT (NO CLICK)
     if (e.key === "Enter") {
-      e.preventDefault(); // 👈 important (stop button click)
+      e.preventDefault(); // 👈 Prevents native button click on Enter
 
       if (index < elements.length - 1) {
         elements[index + 1].focus();
       } else {
-        handleValidateAndSave();
+        // Last Field -> Focus on Save Button
+        let saveBtn = document.querySelector("#save") || document.querySelector("#save-btn");
+        if (!saveBtn) {
+          saveBtn = Array.from(document.querySelectorAll("button"))
+            .find(btn => (btn.textContent?.toLowerCase().includes("save") || 
+                          btn.textContent?.toLowerCase().includes("update")) && !btn.disabled);
+        }
+        if (saveBtn) saveBtn.focus();
       }
     }
 
     // 🔵 SPACE → CLICK ONLY FOR BUTTON
     if (e.key === " " && e.target.tagName === "BUTTON") {
-      e.preventDefault();
-      e.target.click();
+      e.preventDefault(); // Prevents page from scrolling down
+      e.target.click();   // Manual trigger
     }
 
     // 🟡 BACKSPACE → GO BACK ONLY IF EMPTY
     if (e.key === "Backspace") {
+      let shouldGoBack = false;
+
       if (e.target.tagName === "INPUT") {
         const isEmpty = e.target.value === "";
-        const atStart =
-          e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+        const atStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+        if (isEmpty || atStart) shouldGoBack = true;
+      } else if (e.target.tagName === "BUTTON" || e.target.dataset.auto) {
+        // Buttons (Draw/Upload) par backspace dabane se directly pichhe jao
+        shouldGoBack = true;
+      }
 
-        if ((isEmpty || atStart) && index > 0) {
-          e.preventDefault();
-          elements[index - 1].focus();
+      if (shouldGoBack && index > 0) {
+        e.preventDefault();
+        const prevEl = elements[index - 1];
+        prevEl.focus();
+
+        // Cursor set to end if text input
+        if (prevEl.tagName === "INPUT" && prevEl.type === "text") {
+          const len = prevEl.value?.length || 0;
+          try { prevEl.setSelectionRange(len, len); } catch {}
         }
       }
     }
+  }, [isViewMode]);
+  // 🟢 SIGNATURE PAD KEYBOARD NAVIGATION
+  const handleSignPadKeyDown = useCallback((e) => {
+    // 1. ESC dabane par modal band aur focus wapas Draw button par
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowSignPad(false);
+      setTimeout(() => signatureBtnRef.current?.focus(), 100);
+      return;
+    }
 
-  }, [isViewMode, handleValidateAndSave]);
+    const modalContainer = document.getElementById("sign-pad-modal");
+    if (!modalContainer) return;
+
+    // Modal ke saare buttons (Clear, Cancel, Save) nikal lo
+    const buttons = Array.from(modalContainer.querySelectorAll("button"));
+    const index = buttons.indexOf(e.target);
+
+    if (index === -1) return;
+
+    // 2. RIGHT ARROW -> Agla button
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      if (index < buttons.length - 1) {
+        buttons[index + 1].focus();
+      }
+    } 
+    // 3. LEFT ARROW -> Pichla button
+    else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      if (index > 0) {
+        buttons[index - 1].focus();
+      }
+    } 
+    // 4. ENTER ya SPACE -> Button par Click kar do
+    else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.target.click();
+    }
+  }, []);
 
   // QUICK ADD GROUP
   const handleQuickAddGroup = async () => {
@@ -1072,6 +1140,7 @@ const AddUserMaster = ({
                     data-auto
                     tabIndex={0}
                     onClick={() => setShowSignPad(true)}
+                    onKeyDown={handleKeyDown}
 
                     className="text-xs text-blue-600 underline cursor-pointer"
                   >
@@ -1083,6 +1152,7 @@ const AddUserMaster = ({
                     data-auto
                     tabIndex={0}
                     onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={handleKeyDown}
 
                     className="text-xs text-gray-600 underline cursor-pointer"
                   >
@@ -1123,8 +1193,10 @@ const AddUserMaster = ({
       />
 
       {/* SIGN PAD */}
+     {/* SIGN PAD */}
       {showSignPad && (
         <div
+          id="sign-pad-modal" // 👈 YAHAN ID ADD KI HAI
           className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
           onClick={() => {
             setShowSignPad(false);
@@ -1133,15 +1205,15 @@ const AddUserMaster = ({
         >
           <div
             className="bg-white rounded-xl shadow-xl w-[380px] p-4"
-            onClick={(e) => e.stopPropagation()} // 👈 prevent close on inside click
+            onClick={(e) => e.stopPropagation()} 
           >
-
             {/* HEADER */}
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-sm font-semibold">Draw Signature</h2>
               <button
                 type="button"
                 className="text-gray-500 hover:text-red-500 text-lg"
+                onKeyDown={handleSignPadKeyDown} // 👈 Naya function
                 onClick={() => {
                   setShowSignPad(false);
                   setTimeout(() => signatureBtnRef.current?.focus(), 100);
@@ -1165,13 +1237,12 @@ const AddUserMaster = ({
 
             {/* ACTIONS */}
             <div className="flex justify-between items-center mt-3">
-
               <button
                 type="button"
                 ref={clearRef}
                 onClick={() => sigPadRef.current.clear()}
-                onKeyDown={handleKeyDown}
-                className="px-3 py-1 text-xs border rounded-md hover:bg-gray-100"
+                onKeyDown={handleSignPadKeyDown} // 👈 Naya function
+                className="px-3 py-1 text-xs border rounded-md hover:bg-gray-100 focus:ring-2 focus:ring-blue-500" // 👈 Focus ring clear dikhne ke liye
               >
                 Clear
               </button>
@@ -1183,8 +1254,8 @@ const AddUserMaster = ({
                     setShowSignPad(false);
                     setTimeout(() => signatureBtnRef.current?.focus(), 100);
                   }}
-                  onKeyDown={handleKeyDown}
-                  className="px-3 py-1 text-xs border rounded-md hover:bg-gray-100"
+                  onKeyDown={handleSignPadKeyDown} // 👈 Naya function
+                  className="px-3 py-1 text-xs border rounded-md hover:bg-gray-100 focus:ring-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
@@ -1202,13 +1273,12 @@ const AddUserMaster = ({
 
                     setTimeout(() => signatureBtnRef.current?.focus(), 100);
                   }}
-                  onKeyDown={handleKeyDown}
-                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  onKeyDown={handleSignPadKeyDown} // 👈 Naya function
+                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-offset-1 focus:ring-blue-600"
                 >
                   Save
                 </button>
               </div>
-
             </div>
           </div>
         </div>

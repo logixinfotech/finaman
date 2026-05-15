@@ -29,7 +29,7 @@ const DesignationMasterPage = ({ tab }) => {
         mode,
         formData, setFormData,
         showForm, setShowForm,
-        saving,
+        saving, handleEditCancel,
         handleView, handleAdd, handleModify, performSave, rights
     } = useERPMode(
         initialState,
@@ -105,7 +105,12 @@ const DesignationMasterPage = ({ tab }) => {
             onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
             onNew: handleAdd,
             onSave: handleSave,
-            onEsc: () => setShowForm(false),
+            onEsc: () => {
+                setShowForm(false);
+                if (mode === "add") {
+                    setFormData(initialState);
+                }
+            },
         });
     }, [list]);
 
@@ -123,7 +128,10 @@ const DesignationMasterPage = ({ tab }) => {
                     formData={formData}
                     setFormData={setFormData}
                     onSave={handleSave}
-                    onCancel={() => setShowForm(false)}
+                    onCancel={() => {
+                        setShowForm(false);
+                        setFormData(initialState);
+                    }}
                     onDelete={handleDelete}
                     mode={mode}
                     saving={saving}
@@ -132,6 +140,7 @@ const DesignationMasterPage = ({ tab }) => {
                     currentRecord={currentIndex + 1}
                     totalRecords={list.length}
                     rights={rights}
+                    onEditCancel={handleEditCancel}
                     activeTab={showForm ? "entry" : "search"}
                     onTabChange={handleTabChange}
                 />

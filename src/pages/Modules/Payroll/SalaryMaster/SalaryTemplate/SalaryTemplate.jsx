@@ -39,7 +39,7 @@ const SalaryTemplate = ({ tab }) => {
     formData, setFormData,
     showForm, setShowForm,
     saving, handleEditCancel,
-    handleView, handleAdd, handleModify, performSave, rights,
+    handleView, handleAdd, handleModify, performSave, rights
   } = useERPMode(
     initialState,
     async (data, isEdit) => {
@@ -156,7 +156,7 @@ const SalaryTemplate = ({ tab }) => {
           deductionHeads={deductionHeads}
           formData={formData}
           setFormData={setFormData}
-        />
+         />
       ) : (
         <div className="p-4 bg-slate-50 h-full">
           <Table

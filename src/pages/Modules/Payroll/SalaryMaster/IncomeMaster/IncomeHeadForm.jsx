@@ -3,6 +3,8 @@ import ERPHeader from "../../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../../components/Reusable/input/ERPAutocomplete";
 
+  const requiredFields = ["name", "code", "type"];
+  
 const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 
 const IncomeHeadForm = ({
@@ -21,19 +23,11 @@ const IncomeHeadForm = ({
   onTabChange = () => {},
   formData,
   setFormData
-}) => {
-
- 
-  const [errors, setErrors] = useState({});
+}) => { const [errors, setErrors] = useState({});
 
   const isViewMode = mode === "view";
   const isAddMode = mode === "add";
   const isEditMode = mode === "edit";
-
-  const requiredFields = ["name", "code", "type"];
-
-  
-
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 

@@ -106,6 +106,7 @@ const IncomeHead = ({ tab }) => {
       onNew:  handleAdd,
       onSave: handleSave,
       onEsc:  () => setShowForm(false),
+      
     });
   }, [list, handleAdd, handleSave, setShowForm]);
 

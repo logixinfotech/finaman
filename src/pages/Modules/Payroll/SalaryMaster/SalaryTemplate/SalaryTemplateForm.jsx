@@ -138,7 +138,7 @@ const SalaryTemplateForm = ({
     }
     onSave && onSave(formData);
   }, [formData, isViewMode, onSave]);
-  const handleKeyDown = useCallback(
+ const handleKeyDown = useCallback(
     (e) => {
       if (isViewMode) return;
 
@@ -158,7 +158,8 @@ const SalaryTemplateForm = ({
           const bRect = b.getBoundingClientRect();
 
           // 🔥 vertical priority (top to bottom)
-          if (Math.abs(aRect.top - bRect.top) > 5) {
+          // Yahan 5 ki jagah 18 ya 20 use karein taaki height difference handle ho jaye
+          if (Math.abs(aRect.top - bRect.top) > 18) { 
             return aRect.top - bRect.top;
           }
 
@@ -177,53 +178,38 @@ const SalaryTemplateForm = ({
           elements[index + 1].focus();
         } else {
           // 🔥 LAST FIELD → SAVE BUTTON FOCUS
-          const saveBtn = document.querySelector("[save]");
-          if (saveBtn) {
-            saveBtn.focus();
+          let submitBtn = document.querySelector("#save")||document.querySelector("#update");
+          
+      
+          if (submitBtn) {
+            submitBtn.focus();
           }
         }
       }
-      // ✅ BACKSPACE → previous (if empty)
       if (e.key === "Backspace") {
         const el = e.target;
         const tag = el.tagName;
-
-        const isTextInput =
-          tag === "INPUT" &&
-          (el.type === "text" ||
-            el.type === "search" ||
-            el.type === "password" ||
-            el.type === "tel" ||
-            el.type === "url");
-
-        const isTextarea = tag === "TEXTAREA";
-
-        const canCheckCursor = isTextInput || isTextarea;
+        const type = el.type;
 
         let shouldGoBack = false;
 
-        if (canCheckCursor) {
-          const value = el.value || "";
-
-          let atStart = false;
-          try {
-            atStart = el.selectionStart === 0 && el.selectionEnd === 0;
-          } catch {
-            atStart = true; // fallback safe
-          }
-
-          if (value === "" || atStart) {
+        if (tag === "INPUT" || tag === "TEXTAREA") {
+          if (type === "checkbox" || type === "radio") {
+            // 🔥 Checkbox hai toh bina kisi check ke pichle field par jao
             shouldGoBack = true;
+          } else {
+            // 🔥 Koi bhi doosra input (text, number, etc.) ho toh SIRF tab pichle par jao jab woh EMPTY ho
+            if (!el.value || el.value === "") {
+              shouldGoBack = true;
+            }
           }
-        } else {
-          // number input / other elements
-          if (!el.value || el.value === "") {
-            shouldGoBack = true;
-          }
+        } else if (tag === "SELECT" || tag === "DIV") {
+          // 🔥 Dropdown ya custom div toggle (jaise Status) ke liye pichle par jao
+          shouldGoBack = true;
         }
 
         if (shouldGoBack && index > 0) {
-          e.preventDefault();
+          e.preventDefault(); // Default backspace rok kar focus change karega
 
           let prevIndex = index - 1;
 
@@ -233,9 +219,13 @@ const SalaryTemplateForm = ({
             if (prevEl && !prevEl.disabled && prevEl.offsetParent !== null) {
               prevEl.focus();
 
-              // cursor end pe set only for text inputs
+              // Pichle element par jane ke baad uske last me cursor set karne ke liye (Sirf text inputs par)
               if (
                 prevEl.tagName === "INPUT" &&
+                (prevEl.type === "text" ||
+                  prevEl.type === "search" ||
+                  prevEl.type === "url" ||
+                  prevEl.type === "tel") &&
                 typeof prevEl.setSelectionRange === "function"
               ) {
                 const len = prevEl.value?.length || 0;
@@ -453,7 +443,7 @@ const SalaryTemplateForm = ({
                             }
                             onClick={(e) => e.stopPropagation()}
                             onKeyDown={handleKeyDown}
-                            placeholder="%"
+                           placeholder={head.type === "Fixed" ? "Amt" : "%"}
                             className={`w-[90px] h-[26px] px-2 text-xs border rounded
                                [field-sizing:content] min-w-[90px] max-w-[180px] w-auto flex-none justify-self-start
                                      ${

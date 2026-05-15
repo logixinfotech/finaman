@@ -6,6 +6,7 @@ import ShiftMaster from "./Modules/Payroll/ShiftMaster/ShiftMaster";
 import ShiftAllocation from "./Modules/Payroll/ShiftMaster/ShiftAllocationMaster";
 import SalaryFormulaEngine from "./Modules/Payroll/SalaryMaster/SalaryTemplate/SalaryFormulaEngine";
 const IncomeHeadMaster = React.lazy(() => import("./Modules/Payroll/SalaryMaster/IncomeMaster/IncomeHead"));
+const FBPConfig = React.lazy(() => import("./Modules/Payroll/SalaryMaster/FlexiBenefitMaster/FBPConfig"));
 const DeductionHeadMaster = React.lazy(() => import("./Modules/Payroll/SalaryMaster/DeductionMaster/DeductionHead"));
 const Master = React.lazy(() => import("./Master"));
 const TestingRequisition = React.lazy(() => import("./TestingRequisition"));
@@ -125,10 +126,12 @@ const PageRegistry = {
     ApprovalTransaction: Approvaltransaction, 
     LeaveEncashment: LeaveEncashment, 
     LeaveAccrual: LeaveAccrual, 
+    FlexiBenefitPlanConfig:FBPConfig,
 pf_master: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PfMaster")),
 ESIMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/ESIMaster")),
 PTMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PTMaster")),
 TDSMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/TDSMaster")),
+LWFMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/LWFMaster")),
 
 };
 

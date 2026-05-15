@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import { getActledList, getLeaveTypes, fetchUserGroupsByType } from "../../../../utils/api";
+import {focusFirstInput, handleERPEnterNavigation} from "../../../../utils/erpShortcuts";
 
 const APPLICABLE_TO_OPTIONS = ["All", "Department", "Designation"];
 const APPROVER_ROLE_OPTIONS  = ["Manager", "HR", "TeamLeader", "Director", "Admin"];
@@ -36,9 +37,20 @@ const ApprovalWorkflowForm = ({
   const isEditMode = mode === "edit";
   const isAddMode  = mode === "add";
     const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
+    const formRef = useRef(null);
 
 
   const requiredFields = ["applicable_to", "level_no", "approver_role"];
+
+  useEffect(() => {
+  const timer = setTimeout(() => {
+    if (formRef.current && (isAddMode || isEditMode)) {
+      focusFirstInput(formRef);
+    }
+  }, 200);
+
+  return () => clearTimeout(timer);
+}, []);
 
   // ── Load all dropdowns ────────────────────────────────────────────────
   useEffect(() => {
@@ -90,6 +102,19 @@ const ApprovalWorkflowForm = ({
       setFormData(formatted);
     }
   }, [initialData, departments, designations]);
+
+  const handleKeyDown = useCallback(
+  (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      setTimeout(() => {
+        handleERPEnterNavigation(e, formRef, isViewMode);
+      }, 50);
+    }
+  },
+  [isViewMode]
+);
 
   // ── Handle change ─────────────────────────────────────────────────────
   const handleChange = (field, value) => {
@@ -197,18 +222,20 @@ const ApprovalWorkflowForm = ({
       />
 
       <div className="flex-1 p-4 overflow-y-auto">
-        <div className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
+        <div ref={formRef} className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-visible relative">
 
           {/* ── Row 1: Applicable To | Leave Type ── */}
           <div className="flex items-center gap-4 px-5 py-3">
 
             <Field label="Applicable To" required>
               <ERPAutocomplete
+              data-auto
                 options={APPLICABLE_TO_OPTIONS}
                 value={localData.applicable_to || ""}
                 onChange={val => handleChange("applicable_to", val)}
                 className={inp(isViewMode, "applicable_to")}
                 disabled={isViewMode}
+                onKeyDown={handleKeyDown}
               />
               {errors.applicable_to && (
                 <span className="text-[11px] text-red-500">{errors.applicable_to}</span>
@@ -218,6 +245,7 @@ const ApprovalWorkflowForm = ({
           
             <Field label="Leave Type">
               <ERPAutocomplete
+              data-auto
                 options={["All Leave Types", ...leaveTypeNames]}
                 value={localData.leave_name || "All Leave Types"}
                 onChange={val => {
@@ -230,6 +258,7 @@ const ApprovalWorkflowForm = ({
                 }}
                 className={inp(isViewMode, "leave_type_id")}
                 disabled={isViewMode}
+                onKeyDown={handleKeyDown}
               />
             </Field>
 
@@ -241,11 +270,13 @@ const ApprovalWorkflowForm = ({
               {showApplicable ? (
                 <>
                   <ERPAutocomplete
+                  data-auto
                     options={applicableOptions}
                     value={localData.applicable_name || ""}
                     onChange={val => handleChange("applicable_name", val)}
                     className={inp(isViewMode, "applicable_name")}
                     disabled={isViewMode}
+                    onKeyDown={handleKeyDown}
                   />
                   {localData.applicable_id && (
                     <p className="text-[11px] text-blue-600 mt-0.5 font-medium">
@@ -264,11 +295,13 @@ const ApprovalWorkflowForm = ({
  
             <Field label="Approval Level" required>
               <ERPAutocomplete
+              data-auto
                 options={LEVEL_OPTIONS}
                 value={localData.level_no ? String(localData.level_no) : ""}
                 onChange={val => handleChange("level_no", val)}
                 className={inp(isViewMode, "level_no")}
                 disabled={isViewMode}
+                onKeyDown={handleKeyDown}
               />
               {errors.level_no && (
                 <span className="text-[11px] text-red-500">{errors.level_no}</span>
@@ -283,11 +316,13 @@ const ApprovalWorkflowForm = ({
 
             <Field label="Approver Role" required>
               <ERPAutocomplete
+              data-auto
                 options={APPROVER_ROLE_OPTIONS}
                 value={localData.approver_role || ""}
                 onChange={val => handleChange("approver_role", val)}
                 className={inp(isViewMode, "approver_role")}
                 disabled={isViewMode}
+                onKeyDown={handleKeyDown}
               />
               {errors.approver_role && (
                 <span className="text-[11px] text-red-500">{errors.approver_role}</span>
@@ -296,6 +331,7 @@ const ApprovalWorkflowForm = ({
 
             <Field label="Specific Approver">
               <ERPAutocomplete
+              data-auto
                 options={["-- None --", ...employeeNames]}
                 value={localData.approver_name || "-- None --"}
                 onChange={val => {
@@ -308,6 +344,7 @@ const ApprovalWorkflowForm = ({
                 }}
                 className={inp(isViewMode, "approver_id")}
                 disabled={isViewMode}
+                onKeyDown={handleKeyDown}
               />
               {localData.approver_id && (
                 <p className="text-[11px] text-blue-600 mt-0.5 font-medium">
@@ -328,6 +365,7 @@ const ApprovalWorkflowForm = ({
                   disabled={isViewMode}
                   onChange={e => handleChange("is_active", e.target.checked)}
                   className="w-4 h-4 accent-blue-600 cursor-pointer"
+                  onKeyDown={handleKeyDown}
                 />
                 <span className="text-[14px] text-gray-600">
                   {localData.is_active

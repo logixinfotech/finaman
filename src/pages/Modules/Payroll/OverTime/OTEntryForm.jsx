@@ -1,6 +1,8 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
+import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
+import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
 
 const OTEntryForm = ({
   formData,
@@ -21,22 +23,18 @@ const OTEntryForm = ({
   initialData = {}
 }) => {
   const [errors, setErrors] = useState({});
-
+  const formRef = useRef(null);
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode = mode === "add";
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
   const requiredFields = ["applicable_day_type", "min_hours_required", "ot_multiplier"];
 
-  useEffect(() => {
-    if (isAddMode || isEditMode) {
-      setTimeout(() => {
-        const container = document.getElementById("ot-form-container");
-        const firstInput = container?.querySelector("input:not([disabled]), select:not([disabled])");
-        if (firstInput) firstInput.focus();
-      }, 150);
-    }
-  }, [isAddMode, isEditMode]);
+useEffect(() => {
+  if (isAddMode || isEditMode) {
+    focusFirstInput(formRef);
+  }
+}, [isAddMode, isEditMode]);
 
   const handleChange = (field, value) => {
     if (["min_hours_required", "max_hours_allowed", "ot_multiplier"].includes(field)) {
@@ -79,23 +77,12 @@ const OTEntryForm = ({
     if (onSave) onSave(formData);
   }, [formData, onSave, isViewMode, requiredFields]);
 
-  const handleKeyDown = useCallback((e) => {
-    if (isViewMode) return;
-    const container = document.getElementById("ot-form-container");
-    const focusableElements = Array.from(
-      container.querySelectorAll("input:not([disabled]), select:not([disabled])")
-    );
-    const index = focusableElements.indexOf(e.target);
-
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (index > -1 && index < focusableElements.length - 1) {
-        focusableElements[index + 1].focus();
-      } else {
-        handleValidateAndSave();
-      }
-    }
-  }, [isViewMode, handleValidateAndSave]);
+ const handleKeyDown = useCallback((e) => {
+  handleERPEnterNavigation(
+    e,
+    formRef,
+    isViewMode
+  );}, [isViewMode]);
 
 
   return (
@@ -111,13 +98,13 @@ const OTEntryForm = ({
       />
 
       <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center">
-        <div id="ot-form-container" className="w-full max-w-[800px] h-fit bg-white shadow-sm rounded-md border border-slate-200 overflow-hidden">
+        <div ref={formRef} id="ot-form-container" className="w-full max-w-[800px] h-fit bg-white shadow-sm rounded-md border border-slate-200 overflow-visible relative">
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 relative">
 
               {/* Left Column Group */}
               <div className="space-y-4">
-                 <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <label className="text-black-800 text-[15px] w-[80px] tracking-wide group-focus-within:text-blue-600 transition-colors">Min Hours </label>
                   <div className="flex-1">
                     <input
@@ -137,24 +124,20 @@ const OTEntryForm = ({
                 <div className="flex items-center gap-2">
                   <label className="text-black-800 text-[15px]  w-[80px] tracking-wide group-focus-within:text-blue-600 transition-colors">Day Type <span className="text-red-500">*</span></label>
                   <div className="flex-1">
-                    <select
-                      name="applicable_day_type"
+                    <ERPAutocomplete
+                      data-auto
                       value={formData.applicable_day_type || ""}
+                      options={["Day OT", "Holiday OT", "Weekoff OT"]}
+                      onChange={(val) => handleChange("applicable_day_type", val)}
                       disabled={isViewMode}
-                      onChange={(e) => handleChange("applicable_day_type", e.target.value)}
                       onKeyDown={handleKeyDown}
-                      className={`${getInputClass(isViewMode, "applicable_day_type")}`}
-                    >
-                      <option value="">Select Day Type</option>
-                      <option value="Day OT">Day OT</option>
-                      <option value="Holiday OT">Holiday OT</option>
-                      <option value="Weekoff OT">Weekoff OT</option>
-                    </select>
+                      className={getInputClass(isViewMode, "applicable_day_type")}
+                    />
                   </div>
-                </div>               
+                </div>
               </div>
 
-             
+
 
               {/* Right Column Group */}
               <div className="space-y-4">

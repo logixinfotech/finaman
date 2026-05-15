@@ -437,15 +437,7 @@ const Table = ({
             </TBtn>
           )}
 
-          {onAdd && (
-            <button
-              onClick={onAdd}
-              className="h-8 px-3 inline-flex items-center gap-1.5 text-[11.5px] font-semibold bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 rounded-md transition-colors"
-            >
-              <span className="text-base leading-none">+</span> New
-              <span className="text-[10px] opacity-60 ml-0.5">Alt+N</span>
-            </button>
-          )}
+           {onAdd && <HeaderAddButton onClick={onAdd} />}
         </div>
       </div>
 

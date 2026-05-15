@@ -1,7 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
+import ERPDateInput from "../../../../components/Reusable/input/Date";
+import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
 import { getActledList } from "../../../../utils/api";
 
 const WeeklyOffMasterForm = ({
@@ -23,7 +25,7 @@ const WeeklyOffMasterForm = ({
 }) => {
   const [localData, setLocalData] = useState(initialData);
   const [errors, setErrors] = useState({});
-  // 2. States for dynamic data
+  const formRef = useRef(null);
   const [employees, setEmployees] = useState([]); // Full objects from API
   const [employeeNames, setEmployeeNames] = useState([]); // Strings for Autocomplete options
 
@@ -44,14 +46,18 @@ const WeeklyOffMasterForm = ({
 
   const requiredFields = ["employee_id", "day_of_week", "effective_from"];
 
+  useEffect(() => {
+    if (isAddMode || isEditMode) {
+      focusFirstInput(formRef);
+    }
+  }, [isAddMode, isEditMode]);
+
   // 3. Fetch data from ACTLED API
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         const data = await getActledList();
         setEmployees(data);
-        console.log("EMP LIST:", data);
-        // Autocomplete expects an array of strings
         setEmployeeNames(data.map(emp => emp.Led_name.trim()));
       } catch (err) {
         console.error("Failed to fetch employees:", err);
@@ -60,58 +66,65 @@ const WeeklyOffMasterForm = ({
     fetchEmployees();
   }, []);
 
-useEffect(() => {
-  if (!initialData || Object.keys(initialData).length === 0) return;
+  useEffect(() => {
+    if (!initialData || Object.keys(initialData).length === 0) return;
 
-  // 1. Calculate the formatted data FIRST
-  const employee = initialData.employee_name || 
-                   employees.find(emp => Number(emp.Actled_id) === Number(initialData.employee_id))?.Led_name || "";
+    // 1. Calculate the formatted data FIRST
+    const employee = initialData.employee_name ||
+      employees.find(emp => Number(emp.Actled_id) === Number(initialData.employee_id))?.Led_name || "";
 
-  const formattedData = {
-    ...initialData,
-    employee_name: employee,
-    effective_from: initialData.effective_from ? initialData.effective_from.split("T")[0] : "",
-    effective_to: initialData.effective_to ? initialData.effective_to.split("T")[0] : "",
-  };
+    const formattedData = {
+      ...initialData,
+      employee_name: employee,
+      effective_from: initialData.effective_from ? initialData.effective_from.split("T")[0] : "",
+      effective_to: initialData.effective_to ? initialData.effective_to.split("T")[0] : "",
+    };
 
-  // 2. ONLY update if the data is actually different from what we already have
-  if (JSON.stringify(localData) !== JSON.stringify(formattedData)) {
-    setLocalData(formattedData);
-    setFormData(formattedData);
-  }
-}, [initialData, employees]); // Remove setFormData from dependencies
+    // 2. ONLY update if the data is actually different from what we already have
+    if (JSON.stringify(localData) !== JSON.stringify(formattedData)) {
+      setLocalData(formattedData);
+      setFormData(formattedData);
+    }
+  }, [initialData, employees]); // Remove setFormData from dependencies
 
- const handleChange = (field, value) => {
-  let updatedData = { ...localData };
+  const handleKeyDown = useCallback(
+    (e) => {
+      handleERPEnterNavigation(e, formRef, isViewMode);
+    },
+    [isViewMode]
+  );
 
-  if (field === "employee_name") {
-    const selectedEmp = employees.find(
-      emp => emp.Led_name?.trim() === value?.trim()
-    );
-
-    updatedData.employee_name = value;
-    updatedData.employee_id = selectedEmp
-      ? Number(selectedEmp.Actled_id)
-      : "";
-  } else {
-    updatedData[field] = value;
-  }
-
-  setLocalData(updatedData);
-  setFormData(updatedData);
- 
-  setErrors(prev => {
-    const newErrors = { ...prev };
+  const handleChange = (field, value) => {
+    let updatedData = { ...localData };
 
     if (field === "employee_name") {
-      delete newErrors.employee_id;
+      const selectedEmp = employees.find(
+        emp => emp.Led_name?.trim() === value?.trim()
+      );
+
+      updatedData.employee_name = value;
+      updatedData.employee_id = selectedEmp
+        ? Number(selectedEmp.Actled_id)
+        : "";
     } else {
-      delete newErrors[field];
+      updatedData[field] = value;
     }
 
-    return newErrors;
-  });
-};
+    setLocalData(updatedData);
+    setFormData(updatedData);
+
+    setErrors(prev => {
+      const newErrors = { ...prev };
+
+      if (field === "employee_name") {
+        delete newErrors.employee_id;
+      } else {
+        delete newErrors[field];
+      }
+
+      return newErrors;
+    });
+  };
 
   const getInputClass = (isDisabled, fieldName) =>
     `w-full h-[32px] px-2 text-[15px] border rounded-md outline-none transition-colors ${errors[fieldName] ? "border-red-500" : "border-gray-300"
@@ -140,7 +153,7 @@ useEffect(() => {
   }, [localData, onSave, isViewMode]);
 
   return (
-    <div className="w-full max-w-[750px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
+    <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
       <ERPHeader
         title="WEEKLY OFF ENTRY"
         isAddMode={isAddMode}
@@ -152,8 +165,9 @@ useEffect(() => {
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">
-        <div className="w-full max-w-[850px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
-          <div className="p-5 grid grid-cols-1 gap-y-5"> 
+        <div ref={formRef} className="w-full max-w-[850px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-visible relative">
+          <div className="p-5 grid grid-cols-1 gap-y-5">
+            <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
             <div className="flex flex-col sm:flex-row items-start px-1">
               <label className="text-black-800 text-[15px] w-[130px] pt-1 shrink-0">Employee <span className="text-red-500">*</span></label>
               <div className="flex-1 w-full">
@@ -163,8 +177,8 @@ useEffect(() => {
                   onChange={(val) => handleChange("employee_name", val)}
                   className={getInputClass(isViewMode, "employee_id")}
                   disabled={isViewMode}
+                  onKeyDown={handleKeyDown}
                 />
-                {/* ID in Subscript (Dynamic from ACTLED) */}
                 {localData.employee_id && (
                   <div className="text-[14px] text-blue-600 mt-1 ml-1 font-medium">
                     EMP ID: <sub className="text-[14px]">{localData.employee_id}</sub>
@@ -173,50 +187,62 @@ useEffect(() => {
                 {errors.employee_id && <span className="text-[10px] text-red-500 ml-1">Required</span>}
               </div>
             </div>
- 
+
             <div className="flex flex-col sm:flex-row items-center px-1">
-              <label className="text-black-800 text-[15px] w-[130px] shrink-0">Weekly Off <span className="text-red-500">*</span></label>
+              <label className="text-black-800 text-[15px] w-[110px] shrink-0">Weekly Off <span className="text-red-500">*</span></label>
               <div className="flex-1 w-full">
-                <select
-                  name="day_of_week"
-                  value={localData.day_of_week || ""}
-                  disabled={isViewMode}
-                  onChange={(e) => handleChange("day_of_week", e.target.value)}
+                <ERPAutocomplete
+                  data-auto
+                  options={daysOfWeek.map(day => day.name)}
+                  value={
+                    daysOfWeek.find(
+                      d => String(d.id) === String(localData.day_of_week)
+                    )?.name || ""
+                  }
+                  onChange={(val) => {
+                    const selected = daysOfWeek.find(
+                      d => d.name === val
+                    );
+
+                    handleChange(
+                      "day_of_week",
+                      selected ? selected.id : ""
+                    );
+                  }}
                   className={getInputClass(isViewMode, "day_of_week")}
-                >
-                  <option value="">-- Select Day --</option>
-                  {daysOfWeek.map(day => (
-                    <option key={day.id} value={day.id}>{day.name}</option>
-                  ))}
-                </select>
+                  disabled={isViewMode}
+                  onKeyDown={handleKeyDown}
+                />
               </div>
             </div>
-
+</div>
             {/* Effective Dates */}
             <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1">
-                <label className="text-black-800 text-[15px] w-[130px] sm:w-[130px] shrink-0">Effective From <span className="text-red-500">*</span></label>
+                <label className="text-black-800 text-[15px] w-[130px] shrink-0">Effective From <span className="text-red-500">*</span></label>
                 <div className="flex-1 w-full">
-                  <input
-                    type="date"
-                    name="effective_from"
+                  <ERPDateInput
                     value={localData.effective_from || ""}
                     disabled={isViewMode}
-                    onChange={(e) => handleChange("effective_from", e.target.value)}
+                    onChange={(val) =>
+                      handleChange("effective_from", val)
+                    }
                     className={getInputClass(isViewMode, "effective_from")}
+                    onKeyDown={handleKeyDown}
                   />
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-center px-1 flex-1 mt-3 sm:mt-0">
-                <label className="text-black-800 text-[15px] sm:w-[100px] shrink-0">Effective To</label>
+                <label className="text-black-800 text-[15px] w-[120px] shrink-0">Effective To</label>
                 <div className="flex-1 w-full">
-                  <input
-                    type="date"
-                    name="effective_to"
+                  <ERPDateInput
                     value={localData.effective_to || ""}
                     disabled={isViewMode}
-                    onChange={(e) => handleChange("effective_to", e.target.value)}
+                    onChange={(val) =>
+                      handleChange("effective_to", val)
+                    }
                     className={getInputClass(isViewMode, "effective_to")}
+                    onKeyDown={handleKeyDown}
                   />
                 </div>
               </div>

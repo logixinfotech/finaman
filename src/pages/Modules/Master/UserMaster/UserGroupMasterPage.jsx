@@ -5,6 +5,7 @@ import UserGroupForm from "../UserMaster/UserGroupform";
 import { fetchUserGroups, deleteUserGroup, createUserGroup, updateUserGroup } from "../../../../utils/api";
 import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
+import ERPSettings from "../../../../components/Reusable/ERPSettings";
 
 const initialState = {
   group_id: null,
@@ -27,7 +28,7 @@ const UserGroupMasterPage = ({ tab }) => {
     showForm, setShowForm,
     saving, handleEditCancel,
     handleView, handleAdd, handleModify, performSave, rights,
-    isEditMode
+    isEditMode ,activeTab, setActiveTab
   } = useERPMode(
     initialState,
     async (data, isEdit) => {
@@ -40,8 +41,9 @@ const UserGroupMasterPage = ({ tab }) => {
     () => loadGroups(), tab.appl_name
   );
   const handleTabChange = (targetTab) => {
-    if (targetTab === "search") setShowForm(false);
-    if (targetTab === "entry") setShowForm(true);
+  setActiveTab(targetTab);
+  if (targetTab === "search") setShowForm(false);
+  if (targetTab === "entry")  setShowForm(true);
   };
   const loadGroups = useCallback(async () => {
     try {
@@ -121,7 +123,7 @@ const UserGroupMasterPage = ({ tab }) => {
           totalRecords={list.length}
           rights={rights}
           onEditCancel={handleEditCancel}
-          activeTab="entry"
+         activeTab={activeTab}
           onTabChange={handleTabChange}
 
         />

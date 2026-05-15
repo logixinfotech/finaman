@@ -133,6 +133,16 @@ const EmployeeMaster = ({ tab }) => {
     tab?.appl_name
   );
 
+  const handleTabChange = (targetTab) => {
+    if (targetTab === "search") {
+      setShowForm(false);
+    }
+
+    if (targetTab === "entry") {
+      setShowForm(true);
+    }
+  };
+
   const loadEmployees = useCallback(async () => {
     try {
       setLoading(true);
@@ -277,47 +287,47 @@ const EmployeeMaster = ({ tab }) => {
   };
 
 
- // EmployeeMaster.jsx - handleSave
-const handleSave = async () => {
-  if (!formData["First Name"]) {
-    alertError("Validation", "First Name required");
-    return;
-  }
-
-  const leaveTypeIds = Array.isArray(formData["Leave allow"])
-    ? formData["Leave allow"]
-    : [];
-
-  // ✅ performSave alag se call — response ignore karo
-  await performSave("employee_id");
-
-  // ✅ Latest Actled_id directly backend se fetch karo
-  try {
-    const latestRes = await getActledList();
-    const allEmployees = latestRes || [];
-    
-    // Sabse bada Actled_id = abhi insert hua
-    const maxId = Math.max(...allEmployees.map(e => e.Actled_id || 0));
-    const newEmployeeId = maxId > 0 ? maxId : null;
-
-    console.log("NEW EMPLOYEE ID =>", newEmployeeId);
-
-    if (leaveTypeIds.length > 0 && newEmployeeId) {
-      await createLeaveBalance({
-        employee_id:    newEmployeeId,
-        leave_type_ids: leaveTypeIds,
-        financial_year: new Date().getFullYear(),
-      });
-      console.log("✅ Leave Balance Saved!");
+  // EmployeeMaster.jsx - handleSave
+  const handleSave = async () => {
+    if (!formData["First Name"]) {
+      alertError("Validation", "First Name required");
+      return;
     }
-  } catch (err) {
-    console.error("Balance save failed:", err);
-  }
 
-  showToast({ icon: "success", title: "Saved Successfully" });
-  loadEmployees();
-  setShowForm(false);
-};
+    const leaveTypeIds = Array.isArray(formData["Leave allow"])
+      ? formData["Leave allow"]
+      : [];
+
+    // ✅ performSave alag se call — response ignore karo
+    await performSave("employee_id");
+
+    // ✅ Latest Actled_id directly backend se fetch karo
+    try {
+      const latestRes = await getActledList();
+      const allEmployees = latestRes || [];
+
+      // Sabse bada Actled_id = abhi insert hua
+      const maxId = Math.max(...allEmployees.map(e => e.Actled_id || 0));
+      const newEmployeeId = maxId > 0 ? maxId : null;
+
+      console.log("NEW EMPLOYEE ID =>", newEmployeeId);
+
+      if (leaveTypeIds.length > 0 && newEmployeeId) {
+        await createLeaveBalance({
+          employee_id: newEmployeeId,
+          leave_type_ids: leaveTypeIds,
+          financial_year: new Date().getFullYear(),
+        });
+        console.log("✅ Leave Balance Saved!");
+      }
+    } catch (err) {
+      console.error("Balance save failed:", err);
+    }
+
+    showToast({ icon: "success", title: "Saved Successfully" });
+    loadEmployees();
+    setShowForm(false);
+  };
 
   // ✅ DELETE
   const handleDelete = async (row) => {
@@ -371,6 +381,8 @@ const handleSave = async () => {
           rights={rights}
           canPrint={canPrint}
           onEditCancel={handleEditCancel}
+          activeTab="entry"
+          onTabChange={handleTabChange}
         />
       ) : (
         <Table

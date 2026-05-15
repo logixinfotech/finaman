@@ -29,7 +29,7 @@ const GradeMasterPage = ({ tab }) => {
         mode,
         formData, setFormData,
         showForm, setShowForm,
-        saving,
+        saving, handleEditCancel,
         handleView, handleAdd, handleModify, performSave, rights
     } = useERPMode(
         initialState,
@@ -64,8 +64,11 @@ const GradeMasterPage = ({ tab }) => {
 
     const handleRowSelect = (row) => {
         const index = list.findIndex(item => item.group_id === row.group_id);
-        if (index !== -1) setCurrentIndex(index);
+        if (index !== -1) {
+            setCurrentIndex(index);
+        }
         handleView(row);
+        setShowForm(true);
     };
 
     const handleSave = async () => {
@@ -99,7 +102,12 @@ const GradeMasterPage = ({ tab }) => {
             onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
             onNew: handleAdd,
             onSave: handleSave,
-            onEsc: () => setShowForm(false),
+            onEsc: () => {
+                setShowForm(false);
+                if (mode === "add") {
+                    setFormData(initialState);
+                }
+            },
         });
     }, [list]);
     const handleTabChange = (targetTab) => {
@@ -110,9 +118,28 @@ const GradeMasterPage = ({ tab }) => {
     return (
         <div>
             {showForm ? (
-                <UserGroupForm title="Grade Master" nameLabel="Grade Name"{...{ formData, setFormData, onSave: handleSave, onCancel: () => setShowForm(false), onDelete: handleDelete, mode, saving, onModify: handleModify, onNewEntry: handleAdd, currentRecord: currentIndex + 1, totalRecords: list.length, rights }}
+                <UserGroupForm
+                    title="Grade Master"
+                    nameLabel="Grade Name"
+                    formData={formData}
+                    setFormData={setFormData}
+                    onSave={handleSave}
+                    onCancel={() => {
+                        setShowForm(false);
+                        setFormData(initialState);
+                    }}
+                    onDelete={handleDelete}
+                    mode={mode}
+                    saving={saving}
+                    onModify={handleModify}
+                    onNewEntry={handleAdd}
+                    currentRecord={currentIndex + 1}
+                    totalRecords={list.length}
+                    rights={rights}
+                    onEditCancel={handleEditCancel}
                     activeTab={showForm ? "entry" : "search"}
-                    onTabChange={handleTabChange} />
+                    onTabChange={handleTabChange}
+                />
             ) : (
                 <Table
                     title="Grade Master"

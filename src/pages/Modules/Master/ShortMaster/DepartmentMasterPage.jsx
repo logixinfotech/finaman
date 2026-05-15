@@ -29,7 +29,7 @@ const DepartmentMasterPage = ({ tab }) => {
         mode,
         formData, setFormData,
         showForm, setShowForm,
-        saving,
+        saving, 
         handleView, handleAdd, handleModify, performSave, rights,
         handleEditCancel
     } = useERPMode(
@@ -76,6 +76,7 @@ const DepartmentMasterPage = ({ tab }) => {
         const index = list.findIndex(item => item.group_id === row.group_id);
         if (index !== -1) setCurrentIndex(index);
         handleView(row);
+        setShowForm(true);
     };
 
     // 💾 Save
@@ -115,7 +116,12 @@ const DepartmentMasterPage = ({ tab }) => {
             onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
             onNew: handleAdd,
             onSave: handleSave,
-            onEsc: () => setShowForm(false),
+            oonEsc: () => {
+                setShowForm(false);
+                if (mode === "add") {
+                    setFormData(initialState);
+                }
+            },
         });
     }, [list]);
 
@@ -132,7 +138,10 @@ const DepartmentMasterPage = ({ tab }) => {
                     formData={formData}
                     setFormData={setFormData}
                     onSave={handleSave}
-                    onCancel={() => setShowForm(false)}
+                    onCancel={() => {
+                        setShowForm(false);
+                        setFormData(initialState);
+                    }}
                     onDelete={handleDelete}
                     mode={mode}
                     saving={saving}

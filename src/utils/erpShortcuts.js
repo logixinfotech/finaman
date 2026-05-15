@@ -1,5 +1,4 @@
-// utils/erpShortcuts.js
-
+ 
 let isLoading = false;
 let modalElement = null;
 let currentHandlers = {}; 
@@ -63,6 +62,34 @@ const focusPrev = (current) => {
   if (index > 0) elements[index - 1].focus();
 }; 
 
+
+const handleBackspaceNavigation = (e) => {
+  const elements = getFocusableFields();
+  const index = elements.indexOf(e.target);
+
+  let shouldGoBack = false;
+  if (e.target.tagName === "INPUT") {
+    const isEmpty = e.target.value === "";
+    const atStart =
+      e.target.selectionStart === 0 &&
+      e.target.selectionEnd === 0;
+
+    if (isEmpty || atStart) {
+      shouldGoBack = true;
+    }
+  }
+  if (e.target.dataset.auto) {
+    shouldGoBack = true;
+  }
+  if (e.target.dataset.toggle) {
+    shouldGoBack = true;
+  }
+  if (shouldGoBack && index > 0) {
+    e.preventDefault();
+    elements[index - 1].focus();
+  }
+};
+
 const trapModalFocus = (e) => {
   if (!modalElement) return;
   if (!modalElement.contains(e.target)) {
@@ -78,17 +105,25 @@ const handleKeyDown = (e) => {
 
   const key = (e.key || "").toLowerCase();
   const code = e.code;
+  
 
   // 1. Prevent Default for Boss's Shortcut Keys
-  if (e.altKey || e.ctrlKey) {
+ if (e.altKey || e.ctrlKey) {
     const erpKeyCodes = ["KeyA", "KeyM", "KeyD", "KeyV", "KeyP", "KeyE", "KeyS", "KeyF", "KeyR", "KeyG"];
+    
+    // Check if it's an ERP shortcut
     if (erpKeyCodes.includes(code)) {
+      
+      /* 🟢 FIX: If user is pressing Ctrl+A, do NOT preventDefault. 
+         This allows the browser's "Select All" to work. */
+      if (e.ctrlKey && code === "KeyA") {
+        return; // Exit and let the browser handle it
+      }
+
       e.preventDefault();
       e.stopPropagation();
     }
   }
-
-  // 🟢 RECORD ACTIONS (Alt + A, M, D)
   if (e.altKey && code === "KeyA") {
     currentHandlers.onAdd && currentHandlers.onAdd();
     return;
@@ -145,9 +180,14 @@ const handleKeyDown = (e) => {
     e.preventDefault();
     currentHandlers.onDuplicateRecord && currentHandlers.onDuplicateRecord();
     return;
-  }
-
-  // 🟡 NAVIGATION (Enter / Shift + Enter)
+  } 
+if (
+  e.key === "Backspace" &&
+  currentHandlers.onBackspaceNavigation
+) {
+  handleBackspaceNavigation(e);
+  return;
+} 
   if (e.key === "Enter") {
     if (e.target.closest("[data-dropdown-open='true']") || e.target?.tagName?.toLowerCase() === "textarea") {
       return;
@@ -160,6 +200,82 @@ const handleKeyDown = (e) => {
     } else {
       focusNext(e.target);
     }
+  }
+};
+ 
+export const focusFirstInput = (formRef) => {
+  if (!formRef?.current) return;
+
+  setTimeout(() => {
+    const firstField = formRef.current.querySelector(
+      "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [data-auto]"
+    );
+
+    if (firstField) {
+      firstField.focus();
+    }
+  }, 120);
+}; 
+export const handleERPEnterNavigation = (
+  e,
+  formRef,
+  isViewMode
+) => {
+  if (isViewMode || e.key !== "Enter") return;
+
+  // TEXTAREA
+  if (e.target.tagName === "TEXTAREA") {
+
+    // Shift + Enter = new line
+    if (e.shiftKey) return;
+
+    e.preventDefault();
+
+    focusSaveOrUpdateButton();
+    return;
+  }
+
+  e.preventDefault();
+
+  if (!formRef?.current) return;
+
+  const elements = Array.from(
+    formRef.current.querySelectorAll(
+      "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [data-auto]"
+    )
+  ).filter((el) => !el.disabled);
+
+  let index = elements.indexOf(e.target);
+
+  // ERPAutocomplete fix
+  if (index === -1) {
+    index = elements.findIndex(
+      (el) =>
+        el.contains(e.target) ||
+        e.target.contains(el)
+    );
+  }
+
+  // next field
+  if (index > -1 && index < elements.length - 1) {
+    elements[index + 1].focus();
+  } else {
+    // last field → save/update button
+    focusSaveOrUpdateButton();
+  }
+}; 
+export const focusSaveOrUpdateButton = () => {
+  const btn = Array.from(document.querySelectorAll("button")).find(
+    (b) =>
+      !b.disabled &&
+      (
+        b.textContent?.trim().toLowerCase().includes("save") ||
+        b.textContent?.trim().toLowerCase().includes("update")
+      )
+  );
+
+  if (btn) {
+    btn.focus();
   }
 };
 

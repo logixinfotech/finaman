@@ -19,7 +19,7 @@ import {
   FaMoneyBill,
 } from "react-icons/fa";
 const widthConfig = {
-  "Title": "w-[60px]",
+  "Title": "w-[97px]",
   "Pin Code": "w-[70px]",
   "Mobile No": "w-[130px]",
   "Gender": "w-[120px]",
@@ -28,7 +28,7 @@ const widthConfig = {
   "Spouse": "pl-6 w-[700px]",
   "Father Name": "w-[500px]",
   "First Name": "w-[500px]",
-  "DOB": "w-[120px]",
+  "DOB": "w-[129px]",
 };
 
 
@@ -55,6 +55,7 @@ const EmployeeMasterForm = ({
   setFormData,
   onSave,
   onCancel,
+  onTabChange,
   saving,
   onDelete,
   mode,
@@ -333,22 +334,22 @@ const EmployeeMasterForm = ({
       );
     }
 
-   // EmployeeMasterForm.jsx mein:
-if (type === "leave-selector") {
-  return (
-    <LeaveTypeSelector
-      value={formData["Leave allow"] || []}
-      onChange={(selectedIds, selectedNames) => {
-        setFormData(prev => ({ 
-          ...prev, 
-          "Leave allow": selectedIds,      // IDs → balance mein jayenge
-          "Leave allow names": selectedNames // Names → ACTLED mein jayenge
-        }));
-      }}
-      disabled={isViewMode}
-    />
-  );
-}
+    // EmployeeMasterForm.jsx mein:
+    if (type === "leave-selector") {
+      return (
+        <LeaveTypeSelector
+          value={formData["Leave allow"] || []}
+          onChange={(selectedIds, selectedNames) => {
+            setFormData(prev => ({
+              ...prev,
+              "Leave allow": selectedIds,      // IDs → balance mein jayenge
+              "Leave allow names": selectedNames // Names → ACTLED mein jayenge
+            }));
+          }}
+          disabled={isViewMode}
+        />
+      );
+    }
 
     if (type === "checkbox") {
       return (
@@ -401,13 +402,15 @@ if (type === "leave-selector") {
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         rightContent={`${currentRecord || 1}/${totalRecords || 1}`}
+        activeTab="entry"
+        onTabChange={onTabChange}
       />
 
       <div
         className="flex flex-1 min-h-0 flex-col md:flex-row w-full h-full md:h-[calc(100vh-120px)] overflow-hidden"
         style={{ background: isViewMode ? "#eef1f6" : "#ffffff" }}
       >
-        <div className="w-full md:w-60 bg-[#eef1f6] md:rounded-xl border shadow-sm flex flex-col overflow-hidden shrink-0">
+        <div className="w-full md:w-48 bg-[#eef1f6] md:rounded-xl border shadow-sm flex flex-col overflow-hidden shrink-0">
           <div className="bg-slate-800 h-20 w-full relative p-14 mb-12">
             <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
               <div className="w-28 h-28 bg-white rounded-2xl p-1 shadow-lg border">
