@@ -3,6 +3,7 @@ import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
+import { fetchGrades } from "../../../../utils/api";
 
 const OTEntryForm = ({
   formData,
@@ -23,18 +24,32 @@ const OTEntryForm = ({
   initialData = {}
 }) => {
   const [errors, setErrors] = useState({});
+  const [gradeList, setGradeList] = useState([]);
   const formRef = useRef(null);
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode = mode === "add";
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
-  const requiredFields = ["applicable_day_type", "min_hours_required", "ot_multiplier"];
+  const requiredFields = ["grade_id", "applicable_day_type", "min_hours_required", "ot_multiplier"];
 
-useEffect(() => {
-  if (isAddMode || isEditMode) {
-    focusFirstInput(formRef);
-  }
-}, [isAddMode, isEditMode]);
+  useEffect(() => {
+    if (isAddMode || isEditMode) {
+      focusFirstInput(formRef);
+    }
+  }, [isAddMode, isEditMode]);
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      try {
+        const res = await fetchGrades();
+        const data = res?.data || res || [];
+        setGradeList(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Grade fetch failed", e);
+      }
+    };
+    loadGrades();
+  }, []);
 
   const handleChange = (field, value) => {
     if (["min_hours_required", "max_hours_allowed", "ot_multiplier"].includes(field)) {
@@ -77,12 +92,13 @@ useEffect(() => {
     if (onSave) onSave(formData);
   }, [formData, onSave, isViewMode, requiredFields]);
 
- const handleKeyDown = useCallback((e) => {
-  handleERPEnterNavigation(
-    e,
-    formRef,
-    isViewMode
-  );}, [isViewMode]);
+  const handleKeyDown = useCallback((e) => {
+    handleERPEnterNavigation(
+      e,
+      formRef,
+      isViewMode
+    );
+  }, [isViewMode]);
 
 
   return (
@@ -103,7 +119,37 @@ useEffect(() => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 relative">
 
               {/* Left Column Group */}
+
               <div className="space-y-4">
+
+                {/* Grade Field - ADD THIS BLOCK */}
+                <div className="flex items-center gap-2">
+                  <label className="text-black-800 text-[15px] w-[80px] tracking-wide">
+                    Grade <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex-1">
+                    <ERPAutocomplete
+                      data-auto
+                      value={
+                        gradeList.find(g => Number(g.group_id) === Number(formData.grade_id))?.group_name || ""
+                      }
+                      options={gradeList.map(g => g.group_name)}
+                      onChange={(val) => {
+                        const selected = gradeList.find(g => g.group_name === val);
+                        setFormData(prev => ({
+                          ...prev,
+                           grade_id: Number(selected?.group_id) || null,
+                        }));
+                      }}
+                      disabled={isViewMode}
+                      onKeyDown={handleKeyDown}
+                      className={getInputClass(isViewMode, "grade_id")}
+                    />
+                    {errors.grade_id && (
+                      <span className="text-red-500 text-xs">{errors.grade_id}</span>
+                    )}
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <label className="text-black-800 text-[15px] w-[80px] tracking-wide group-focus-within:text-blue-600 transition-colors">Min Hours </label>
                   <div className="flex-1">
@@ -122,6 +168,31 @@ useEffect(() => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <label className="text-black-800 text-[15px]  w-[80px] tracking-wide group-focus-within:text-blue-600 transition-colors">Multiplier <span className="text-red-500">*</span></label>
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="ot_multiplier"
+                      placeholder="1.0"
+                      value={formData.ot_multiplier ?? ""}
+                      disabled={isViewMode}
+                      onChange={(e) => handleChange("ot_multiplier", e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className={`${getInputClass(isViewMode, "ot_multiplier")}`}
+                    />
+                  </div>
+                </div>
+
+
+
+              </div>
+
+
+
+              {/* Right Column Group */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
                   <label className="text-black-800 text-[15px]  w-[80px] tracking-wide group-focus-within:text-blue-600 transition-colors">Day Type <span className="text-red-500">*</span></label>
                   <div className="flex-1">
                     <ERPAutocomplete
@@ -135,12 +206,8 @@ useEffect(() => {
                     />
                   </div>
                 </div>
-              </div>
 
 
-
-              {/* Right Column Group */}
-              <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <label className="text-black-800 text-[15px] w-[80px]  tracking-wide group-focus-within:text-blue-600 transition-colors">Max Hours</label>
                   <div className="flex-1">
@@ -157,30 +224,10 @@ useEffect(() => {
                     />
                   </div>
                 </div>
-
-
-                <div className="flex items-center gap-2">
-                  <label className="text-black-800 text-[15px]  w-[80px] tracking-wide group-focus-within:text-blue-600 transition-colors">Multiplier <span className="text-red-500">*</span></label>
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      step="0.01"
-                      name="ot_multiplier"
-                      placeholder="1.0"
-                      value={formData.ot_multiplier ?? ""}
-                      disabled={isViewMode}
-                      onChange={(e) => handleChange("ot_multiplier", e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      className={`${getInputClass(isViewMode, "ot_multiplier")}`}
-                    />
-                  </div>
-                </div>
               </div>
 
             </div>
           </div>
-
-
         </div>
       </div>
 

@@ -301,6 +301,7 @@ const handlePageChange = useCallback((newPage, newPageSize) => {
   onEditCancel={handleEditCancel}
   saving={saving}
    headerActiveTab={activeTab}
+   showSettingsTab={true} 
   rights={rights}
   canPrint={canPrint}
   currentRecord={currentRecord}
@@ -326,6 +327,7 @@ const handlePageChange = useCallback((newPage, newPageSize) => {
               setFilters={setFilters}
               onApply={applyFilter}
               onClear={clearFilter}
+              
             />
           } 
           serverPagination={true}

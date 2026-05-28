@@ -1,11 +1,12 @@
 import { FileText, Search, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const TAB_CONFIG = [
-  { id: "entry",    Icon: FileText,  label: "entry"    },
-  { id: "search",   Icon: Search,    label: "search"   },
-  { id: "settings", Icon: Settings,  label: "settings" },
+const TAB_CONFIG_BASE = [
+  { id: "entry",    Icon: FileText, label: "entry"  },
+  { id: "search",   Icon: Search,   label: "search" },
 ];
+
+const SETTINGS_TAB = { id: "settings", Icon: Settings, label: "settings" };
 
 const ERPHeader = ({
   title,
@@ -15,11 +16,15 @@ const ERPHeader = ({
   rightContent,
   activeTab,
   onTabChange,
+  showSettingsTab = false,  
 }) => {
-  const isSettingsTab = activeTab === "settings";
+  const isSettingsTab = activeTab === "settings"; 
+  const TAB_CONFIG = showSettingsTab
+    ? [...TAB_CONFIG_BASE, SETTINGS_TAB]
+    : TAB_CONFIG_BASE;
 
   const statusConfig = isSettingsTab
-    ? { label: "Config", color: "text-amber-400", dot: "bg-amber-400" }
+    ? { label: "Config", color: "text-amber-400", dot: "bg-amber-400"  }
     : isAddMode
     ? { label: "New",    color: "text-emerald-400", dot: "bg-emerald-400" }
     : isEditMode
@@ -29,9 +34,8 @@ const ERPHeader = ({
   return (
     <div
       className="relative flex items-center justify-between px-5 border-b border-white/[0.07] rounded-t-xl"
-      style={{ background: "var(--sidebar-top-bg)", color: "#fff", minHeight: "44px" }}
+      style={{ background: "var(--sidebar-top-bg)", color: "#fff", minHeight: "35px" }}
     >
-      {/* ── LEFT ── */}
       <div className="flex items-center gap-0">
         <div className="flex items-center gap-2.5 pr-5 border-r border-white/[0.08]">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
@@ -71,7 +75,6 @@ const ERPHeader = ({
         </nav>
       </div>
 
-      {/* ── RIGHT ── */}
       <div className="flex items-center gap-4">
         {rightContent && !isSettingsTab && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/20 border border-white/[0.06]">
@@ -93,6 +96,6 @@ const ERPHeader = ({
       </div>
     </div>
   );
-};
+};;
 
 export default ERPHeader;

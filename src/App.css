@@ -278,7 +278,7 @@ input:-webkit-autofill:focus {
   justify-content: center;
   gap: 6px;
   font-family: var(--font-family);
-  font-size: var(--font-size-sm);      /* 12px — buttons stay compact */
+  font-size: var(--font-size-sm);   
   font-weight: var(--font-weight-semibold);
   border-radius: 8px;
   border: 1px solid var(--border-main);
@@ -692,4 +692,11 @@ select,
   -moz-user-select: text !important;    /* For Firefox */
   -ms-user-select: text !important;     /* For IE */
   user-select: text !important;         /* Standard */
+}
+/* Prevent CSS from overriding Tailwind's h-screen on mobile */
+@media (max-width: 767px) {
+  .layout-sidebar {
+    height: 100vh !important;
+    top: 0 !important;
+  }
 }

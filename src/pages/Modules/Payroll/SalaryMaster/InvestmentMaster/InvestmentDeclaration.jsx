@@ -332,7 +332,7 @@ handleView(updatedData); // for edit
           }
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className=" bg-slate-50 h-full">
           <Table
             title="Investment Declaration Master"
             data={list}

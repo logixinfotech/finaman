@@ -28,6 +28,7 @@ const CompanyMasterEntry = ({
     headerActiveTab, 
   onFormTabChange,
   onHeaderTabChange,
+  showSettingsTab = false,
 }) => {
   const isViewMode = mode === "view";
   const [localTab, setLocalTab] = useState(activeTab ?? tabs[0]);
@@ -162,12 +163,12 @@ const handleKeyDown = useCallback((e) => {
         currentRecord={currentRecord}
         totalRecords={totalRecords}
         activeTab={localTab}
+        showSettingsTab={showSettingsTab} 
         onTabChange={handleTabChange}
         onHeaderTabChange={onHeaderTabChange}
            settingsConfig={COMPANY_SETTINGS_CONFIG}    // ← add
         settingsDefaults={COMPANY_SETTINGS_DEFAULTS} // ← add
-        onSettingsSave={async (values) => {
-          // await saveCompanySettings(values);  // your API
+        onSettingsSave={async (values) => { 
           console.log("Company settings saved:", values);
         }}
       />

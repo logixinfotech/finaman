@@ -14,11 +14,18 @@ const initialState = {
   effective_to: "",
 };
 
+const formatDate = (value) => {
+  if (!value) return "";
+  const clean = value.toString().replace("T", " ").split(".")[0];  
+  return clean.split(" ")[0]; // "2026-05-22"
+};
+
+
 const columns = [
   { key: "employee_name", label: "Employee Name" },
   { key: "day_of_week", label: "WeekOff Day" },
-  { key: "effective_from", label: "Effective From" },
-  { key: "effective_to", label: "Effective To" },
+  { key: "effective_from", label: "Effective From", render: (row) => formatDate(row.effective_from) },
+  { key: "effective_to",   label: "Effective To",   render: (row) => formatDate(row.effective_to)   },
 ];
 
 const WeeklyOffMaster = ({ tab }) => {

@@ -23,14 +23,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response && error.response.status === 401) {
+    const isAuthRoute = error.config?.url?.includes("/api/authenticate"); 
+    if (error.response?.status === 401 && !isAuthRoute) {
       sessionStorage.clear();
 
       await Swal.fire({
-        icon: "warning",
-        title: "Session Expired",
-        text: "You have been logged in from another device.",
-        confirmButtonText: "Go to Login",
+        icon:               "warning",
+        title:              "Session Expired",
+        text:               "You have been logged in from another device.",
+        confirmButtonText:  "Go to Login",
         confirmButtonColor: "#3085d6",
       });
 
@@ -41,52 +42,22 @@ api.interceptors.response.use(
   }
 );
 
-
 export const authenticateUser = async ({
-  com_code,
   user_id,
   user_pass,
   forceLogin = false,
 }) => {
   try {
     const response = await api.post("/api/authenticate", {
-      com_code,
       user_id,
       user_pass,
       forceLogin,
     });
-
-    const data = response.data;
-
-    if (data.alreadyLoggedIn) {
-      const result = await Swal.fire({
-        title: "User Already Logged In",
-        text: data.message,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Yes, Login",
-        cancelButtonText: "No",
-        confirmButtonColor: "#3085d6",
-      });
-
-      if (result.isConfirmed) {
-        return await authenticateUser({
-          com_code,
-          user_id,
-          user_pass,
-          forceLogin: true,
-        });
-      } else {
-        return { success: false, cancelled: true };
-      }
-    }
-
-    return data;
+    // Returns the raw payload. If the server says alreadyLoggedIn,
+    // LoginPage shows its in-card force-login button.
+    return response.data;
   } catch (error) {
-    console.error(
-      "Auth Error:",
-      error.response?.data || error.message
-    );
+    console.error("Auth Error:", error.response?.data || error.message);
     throw error;
   }
 };
@@ -114,16 +85,24 @@ export const fetchUserProfile = async () => {
     throw error;
   }
 };
-
-
+// ADD this — uses api instance so baseURL is correct
+export const selectCompany = async (body) => {
+  try {
+    const response = await api.post("/api/authenticate/select-company", body);
+    return response.data;
+  } catch (error) {
+    console.error("Select Company Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
 export const getNotifications = (params = {}) =>
   handleApi(() =>
     api.get("/api/notifications", {
       params: {
         page:     params.page     || 1,
         pageSize: params.pageSize || 100,
-        filter:   params.filter   || "all",   // all | unread | read
-        category: params.category || "all",   // all | payroll | accounts | ...
+        filter:   params.filter   || "all",   
+        category: params.category || "all",  
       },
     })
   ); 
@@ -427,7 +406,7 @@ export const deleteEmployee = (id) => {
  export const deleteShift = (id) =>
   handleApi(() => api.delete(`/api/shiftmaster/${id}`));  
 
- // ─────────────────────────────────────────── VER TIME ENTRY ───────────────────────────────────── 
+ // ─────────────────────────────────────────── OVER TIME ENTRY ───────────────────────────────────── 
 
  export const fetchOTRules = () =>
   handleApi(() => api.get("/api/overtime-entry"));
@@ -441,7 +420,9 @@ export const updateOTRule = (id, data) =>
 export const deleteOTRule = (id) =>
   handleApi(() => api.delete(`/api/overtime-entry/${id}`));
 
-// ───────────────────────────────────────────── HIFT ALLOCATION ENDPOINTS ────────────────────────────────────── 
+export const fetchGrades = () =>
+  handleApi(() => api.get("/api/user/groups?type=GRADE"));
+// ───────────────────────────────────────────── SHIFT ALLOCATION ENDPOINTS ────────────────────────────────────── 
 
 export const fetchAllocations = () =>
   handleApi(() => api.get("/api/shiftmaster/shiftallocation"));
@@ -611,6 +592,9 @@ export const approvalAction = (data) =>
 export const getApprovalTransactions   = ()          =>
   handleApi(() => api.get("/api/ApprovalTransaction"));
 
+export const getAllApprovalTransactions = () =>
+  handleApi(() => api.get("/api/ApprovalTransaction"));
+
 export const getTransactionsByRequest  = (requestId) =>
   handleApi(() => api.get(`/api/ApprovalTransaction/by-request/${requestId}`));
 
@@ -687,3 +671,92 @@ export const updateTDS      = (id, data) => handleApi(() => api.put(`/api/statut
 export const deleteTDS      = (id)       => handleApi(() => api.delete(`/api/statutory-master/tds/${id}`));
 
 
+// ── loan-reimbursement ───────────────────────────────────────────────────
+export const getLoanReimbursement = () =>
+  handleApi(() => api.get("/api/loanReimbursement"));
+
+export const createLoanReimbursement = (data) =>
+  handleApi(() => api.post("/api/loanReimbursement", data));
+
+export const updateLoanReimbursement = (id, data) =>
+  handleApi(() => api.put(`/api/loanReimbursement/${id}`, data));
+
+export const deleteLoanReimbursement = (id) =>
+  handleApi(() => api.delete(`/api/loanReimbursement/${id}`));
+
+
+// ── asset-master ───────────────────────────────────────────────────
+
+export const getAssetMaster = () =>
+  handleApi(() => api.get("/api/assetMaster"));
+
+export const createAssetMaster = (data) =>
+  handleApi(() => api.post("/api/assetMaster", data));
+
+export const updateAssetMaster = (id, data) =>
+  handleApi(() => api.put(`/api/assetMaster/${id}`, data));
+
+export const deleteAssetMaster = (id) =>
+  handleApi(() => api.delete(`/api/assetMaster/${id}`));
+
+ 
+// ── createTrainingSkill-master ───────────────────────────────────────────────────
+
+export const getTrainingSkillMaster = () =>
+  handleApi(() =>
+    api.get("/api/training-skill-master")
+  );
+
+export const createTrainingSkillMaster = (data) =>
+  handleApi(() =>
+    api.post("/api/training-skill-master", data)
+  );
+
+export const updateTrainingSkillMaster = (id, data) =>
+  handleApi(() =>
+    api.put(`/api/training-skill-master/${id}`, data)
+  );
+
+export const deleteTrainingSkillMaster = (id) =>
+  handleApi(() =>
+    api.delete(`/api/training-skill-master/${id}`)
+  );
+// ─── Purchase Order Approval ──────────────────────────────────────────────────
+// Add these lines into your existing utils/api.js file
+ 
+export const fetchApprovals = (status) =>
+    handleApi(() => api.get("/api/poa", status !== "All" ? { params: { status } } : {}));
+ 
+export const fetchApprovalById = (approval_id) =>
+    handleApi(() => api.get(`/api/poa/${approval_id}`));
+ 
+export const submitApproval = (payload) =>
+    handleApi(() => api.post("/api/poa/submit", payload));
+ 
+export const patchApproval = (approval_id, payload) =>
+    handleApi(() => api.patch(`/api/poa/${approval_id}/action`, payload));
+
+// ─── OT Transactions ─────────────────────────────────────────────────────────
+ 
+export const getOTTransactions = (params = {}) =>
+  handleApi(() => api.get("/api/payroll/ot-transactions", { params }));
+ 
+export const getOTTransactionById = (id) =>
+  handleApi(() => api.get(`/api/payroll/ot-transactions/${id}`));
+ 
+export const calculateOT = (params) =>
+  handleApi(() => api.get("/api/payroll/ot-transactions/calculate", { params }));
+// params: { employee_id, ot_date, day_type }
+ 
+export const saveOTTransaction = (data) =>
+  handleApi(() => api.post("/api/payroll/ot-transactions", data));
+ 
+export const updateOTTransaction = (id, data) =>
+  handleApi(() => api.put(`/api/payroll/ot-transactions/${id}`, data));
+ 
+export const updateOTStatus = (id, payload) =>
+  handleApi(() => api.patch(`/api/payroll/ot-transactions/${id}/status`, payload));
+// payload: { status: "Approved"|"Rejected"|"Pending", approved_by, remarks }
+ 
+export const deleteOTTransaction = (id) =>
+  handleApi(() => api.delete(`/api/payroll/ot-transactions/${id}`));

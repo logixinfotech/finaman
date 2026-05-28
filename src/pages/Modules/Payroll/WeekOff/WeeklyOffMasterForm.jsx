@@ -167,58 +167,47 @@ const WeeklyOffMasterForm = ({
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">
         <div ref={formRef} className="w-full max-w-[850px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-visible relative">
           <div className="p-5 grid grid-cols-1 gap-y-5">
-            <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
-            <div className="flex flex-col sm:flex-row items-start px-1">
-              <label className="text-black-800 text-[15px] w-[130px] pt-1 shrink-0">Employee <span className="text-red-500">*</span></label>
-              <div className="flex-1 w-full">
-                <ERPAutocomplete
-                  options={employeeNames}
-                  value={localData.employee_name || ""}
-                  onChange={(val) => handleChange("employee_name", val)}
-                  className={getInputClass(isViewMode, "employee_id")}
-                  disabled={isViewMode}
-                  onKeyDown={handleKeyDown}
-                />
-                {localData.employee_id && (
-                  <div className="text-[14px] text-blue-600 mt-1 ml-1 font-medium">
-                    EMP ID: <sub className="text-[14px]">{localData.employee_id}</sub>
-                  </div>
-                )}
-                {errors.employee_id && <span className="text-[10px] text-red-500 ml-1">Required</span>}
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-6 w-full">
+              <div className="flex flex-col sm:flex-row items-start px-1">
+                <label className="text-black-800 text-[15px] w-[130px] pt-1 shrink-0">Employee <span className="text-red-500">*</span></label>
+                <div className="flex-1 w-full">
+                  <ERPAutocomplete
+                    options={employeeNames}
+                    value={localData.employee_name || ""}
+                    onChange={(val) => handleChange("employee_name", val)}
+                    className={getInputClass(isViewMode, "employee_id")}
+                    disabled={isViewMode}
+                    onKeyDown={handleKeyDown}
+                  />
+                  {localData.employee_id && (
+                    <div className="text-[14px] text-blue-600 mt-1 ml-1 font-medium">
+                      EMP ID: <sub className="text-[14px]">{localData.employee_id}</sub>
+                    </div>
+                  )}
+                  {errors.employee_id && <span className="text-[10px] text-red-500 ml-1">Required</span>}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center px-1 mt-3 sm:mt-0">
+                <label className="text-black-800 text-[15px] w-[110px] shrink-0">Weekly Off <span className="text-red-500">*</span></label>
+                <div className="flex-1 w-full">
+                  <ERPAutocomplete
+                    data-auto
+                    options={daysOfWeek.map(day => day.name)}
+                    value={localData.day_of_week || ""}
+                    onChange={(val) => {
+                      handleChange("day_of_week", val);  
+                    }} 
+                    className={getInputClass(isViewMode, "day_of_week")}
+                    disabled={isViewMode}
+                    onKeyDown={handleKeyDown}
+                  />
+                </div>
               </div>
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center px-1">
-              <label className="text-black-800 text-[15px] w-[110px] shrink-0">Weekly Off <span className="text-red-500">*</span></label>
-              <div className="flex-1 w-full">
-                <ERPAutocomplete
-                  data-auto
-                  options={daysOfWeek.map(day => day.name)}
-                  value={
-                    daysOfWeek.find(
-                      d => String(d.id) === String(localData.day_of_week)
-                    )?.name || ""
-                  }
-                  onChange={(val) => {
-                    const selected = daysOfWeek.find(
-                      d => d.name === val
-                    );
-
-                    handleChange(
-                      "day_of_week",
-                      selected ? selected.id : ""
-                    );
-                  }}
-                  className={getInputClass(isViewMode, "day_of_week")}
-                  disabled={isViewMode}
-                  onKeyDown={handleKeyDown}
-                />
-              </div>
-            </div>
-</div>
             {/* Effective Dates */}
-            <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
-              <div className="flex flex-col sm:flex-row items-center px-1 flex-1">
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-6 w-full">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center px-1 flex-1">
                 <label className="text-black-800 text-[15px] w-[130px] shrink-0">Effective From <span className="text-red-500">*</span></label>
                 <div className="flex-1 w-full">
                   <ERPDateInput
@@ -232,7 +221,7 @@ const WeeklyOffMasterForm = ({
                   />
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row items-center px-1 flex-1 mt-3 sm:mt-0">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center px-1 flex-1 mt-3 sm:mt-0">
                 <label className="text-black-800 text-[15px] w-[120px] shrink-0">Effective To</label>
                 <div className="flex-1 w-full">
                   <ERPDateInput

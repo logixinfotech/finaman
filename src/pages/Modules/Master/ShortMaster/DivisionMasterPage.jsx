@@ -93,6 +93,38 @@ const DivisionMasterPage = ({ tab }) => {
             }
         }
     };
+     const handleDeleteMultiple = async (selected) => {
+          // Normalize: Table may pass an array of row objects OR an array of keys
+          const ids = (selected || []).map((item) =>
+            typeof item === "object" ? item.income_head_id : item
+          );
+      
+          if (ids.length === 0) return;
+      
+          const confirmed = await confirmDelete({
+            title: `Delete ${ids.length} Division?`,
+          });
+          if (!confirmed) return;
+      
+          try {
+            const results = await Promise.all(ids.map((id) => deleteUserGroup(id)));
+            const failed = results.filter((r) => !r?.success).length;
+      
+            if (failed === 0) {
+              showToast({ icon: "success", title: `${ids.length} deleted` });
+            } else {
+              showToast({
+                icon: "warning",
+                title: `${ids.length - failed} deleted, ${failed} failed`,
+              });
+            }
+            loadGroups();
+            setShowForm(false);
+          } catch (err) {
+            alertError("Delete Error", "Failed to delete some heads");
+          }
+        };
+      
 
     useEffect(() => {
         setERPHandlers({
@@ -115,7 +147,7 @@ const DivisionMasterPage = ({ tab }) => {
     };
 
     return (
-        <div>
+        <div className="h-full w-full">
             {showForm ? (
                 <UserGroupForm
                     title="Division Master"
@@ -148,6 +180,7 @@ const DivisionMasterPage = ({ tab }) => {
                     loading={loading}
                     onAdd={rights.add === 1 ? handleAdd : null}
                     onRowDoubleClick={handleRowSelect}
+                    onDeleteMultiple={handleDeleteMultiple}
                 />
             )}
         </div>

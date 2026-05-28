@@ -51,6 +51,7 @@ const ERPFormBuilder = ({
   onEditCancel,
   currentRecord,
   totalRecords,
+   showSettingsTab = false, 
   activeTab: externalFormTab,
   onTabChange: onFormTabChange,
   headerActiveTab, onHeaderTabChange, settingsConfig = [],          // ← add
@@ -236,6 +237,7 @@ const ERPFormBuilder = ({
         isViewMode={isViewMode}
         activeTab={headerActiveTab}
         onTabChange={handleHeaderTabChange}
+         showSettingsTab={showSettingsTab} 
         rightContent={`${currentRecord || 1}/${totalRecords || 1}`}
       />
       {headerActiveTab === "settings" ? (

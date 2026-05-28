@@ -68,7 +68,7 @@ const UserGroupMasterPage = ({ tab }) => {
     const index = list.findIndex(item => item.group_id === row.group_id);
     if (index !== -1) setCurrentIndex(index);
     handleView(row);
-    setShowForm(true); // Ensure form opens on dblClick
+    setShowForm(true); 
   };
 
   const handleSave = async () => {
@@ -124,6 +124,7 @@ const UserGroupMasterPage = ({ tab }) => {
           rights={rights}
           onEditCancel={handleEditCancel}
          activeTab={activeTab}
+          showSettingsTab={true} 
           onTabChange={handleTabChange}
 
         />
@@ -134,19 +135,15 @@ const UserGroupMasterPage = ({ tab }) => {
           columns={columns}
           rowKey="group_id"
           loading={loading}
-          onAdd={rights.add === 1 ? handleAdd : null}
-
+          onAdd={rights.add === 1 ? handleAdd : null} 
           onRowDoubleClick={handleRowSelect}
           onDeleteMultiple={async (ids) => {
             const confirmed = await confirmDelete({
               title: `Delete ${ids.length} record${ids.length > 1 ? "s" : ""}?`,
               text: "This action cannot be undone.",
             });
-
             if (!confirmed) return;
-
             await Promise.all(ids.map(id => deleteUserGroup(id)));
-
             showToast({
               icon: "success",
               title: "Deleted successfully"

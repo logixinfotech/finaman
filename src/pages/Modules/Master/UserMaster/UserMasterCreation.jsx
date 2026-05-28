@@ -116,22 +116,57 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
         handleView(row);
     };
 
+    // const handleSave = async () => {
+    //     // Validation check before calling performSave
+    //     if (!formData.user_id || !formData.password || !formData.user_type) {
+    //         alertError("Validation Error", "Please fill all required fields marked with *");
+    //         return;
+    //     }
+
+    //     const response = await performSave("user_id", formData);
+    //     if (response?.success) {
+    //         showToast({
+    //             icon: "success",
+    //             title: isEditMode ? "User updated successfully" : "User added successfully",
+    //         });
+    //         await loadUsers();
+    //     }
+    // }; 
     const handleSave = async () => {
-        // Validation check before calling performSave
-        if (!formData.user_id || !formData.password || !formData.user_type) {
-            alertError("Validation Error", "Please fill all required fields marked with *");
-            return;
+    // Validation check before calling performSave
+    if (!formData.user_id || !formData.password || !formData.user_type) {
+        alertError("Validation Error", "Please fill all required fields marked with *");
+        return;
+    }
+
+    const response = await performSave("user_id", formData);
+
+    if (response?.success) {
+
+        // 🔥 Reload latest data
+        const data = await fetchUsers();
+        const finalData = Array.isArray(data) ? data : data?.data || [];
+
+        setList(finalData);
+
+        // 🔥 Find same saved record again
+        const savedIndex = finalData.findIndex(
+            item => item.user_id === formData.user_id
+        );
+
+        if (savedIndex !== -1) {
+            setCurrentIndex(savedIndex);
+            setFormData(finalData[savedIndex]);
         }
 
-        const response = await performSave("user_id", formData);
-        if (response?.success) {
-            showToast({
-                icon: "success",
-                title: isEditMode ? "User updated successfully" : "User added successfully",
-            });
-            await loadUsers();
-        }
-    }; 
+        showToast({
+            icon: "success",
+            title: isEditMode
+                ? "User updated successfully"
+                : "User added successfully",
+        });
+    }
+};
 
     const handleTabChange = (targetTab) => {
         if (targetTab === "search") setShowForm(false);

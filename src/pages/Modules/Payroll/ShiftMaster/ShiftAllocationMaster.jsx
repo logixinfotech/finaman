@@ -9,8 +9,10 @@ import { setERPHandlers } from "../../../../utils/erpShortcuts";
 const initialState = {
   allocation_id: null,
   employee_id: "",
+  employee_name: "",
   shift_id: "",
-  allocation_from: new Date().toISOString().split('T')[0],
+  shift_name: "",
+  allocation_from:"",
   allocation_to: "",
   remarks: "",
   is_approved: 0,
@@ -126,6 +128,8 @@ const ShiftAllocation = ({ tab }) => {
       {showForm ? (
         <ShiftAllocationForm
           initialData={formData} 
+          localData={formData}
+          setLocalData={setFormData}
           onSave={handleSave}
           onCancel={() => setShowForm(false)}
           onDelete={handleDelete}
@@ -139,9 +143,10 @@ const ShiftAllocation = ({ tab }) => {
           onEditCancel={handleEditCancel}
           activeTab="entry"
           onTabChange={handleTabChange}
+
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className="bg-slate-50 h-full">
           <Table
             title="Employee Shift Allocations"
             data={list}

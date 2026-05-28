@@ -3,26 +3,39 @@ import {
   Plus, Printer, Save, Pencil,
   Trash2, ArrowLeft, XCircle, Loader2,
 } from "lucide-react";
- 
+
+// NAYA
 export const BaseButton = ({
-  children, className = "", onClick, disabled = false,
-  loading = false, shortcut, type = "button", 
+  children, className = "", onClick, disabled = false, ref,
+  loading = false, shortcut, type = "button",
+  id, "data-erp-role": erpRole,
 }) => (
   <button
-    id={"update"}
+    id={id}
+    ref={ref}
+    data-erp-role={erpRole}
     type={type}
     onClick={onClick}
     disabled={disabled || loading}
     className={`
-      relative inline-flex items-center justify-center gap-1.5
-      h-[30px] sm:h-[34px] px-2 sm:px-3.5 min-w-[62px] sm:min-w-[80px] rounded-[5px]
-      text-[11px] sm:text-[12px]  whitespace-nowrap shrink-0 font-medium tracking-[0.01em]
-      transition-all duration-150
-      active:scale-[0.97]
-      focus:outline-none focus:ring-2 focus:ring-offset-1
-      disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
-      ${className}
-    `}
+  relative inline-flex items-center justify-center gap-1
+  h-[28px] sm:h-[34px]
+  px-1.5 sm:px-3.5
+  min-w-[52px] sm:min-w-[80px]
+  rounded-[5px]
+
+  text-[10px] sm:text-[12px]
+  whitespace-nowrap shrink-0 font-medium tracking-[0.01em]
+
+  transition-all duration-150
+  active:scale-[0.97]
+
+  focus:outline-none focus:ring-2 focus:ring-offset-1
+
+  disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
+
+  ${className}
+`}
   >
     {loading ? (
       <Loader2 size={13} className="animate-spin" />
@@ -41,18 +54,18 @@ export const BaseButton = ({
       </>
     )}
   </button>
-); 
+);
 const useButtonShortcut = (keyConfig, onClick, disabled) => {
   useEffect(() => {
     if (disabled || !onClick) return;
     const handler = (e) => {
       const isAlt = e.altKey;
       if (isAlt) {
-        if (keyConfig === "add"    && e.code === "KeyA") { e.preventDefault(); onClick(); }
+        if (keyConfig === "add" && e.code === "KeyA") { e.preventDefault(); onClick(); }
         if (keyConfig === "modify" && e.code === "KeyM") { e.preventDefault(); onClick(); }
         if (keyConfig === "delete" && e.code === "KeyD") { e.preventDefault(); onClick(); }
-        if (keyConfig === "save"   && e.code === "KeyS") { e.preventDefault(); onClick(); }
-        if (keyConfig === "print"  && e.code === "KeyP") { e.preventDefault(); onClick(); }
+        if (keyConfig === "save" && e.code === "KeyS") { e.preventDefault(); onClick(); }
+        if (keyConfig === "print" && e.code === "KeyP") { e.preventDefault(); onClick(); }
       }
       if (keyConfig === "cancel" && e.key === "Escape") { e.preventDefault(); onClick(); }
     };
@@ -60,25 +73,32 @@ const useButtonShortcut = (keyConfig, onClick, disabled) => {
     return () => window.removeEventListener("keydown", handler);
   }, [keyConfig, onClick, disabled]);
 };
- 
+
 const Kbd = ({ label, dark = false }) => (
   <span className={`
-    ml-1 font-mono text-[9px] tracking-[0.04em] leading-none
-    px-[5px] py-[2px] rounded-[3px]
-    ${dark
+  ml-0.5 font-mono
+  text-[7px] sm:text-[9px]
+  tracking-[0.04em] leading-none
+  px-[3px] sm:px-[5px]
+  py-[1px] rounded-[3px]
+
+  ${dark
       ? "bg-white/[0.18] text-white/70"
       : "bg-black/[0.08] text-current opacity-60"
     }
-  `}>
+`}>
     {label}
   </span>
-); 
+);
 // ── SAVE / ADD (filled emerald)
-export const AddButton = ({ id, onClick, disabled, loading, isAdding = false }) => {
+export const AddButton = ({ id, saveBtnRef, onClick, disabled, loading, isAdding = false }) => {
   useButtonShortcut(isAdding ? "save" : "add", onClick, disabled);
   return (
+    // NAYA
     <BaseButton
-      id={id}
+      ref={saveBtnRef}
+      id={isAdding ? "save" : (id || "add")}
+      data-erp-role={isAdding ? "save" : undefined}
       onClick={onClick} disabled={disabled} loading={loading}
       className="bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500 border border-emerald-700/30"
     >
@@ -95,7 +115,10 @@ export const HeaderAddButton = AddButton;
 export const UpdateButton = ({ onClick, disabled, loading, isEditing = false }) => {
   useButtonShortcut(isEditing ? "save" : "modify", onClick, disabled);
   return (
+    // NAYA
     <BaseButton
+      id={isEditing ? "update" : undefined}
+      data-erp-role={isEditing ? "update" : undefined}
       onClick={onClick} disabled={disabled} loading={loading}
       className={
         isEditing

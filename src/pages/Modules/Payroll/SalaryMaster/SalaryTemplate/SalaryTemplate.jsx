@@ -123,6 +123,37 @@ const SalaryTemplate = ({ tab }) => {
       }
     }
   };
+  const handleDeleteMultiple = async (selected) => {
+      // Normalize: Table may pass an array of row objects OR an array of keys
+      const ids = (selected || []).map((item) =>
+        typeof item === "object" ? item.income_head_id : item
+      );
+  
+      if (ids.length === 0) return;
+  
+      const confirmed = await confirmDelete({
+        title: `Delete ${ids.length}  Salary Template(s)?`,
+      });
+      if (!confirmed) return;
+  
+      try {
+        const results = await Promise.all(ids.map((id) => deleteSalaryTemplate(id)));
+        const failed = results.filter((r) => !r?.success).length;
+  
+        if (failed === 0) {
+          showToast({ icon: "success", title: `${ids.length} deleted` });
+        } else {
+          showToast({
+            icon: "warning",
+            title: `${ids.length - failed} deleted, ${failed} failed`,
+          });
+        }
+        loadList();
+        setShowForm(false);
+      } catch (err) {
+        alertError("Delete Error", "Failed to delete some income heads");
+      }
+    };
 
   useEffect(() => {
     setERPHandlers({
@@ -158,7 +189,7 @@ const SalaryTemplate = ({ tab }) => {
           setFormData={setFormData}
          />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className=" bg-slate-50 h-full">
           <Table
             title="Salary Template Master"
             data={list}
@@ -167,6 +198,7 @@ const SalaryTemplate = ({ tab }) => {
             loading={loading}
             onAdd={rights.add === 1 ? handleAdd : null}
             onRowDoubleClick={handleRowSelect}
+            onDeleteMultiple={handleDeleteMultiple}
           />
         </div>
       )}

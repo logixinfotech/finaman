@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { FaBell, FaMoon, FaSun, FaPalette, FaSearch, FaUser, FaSignOutAlt, FaMapMarkerAlt } from "react-icons/fa";
+import { FaBell, FaMoon, FaSun, FaPalette, FaSearch, FaUser, FaSignOutAlt, FaMapMarkerAlt, FaBars } from "react-icons/fa";
 import { useNotifications } from "../../theme/NotificationContext";
 import NotificationPanel from "../../pages/NotificationPanel";
 import GlobalSearch from "./GlobalSearch"
   
-function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
+function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [], onOpenMobileSidebar }) {
   const { unreadCount } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -55,18 +55,28 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
   };
 
   return (
-    <header 
-      className="relative z-[500] h-[52px] w-full flex items-center justify-between px-5 shadow-lg border-b border-white/5"
+      <header className="relative z-[500] h-[52px] w-full flex items-center justify-between px-3 md:px-5 shadow-lg border-b border-white/5"
       style={{ background: "var(--sidebar-top-bg)" }}
     >
-      {/* LEFT - BRAND */}
-      <div className="flex items-center gap-3">
+      {/* LEFT - mobile hamburger + brand */}
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={onOpenMobileSidebar}
+          className="lg:hidden p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
+          aria-label="Open menu"
+        >
+          <FaBars className="text-base" />
+        </button>
+
         <div className="h-9 w-9 flex items-center justify-center rounded-xl bg-white/10 border border-white/20 shadow-md hover:scale-105 transition">
           <img src="/finaman-logo.png" alt="Logo" className="h-5 w-5 object-contain" />
         </div>
-        <div className="flex flex-col leading-tight">
+        <div className="flex flex-col leading-tight hidden sm:flex">
           <span className="text-sm font-bold tracking-tight uppercase text-white">FINAMAN ERP</span>
-          <span className="text-[10px] text-white/50 font-medium tracking-wide">Process Manufacturing Management Software</span>
+          <span className="text-[10px] text-white/50 font-medium tracking-wide hidden md:block">
+            Process Manufacturing Management Software
+          </span>
         </div>
       </div>
 
@@ -86,8 +96,11 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [] }) {
         </div>
       </div>
  
-      <div className="flex items-center gap-4">
-        <GlobalSearch allMenus={allMenus} onOpenPage={onOpenPage} />
+   <div className="flex items-center gap-2 md:gap-4">
+        {/* Hide GlobalSearch on small screens, or make it an icon button */}
+        <div className="hidden md:block">
+          <GlobalSearch allMenus={allMenus} onOpenPage={onOpenPage} />
+        </div>  
 
         <div className="flex items-center gap-2">
           {/* Notifications */}

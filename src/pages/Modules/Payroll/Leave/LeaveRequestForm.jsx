@@ -198,7 +198,7 @@ const LeaveRequestForm = ({
 
             {/* ── Employee ── */}
             <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
-            <div className="flex flex-col sm:flex-row items-start px-1">
+            <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1">
               <label className="text-[15px] w-[100px] pt-1 shrink-0">
                 Employee <span className="text-red-500">*</span>
               </label>
@@ -223,7 +223,7 @@ const LeaveRequestForm = ({
             </div>
 
             {/* ── Leave Type ── */}
-            <div className="flex flex-col sm:flex-row items-start px-1">
+            <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1 mt-3 sm:mt-0">
               <label className="text-[15px] w-[100px] pt-1 shrink-0">
                 Leave Type <span className="text-red-500">*</span>
               </label>
@@ -245,7 +245,7 @@ const LeaveRequestForm = ({
 
             {/* ── Dates ── */}
             <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
-              <div className="flex flex-col sm:flex-row items-center px-1 flex-1">
+              <div className="flex flex-col sm:flex-row items-start px-1 flex-1">
                 <label className="text-[15px] w-[100px] shrink-0">
                   From Date <span className="text-red-500">*</span>
                 </label>
@@ -263,7 +263,7 @@ const LeaveRequestForm = ({
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center px-1 flex-1 mt-3 sm:mt-0">
+              <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1 mt-3 sm:mt-0">
                 <label className="text-[15px] w-[100px] shrink-0">
                   To Date <span className="text-red-500">*</span>
                 </label>
@@ -283,7 +283,7 @@ const LeaveRequestForm = ({
             </div>
 
             {/* ── Total Days (auto-calculated, read-only) ── */}
-            <div className="flex flex-col sm:flex-row items-center px-1">
+            <div className="flex flex-col sm:flex-row items-start px-1">
               <label className="text-[15px] w-[100px] shrink-0">Total Days</label>
               <div className="flex-1 w-full">
                 <input

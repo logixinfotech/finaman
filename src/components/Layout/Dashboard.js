@@ -45,7 +45,6 @@ function Dashboard({
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [favourites, setFavourites] = useState(() => {
     try {
-      // BUG FIX #4: safe parse + normalise all IDs to strings
       const raw = JSON.parse(localStorage.getItem("favMenus") || "[]");
       return Array.isArray(raw) ? raw.map(String) : [];
     } catch {
@@ -53,8 +52,20 @@ function Dashboard({
     }
   });
 
+  // track viewport so the activity panel can render as a bottom sheet on mobile
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768
+  );
+
   const searchInputRef = useRef(null);
-  const constraintsRef = useRef(null); 
+  const constraintsRef = useRef(null);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   useEffect(() => {
     setSearchQuery("");
     const t = setTimeout(() => searchInputRef.current?.focus(), 150);
@@ -132,6 +143,15 @@ function Dashboard({
     return result;
   }
 
+  // Convert a typed string like "A", "B", "AA" back to its zero-based index
+  function alphabetToIndex(str) {
+    let n = 0;
+    for (let i = 0; i < str.length; i++) {
+      n = n * 26 + (str.charCodeAt(i) - 64); // 'A' = 65 -> 1
+    }
+    return n - 1;
+  }
+
   // BUG FIX #4: normalise IDs to strings so includes() always works correctly
   const toggleFavourite = useCallback((id) => {
     const sid = String(id);
@@ -176,14 +196,59 @@ function Dashboard({
     [reports, isFav]
   );
 
-  const EmptyState = ({ message }) => (
+  // Combined ordered list — index here matches the visible alphabet label
+  const shortcutMenus = useMemo(
+    () => [...sortedEntries, ...sortedReports],
+    [sortedEntries, sortedReports]
+  );
+
+  // ── Keyboard shortcuts (A, B, C ... AA, AB) open the matching menu ──────
+  useEffect(() => {
+    const isModuleView = activeTab?.type === "module";
+    if (!isModuleView) return;
+
+    let buffer = "";
+    let bufferTimer = null;
+
+    const handleKeyDown = (e) => {
+      const tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (!/^[a-zA-Z]$/.test(e.key)) return;
+
+      buffer += e.key.toUpperCase();
+      clearTimeout(bufferTimer);
+      bufferTimer = setTimeout(() => { buffer = ""; }, 600);
+
+      const idx = alphabetToIndex(buffer);
+      const target = shortcutMenus[idx];
+      if (target) {
+        e.preventDefault();
+        onOpenPage(target);
+        buffer = "";
+        clearTimeout(bufferTimer);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      clearTimeout(bufferTimer);
+    };
+  }, [activeTab, shortcutMenus, onOpenPage]);
+
+  // ── Improved empty state — styled, intentional, not "broken-looking" ────
+  const EmptyState = ({ title, subtitle }) => (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className="dashboard-empty-state"
     >
-      <FaInbox className="empty-icon" />
-      <p>{message}</p>
+      <div className="empty-icon-circle">
+        <FaInbox className="empty-icon" />
+      </div>
+      <p className="empty-title">{title}</p>
+      {subtitle && <p className="empty-subtitle">{subtitle}</p>}
     </motion.div>
   );
 
@@ -204,15 +269,21 @@ function Dashboard({
         {getIcon(m)}
       </div>
       <div className="dashboard-card-title">{m.bar_name}</div>
-      <div
+
+      {/* FIX: stop the event at pointer-down AND click so the card never opens. */}
+      <button
+        type="button"
+        aria-label={isFav(m.masmnu_id) ? "Remove from favourites" : "Add to favourites"}
         className={`fav-star ${isFav(m.masmnu_id) ? "is-fav" : ""}`}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
           toggleFavourite(m.masmnu_id);
         }}
       >
         {isFav(m.masmnu_id) ? <FaStar /> : <FaRegStar />}
-      </div>
+      </button>
     </motion.div>
   );
 
@@ -227,6 +298,7 @@ function Dashboard({
           <FaSearch className="search-icon" />
           <input
             ref={searchInputRef}
+            
             type="text"
             placeholder="Search menus..."
             value={searchQuery}
@@ -262,10 +334,11 @@ function Dashboard({
           </div>
         ) : filteredMenus.length === 0 ? (
           <EmptyState
-            message={
+            title={searchQuery ? "No matching menus" : "Nothing here yet"}
+            subtitle={
               searchQuery
-                ? `No menus match "${searchQuery}"`
-                : "No menus available for this module."
+                ? `No menus match "${searchQuery}". Try a different keyword.`
+                : "This module has no menus assigned to it."
             }
           />
         ) : (
@@ -277,7 +350,7 @@ function Dashboard({
                 <span className="section-count">{sortedEntries.length}</span>
               </div>
               {sortedEntries.length === 0 ? (
-                <EmptyState message="No entry menus found." />
+                <EmptyState title="No entries" subtitle="No entry menus in this module." />
               ) : (
                 <motion.div
                   variants={containerVariants}
@@ -297,7 +370,7 @@ function Dashboard({
                 <span className="section-count">{sortedReports.length}</span>
               </div>
               {sortedReports.length === 0 ? (
-                <EmptyState message="No report menus found." />
+                <EmptyState title="No reports" subtitle="No report menus in this module." />
               ) : (
                 <motion.div
                   variants={containerVariants}
@@ -316,6 +389,40 @@ function Dashboard({
       </div>
     </motion.div>
   );
+// ── Ctrl+F focuses the dashboard menu search ────────────────────────────
+useEffect(() => {
+  const handleCtrlF = (e) => {
+    // Ctrl+F (Windows/Linux) or Cmd+F (Mac)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+      // only hijack when a module dashboard is actually showing
+      if (activeTab?.type !== "module") return;
+      if (!searchInputRef.current) return;
+      e.preventDefault();          // stop the browser's native Find bar
+      searchInputRef.current.focus();
+      searchInputRef.current.select(); // select existing text so user can retype
+    }
+  };
+
+  window.addEventListener("keydown", handleCtrlF);
+  return () => window.removeEventListener("keydown", handleCtrlF);
+}, [activeTab]);
+  // Single source of truth for the activity panel inner content
+  const activityContent = (
+    <>
+      <div className="activity-panel-header">
+        <h3>Recent Activity</h3>
+        <button
+          className="activity-panel-close"
+          onClick={() => setIsActivityOpen(false)}
+        >
+          ✕
+        </button>
+      </div>
+      <div className="activity-body-wrap">
+        <RecentActivity activeTab={activeTab} />
+      </div>
+    </>
+  );
 
   return (
     <div className="dashboard-shell" ref={constraintsRef}>
@@ -329,7 +436,7 @@ function Dashboard({
 
       <div
         className="dashboard-content"
-        style={{ display: "flex", flexDirection: "row", overflow: "hidden", position: "relative" }}
+        style={{ overflow: "hidden", position: "relative" }}
       >
         <div
           className="main-view-area"
@@ -395,30 +502,46 @@ function Dashboard({
           </motion.div>
         </div>
 
-        {/* BUG FIX #2: overflow:hidden stops content bleeding out during animation */}
-        <motion.div
-          initial={false}
-          animate={{
-            width: isActivityOpen ? "300px" : "0px",
-            opacity: isActivityOpen ? 1 : 0,
-          }}
-          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="activity-panel-container"
-          style={{ overflow: "hidden" }}
-        >
-          <div style={{ width: "300px" }}>
-            <div className="activity-panel-header">
-              <h3>Recent Activity</h3>
-              <button
-                className="activity-panel-close"
-                onClick={() => setIsActivityOpen(false)}
-              >
-                ✕
-              </button>
+        {/* Desktop / tablet: side panel.  Mobile: bottom sheet. */}
+        {isMobile ? (
+          <AnimatePresence>
+            {isActivityOpen && (
+              <>
+                <motion.div
+                  className="activity-mobile-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsActivityOpen(false)}
+                />
+                <motion.div
+                  className="activity-bottom-sheet"
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                >
+                  {activityContent}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        ) : (
+          <motion.div
+            initial={false}
+            animate={{
+              width: isActivityOpen ? "300px" : "0px",
+              opacity: isActivityOpen ? 1 : 0,
+            }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            className="activity-panel-container"
+            style={{ overflow: "hidden" }}
+          >
+            <div className="activity-panel-inner">
+              {activityContent}
             </div>
-            <RecentActivity activeTab={activeTab} />
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
       </div>
     </div>
   );

@@ -172,7 +172,7 @@ const FBPConfig = ({ tab }) => {
           setFormData={setFormData}
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className=" bg-slate-50 h-full">
           <Table
             title="FBP Config Master"
             data={list}

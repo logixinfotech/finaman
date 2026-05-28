@@ -16,9 +16,11 @@ const ShiftMasterForm = ({
   rights,
   activeTab = "entry",
   onTabChange,
+  formData,
+  setFormData,
   initialData = {}
 }) => {
-  const [formData, setFormData] = useState(initialData);
+ 
   const [errors, setErrors] = useState({});
 
   const isViewMode = mode === "view";
@@ -70,6 +72,7 @@ const ShiftMasterForm = ({
         if (!firstEmptyField) firstEmptyField = field;
       }
     }
+
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -147,6 +150,7 @@ const ShiftMasterForm = ({
     },
     [isViewMode, handleValidateAndSave]
   );
+  
 
   return (
     <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>

@@ -364,7 +364,7 @@ const EmployeeMaster = ({ tab }) => {
   }, [list, rights, handleAdd]);
 
   return (
-    <div>
+    <div className="h-full w-full">
       {showForm ? (
         <EmployeeMasterForm
           formData={formData}
@@ -385,6 +385,7 @@ const EmployeeMaster = ({ tab }) => {
           onTabChange={handleTabChange}
         />
       ) : (
+      <div className=" bg-slate-50 h-full">
         <Table
           title="Employee Master"
           data={list}
@@ -415,6 +416,7 @@ const EmployeeMaster = ({ tab }) => {
             }
           }}
         />
+           </div>
       )}
     </div>
   );

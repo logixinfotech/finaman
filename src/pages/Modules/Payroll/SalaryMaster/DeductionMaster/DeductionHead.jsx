@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback,useRef } from "react";
 import Table from "../../../../../components/Reusable/table/Table"; 
 import { useERPMode } from "../../../../../components/Reusable/form/useFormMode"; 
 import DeductionHeadForm from "./DeductionHeadForm";
@@ -98,6 +98,38 @@ const DeductionHead = ({ tab }) => {
       }
     }
   };
+  const handleDeleteMultiple = async (selected) => {
+      // Normalize: Table may pass an array of row objects OR an array of keys
+      const ids = (selected || []).map((item) =>
+        typeof item === "object" ? item.income_head_id : item
+      );
+  
+      if (ids.length === 0) return;
+  
+      const confirmed = await confirmDelete({
+        title: `Delete ${ids.length} Deduction head(s)?`,
+      });
+      if (!confirmed) return;
+  
+      try {
+        const results = await Promise.all(ids.map((id) => deleteDeductionHead(id)));
+        const failed = results.filter((r) => !r?.success).length;
+  
+        if (failed === 0) {
+          showToast({ icon: "success", title: `${ids.length} deleted` });
+        } else {
+          showToast({
+            icon: "warning",
+            title: `${ids.length - failed} deleted, ${failed} failed`,
+          });
+        }
+        loadList();
+        setShowForm(false);
+      } catch (err) {
+        alertError("Delete Error", "Failed to delete some income heads");
+      }
+    };
+  const saveBtnRef = useRef(null);
 
   useEffect(() => {
     setERPHandlers({
@@ -114,6 +146,7 @@ const DeductionHead = ({ tab }) => {
       {showForm ? (
         <DeductionHeadForm
           initialData={formData}
+          saveBtnRef={saveBtnRef}
           onSave={handleSave}
           onDelete={handleDelete}
           onCancel={handleEditCancel}
@@ -131,7 +164,7 @@ const DeductionHead = ({ tab }) => {
           setFormData={setFormData}
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className=" bg-slate-50 h-full">
           <Table
             title="Deduction Head Master"
             data={list}
@@ -140,6 +173,7 @@ const DeductionHead = ({ tab }) => {
             loading={loading}
             onAdd={rights.add === 1 ? handleAdd : null}
             onRowDoubleClick={handleRowSelect}
+            onDeleteMultiple={handleDeleteMultiple}
           />
         </div>
       )}

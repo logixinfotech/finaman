@@ -443,7 +443,7 @@ const Table = ({
 
       {/* filter form */}
       {showForm && (
-        <div className="border-b border-slate-100 bg-slate-50 p-3.5 flex-shrink-0">
+        <div className="  flex-shrink-0">
           {formComponent}
         </div>
       )}

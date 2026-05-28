@@ -42,17 +42,14 @@ const getFocusableFields = () => {
   );
 };
 
+// NAYA
 const focusNext = (current) => {
   const elements = getFocusableFields();
   const index = elements.indexOf(current);
   if (index > -1 && elements[index + 1]) {
     elements[index + 1].focus();
-  } else { 
-    const form = current.closest("form");
-    if (form) {
-      const submitBtn = form.querySelector('button[type="submit"], .login-btn');
-      if (submitBtn) submitBtn.click();
-    }
+  } else {
+    focusSaveOrUpdateButton();
   }
 };
 
@@ -188,8 +185,18 @@ if (
   handleBackspaceNavigation(e);
   return;
 } 
+  // NAYA
   if (e.key === "Enter") {
     if (e.target.closest("[data-dropdown-open='true']") || e.target?.tagName?.toLowerCase() === "textarea") {
+      return;
+    }
+    // FIX: agar focus Save/Update button pe hai to click karo
+    if (e.target?.tagName?.toLowerCase() === "button") {
+      const role = e.target.dataset.erpRole;
+      if (role === "save" || role === "update") {
+        e.preventDefault();
+        e.target.click();
+      }
       return;
     }
     if (!isInputField(e.target)) return;
@@ -264,19 +271,29 @@ export const handleERPEnterNavigation = (
     focusSaveOrUpdateButton();
   }
 }; 
+// NAYA
 export const focusSaveOrUpdateButton = () => {
-  const btn = Array.from(document.querySelectorAll("button")).find(
-    (b) =>
-      !b.disabled &&
-      (
-        b.textContent?.trim().toLowerCase().includes("save") ||
-        b.textContent?.trim().toLowerCase().includes("update")
-      )
+  // 1st: data-erp-role attribute se dhundo (most reliable)
+  const byRole = document.querySelector(
+    'button[data-erp-role="save"]:not([disabled]), button[data-erp-role="update"]:not([disabled])'
   );
+  if (byRole) { byRole.focus(); return; }
 
-  if (btn) {
-    btn.focus();
-  }
+  // 2nd: id se fallback
+  const byId = document.querySelector(
+    'button#save:not([disabled]), button#update:not([disabled])'
+  );
+  if (byId) { byId.focus(); return; }
+
+  // 3rd: sirf direct text nodes match karo (Kbd span ignore)
+  const byText = Array.from(document.querySelectorAll("button:not([disabled])")).find(b => {
+    const ownText = Array.from(b.childNodes)
+      .filter(n => n.nodeType === Node.TEXT_NODE)
+      .map(n => n.textContent.trim().toLowerCase())
+      .join(" ");
+    return ownText.includes("save") || ownText.includes("update");
+  });
+  if (byText) byText.focus();
 };
 
 let isInitialized = false;

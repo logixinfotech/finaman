@@ -269,13 +269,11 @@ const EmployeeMasterForm = ({
             } else {
               const buttons = Array.from(document.querySelectorAll("button"));
               const saveBtn = buttons.find((btn) =>
-                btn.textContent.toLowerCase().includes("save")
+                btn.textContent.toLowerCase().includes("save")||btn.textContent.toLowerCase().includes("update")
               );
               if (saveBtn) {
                 saveBtn.focus();
-              } else {
-                handleSave();
-              }
+              } 
             }
           }
         }

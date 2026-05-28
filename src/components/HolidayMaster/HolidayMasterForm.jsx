@@ -123,14 +123,12 @@ const HolidayMasterForm = ({
           } else {
             const allButtons = Array.from(document.querySelectorAll("button"));
             const saveBtn = allButtons.find((btn) =>
-              btn.textContent.toLowerCase().includes("save") && !btn.disabled
+              btn.textContent.toLowerCase().includes("save") || btn.textContent.toLowerCase().includes("update")&&!btn.disabled
             );
 
             if (saveBtn) {
               saveBtn.focus();
-            } else {
-              handleValidateAndSave();
-            }
+            } 
           }
         }
       }

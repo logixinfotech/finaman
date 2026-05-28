@@ -101,7 +101,7 @@ const LeaveTypeForm = ({
 
           {/* Row 1: Leave Code + Max Days */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex-1 flex flex-col sm:flex-row items-start gap-1">
               <label className="text-[15px] w-[130px] shrink-0">
                 Leave Code <span className="text-red-500">*</span>
               </label>
@@ -120,7 +120,7 @@ const LeaveTypeForm = ({
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex-1 flex flex-col sm:flex-row items-start gap-1">
               <label className="text-[15px] w-[130px] shrink-0">
                 Max Days <span className="text-red-500">*</span>
               </label>
@@ -142,7 +142,7 @@ const LeaveTypeForm = ({
 
           {/* Row 2: Leave Name + Applicable To */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex-1 flex flex-col sm:flex-row items-start gap-1">
               <label className="text-[15px] w-[130px] shrink-0">
                 Leave Name <span className="text-red-500">*</span>
               </label>
@@ -160,7 +160,7 @@ const LeaveTypeForm = ({
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex-1 flex flex-col sm:flex-row items-start gap-1">
               <label className="text-[15px] w-[130px] shrink-0">Applicable To</label>
               <div className="flex-1 w-full">
                 <ERPAutocomplete

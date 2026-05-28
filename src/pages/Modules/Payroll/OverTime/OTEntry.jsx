@@ -8,6 +8,7 @@ import { setERPHandlers } from "../../../../utils/erpShortcuts";
 
 const initialState = {
     rule_id: null,
+    grade_id: null,    // ✅ ADD
     min_hours_required: "",
     max_hours_allowed: "",
     ot_multiplier: "",
@@ -15,6 +16,7 @@ const initialState = {
 };
 
 const columns = [
+     { key: "grade_name", label: "Grade" },
     { key: "applicable_day_type", label: "Day Type" },
     { key: "min_hours_required", label: "Min Hours" },
     { key: "max_hours_allowed", label: "Max Hours" },
