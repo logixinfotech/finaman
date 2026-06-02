@@ -40,6 +40,9 @@ const DesignationPage = React.lazy(() =>
 const DivisionMasterPage = React.lazy(() =>
     import("./Modules/Master/ShortMaster/DivisionMasterPage")
 );
+const Document = React.lazy(() =>
+    import("./Modules/Master/ShortMaster/DocumentMasterPage")
+);
 const GradeMasterPage = React.lazy(() =>
     import("./Modules/Master/ShortMaster/GradeMasterPage")
 );
@@ -96,6 +99,8 @@ const MonthlyAttendance=React.lazy(()=>import("./Modules/Payroll/Attendance/Moth
 const OverTimeReport=React.lazy(()=>import("./Modules/Payroll/OverTime/OvertimeDetailsReport"))
 const AttendanceRegister=React.lazy(()=>import("./Modules/Payroll/Attendance/Register/AttendanceRegister"))
 const SalaryStructure=React.lazy(()=>import("./Modules/Payroll/SalaryMaster/SalaryStructure/SalaryStructure"))
+const SalaryTransaction=React.lazy(()=>import("./Modules/Payroll/SalaryMaster/SalaryTransaction/SalaryTransactions"))
+
 
 const PageRegistry = {
     Master,
@@ -112,6 +117,7 @@ const PageRegistry = {
     ATNDAY: DailyAttendance,
     DesignationMaster: DesignationPage,
     DIV: DivisionMasterPage,
+    DOC: Document,
     GradeMaster: GradeMasterPage,
     RME: ReportMasterPageing,
     DepartmentMaster: ReportMasterPage,
@@ -142,6 +148,7 @@ const PageRegistry = {
     OT_transaction:OTTransaction,
     ARP:AttendanceRegister,
     SSE:SalaryStructure,
+    Salary_Trans:SalaryTransaction,
 
 
 pf_master: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PfMaster")),

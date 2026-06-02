@@ -758,6 +758,7 @@ const AttendancePage = ({
           employee_id: emp.Actled_id,
           employee_name: emp.Led_name,
           employee_code: emp.Led_code,
+          department: emp.department || "",
           log_id: log?.log_id || null,
           in: log?.in_time ? log.in_time.substring(11, 16) : "",
           out: log?.out_time ? log.out_time.substring(11, 16) : "",
@@ -1194,73 +1195,74 @@ const AttendancePage = ({
           <div className="flex w-full p-2.5 gap-2.5 overflow-hidden">
 
             {/* ══════════ LEFT SIDEBAR ══════════ */}
-            <div className="w-[164px] bg-white rounded-xl border shadow-sm flex flex-col overflow-hidden shrink-0">
-              <div className="bg-slate-800 h-14 w-full relative mb-9 shrink-0">
-                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
-                  <div className="w-[66px] h-[66px] bg-white rounded-xl p-0.5 shadow-lg border">
-                    {formData.employee_photo ? (
-                      <img src={formData.employee_photo} alt="emp" className="w-full h-full rounded-[10px] object-cover" />
-                    ) : (
-                      <div className="w-full h-full rounded-[10px] flex items-center justify-center border border-dashed border-slate-300"
-                        style={{ background: getAvatarColor(formData.employee_id)?.[0] || "#f1f5f9" }}>
-                        <span className="text-[15px] font-semibold"
-                          style={{ color: getAvatarColor(formData.employee_id)?.[1] || "#475569" }}>
-                          {formData.employee_name
-                            ? getInitials(formData.employee_name)
-                            : <span className="text-[9px] text-slate-400">PHOTO</span>}
-                        </span>
+            {attendanceType === "Manual" && (
+              <div className="w-[164px] bg-white rounded-xl border shadow-sm flex flex-col overflow-hidden shrink-0">
+                <div className="bg-slate-800 h-14 w-full relative mb-9 shrink-0">
+                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+                    <div className="w-[66px] h-[66px] bg-white rounded-xl p-0.5 shadow-lg border">
+                      {formData.employee_photo ? (
+                        <img src={formData.employee_photo} alt="emp" className="w-full h-full rounded-[10px] object-cover" />
+                      ) : (
+                        <div className="w-full h-full rounded-[10px] flex items-center justify-center border border-dashed border-slate-300"
+                          style={{ background: getAvatarColor(formData.employee_id)?.[0] || "#f1f5f9" }}>
+                          <span className="text-[15px] font-semibold"
+                            style={{ color: getAvatarColor(formData.employee_id)?.[1] || "#475569" }}>
+                            {formData.employee_name
+                              ? getInitials(formData.employee_name)
+                              : <span className="text-[9px] text-slate-400">PHOTO</span>}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-2.5 text-center">
+                  <h2 className="text-[12px] font-semibold text-slate-800 uppercase leading-tight truncate">
+                    {formData.employee_name || "—"}
+                  </h2>
+                  <p className="text-[10px] text-blue-600 uppercase tracking-wide truncate mt-0.5">
+                    {formData.designation || ""}
+                  </p>
+                  <span className="inline-block bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] border mt-1">
+                    {formData.employee_code || "ID"}
+                  </span>
+                </div>
+
+                <div className="flex-1 p-2.5 overflow-y-auto mt-2">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      ["PRESENT", totalPresent, "#f0fdf4", "#166534", "#bbf7d0"],
+                      ["ABSENT", totalAbsent, "#fef2f2", "#991b1b", "#fecaca"],
+                      ["WEEK OFF", totalWeekOff, "#fff7ed", "#9a3412", "#fed7aa"],
+                      ["LEAVE", totalLeave, "#eff6ff", "#1e40af", "#bfdbfe"],
+                    ].map(([lbl, cnt, bg, tc, bc]) => (
+                      <div key={lbl} className="rounded-lg p-1.5 text-center"
+                        style={{ background: bg, border: `1px solid ${bc}` }}>
+                        <span className="block text-[11px] font-semibold uppercase tracking-tight" style={{ color: tc }}>{lbl}</span>
+                        <span className="block text-[13px] font-bold leading-none mt-0.5" style={{ color: tc }}>{cnt}</span>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-2.5 text-center">
-                <h2 className="text-[12px] font-semibold text-slate-800 uppercase leading-tight truncate">
-                  {formData.employee_name || "—"}
-                </h2>
-                <p className="text-[10px] text-blue-600 uppercase tracking-wide truncate mt-0.5">
-                  {formData.designation || ""}
-                </p>
-                <span className="inline-block bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] border mt-1">
-                  {formData.employee_code || "ID"}
-                </span>
-              </div>
-
-              <div className="flex-1 p-2.5 overflow-y-auto mt-2">
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    ["PRESENT", totalPresent, "#f0fdf4", "#166534", "#bbf7d0"],
-                    ["ABSENT", totalAbsent, "#fef2f2", "#991b1b", "#fecaca"],
-                    ["WEEK OFF", totalWeekOff, "#fff7ed", "#9a3412", "#fed7aa"],
-                    ["LEAVE", totalLeave, "#eff6ff", "#1e40af", "#bfdbfe"],
-                  ].map(([lbl, cnt, bg, tc, bc]) => (
-                    <div key={lbl} className="rounded-lg p-1.5 text-center"
-                      style={{ background: bg, border: `1px solid ${bc}` }}>
-                      <span className="block text-[11px] font-semibold uppercase tracking-tight" style={{ color: tc }}>{lbl}</span>
-                      <span className="block text-[13px] font-bold leading-none mt-0.5" style={{ color: tc }}>{cnt}</span>
-                    </div>
-                  ))}
-                  <div className="col-span-2 rounded-lg p-1.5 text-center"
-                    style={{ background: "#fefce8", border: "1px solid #fde68a" }}>
-                    <span className="block text-[11px] font-semibold uppercase tracking-tight text-yellow-700">HOLIDAY</span>
-                    <span className="block text-[13px] font-bold leading-none mt-0.5 text-yellow-700">{totalHoliday}</span>
-                  </div>
-                </div>
-
-                {attendanceType === "Biometric" && (
-                  <div className="mt-2 pt-2 border-t border-dashed space-y-1.5">
-                    <span className="text-[9px] font-semibold text-slate-400 uppercase block">Biometric Path</span>
-                    <div className="flex">
-                      <input type="text" value={formData.path || ""} readOnly
-                        className="w-full h-6 text-[9px] border border-slate-200 rounded-l px-1.5 bg-slate-50" />
-                      <button className="px-1.5 bg-slate-100 border border-l-0 border-slate-200 rounded-r text-[10px] text-slate-500">···</button>
+                    ))}
+                    <div className="col-span-2 rounded-lg p-1.5 text-center"
+                      style={{ background: "#fefce8", border: "1px solid #fde68a" }}>
+                      <span className="block text-[11px] font-semibold uppercase tracking-tight text-yellow-700">HOLIDAY</span>
+                      <span className="block text-[13px] font-bold leading-none mt-0.5 text-yellow-700">{totalHoliday}</span>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
 
+                  {attendanceType === "Biometric" && (
+                    <div className="mt-2 pt-2 border-t border-dashed space-y-1.5">
+                      <span className="text-[9px] font-semibold text-slate-400 uppercase block">Biometric Path</span>
+                      <div className="flex">
+                        <input type="text" value={formData.path || ""} readOnly
+                          className="w-full h-6 text-[9px] border border-slate-200 rounded-l px-1.5 bg-slate-50" />
+                        <button className="px-1.5 bg-slate-100 border border-l-0 border-slate-200 rounded-r text-[10px] text-slate-500">···</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {/* ══════════ RIGHT CONTENT ══════════ */}
             <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
 
@@ -1346,7 +1348,7 @@ const AttendancePage = ({
 
                   {/* EMPLOYEE — Manual only */}
                   {attendanceType === "Manual" && (
-                    <div data-employee-auto completeclassName="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
+                    <div data-employee-autocomplete className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
                       <span className={labelCls}>Employee:</span>
                       <ERPAutocomplete
                         disabled={isViewMode}
@@ -1483,14 +1485,16 @@ const AttendancePage = ({
                               <div className="flex gap-1">
                                 <div className="flex-1">
                                   <span className="text-[12px] text-slate-600 font-semibold uppercase block">In</span>
-                                  <input type="time" tabIndex={0} disabled={dis}
+                                  <input type="time" tabIndex={0}
+                                    // disabled={dis}
                                     value={data.in === "--:--" ? "" : data.in}
                                     onChange={e => handleDataChange(dayNum, "in", e.target.value || "--:--")}
                                     className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed" />
                                 </div>
                                 <div className="flex-1">
                                   <span className="text-[12px] text-slate-600 font-semibold uppercase block">Out</span>
-                                  <input type="time" tabIndex={0} disabled={dis}
+                                  <input type="time" tabIndex={0}
+                                    // disabled={dis}
                                     value={data.out === "--:--" ? "" : data.out}
                                     onChange={e => handleDataChange(dayNum, "out", e.target.value || "--:--")}
                                     className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed" />
@@ -1508,8 +1512,8 @@ const AttendancePage = ({
                 {attendanceType === "List" && (
                   <>
                     <TableHeader
-                      cols={[deleteMode ? "✓" : "#", "Employee", "Date", "In Time", "Out Time", "Status"]}
-                      template="44px 1.8fr 110px 100px 100px 140px"
+                      cols={[deleteMode ? "✓" : "#", "Employee", "Code", "Department", "Date", "In Time", "Out Time", "Status"]}
+                      template="40px 1fr 195px 190px 110px 110px 110px 150px"
                     />
                     <div className="flex-1 overflow-y-auto">
                       {listLoading ? <LoadingState msg="Loading employees…" />
@@ -1517,7 +1521,7 @@ const AttendancePage = ({
                           : listEntryData.map((row, idx) => {
                             const [y, m, d] = listEntryDate.split("-");
                             return (
-                              <TableRow key={row.employee_id} idx={idx} template="44px 1.8fr 110px 100px 100px 140px" bgOverride={row.is_holiday ? "#fefce8" : row.is_weekoff ? "#fff7ed" : null}>
+                              <TableRow key={row.employee_id} idx={idx} template="40px 1fr 220px 150px 110px 110px 110px 150px" bgOverride={row.is_holiday ? "#fefce8" : row.is_weekoff ? "#fff7ed" : null}>
                                 <div className="px-3 py-2 text-center">
                                   {deleteMode ? (
                                     <input
@@ -1539,7 +1543,13 @@ const AttendancePage = ({
                                     </span>
                                   )}
                                 </div>
-                                <AvatarCell name={row.employee_name} code={row.employee_code} empId={row.employee_id} />
+                                <AvatarCell name={row.employee_name}  empId={row.employee_id} />
+                                <div className="px-3 py-2 text-[12px] font-mono text-indigo-700">
+                                  {row.employee_code}
+                                </div>
+                                <div className="px-3 py-2 text-[12px] text-slate-500 truncate">
+                                  {row.department || "—"}
+                                </div>
                                 <div className="px-3 py-2 text-[14px] font-mono text-slate-700">{d}-{m}-{y}</div>
                                 <div className="px-2 py-2">
                                   <input type="time" disabled={isViewMode} tabIndex={0}

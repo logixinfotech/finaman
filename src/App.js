@@ -202,6 +202,7 @@ function App() {
         type: "module",
         module,
         appl_name: null,
+         icon_name: module.icon_name,
       };
       const withoutOldModule = prev.filter((t) => t.type !== "module");
       const updatedTabs = [moduleTab, ...withoutOldModule];
@@ -225,6 +226,7 @@ function App() {
         module: activeModule,
         appl_name: menuItem.appl_name,
         duplicateIndex: 1,
+         icon_name: menuItem.icon_name,
       };
       setTabs((prev) => [...prev, newTab]);
       setActiveTabId(newTabId);

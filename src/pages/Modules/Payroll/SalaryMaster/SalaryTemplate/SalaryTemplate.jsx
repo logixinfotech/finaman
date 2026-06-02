@@ -10,19 +10,15 @@ import {
 import { setERPHandlers } from "../../../../../utils/erpShortcuts";
 
 const initialState = {
-  employee_name:  "",
-  code:           "",
-  department:     "",
-  effectiveFrom:  "",
+  grade:          "",
+  effective_from: "",
   status:         "Active",
   incomeHeads:    [],
   deductionHeads: [],
 };
 
 const columns = [
-  { key: "employee_name",  label: "Name"           },
-  { key: "code",           label: "Code"           },
-  { key: "department",     label: "Department"     },
+  { key: "grade",          label: "Grade"          },
   { key: "effective_from", label: "Effective From" },
   { key: "status",         label: "Status"         },
 ];
@@ -113,7 +109,7 @@ const SalaryTemplate = ({ tab }) => {
   };
 
   const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({ title: `Delete "${row.employee_name}"?` });
+    const confirmed = await confirmDelete({ title: `Delete template for grade "${row.grade}"?` });
     if (confirmed) {
       const res = await deleteSalaryTemplate(row.salary_template_id);
       if (res.success) {
@@ -123,10 +119,11 @@ const SalaryTemplate = ({ tab }) => {
       }
     }
   };
+
   const handleDeleteMultiple = async (selected) => {
-      // Normalize: Table may pass an array of row objects OR an array of keys
+      // FIX: was using income_head_id by mistake — should be salary_template_id
       const ids = (selected || []).map((item) =>
-        typeof item === "object" ? item.income_head_id : item
+        typeof item === "object" ? item.salary_template_id : item
       );
   
       if (ids.length === 0) return;
@@ -151,7 +148,7 @@ const SalaryTemplate = ({ tab }) => {
         loadList();
         setShowForm(false);
       } catch (err) {
-        alertError("Delete Error", "Failed to delete some income heads");
+        alertError("Delete Error", "Failed to delete some templates");
       }
     };
 

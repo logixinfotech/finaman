@@ -1,9 +1,7 @@
 :root {
   /* 🔹 Radius */
   --radius-lg: 12px;
-  --radius-md: 8px;
-
-  /* 🔹 Spacing */
+  --radius-md: 8px; 
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -16,12 +14,8 @@
   --bg-header: #ffffff;
   --bg-footer: #ffffff;
  
-  --bg-active: rgba(59, 130, 246, 0.18);
-
-  /* 🔹 Hover */
-  --bg-hover: rgba(255, 255, 255, 0.08);
-
-  /* 🔹 Text */
+  --bg-active: rgba(59, 130, 246, 0.18); 
+  --bg-hover: rgba(255, 255, 255, 0.08); 
   --text-main: #0f172a;
   --text-muted: #64748b;
   --text-active: #ffffff; 
@@ -31,26 +25,24 @@
   --header-start: #3b82f6;
   --header-middle: #2563eb;
   --header-end: #1e40af;
+
+  --tabbar-bg: #142a52; /* fallback */
 }
  
 .theme-light {
-  --bg-main: #f8fbff;
-  /* lighter */
+  --bg-main: #f8fbff; 
   --bg-sidebar: linear-gradient(180deg, #020617, #0b1f3a);
   --bg-header: #ffffff;
   --bg-footer: #ffffff;
 
   --sidebar-top-bg: linear-gradient(90deg, #0b1f3a, #1e3a8a);
+  --tabbar-bg: #142a52;
 
-  --bg-hover: rgba(255, 255, 255, 0.08);
-  /* --bg-active: #3b82f6; */
-  --bg-active: rgba(59, 130, 246, 0.25);
-
-
+  --bg-hover: rgba(255, 255, 255, 0.08); 
+  --bg-active: rgba(59, 130, 246, 0.25); 
   --header-start: #1e40af;
   --header-middle: #3b82f6;
-  --header-end: #2563eb;
-
+  --header-end: #2563eb; 
 
   --accent-soft: #eff6ff;
   --accent-hover: #bfdbfe;
@@ -65,22 +57,17 @@
 
 .theme-dark {
   --bg-main: #0b1220;
-
-  /* 🔥 Sidebar (deep but not pure black) */
+ 
   --bg-sidebar: linear-gradient(180deg, #020617, #0f172a);
 
   --bg-header: #111827;
   --bg-footer: #111827;
-
-  /* 🔥 Sidebar Top (slightly visible) */
+ 
   --sidebar-top-bg: linear-gradient(90deg, #1e293b, #020617);
+  --tabbar-bg: #0b1322;
 
-  --bg-hover: rgba(255, 255, 255, 0.08);
-
-  /* 🔥 Active (soft highlight, no harsh color) */
-  --bg-active: rgba(59, 130, 246, 0.20);
-
-  /* 🔥 Header gradient (deep dark) */
+  --bg-hover: rgba(255, 255, 255, 0.08); 
+  --bg-active: rgba(59, 130, 246, 0.20); 
   --header-start: #1e293b;
   --header-middle: #0f172a;
   --header-end: #020617;
@@ -90,9 +77,7 @@
 
   --text-main: #e2e8f0;
   --text-muted: #94a3b8;
-  --text-active: #ffffff;
-
-  /* 🔥 Icon color (neutral blue, not green anymore) */
+  --text-active: #ffffff; 
   --icon-color: #60a5fa;
 
   --border-main: #1f2937;
@@ -105,6 +90,7 @@
   --bg-footer: #ffffff;
 
   --sidebar-top-bg: linear-gradient(90deg, #334155, #64748b);
+  --tabbar-bg: #3a4658;
 
   --bg-hover: rgba(255, 255, 255, 0.08);
   --bg-active: #334155;
@@ -129,20 +115,16 @@
   /* lighter */
   --bg-sidebar: linear-gradient(180deg, #050d31, #0b1f3a);
   --bg-header: #ffffff;
-  --bg-footer: #ffffff;
-
-  --sidebar-top-bg: linear-gradient(90deg, #0b1f3a, #1e3a8a);
-
-  --bg-hover: rgba(255, 255, 255, 0.08);
-  /* --bg-active: #3b82f6; */
+  --bg-footer: #ffffff; 
+  --sidebar-top-bg: linear-gradient(90deg, #0b1f3a, #1e3a8a); 
+  --tabbar-bg: #122a55;
+  --bg-hover: rgba(255, 255, 255, 0.08); 
   --bg-active: rgba(59, 130, 246, 0.25);
 
 
   --header-start: #1e40af;
   --header-middle: #3b82f6;
-  --header-end: #2563eb;
-
-
+  --header-end: #2563eb; 
   --accent-soft: #eff6ff;
   --accent-hover: #bfdbfe;
 
@@ -162,24 +144,17 @@
   --bg-sidebar: linear-gradient(180deg, #020617, #0f172a);
 
   --bg-header: #ffffff;
-  --bg-footer: #ffffff;
-
-  /* 🔥 Sidebar Top */
-  --sidebar-top-bg: linear-gradient(90deg, #0d9488, #0f766e);
-
-  --bg-hover: rgba(255, 255, 255, 0.08);
-
-  /* 🔥 Soft active */
-  --bg-active: rgba(20, 184, 166, 0.20);
-
-  /* 🔥 Header */
+  --bg-footer: #ffffff; 
+  --sidebar-top-bg: linear-gradient(90deg, #0d9488, #0f766e); 
+  --tabbar-bg: #0c5d57;
+  --bg-hover: rgba(255, 255, 255, 0.08); 
+  --bg-active: rgba(20, 184, 166, 0.20); 
   --header-start: #2dd4bf;
   --header-middle: #14b8a6;
   --header-end: #0f766e;
 
   --accent-soft: #ccfbf1;
-  --accent-hover: #99f6e4;
-
+  --accent-hover: #99f6e4; 
   --text-main: #0f172a;
   --text-muted: #475569;
   --text-active: #ffffff;
@@ -195,16 +170,12 @@
 
   --bg-header: #ffffff;
   --bg-footer: #ffffff;
-
-  /* 🔥 Sidebar Top */
+ 
   --sidebar-top-bg: linear-gradient(90deg, #f97316, #c2410c);
+  --tabbar-bg: #9a3d12;
 
-  --bg-hover: rgba(255, 255, 255, 0.08);
-
-  /* 🔥 Soft active */
-  --bg-active: rgba(249, 115, 22, 0.20);
-
-  /* 🔥 Header */
+  --bg-hover: rgba(255, 255, 255, 0.08); 
+  --bg-active: rgba(249, 115, 22, 0.20); 
   --header-start: #fb923c;
   --header-middle: #f97316;
   --header-end: #c2410c;
@@ -219,7 +190,6 @@
   --icon-color: #f97316;
   --border-main: #e2e8f0;
 }
-
 /* ─── App shell — unchanged structure ───────────────────────────────────── */
 .app-shell {
   height: 100vh;

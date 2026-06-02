@@ -1,140 +1,135 @@
-/* TABBAR */
+/* ════════════════════════════════════════
+   TABBAR — theme-aware, connected to header
+════════════════════════════════════════ */
 .chrome-tabbar {
-    height: 40px;
-    background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+    height: 33px;
+    background: var(--tabbar-bg);
     display: flex;
     align-items: flex-end;
     padding: 0 10px;
-    border-bottom: 1px solid #cbd5e1;
+    gap: 3px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    flex-shrink: 0;
 }
 
-/* SCROLLABLE LIST */
 .chrome-tab-list {
     display: flex;
     align-items: flex-end;
-    gap: 6px;
+    gap: 3px;
     height: 100%;
     overflow-x: auto;
     scrollbar-width: none;
 }
+.chrome-tab-list::-webkit-scrollbar { display: none; }
 
-.chrome-tab-list::-webkit-scrollbar {
-    display: none;
-}
-
-/* TAB */
+/* ── INACTIVE TAB ── now clearly visible ── */
 .chrome-tab {
-    height: 30px;
-    min-width: 120px;
-    max-width: 240px;
-    padding: 0 10px;
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(6px);
-    border-radius: 10px 10px 0 0;
     display: flex;
     align-items: center;
+    gap: 6px;
+    height: 26px;
+    min-width: 115px;
+    max-width: 220px;
+    padding: 0 11px;
+    border-radius: 6px 6px 0 0;
+    font-size: 11.5px;
+    color: #cdddef;                              /* brighter, readable */
     cursor: pointer;
-    border: 1px solid rgba(148, 163, 184, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: none;
-    transition: all 0.25s ease;
-    font-size: 12.5px;
-    color: #1e293b;
+    background: rgba(255, 255, 255, 0.10);        /* visible solid pill */
+    transition: background 0.15s ease, color 0.15s ease;
     position: relative;
     overflow: hidden;
-    animation: tabFade 0.2s ease;
+    animation: tabFade 0.18s ease;
 }
 
-/* Animation */
 @keyframes tabFade {
-    from {
-        opacity: 0;
-        transform: translateY(6px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(3px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Accent */
-.tab-accent {
-    position: absolute;
-    left: 0;
-    top: 6px;
-    bottom: 6px;
-    width: 3px;
-    background: transparent;
-    border-radius: 2px;
-    transition: all 0.25s ease;
+.chrome-tab:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
 }
 
-/* Icon */
+.tab-accent { display: none; }
+
 .tab-icon {
-    margin-right: 6px;
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.9;
+    flex-shrink: 0;
 }
 
-/* Hover */
-.chrome-tab:hover {
-    background: rgba(255, 255, 255, 0.95);
-    transform: translateY(-1px);
-}
-
-/* FIRST TAB */
-/* First tab (Dashboard - minimal style) */
+/* ── FIRST TAB (Dashboard) ── */
 .chrome-tab:first-child {
-    background: rgba(37, 99, 235, 0.08);
-    border-top: 2px solid var(--sidebar-top-bg);
+    min-width: 95px;
     font-weight: 600;
+    padding-right: 16px;
 }
-
 .chrome-tab:first-child::after {
     content: "";
     position: absolute;
-    top: 4px;
+    top: 5px;
     right: 6px;
-    width: 5px;
-    height: 5px;
-    background: var(--sidebar-top-bg);
+    width: 4px;
+    height: 4px;
+    background: #f59e0b;
     border-radius: 50%;
 }
 
-/* ACTIVE */
+/* ── ACTIVE TAB ── flips to form bg, connects below ── */
 .chrome-tab.active {
-    /* background: #ffffff; */
-    background: linear-gradient(to bottom, #eef2ff, #f8fafc);
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-weight: 600;
+    height: 27px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: none;
     z-index: 5;
-    box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.12);
-    border-color: #94a3b8;
 }
+.chrome-tab.active .tab-icon { opacity: 1; }
 
-.chrome-tab.active .tab-accent {
-    background: var(--sidebar-top-bg);
-}
-
-/* TITLE */
+/* ── TITLE ── */
 .chrome-tab-title {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 6px;
     font-weight: 500;
 }
 
-/* CLOSE */
+/* ── CLOSE ── */
 .chrome-tab-close {
     margin-left: auto;
-    font-size: 13px;
-    opacity: 0.5;
+    width: 15px;
+    height: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    opacity: 0.6;
     cursor: pointer;
-    padding: 2px 5px;
-    border-radius: 5px;
-    transition: all 0.2s ease;
+    border-radius: 50%;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
 }
-
 .chrome-tab-close:hover {
     opacity: 1;
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.15);
+    color: #fff;
+    background: rgba(239, 68, 68, 0.7);
+}
+
+/* close button on active (light) tab needs dark default */
+.chrome-tab.active .chrome-tab-close {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+.chrome-tab.active .chrome-tab-close:hover {
+    color: #fff;
+    background: #ef4444;
+    opacity: 1;
 }

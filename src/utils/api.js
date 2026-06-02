@@ -639,7 +639,6 @@ export const updateLeaveEncashment          = (id, data)     =>
 export const deleteLeaveEncashment          = (id)           =>
   handleApi(() => api.delete(`/api/LeaveEncashment/${id}`));
 
-
 // ── PF ────────────────────────────────────────────────────
 export const fetchPFList    = ()         => handleApi(() => api.get("/api/statutory-master/?type=PF"));
 export const createPF       = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
@@ -760,3 +759,61 @@ export const updateOTStatus = (id, payload) =>
  
 export const deleteOTTransaction = (id) =>
   handleApi(() => api.delete(`/api/payroll/ot-transactions/${id}`));
+
+// ─── Monthly Attendance Report ─────────────────────────────────────────────────────────
+
+export const fetchMonthlyAttendanceSummary = (month, year) =>
+  handleApi(() => api.get(`/api/reports/monthly-attendance-summary?month=${month}&year=${year}`));
+
+export const fetchEmployeeAttendanceDetail = (employeeId, month, year) =>
+  handleApi(() => api.get(`/api/reports/employee-attendance-detail?employee_id=${employeeId}&month=${month}&year=${year}`));
+
+// ───Attendance Register ─────────────────────────────────────────────────────────
+
+export const fetchAttendanceRegister = (month, year) =>
+  handleApi(() => api.get(`/api/reports/attendance-register?month=${month}&year=${year}`));
+
+// ── ADD THESE to your existing utils/api.js ──────────────────────────────────
+
+export const fetchSalaryStructures = () =>
+  api.get("/api/salary-master/salary-structures").then(r => r.data);
+
+export const fetchSalaryStructure = (id) =>
+  api.get(`/api/salary-master/salary-structures/${id}`).then(r => r.data);
+
+export const fetchActiveStructureByEmployee = (employee_id) =>
+  api.get(`/api/salary-master/salary-structures/by-employee/${employee_id}/active`).then(r => r.data);
+
+export const fetchStructureHistory = (employee_id) =>
+  api.get(`/api/salary-master/salary-structures/by-employee/${employee_id}/history`).then(r => r.data);
+
+export const createSalaryStructure = (data) =>
+  api.post("/api/salary-master/salary-structures", data).then(r => r.data);
+
+export const updateSalaryStructure = (id, data) =>
+  api.put(`/api/salary-master/salary-structures/${id}`, data).then(r => r.data);
+
+export const deleteSalaryStructure = (id) =>
+  api.delete(`/api/salary-master/salary-structures/${id}`).then(r => r.data);
+// ─────────────────────────────────── Salary Transactions ───────────────────────────────────
+ 
+export const fetchSalaryTransactions = (params = "") =>
+  handleApi(() => api.get(`/api/salary-master/salary-transactions${params ? `?${params}` : ""}`));
+ 
+export const fetchSalaryTransactionById = (id) =>
+  handleApi(() => api.get(`/api/salary-master/salary-transactions/${id}`));
+ 
+export const createSalaryTransaction = (data) =>
+  handleApi(() => api.post("/api/salary-master/salary-transactions", data));
+ 
+export const updateSalaryTransaction = (id, data) =>
+  handleApi(() => api.put(`/api/salary-master/salary-transactions/${id}`, data));
+ 
+export const deleteSalaryTransaction = (id) =>
+  handleApi(() => api.delete(`/api/salary-master/salary-transactions/${id}`));
+ 
+// Payroll run ke time use karo
+export const fetchPayrollSummary = (emp_id, month_year) =>
+  handleApi(() =>
+    api.get(`/api/salary-master/salary-transactions/payroll-summary?emp_id=${emp_id}&month_year=${month_year}`)
+  );

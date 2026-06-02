@@ -9,8 +9,8 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [], onOpenMo
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [username, setUsername] = useState("");
-  const [companyInfo, setCompanyInfo] = useState({ 
-    name: "Demo Company Private Limited", 
+  const [companyInfo, setCompanyInfo] = useState({
+    name: "Demo Company Private Limited",
     loc: "Uttar Pradesh",
     fy: "2026-27"
   });
@@ -55,59 +55,59 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [], onOpenMo
   };
 
   return (
-      <header className="relative z-[500] h-[52px] w-full flex items-center justify-between px-3 md:px-5 shadow-lg border-b border-white/5"
+    <header
+     className="relative z-[500] h-[44px] w-full flex items-center justify-between px-3 md:px-5 shadow-md border-b-2 border-blue-700"
       style={{ background: "var(--sidebar-top-bg)" }}
     >
       {/* LEFT - mobile hamburger + brand */}
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Hamburger — mobile only */}
         <button
           onClick={onOpenMobileSidebar}
-          className="lg:hidden p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
+          className="lg:hidden p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
           aria-label="Open menu"
         >
-          <FaBars className="text-base" />
+          <FaBars className="text-sm" />
         </button>
 
-        <div className="h-9 w-9 flex items-center justify-center rounded-xl bg-white/10 border border-white/20 shadow-md hover:scale-105 transition">
-          <img src="/finaman-logo.png" alt="Logo" className="h-5 w-5 object-contain" />
+        <div className="h-[30px] w-[30px] flex items-center justify-center rounded-lg bg-white/10 border border-white/20 shadow-md hover:scale-105 transition">
+          <img src="/finaman-logo.png" alt="Logo" className="h-4 w-4 object-contain" />
         </div>
-        <div className="flex flex-col leading-tight hidden sm:flex">
-          <span className="text-sm font-bold tracking-tight uppercase text-white">FINAMAN ERP</span>
-          <span className="text-[10px] text-white/50 font-medium tracking-wide hidden md:block">
+        <div className="flex flex-col leading-none hidden sm:flex">
+          <span className="text-[12px] font-bold tracking-tight uppercase text-white">FINAMAN ERP</span>
+          <span className="text-[9px] text-white/50 font-medium tracking-wide hidden md:block">
             Process Manufacturing Management Software
           </span>
         </div>
       </div>
 
-      {/* CENTER - COMPANY INFO */}
-      <div className="hidden lg:flex flex-col items-center justify-center">
-        <span className="relative inline-block text-[14px] font-bold uppercase tracking-widest text-white/90">
+      {/* CENTER - COMPANY INFO (smaller) */}
+      <div className="hidden lg:flex flex-col items-center justify-center leading-none">
+        <span className="relative inline-block text-[12px] font-bold uppercase tracking-wider text-white/90">
           {companyInfo.name}
-          <span className="absolute left-0 -bottom-[1px] w-full h-[1.5px] bg-blue-500/50 rounded-full"></span>
+          <span className="absolute left-0 -bottom-[1px] w-full h-[1px] bg-blue-500/50 rounded-full"></span>
         </span>
-        <div className="flex items-center gap-3 mt-1 text-[10px] font-semibold text-white/60">
+        <div className="flex items-center gap-2 mt-0.5 text-[9px] font-semibold text-white/60">
           <span className="flex items-center gap-1">
-            <FaMapMarkerAlt className="text-blue-400" />
+            <FaMapMarkerAlt className="text-blue-400 text-[8px]" />
             {companyInfo.loc}
           </span>
           <span className="opacity-30 text-white">|</span>
-          <span className="bg-white/10 px-1.5 py-0.5 rounded text-white/80">FY {companyInfo.fy}</span>
+          <span className="bg-white/10 px-1 py-px rounded text-white/80">FY {companyInfo.fy}</span>
         </div>
       </div>
- 
-   <div className="flex items-center gap-2 md:gap-4">
-        {/* Hide GlobalSearch on small screens, or make it an icon button */}
+
+      {/* RIGHT */}
+      <div className="flex items-center gap-2 md:gap-3">
         <div className="hidden md:block">
           <GlobalSearch allMenus={allMenus} onOpenPage={onOpenPage} />
-        </div>  
+        </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Notifications */}
           <div className="relative" ref={notifyRef}>
-            <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 rounded-full hover:bg-white/20 transition text-white/80 hover:text-white relative">
-              <FaBell className="text-lg" />
-              {unreadCount > 0 && <span className="absolute top-1 right-1 bg-red-600 text-[9px] font-bold px-1 rounded-full">{unreadCount}</span>}
+            <button onClick={() => setShowNotifications(!showNotifications)} className="p-1.5 rounded-full hover:bg-white/20 transition text-white/80 hover:text-white relative">
+              <FaBell className="text-base" />
+              {unreadCount > 0 && <span className="absolute top-0.5 right-0.5 bg-red-600 text-[8px] font-bold px-1 rounded-full">{unreadCount}</span>}
             </button>
             {showNotifications && (
               <div className="absolute right-0 mt-2 z-[1000]">
@@ -124,12 +124,12 @@ function Header({ theme, setTheme, onLogout, onOpenPage, allMenus = [], onOpenMo
             <div
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               ref={userChipRef}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 cursor-pointer transition border border-white/10"
+              className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 cursor-pointer transition border border-white/10"
             >
-              <div className="h-7 w-7 rounded bg-white/30 text-white flex items-center justify-center font-bold text-xs uppercase">
+              <div className="h-6 w-6 rounded bg-white/30 text-white flex items-center justify-center font-bold text-[10px] uppercase">
                 {username?.charAt(0)}
               </div>
-              <span className="text-white text-xs font-semibold hidden sm:block uppercase tracking-tight">{username}</span>
+              <span className="text-white text-[11px] font-semibold hidden sm:block uppercase tracking-tight">{username}</span>
             </div>
 
             {isMenuOpen && (

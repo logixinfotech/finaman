@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import Table from "../components/Reusable/table/Table";
 import EmployeeMasterForm from "../components/EmployeeMaster/EmpolyeeMasterForm";
-import { employeeFieldMap } from "../utils/employeeMapper";
 import { getActledList, createEmployee, updateEmployee, deleteEmployee, createLeaveBalance } from "../utils/api";
 import { transformToBackend } from "../utils/employeeMapper";
 

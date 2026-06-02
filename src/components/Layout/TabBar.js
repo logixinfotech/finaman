@@ -1,3 +1,5 @@
+import * as FaIcons from "react-icons/fa";
+import { FaRegWindowMaximize } from "react-icons/fa";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import "./TabBar.css";
 
@@ -8,6 +10,15 @@ function TabBar({
     onCloseTab,
     onReorderTabs,
 }) {
+    const getTabIcon = (tab) => {
+        if (tab.icon_name && FaIcons[tab.icon_name]) {
+            const IconComp = FaIcons[tab.icon_name];
+            return <IconComp />;
+        }
+        // fall back to any emoji already set, else a default icon
+        if (tab.icon) return tab.icon;
+        return <FaRegWindowMaximize />;
+    };
 
     const handleDragEnd = (result) => {
         if (!result.destination) return;
@@ -75,9 +86,8 @@ function TabBar({
                                             {/* Accent */}
                                             <div className="tab-accent" />
 
-                                            {/* Icon */}
                                             <span className="tab-icon">
-                                                {tab.icon || "📄"}
+                                                {getTabIcon(tab)}
                                             </span>
 
                                             {/* Title */}
