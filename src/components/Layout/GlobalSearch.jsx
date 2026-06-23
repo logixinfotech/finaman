@@ -56,7 +56,7 @@ const GlobalSearch = ({ allMenus, onOpenPage }) => {
   }, [showSearch, filteredResults, highlightIndex, onOpenPage]);
 
   return (
-    <div className="relative group hidden md:block">
+    <div className="relative group ">
       <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white text-[10px] z-10" />
       <input
         ref={searchRef}

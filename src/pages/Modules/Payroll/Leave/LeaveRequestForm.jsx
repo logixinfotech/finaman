@@ -4,7 +4,8 @@ import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import { getActledList, getLeaveTypes } from "../../../../utils/api";
 import ERPDateInput from "../../../../components/Reusable/input/Date";
-import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
+import { showToast } from "../../../../components/Reusable/alert";
+import { focusFirstInput, handleERPBackspaceNavigation, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
 
 const LeaveRequestForm = ({
   mode = "view",
@@ -33,7 +34,7 @@ const LeaveRequestForm = ({
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode = mode === "add";
-
+  const saveBtnRef = useRef(null);
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
   const formRef = useRef(null);
 
@@ -104,9 +105,20 @@ const LeaveRequestForm = ({
     }
   }, [localData.from_date, localData.to_date]);
 
+  useEffect(() => {
+    setTimeout(() => {
+      console.log("Save Ref:", saveBtnRef.current);
+
+      if (saveBtnRef.current) {
+        saveBtnRef.current.focus();
+        console.log("Focused");
+      }
+    }, 3000);
+  }, []);
   const handleKeyDown = useCallback(
     (e) => {
-      handleERPEnterNavigation(e, formRef, isViewMode);
+      handleERPEnterNavigation(e, formRef, isViewMode, saveBtnRef);
+      handleERPBackspaceNavigation(e, formRef, isViewMode)
     },
     [isViewMode]
   );
@@ -198,49 +210,45 @@ const LeaveRequestForm = ({
 
             {/* ── Employee ── */}
             <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
-            <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1">
-              <label className="text-[15px] w-[100px] pt-1 shrink-0">
-                Employee <span className="text-red-500">*</span>
-              </label>
-              <div className="flex-1 w-full">
-                <ERPAutocomplete
-                  options={employeeNames}
-                  value={localData.employee_name || ""}
-                  onChange={(val) => handleChange("employee_name", val)}
-                  className={getInputClass(isViewMode, "employee_id")}
-                  disabled={isViewMode}
-                  onKeyDown={handleKeyDown}
-                />
-                {localData.employee_id && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1">
+                <label className="text-[15px] w-[100px] pt-1 shrink-0">
+                  Employee <span className="text-red-500">*</span>
+                </label>
+                <div className="flex-1 w-full">
+                  <ERPAutocomplete
+                    options={employeeNames}
+                    value={localData.employee_name || ""}
+                    onChange={(val) => handleChange("employee_name", val)}
+                    className={getInputClass(isViewMode, "employee_id")}
+                    disabled={isViewMode}
+                    onKeyDown={handleKeyDown}
+                  />
+                  {/* {localData.employee_id && (
                   <div className="text-[12px] text-blue-600 mt-1 ml-1">
                     EMP ID: {localData.employee_id}
                   </div>
-                )}
-                {errors.employee_id && (
-                  <span className="text-[11px] text-red-500 ml-1">Required</span>
-                )}
-              </div>
-            </div>
+                )} */}
 
-            {/* ── Leave Type ── */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1 mt-3 sm:mt-0">
-              <label className="text-[15px] w-[100px] pt-1 shrink-0">
-                Leave Type <span className="text-red-500">*</span>
-              </label>
-              <div className="flex-1 w-full">
-                <ERPAutocomplete
-                  options={leaveTypeNames}
-                  value={localData.leave_name || ""}
-                  onChange={(val) => handleChange("leave_name", val)}
-                  className={getInputClass(isViewMode, "leave_type_id")}
-                  disabled={isViewMode}
-                  onKeyDown={handleKeyDown}
-                />
-                {errors.leave_type_id && (
-                  <span className="text-[11px] text-red-500 ml-1">Required</span>
-                )}
+                </div>
               </div>
-            </div>
+
+              {/* ── Leave Type ── */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1 mt-3 sm:mt-0">
+                <label className="text-[15px] w-[100px] pt-1 shrink-0">
+                  Leave Type <span className="text-red-500">*</span>
+                </label>
+                <div className="flex-1 w-full">
+                  <ERPAutocomplete
+                    options={leaveTypeNames}
+                    value={localData.leave_name || ""}
+                    onChange={(val) => handleChange("leave_name", val)}
+                    className={getInputClass(isViewMode, "leave_type_id")}
+                    disabled={isViewMode}
+                    onKeyDown={handleKeyDown}
+                  />
+
+                </div>
+              </div>
             </div>
 
             {/* ── Dates ── */}
@@ -257,9 +265,6 @@ const LeaveRequestForm = ({
                     className={getInputClass(isViewMode, "from_date")}
                     onKeyDown={handleKeyDown}
                   />
-                  {errors.from_date && (
-                    <span className="text-[11px] text-red-500">Required</span>
-                  )}
                 </div>
               </div>
 
@@ -275,9 +280,7 @@ const LeaveRequestForm = ({
                     className={getInputClass(isViewMode, "to_date")}
                     onKeyDown={handleKeyDown}
                   />
-                  {errors.to_date && (
-                    <span className="text-[11px] text-red-500">Required</span>
-                  )}
+
                 </div>
               </div>
             </div>
@@ -292,7 +295,7 @@ const LeaveRequestForm = ({
                   disabled
                   className={getInputClass(true, "total_days")}
                   placeholder="Auto-calculated"
-                  onKeyDown={handleKeyDown}                  
+                  onKeyDown={handleKeyDown}
                 />
               </div>
             </div>
@@ -322,9 +325,17 @@ const LeaveRequestForm = ({
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
+        saveBtnRef={saveBtnRef}
         saving={saving}
         handleSubmit={handleValidateAndSave}
-        onModify={onModify}
+        onModify={() => {
+          const status = (localData?.status || "").toUpperCase();
+          if (status === "APPROVED" || status === "REJECTED") {
+            showToast({ icon: "error", title: `Cannot modify — request is already ${status}` });
+            return;
+          }
+          onModify?.();
+        }}
         onDelete={() => onDelete && onDelete(localData)}
         onCancel={onCancel}
         onEditCancel={onEditCancel}

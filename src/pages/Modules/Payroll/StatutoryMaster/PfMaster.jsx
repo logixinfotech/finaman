@@ -101,7 +101,30 @@ const PFMaster = ({ tab }) => {
       }
     }
   };
-
+  const handleDeleteMultiple = async (selected) => {
+          const ids = (selected || []).map((item) =>
+              typeof item === "object" ? item.statutory_id : item
+          );
+          if (ids.length === 0) return;
+  
+          const confirmed = await confirmDelete({ title: `Delete ${ids.length} PF(s)?` });
+          if (!confirmed) return;
+  
+          try {
+              const results = await Promise.all(ids.map((id) => deletePF(id)));
+              const failed = results.filter((r) => !r?.success).length;
+              if (failed === 0) {
+                  showToast({ icon: "success", title: `${ids.length} deleted` });
+              } else {
+                  showToast({ icon: "warning", title: `${ids.length - failed} deleted, ${failed} failed` });
+              }
+              loadList();
+              setShowForm(false);
+          } catch (err) {
+              alertError("Delete Error", "Failed to delete some documents");
+          }
+      };
+  
   useEffect(() => {
     setERPHandlers({
       onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
@@ -136,7 +159,10 @@ const PFMaster = ({ tab }) => {
       ) : (
         <div className="p-4 bg-slate-50 h-full">
           <Table
+          activeTab={"search"}
+                    onTabChange={handleTabChange}
             title="PF Master"
+            onDeleteMultiple={handleDeleteMultiple}
             data={list}
             columns={columns}
             rowKey="statutory_id"

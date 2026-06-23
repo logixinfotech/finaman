@@ -11,7 +11,7 @@ const DeductionHeadMaster = React.lazy(() => import("./Modules/Payroll/SalaryMas
 const Master = React.lazy(() => import("./Master"));
 const TestingRequisition = React.lazy(() => import("./TestingRequisition"));
 const EmployeeMaster = React.lazy(() => import("./EmployeeMaster"));
-const SalaryTemplate=React.lazy(()=>import("./Modules/Payroll/SalaryMaster/SalaryTemplate/SalaryTemplate"))
+const SalaryTemplate = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryTemplate/SalaryTemplate"))
 const CompanyMasterPage = React.lazy(() =>
     import("./Modules/MainMenu/CompanyMaster/CompanyMasterPage")
 );
@@ -90,16 +90,18 @@ const Investment = React.lazy(() =>
 );
 const TrainingSkill = React.lazy(() =>
     import("./Modules/Payroll/Loan/TrainingSkillMaster")
-); 
+);
 
 const OTTransaction = React.lazy(() =>
     import("./Modules/Payroll/OverTime/OtTransaction")
 );
-const MonthlyAttendance=React.lazy(()=>import("./Modules/Payroll/Attendance/MothlyAttendance/MonthlyAttendanceReport"))
-const OverTimeReport=React.lazy(()=>import("./Modules/Payroll/OverTime/OvertimeDetailsReport"))
-const AttendanceRegister=React.lazy(()=>import("./Modules/Payroll/Attendance/Register/AttendanceRegister"))
-const SalaryStructure=React.lazy(()=>import("./Modules/Payroll/SalaryMaster/SalaryStructure/SalaryStructure"))
-const SalaryTransaction=React.lazy(()=>import("./Modules/Payroll/SalaryMaster/SalaryTransaction/SalaryTransactions"))
+const MonthlyAttendance = React.lazy(() => import("./Modules/Payroll/Attendance/MothlyAttendance/MonthlyAttendanceReport"))
+const OverTimeReport = React.lazy(() => import("./Modules/Payroll/OverTime/OvertimeDetailsReport"))
+const AttendanceRegister = React.lazy(() => import("./Modules/Payroll/Attendance/Register/AttendanceRegister"))
+const SalaryStructure = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryStructure/SalaryStructure"))
+const SalaryTransaction = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryTransaction/SalaryTransactions"))
+const SalaryProcessing = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryProcess/SalaryProcess"))
+
 
 
 const PageRegistry = {
@@ -132,31 +134,33 @@ const PageRegistry = {
     DHM: DeductionHeadMaster,
     leave_balance: LeaveBalance,
     LeaveRequest: LeaveRequestMaster,
-    STM:SalaryTemplate,
-    InvestmentDeclarationMaster:Investment,
+    STM: SalaryTemplate,
+    InvestmentDeclarationMaster: Investment,
     ApprovalFlow: Approvalworkflow,
     SFE: SalaryFormulaEngine,
-    ApprovalTransaction: Approvaltransaction, 
-    LeaveEncashment: LeaveEncashment, 
-    LeaveAccrual: LeaveAccrual, 
-    FlexiBenefitPlanConfig:FBPConfig, 
-    LoanReimMaster:React.lazy(() => import("./Modules/Payroll/Loan/LoanReimMaster")),
+    ApprovalTransaction: Approvaltransaction,
+    LeaveEncashment: LeaveEncashment,
+    LeaveAccrual: LeaveAccrual,
+    FlexiBenefitPlanConfig: FBPConfig,
+    LoanReimMaster: React.lazy(() => import("./Modules/Payroll/Loan/LoanReimMaster")),
     Asset_Master: Asset,
     Training_Skill: TrainingSkill,
-    MonthlyAttendanceSummaryReport:MonthlyAttendance,
-    OTR:OverTimeReport,
-    OT_transaction:OTTransaction,
-    ARP:AttendanceRegister,
-    SSE:SalaryStructure,
-    Salary_Trans:SalaryTransaction,
+    MonthlyAttendanceSummaryReport: MonthlyAttendance,
+    OTR: OverTimeReport,
+    OT_transaction: OTTransaction,
+    ARP: AttendanceRegister,
+    SSE: SalaryStructure,
+    Salary_Trans: SalaryTransaction,
+    salary_processing: SalaryProcessing,
 
-
-pf_master: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PfMaster")),
-ESIMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/ESIMaster")),
-PTMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PTMaster")),
-TDSMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/TDSMaster")),
-LWFMaster : React.lazy(() => import("./Modules/Payroll/StatutoryMaster/LWFMaster")),
-POA: React.lazy(() => import("./Modules/Approval/PurchaseOrder/POApproval")),
+    WorkDiaryForm: React.lazy(() => import("../components/WorkDiary/WorkDiary")),
+    // TaskManage: React.lazy(() => import("../components/TaskManage/TaskManage")),
+    pf_master: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PfMaster")),
+    ESIMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/ESIMaster")),
+    PTMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PTMaster")),
+    TDSMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/TDSMaster")),
+    LWFMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/LWFMaster")),
+    POA: React.lazy(() => import("./Modules/Approval/PurchaseOrder/POApproval")),
 
 };
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
-import {focusFirstInput, handleERPEnterNavigation} from "../../../../utils/erpShortcuts";
+import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
 
 const LeaveTypeForm = ({
   mode = "view",
@@ -22,12 +22,12 @@ const LeaveTypeForm = ({
   initialData = {}
 }) => {
   const [localData, setLocalData] = useState(initialData);
-  const [errors,    setErrors]    = useState({});
+  const [errors, setErrors] = useState({});
   const formRef = useRef(null);
-
+  const saveBtnRef=useRef(null)
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
-  const isAddMode  = mode === "add";
+  const isAddMode = mode === "add";
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 
   const requiredFields = ["leave_code", "leave_name", "max_days"];
@@ -35,10 +35,10 @@ const LeaveTypeForm = ({
   useEffect(() => { setLocalData(initialData); }, [initialData]);
 
   useEffect(() => {
-  if (isAddMode || isEditMode) {
-    focusFirstInput(formRef);
-  }
-}, [isAddMode, isEditMode]);
+    if (isAddMode || isEditMode) {
+      focusFirstInput(formRef);
+    }
+  }, [isAddMode, isEditMode]);
 
   const handleChange = (field, value) => {
     const updated = { ...localData, [field]: value };
@@ -51,28 +51,50 @@ const LeaveTypeForm = ({
 
   const getInputClass = (isDisabled, fieldName) =>
     `w-full h-[32px] px-2 text-[15px] border rounded-md outline-none transition-colors
-     ${errors[fieldName] ? "border-red-500" : "border-gray-300"}
+     ${errors[fieldName] ? "border-red-500 animate-pulse" : "border-gray-300"}
      ${isDisabled
        ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
        : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"}`;
 
+  // Fixed: Validation error hone par invalid field par automatic focus chala jayega
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
     const newErrors = {};
+    
     requiredFields.forEach(f => {
       if (!localData[f] || localData[f].toString().trim() === "")
         newErrors[f] = "Required";
     });
-    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+
+    if (Object.keys(newErrors).length > 0) { 
+      setErrors(newErrors); 
+
+      // Pehla field dhundo jisme error hai
+      const firstErrorField = requiredFields.find(f => newErrors[f]);
+      
+      if (firstErrorField && formRef.current) {
+        // Name attribute ki madad se input element ko find karke focus karo
+        const inputEl = formRef.current.querySelector(`[name="${firstErrorField}"]`);
+        if (inputEl) {
+          inputEl.focus();
+          // Agar input text h to select bhi ho jaye clear experience k liye
+          if (typeof inputEl.select === "function") inputEl.select();
+        }
+      }
+      return; 
+    }
+    
     if (onSave) onSave(localData);
   }, [localData, onSave, isViewMode]);
 
   const handleKeyDown = useCallback((e) => {
-  handleERPEnterNavigation(
-    e,
-    formRef,
-    isViewMode
-  );}, [isViewMode]);
+    handleERPEnterNavigation(
+      e,
+      formRef,
+      isViewMode,
+      saveBtnRef
+    );
+  }, [isViewMode]);
 
   return (
     <div
@@ -92,7 +114,6 @@ const LeaveTypeForm = ({
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">
-        {/* ✅ ref here — only form inputs, not footer */}
         <div
           ref={formRef}
           className="w-full max-w-[850px] h-fit bg-white border border-slate-200
@@ -107,6 +128,7 @@ const LeaveTypeForm = ({
               </label>
               <div className="flex-1 w-full">
                 <input
+                  name="leave_code"
                   className={getInputClass(isViewMode, "leave_code")}
                   value={localData.leave_code || ""}
                   onChange={(e) => handleChange("leave_code", e.target.value.toUpperCase())}
@@ -127,6 +149,7 @@ const LeaveTypeForm = ({
               <div className="flex-1 w-full">
                 <input
                   type="number"
+                  name="max_days"
                   className={getInputClass(isViewMode, "max_days")}
                   value={localData.max_days || ""}
                   onChange={(e) => handleChange("max_days", e.target.value)}
@@ -148,6 +171,7 @@ const LeaveTypeForm = ({
               </label>
               <div className="flex-1 w-full">
                 <input
+                  name="leave_name"
                   className={getInputClass(isViewMode, "leave_name")}
                   value={localData.leave_name || ""}
                   onChange={(e) => handleChange("leave_name", e.target.value)}
@@ -180,11 +204,11 @@ const LeaveTypeForm = ({
             <label className="text-[15px] w-[130px] pt-1 shrink-0">Description</label>
             <div className="flex-1 w-full">
               <textarea
-                className={`${getInputClass(isViewMode, "description")}
-                            h-[80px] py-2 resize-none`}
+                name="description"
+                className={`${getInputClass(isViewMode, "description")} h-[80px] py-2 resize-none`}
                 value={localData.description || ""}
                 onChange={(e) => handleChange("description", e.target.value)}
-                onKeyDown={handleKeyDown}   // ← handles Enter→save, Shift+Enter→newline
+                onKeyDown={handleKeyDown}
                 disabled={isViewMode}
                 placeholder="Enter leave rules or details... (Shift+Enter for new line)"
               />
@@ -204,6 +228,7 @@ const LeaveTypeForm = ({
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         saving={saving}
+        saveBtnRef={saveBtnRef}
         handleSubmit={handleValidateAndSave}
         onModify={onModify}
         onDelete={() => onDelete && onDelete(localData)}

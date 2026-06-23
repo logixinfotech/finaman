@@ -1,23 +1,40 @@
-import React, { useEffect } from "react";
+
+
+
+import React, { useEffect , forwardRef} from "react";
 import {
   Plus, Printer, Save, Pencil,
   Trash2, ArrowLeft, XCircle, Loader2,
+  Forward,
 } from "lucide-react";
 
 // NAYA
-export const BaseButton = ({
-  children, className = "", onClick, disabled = false, ref,
-  loading = false, shortcut, type = "button",
-  id, "data-erp-role": erpRole,
-}) => (
-  <button
-    id={id}
-    ref={ref}
-    data-erp-role={erpRole}
-    type={type}
-    onClick={onClick}
-    disabled={disabled || loading}
-    className={`
+
+
+export const BaseButton = forwardRef(
+  (
+    {
+      children,
+      className = "",
+      onClick,
+      disabled = false,
+      loading = false,
+      shortcut,
+      type = "button",
+      id,
+      "data-erp-role": erpRole,
+    },
+    ref
+  ) => {
+    return (
+      <button
+        id={id}
+        ref={ref}
+        data-erp-role={erpRole}
+        type={type}
+        onClick={onClick}
+        disabled={disabled || loading}
+           className={`
   relative inline-flex items-center justify-center gap-1
   h-[28px] sm:h-[34px]
   px-1.5 sm:px-3.5
@@ -36,25 +53,20 @@ export const BaseButton = ({
 
   ${className}
 `}
-  >
-    {loading ? (
-      <Loader2 size={13} className="animate-spin" />
-    ) : (
-      <>
-        {children}
-        {shortcut && (
-          <span className="
-            ml-1 font-mono text-[8px] sm:text-[9px] tracking-[0.04em]
-            px-[5px] py-[1px] rounded-[3px]
-            bg-white/20 text-current opacity-70
-          ">
-            {shortcut}
-          </span>
+      >
+        {loading ? (
+          <Loader2 size={13} className="animate-spin" />
+        ) : (
+          <>
+            {children}
+            {shortcut && <span>{shortcut}</span>}
+          </>
         )}
-      </>
-    )}
-  </button>
+      </button>
+    );
+  }
 );
+
 const useButtonShortcut = (keyConfig, onClick, disabled) => {
   useEffect(() => {
     if (disabled || !onClick) return;
@@ -91,12 +103,12 @@ const Kbd = ({ label, dark = false }) => (
   </span>
 );
 // ── SAVE / ADD (filled emerald)
-export const AddButton = ({ id, saveBtnRef, onClick, disabled, loading, isAdding = false }) => {
+export const AddButton = forwardRef(({ id, onClick, disabled, loading, isAdding = false },ref) => {
   useButtonShortcut(isAdding ? "save" : "add", onClick, disabled);
   return (
     // NAYA
     <BaseButton
-      ref={saveBtnRef}
+      ref={ref}
       id={isAdding ? "save" : (id || "add")}
       data-erp-role={isAdding ? "save" : undefined}
       onClick={onClick} disabled={disabled} loading={loading}
@@ -107,7 +119,7 @@ export const AddButton = ({ id, saveBtnRef, onClick, disabled, loading, isAdding
       <Kbd label={isAdding ? "Alt+S" : "Alt+A"} dark />
     </BaseButton>
   );
-};
+});
 
 export const HeaderAddButton = AddButton;
 

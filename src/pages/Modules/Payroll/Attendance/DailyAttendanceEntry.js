@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperat
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import {
-  saveAttendanceLog, getActledList, updateAttendance, getAttendanceList, deleteAttendance, getWeekOff, fetchHolidays
+  saveAttendanceLog, getActledList, updateAttendance, getAttendanceList, deleteAttendance, getWeekOff, fetchHolidays, getApprovedLeaves
 } from "../../../../utils/api";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 
@@ -464,6 +464,77 @@ const PeriodDropdowns = forwardRef(({
   );
 });
 
+// Ek helper component banao file ke upar
+const TimeInput = ({ value, onChange, disabled, id, inputRef }) => {
+  // value format: "HH:MM" (24hr) ya ""
+  const toDisplay = (v) => {
+    if (!v || v === "--:--") return { h: "", m: "", ampm: "AM" };
+    const [hh, mm] = v.split(":");
+    const h = parseInt(hh);
+    return {
+      h: String(h > 12 ? h - 12 : h === 0 ? 12 : h).padStart(2, "0"),
+      m: mm,
+      ampm: h >= 12 ? "PM" : "AM"
+    };
+  };
+
+  const to24 = (h, m, ampm) => {
+    let hr = parseInt(h) || 0;
+    if (ampm === "PM" && hr !== 12) hr += 12;
+    if (ampm === "AM" && hr === 12) hr = 0;
+    return `${String(hr).padStart(2, "0")}:${m || "00"}`;
+  };
+
+  const { h, m, ampm } = toDisplay(value);
+
+  return (
+    <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+      <input
+        ref={inputRef} id={id}
+        disabled={disabled}
+        type="text" maxLength={2} placeholder="HH"
+        value={h}
+        onChange={e => {
+          const val = e.target.value.replace(/\D/g, "");
+          onChange(to24(val, m, ampm));
+        }}
+        style={{
+          width: 28, textAlign: "center", fontSize: 12, fontFamily: "monospace",
+          border: "1px solid #e2e8f0", borderRadius: 4, height: 28, padding: "0 2px",
+          background: disabled ? "#f8fafc" : "#fff", color: disabled ? "#94a3b8" : "#1d4ed8"
+        }}
+      />
+      <span style={{ fontSize: 12, color: "#94a3b8" }}>:</span>
+      <input
+        disabled={disabled}
+        type="text" maxLength={2} placeholder="MM"
+        value={m}
+        onChange={e => {
+          const val = e.target.value.replace(/\D/g, "");
+          onChange(to24(h, val, ampm));
+        }}
+        style={{
+          width: 28, textAlign: "center", fontSize: 12, fontFamily: "monospace",
+          border: "1px solid #e2e8f0", borderRadius: 4, height: 28, padding: "0 2px",
+          background: disabled ? "#f8fafc" : "#fff", color: disabled ? "#94a3b8" : "#1d4ed8"
+        }}
+      />
+      <button
+        disabled={disabled}
+        onClick={() => onChange(to24(h, m, ampm === "AM" ? "PM" : "AM"))}
+        style={{
+          fontSize: 10, fontWeight: 700, border: "1px solid #e2e8f0", borderRadius: 4,
+          height: 28, padding: "0 5px", cursor: disabled ? "not-allowed" : "pointer",
+          background: ampm === "PM" ? "#eff6ff" : "#f8fafc",
+          color: ampm === "PM" ? "#1d4ed8" : "#64748b"
+        }}
+      >
+        {ampm}
+      </button>
+    </div>
+  );
+};
+
 const AttendancePage = ({
   formData, setFormData, setShowForm, onSave,
   activeTab = "entry", onTabChange,
@@ -474,7 +545,11 @@ const AttendancePage = ({
 }) => {
   const [attendanceType, setAttendanceType] = useState("List");
   const modeRef = useRef(null);
+  const calInAmPmRefs = useRef({});
+  const calOutAmPmRefs = useRef({});
   const listInRefs = useRef([]);
+  const listInAmPmRefs = useRef([]);
+  const listOutAmPmRefs = useRef([]);
   const listOutRefs = useRef([]);
   const listStatusRefs = useRef([]);
   const employeeRef = useRef(null);
@@ -541,12 +616,18 @@ const AttendancePage = ({
   const statusOptions = [
     { label: "PRESENT", value: "PRESENT" },
     { label: "ABSENT", value: "ABSENT" },
-    { label: "CASUAL LEAVE", value: "CASUAL LEAVE" },
-    { label: "LEAVE", value: "LEAVE" },
+    { label: "CL - Casual Leave", value: "CL" },
+    { label: "SL - Sick Leave", value: "SL" },
+    { label: "PL - Privilege Leave", value: "PL" },
+    { label: "EL - Earn Leave", value: "EL" },
+    { label: "ML - Maternity Leave", value: "ML" },
+    { label: "PTL - Paternity Leave", value: "PTL" },
+    { label: "CO - Comp-Off", value: "CO" },
+    { label: "SCL - Special Casual Leave", value: "SCL" },
     { label: "WEEK OFF", value: "WEEK OFF" },
-    { label: "WEEK OFF OT", value: "WEEK OFF OT" },   // ADD
+    { label: "WEEK OFF OT", value: "WEEK OFF OT" },
     { label: "HOLIDAYS", value: "HOLIDAYS" },
-    { label: "HOLIDAY OT", value: "HOLIDAY OT" },    // ADD
+    { label: "HOLIDAY OT", value: "HOLIDAY OT" },
     { label: "UNPAID", value: "UNPAID" },
   ];
   const attendanceTypeOptions = [
@@ -637,6 +718,15 @@ const AttendancePage = ({
     })();
   }, []);
 
+  const toggleAmPm = (timeStr) => {
+    if (!timeStr || timeStr === "--:--") return timeStr;
+    const [hh, mm] = timeStr.split(":");
+    let h = parseInt(hh);
+    if (h >= 12) h -= 12;
+    else h += 12;
+    return `${String(h).padStart(2, "0")}:${mm}`;
+  };
+
   // ── Manual attendance ────────────────────────────────────────────────────────
   const fetchAttendance = useCallback(async () => {
     if (!formData.employee_id) return;
@@ -647,6 +737,23 @@ const AttendancePage = ({
           employee_id: formData.employee_id,
           month: months.indexOf(selectedMonth) + 1,
           year: selectedYear,
+        }
+      });
+
+      const leaveRes = await getApprovedLeaves({
+        employee_id: formData.employee_id,
+        month: months.indexOf(selectedMonth) + 1,
+        year: selectedYear
+      });
+      const leaveMap = {};
+      (leaveRes?.data || []).forEach(l => {
+        const from = new Date(l.from_date);
+        const to = new Date(l.to_date);
+        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+          if (d.getMonth() + 1 === months.indexOf(selectedMonth) + 1 &&
+            d.getFullYear() === parseInt(selectedYear)) {
+            leaveMap[d.getDate()] = l.leave_code;
+          }
         }
       });
 
@@ -669,13 +776,28 @@ const AttendancePage = ({
           in: existingLog?.in_time ? existingLog.in_time.substring(11, 16) : "--:--",
           out: existingLog?.out_time ? existingLog.out_time.substring(11, 16) : "--:--",
           // Existing status use karo, warna auto status
-          status: existingLog?.attendance_status || autoStatus,
+          status: existingLog?.attendance_status || leaveMap[day] || autoStatus,
           is_weekoff: isEmployeeWeekoff(dateStr, formData.employee_id),
           is_holiday: isHolidayDate(dateStr),
+          is_leave: !!leaveMap[day],
         };
       }
 
       setAttendanceData(fmt);
+
+      // Pehle valid (non-disabled) day ka status select focus karo
+      setTimeout(() => {
+        const firstValidDay = Object.entries(fmt).find(
+          ([, d]) => !d.is_holiday && !d.is_weekoff
+        );
+        if (firstValidDay) {
+          const dayNum = firstValidDay[0];
+          // Calendar cell ke andar ka select dhundho by data-day attribute
+          const sel = document.querySelector(`[data-day="${dayNum}"] select`);
+          sel?.focus();
+        }
+      }, 200);
+
     } catch (e) { console.error(e); }
   }, [formData.employee_id, selectedMonth, selectedYear, weekoffs, holidays, daysInMonth]);
 
@@ -740,10 +862,17 @@ const AttendancePage = ({
         const d = item.in_time?.toString().replace("T", " ").split(".")[0].split(" ")[0];
         return d === listEntryDate;
       });
+
+      // ✅ YAHAN ADD KARO — leave fetch
+      const leaveRes = await getApprovedLeaves({ date: listEntryDate });
+      const leaveMap = {};
+      (leaveRes?.data || []).forEach(l => {
+        leaveMap[l.employee_id] = l.leave_code;
+      });
+
       setListEntryData(employees.map(emp => {
         const log = logsForDate.find(l => String(l.employee_id) === String(emp.Actled_id));
 
-        // Check weekoff for this employee on listEntryDate
         const isWO = weekoffs.some(w =>
           String(w.employee_id) === String(emp.Actled_id) &&
           w.day_of_week === getDayName(listEntryDate) &&
@@ -751,8 +880,8 @@ const AttendancePage = ({
           listEntryDate <= w.effective_to?.split("T")[0]
         );
 
-        // Holiday is same for all
         const isHol = holidays.some(h => h.date === listEntryDate);
+        const isLeave = !!leaveMap[emp.Actled_id];
 
         return {
           employee_id: emp.Actled_id,
@@ -762,9 +891,11 @@ const AttendancePage = ({
           log_id: log?.log_id || null,
           in: log?.in_time ? log.in_time.substring(11, 16) : "",
           out: log?.out_time ? log.out_time.substring(11, 16) : "",
-          status: log?.attendance_status || (isHol ? "HOLIDAYS" : isWO ? "WEEK OFF" : ""),
+          // ✅ YAHAN CHANGE — leaveMap add kiya
+          status: log?.attendance_status || leaveMap[emp.Actled_id] || (isHol ? "HOLIDAYS" : isWO ? "WEEK OFF" : ""),
           is_weekoff: isWO,
           is_holiday: isHol,
+          is_leave: isLeave,
         };
       }));
     } catch (e) { console.error(e); }
@@ -783,10 +914,35 @@ const AttendancePage = ({
   }, [isAddMode, isEditMode]);
 
 
-  const handleListRowChange = (idx, field, value) => {
-    setListEntryData(prev => { const u = [...prev]; u[idx] = { ...u[idx], [field]: value }; return u; });
-  };
+const handleListRowChange = (idx, field, value) => {
+    setListEntryData(prev => {
+      const u = [...prev];
+      const updated = { ...u[idx], [field]: value };
 
+      if (field === "status" && value === "ABSENT") {
+        updated.in = "";
+        updated.out = "";
+      }
+
+      // In ya Out fill kiya aur yeh holiday/weekoff row hai
+      if ((field === "in" || field === "out")) {
+        if (updated.is_holiday && (updated.in || updated.out)) {
+          updated.status = "HOLIDAY OT";
+        } else if (updated.is_weekoff && (updated.in || updated.out)) {
+          updated.status = "WEEK OFF OT";
+        }
+      }
+
+      // In/Out dono clear ho gaye to original status restore karo
+      if ((field === "in" || field === "out") && !updated.in && !updated.out) {
+        if (updated.is_holiday) updated.status = "HOLIDAYS";
+        else if (updated.is_weekoff) updated.status = "WEEK OFF";
+      }
+
+      u[idx] = updated;
+      return u;
+    });
+  };
   const handleBulkDelete = async () => {
     try {
       if (!selectedDeleteIds.length) {
@@ -815,14 +971,20 @@ const AttendancePage = ({
 
   const handleListSave = async () => {
     try {
-      const toSave = listEntryData.filter(r => r.status);
+      //  const toSave = listEntryData.filter(r => r.status && !r.is_leave);
+      const toSave = listEntryData.filter(r => {
+        if (!r.status) return false;
+        if (r.is_leave) return false;
+        if (r.is_holiday || r.is_weekoff) return !!(r.in && r.out);
+        return true;
+      });
       if (!toSave.length) { toast("No status selected for any employee", "info"); return; }
       for (const row of toSave) {
         const payload = {
           employee_id: row.employee_id, punch_type: "List",
           attendance_status: row.status,
-          in_time: row.in ? `${listEntryDate} ${row.in}:00` : null,
-          out_time: row.out ? `${listEntryDate} ${row.out}:00` : null
+          in_time: `${listEntryDate} ${row.in && row.in !== "" ? row.in : "00:00"}:00`,
+          out_time: `${listEntryDate} ${row.out && row.out !== "" ? row.out : "00:00"}:00`,
         };
         if (row.log_id) {
           await updateAttendance(row.log_id, payload);
@@ -850,7 +1012,18 @@ const AttendancePage = ({
   };
 
   const handleDataChange = (day, field, value) => {
-    setAttendanceData(prev => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
+    setAttendanceData(prev => {
+      const existing = prev[day] || {};
+      const updated = { ...existing, [field]: value };
+
+      if (field === "status" && value === "ABSENT") {
+        updated.in = "--:--";
+        updated.out = "--:--";
+      }
+
+      return { ...prev, [day]: updated };
+    });
+
     const mNum = months.indexOf(selectedMonth) + 1;
     setFormData(prev => ({
       ...prev,
@@ -880,6 +1053,14 @@ const AttendancePage = ({
     "UNPAID": "bg-slate-100 text-slate-700 border border-slate-200",
     "WEEK OFF OT": "bg-orange-100 text-orange-900 border border-orange-300",
     "HOLIDAY OT": "bg-yellow-100 text-yellow-900 border border-yellow-300",
+    "CL": "bg-blue-100 text-blue-800 border border-blue-200",
+    "SL": "bg-purple-100 text-purple-800 border border-purple-200",
+    "PL": "bg-teal-100 text-teal-800 border border-teal-200",
+    "EL": "bg-cyan-100 text-cyan-800 border border-cyan-200",
+    "ML": "bg-pink-100 text-pink-800 border border-pink-200",
+    "PTL": "bg-indigo-100 text-indigo-800 border border-indigo-200",
+    "CO": "bg-lime-100 text-lime-800 border border-lime-200",
+    "SCL": "bg-violet-100 text-violet-800 border border-violet-200",
   };
   const getStatusStyle = (s) => STATUS_STYLE[s] || "bg-white text-slate-700 border-slate-300";
   const getStatusBadge = (s) => STATUS_BADGE[s] || "bg-gray-100 text-gray-600 border border-gray-200";
@@ -904,8 +1085,9 @@ const AttendancePage = ({
             employee_id: row.employee_id,
             punch_type: "Excel",
             attendance_status: row.status || "PRESENT",
-            in_time: row.in && row.in !== "--:--" ? `${row.date} ${row.in}:00` : null,
-            out_time: row.out && row.out !== "--:--" ? `${row.date} ${row.out}:00` : null
+            in_time: `${row.date} ${row.in && row.in !== "--:--" ? row.in : "00:00"}:00`,
+            out_time: `${row.date} ${row.out && row.out !== "--:--" ? row.out : "00:00"}:00`,
+
           };
           if (row.log_id) {
             await updateAttendance(row.log_id, payload);
@@ -932,8 +1114,8 @@ const AttendancePage = ({
             employee_id: row.employee_id,
             punch_type: "Biometric",
             attendance_status: row.status || "PRESENT",
-            in_time: row.in && row.in !== "--:--" ? `${bioSelectedDate} ${row.in}:00` : null,
-            out_time: row.out && row.out !== "--:--" ? `${bioSelectedDate} ${row.out}:00` : null
+            in_time: `${bioSelectedDate} ${row.in && row.in !== "--:--" ? row.in : "00:00"}:00`,
+            out_time: `${bioSelectedDate} ${row.out && row.out !== "--:--" ? row.out : "00:00"}:00`,
           };
           if (row.log_id) {
             await updateAttendance(row.log_id, payload);
@@ -951,6 +1133,7 @@ const AttendancePage = ({
     }
 
     // Manual
+
     try {
       if (!formData.employee_id) { toast("Please select employee", "info"); return; }
       const targetDay = parseInt(formData.attendance_day?.split("-")[2], 10);
@@ -960,8 +1143,8 @@ const AttendancePage = ({
       const payload = {
         employee_id: formData.employee_id, punch_type: "Manual",
         attendance_status: dayData?.status || "PRESENT",
-        in_time: dayData?.in && dayData.in !== "--:--" ? `${dt} ${dayData.in}:00` : null,
-        out_time: dayData?.out && dayData.out !== "--:--" ? `${dt} ${dayData.out}:00` : null
+        in_time: `${dt} ${dayData?.in && dayData.in !== "--:--" ? dayData.in : "00:00"}:00`,
+        out_time: `${dt} ${dayData?.out && dayData.out !== "--:--" ? dayData.out : "00:00"}:00`,
       };
       const res = dayData?.log_id
         ? await updateAttendance(dayData.log_id, payload)
@@ -1011,24 +1194,29 @@ const AttendancePage = ({
             }
             return v.toString().slice(0, 5);
           };
+          console.log("Excel row date:", row.date, row.in, row.out, row.status);
           const empId = String(row.EmployeeID || row.ID || row.employee_id || "");
           const empRec = employees.find(e => String(e.Actled_id) === empId || String(e.Led_code) === empId);
+
+          const parsedStatus = row.Status || "PRESENT";
           return {
             log_id: null,
             employee_id: empId,
             employee_name: empRec?.Led_name || `ID: ${empId}`,
             employee_code: empRec?.Led_code || empId,
             date: dateStr,
-            in: fmtTime(row.In),
-            out: fmtTime(row.Out),
-            status: row.Status || "PRESENT",
+            in: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.In),
+            out: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.Out),
+            status: parsedStatus,
           };
         });
+
         setExcelRows(parsed);
         toast(`${parsed.length} records loaded from file`, "info");
       } catch (err) { console.error("Excel parse error:", err); toast("Error reading file", "error"); }
     };
     reader.readAsArrayBuffer(file);
+
   };
 
   const parseBioFile = (file) => {
@@ -1056,14 +1244,15 @@ const AttendancePage = ({
           };
           const empId = String(row.EmployeeID || row.ID || row.employee_id || "");
           const empRec = employees.find(e => String(e.Actled_id) === empId || String(e.Led_code) === empId);
+          const parsedStatus = row.Status || "PRESENT";
           return {
             log_id: null,
             employee_id: empId,
             employee_name: empRec?.Led_name || `ID: ${empId}`,
             employee_code: empRec?.Led_code || empId,
-            in: fmtTime(row.In),
-            out: fmtTime(row.Out),
-            status: row.Status || "PRESENT",
+            in: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.In),
+            out: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.Out),
+            status: parsedStatus,
           };
         });
         setBioTableData(parsed);
@@ -1075,7 +1264,7 @@ const AttendancePage = ({
 
   // ── style constants ──────────────────────────────────────────────────────────
   const TH = { background: "#f1f5f9", color: "#475569", borderBottom: "2px solid #cbd5e1" };
-  const inputCls = "h-8 w-full text-[13px] text-center font-medium font-mono border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 hover:border-slate-300 transition-colors disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed";
+  const inputCls = "h-8 w-full text-[13px] text-center font-medium font-mono border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 hover:border-slate-300 transition-colors disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden";
   const selectCls = "h-8 text-[14px] border border-slate-200 rounded-md px-2 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed";
   const labelCls = "text-[14px] font-semibold text-slate-700 uppercase whitespace-nowrap tracking-wide";
 
@@ -1440,10 +1629,10 @@ const AttendancePage = ({
                         const isValid = dayNum > 0 && dayNum <= daysInMonth;
                         const isSun = index % 7 === 0;
                         const data = attendanceData?.[dayNum] ?? { in: "--:--", out: "--:--", status: "" };
-                        const dis = isViewMode || !formData.employee_id || data?.is_holiday || data?.is_weekoff;
+                        const dis = isViewMode || !formData.employee_id || data?.is_holiday || data?.is_weekoff || data?.is_leave;
                         return (
-                          <div key={index} className="relative p-1.5 flex flex-col justify-between"
-                            style={{ minHeight: 82, background: !isValid ? "#f8fafc" : data.is_holiday ? "#fefce8" : data.is_weekoff ? "#f5f4ff" : isSun ? "#fff5f5" : "#fff" }}>
+                          <div key={index} data-day={isValid ? dayNum : undefined} className="relative p-1.5 flex flex-col justify-between"
+                            style={{ minHeight: 82, background: !isValid ? "#f8fafc" : data.is_holiday ? "#fefce8" : data.is_weekoff ? "#f5f4ff" : data.is_leave ? "#eff6ff" : isSun ? "#fff5f5" : "#fff" }}>
                             {isValid && (<>
                               <div className="flex justify-between items-center mb-1">
                                 <span className="text-[11px] font-semibold"
@@ -1471,6 +1660,20 @@ const AttendancePage = ({
                                   disabled={dis}
                                   value={data.status}
                                   onChange={e => handleDataChange(dayNum, "status", e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter" || e.key === "Tab") {
+                                      e.preventDefault();
+                                      // Agle valid day ka select dhundho
+                                      const allDays = Object.entries(attendanceData);
+                                      const nextValid = allDays.find(
+                                        ([d, dd]) => parseInt(d) > dayNum && !dd.is_holiday && !dd.is_weekoff
+                                      );
+                                      if (nextValid) {
+                                        const nextSel = document.querySelector(`[data-day="${nextValid[0]}"] select`);
+                                        nextSel?.focus();
+                                      }
+                                    }
+                                  }}
                                   className={`text-[11px] font-semibold border rounded px-0.5 h-[20px] cursor-pointer appearance-none text-center focus:outline-none focus:ring-1 focus:ring-blue-400 ${getStatusStyle(data.status)} disabled:opacity-50 disabled:cursor-not-allowed`}
                                   style={{
                                     width: 80, opacity: (data.is_holiday || data.is_weekoff) ? 0.8 : 1,
@@ -1483,21 +1686,83 @@ const AttendancePage = ({
                                 </select>
                               </div>
                               <div className="flex gap-1">
+                                {/* IN */}
                                 <div className="flex-1">
                                   <span className="text-[12px] text-slate-600 font-semibold uppercase block">In</span>
-                                  <input type="time" tabIndex={0}
-                                    // disabled={dis}
-                                    value={data.in === "--:--" ? "" : data.in}
-                                    onChange={e => handleDataChange(dayNum, "in", e.target.value || "--:--")}
-                                    className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed" />
+                                  <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                    <input type="time"
+                                      disabled={data.status === "ABSENT" || dis}
+                                      value={data.in === "--:--" ? "" : data.in}
+                                      onChange={e => handleDataChange(dayNum, "in", e.target.value || "--:--")}
+                                      className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden" />
+                                    <button
+                                      ref={el => { calInAmPmRefs.current[dayNum] = el; }}
+                                      tabIndex={!dis && data.status !== "ABSENT" ? 0 : -1}
+                                      onClick={() => {
+                                        if (!data.in || data.in === "--:--" || dis || data.status === "ABSENT") return;
+                                        handleDataChange(dayNum, "in", toggleAmPm(data.in));
+                                      }}
+                                      onKeyDown={e => {
+                                        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                          e.preventDefault();
+                                          if (!data.in || data.in === "--:--" || dis || data.status === "ABSENT") return;
+                                          handleDataChange(dayNum, "in", toggleAmPm(data.in));
+                                          setTimeout(() => calInAmPmRefs.current[dayNum]?.focus(), 30);
+                                        }
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          e.currentTarget.closest('.flex')?.parentElement
+                                            ?.querySelector('input[type="time"]:last-of-type')?.focus();
+                                        }
+                                      }}
+                                      style={{
+                                        fontSize: 9, fontWeight: 700, padding: "0 3px", borderRadius: 3,
+                                        border: "1px solid #e2e8f0", whiteSpace: "nowrap", height: 18,
+                                        display: "flex", alignItems: "center",
+                                        cursor: data.in && data.in !== "--:--" && !dis ? "pointer" : "default",
+                                        background: data.in && data.in !== "--:--" && parseInt(data.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                        color: data.in && data.in !== "--:--" && parseInt(data.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b"
+                                      }}>
+                                      {data.in && data.in !== "--:--" ? (parseInt(data.in.split(":")[0]) >= 12 ? "PM" : "AM") : "--"}
+                                    </button>
+                                  </div>
                                 </div>
+
+                                {/* OUT */}
                                 <div className="flex-1">
                                   <span className="text-[12px] text-slate-600 font-semibold uppercase block">Out</span>
-                                  <input type="time" tabIndex={0}
-                                    // disabled={dis}
-                                    value={data.out === "--:--" ? "" : data.out}
-                                    onChange={e => handleDataChange(dayNum, "out", e.target.value || "--:--")}
-                                    className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed" />
+                                  <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                    <input type="time"
+                                      disabled={data.status === "ABSENT" || dis}
+                                      value={data.out === "--:--" ? "" : data.out}
+                                      onChange={e => handleDataChange(dayNum, "out", e.target.value || "--:--")}
+                                      className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden" />
+                                    <button
+                                      ref={el => { calOutAmPmRefs.current[dayNum] = el; }}
+                                      tabIndex={!dis && data.status !== "ABSENT" ? 0 : -1}
+                                      onClick={() => {
+                                        if (!data.out || data.out === "--:--" || dis || data.status === "ABSENT") return;
+                                        handleDataChange(dayNum, "out", toggleAmPm(data.out));
+                                      }}
+                                      onKeyDown={e => {
+                                        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                          e.preventDefault();
+                                          if (!data.out || data.out === "--:--" || dis || data.status === "ABSENT") return;
+                                          handleDataChange(dayNum, "out", toggleAmPm(data.out));
+                                          setTimeout(() => calOutAmPmRefs.current[dayNum]?.focus(), 30);
+                                        }
+                                      }}
+                                      style={{
+                                        fontSize: 9, fontWeight: 700, padding: "0 3px", borderRadius: 3,
+                                        border: "1px solid #e2e8f0", whiteSpace: "nowrap", height: 18,
+                                        display: "flex", alignItems: "center",
+                                        cursor: data.out && data.out !== "--:--" && !dis ? "pointer" : "default",
+                                        background: data.out && data.out !== "--:--" && parseInt(data.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                        color: data.out && data.out !== "--:--" && parseInt(data.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b"
+                                      }}>
+                                      {data.out && data.out !== "--:--" ? (parseInt(data.out.split(":")[0]) >= 12 ? "PM" : "AM") : "--"}
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </>)}
@@ -1521,7 +1786,7 @@ const AttendancePage = ({
                           : listEntryData.map((row, idx) => {
                             const [y, m, d] = listEntryDate.split("-");
                             return (
-                              <TableRow key={row.employee_id} idx={idx} template="40px 1fr 220px 150px 110px 110px 110px 150px" bgOverride={row.is_holiday ? "#fefce8" : row.is_weekoff ? "#fff7ed" : null}>
+                              <TableRow key={row.employee_id} idx={idx} template="40px 1fr 220px 150px 110px 110px 110px 150px" bgOverride={row.is_holiday ? "#fefce8" : row.is_weekoff ? "#fff7ed" : row.is_leave ? "#eff6ff" : null}>
                                 <div className="px-3 py-2 text-center">
                                   {deleteMode ? (
                                     <input
@@ -1543,7 +1808,7 @@ const AttendancePage = ({
                                     </span>
                                   )}
                                 </div>
-                                <AvatarCell name={row.employee_name}  empId={row.employee_id} />
+                                <AvatarCell name={row.employee_name} empId={row.employee_id} />
                                 <div className="px-3 py-2 text-[12px] font-mono text-indigo-700">
                                   {row.employee_code}
                                 </div>
@@ -1551,34 +1816,91 @@ const AttendancePage = ({
                                   {row.department || "—"}
                                 </div>
                                 <div className="px-3 py-2 text-[14px] font-mono text-slate-700">{d}-{m}-{y}</div>
-                                <div className="px-2 py-2">
-                                  <input type="time" disabled={isViewMode} tabIndex={0}
+                                {/* IN */}
+                                <div className="px-2 py-2 flex items-center gap-1">
+                                  <input type="time" disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
                                     ref={el => { listInRefs.current[idx] = el; }}
-                                    value={row.in || ""} onChange={(e) => {
+                                    value={row.in || ""}
+                                    onChange={e => {
                                       handleListRowChange(idx, "in", e.target.value);
-
-                                      if (e.target.value) {
-                                        setTimeout(() => {
-                                          document.getElementById(`out-${idx}`)?.focus();
-                                        }, 50);
+                                      setTimeout(() => listInAmPmRefs.current[idx]?.focus(), 50);
+                                    }}
+                                    className={inputCls} />
+                                  <button
+                                    ref={el => { listInAmPmRefs.current[idx] = el; }}
+                                    tabIndex={!isViewMode && row.status !== "ABSENT" ? 0 : -1}
+                                    disabled={!row.in || isViewMode || row.status === "ABSENT"}
+                                    onClick={() => {
+                                      if (!row.in || row.status === "ABSENT" || isViewMode) return;
+                                      handleListRowChange(idx, "in", toggleAmPm(row.in));
+                                    }}
+                                    onKeyDown={e => {
+                                      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                        e.preventDefault();
+                                        if (!row.in || row.status === "ABSENT" || isViewMode) return;
+                                        handleListRowChange(idx, "in", toggleAmPm(row.in));
+                                        setTimeout(() => listInAmPmRefs.current[idx]?.focus(), 30);
+                                      }
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        setTimeout(() => listOutRefs.current[idx]?.focus(), 50);
                                       }
                                     }}
-                                    className={inputCls} />
+                                    style={{
+                                      background: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                      color: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+                                      borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
+                                      display: "flex", alignItems: "center",
+                                      cursor: row.in && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
+                                      fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0"
+                                    }}>
+                                    {row.in && parseInt(row.in.split(":")[0]) >= 12 ? "PM" : "AM"}
+                                  </button>
                                 </div>
-                                <div className="px-2 py-2">
-                                  <input type="time" id={`out-${idx}`} disabled={isViewMode} tabIndex={0}
-                                    ref={el => { listOutRefs.current[idx] = el; }}
-                                    value={row.out || ""} onChange={(e) => {
-                                      handleListRowChange(idx, "out", e.target.value);
 
-                                      setTimeout(() => {
-                                        document.getElementById(`status-${idx}`)?.focus();
-                                      }, 50);
+                                {/* OUT */}
+                                <div className="px-2 py-2 flex items-center gap-1">
+                                  <input type="time" id={`out-${idx}`} disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
+                                    ref={el => { listOutRefs.current[idx] = el; }}
+                                    value={row.out || ""}
+                                    onChange={e => {
+                                      handleListRowChange(idx, "out", e.target.value);
+                                      setTimeout(() => listOutAmPmRefs.current[idx]?.focus(), 50);
                                     }}
                                     className={inputCls} />
+                                  <button
+                                    ref={el => { listOutAmPmRefs.current[idx] = el; }}
+                                    tabIndex={!isViewMode && row.status !== "ABSENT" ? 0 : -1}
+                                    disabled={!row.out || isViewMode || row.status === "ABSENT"}
+                                    onClick={() => {
+                                      if (!row.out || row.status === "ABSENT" || isViewMode) return;
+                                      handleListRowChange(idx, "out", toggleAmPm(row.out));
+                                    }}
+                                    onKeyDown={e => {
+                                      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                        e.preventDefault();
+                                        if (!row.out || row.status === "ABSENT" || isViewMode) return;
+                                        handleListRowChange(idx, "out", toggleAmPm(row.out));
+                                        setTimeout(() => listOutAmPmRefs.current[idx]?.focus(), 30);
+                                      }
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        setTimeout(() => listStatusRefs.current[idx]?.focus(), 50);
+                                      }
+                                    }}
+                                    style={{
+                                      background: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                      color: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+                                      borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
+                                      display: "flex", alignItems: "center",
+                                      cursor: row.out && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
+                                      fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0"
+                                    }}>
+                                    {row.out && parseInt(row.out.split(":")[0]) >= 12 ? "PM" : "AM"}
+                                  </button>
                                 </div>
                                 <div className="px-4 py-3">
-                                  <select id={`status-${idx}`} disabled={isViewMode || row.is_holiday || row.is_weekoff} tabIndex={row.is_holiday || row.is_weekoff ? -1 : 0}
+                                  <select id={`status-${idx}`} disabled={isViewMode || row.is_holiday || row.is_weekoff || row.is_leave} tabIndex={row.is_holiday || row.is_weekoff || row.is_leave ? -1 : 0}
                                     ref={el => { listStatusRefs.current[idx] = el; }}
                                     value={row.status}
                                     onChange={e => {

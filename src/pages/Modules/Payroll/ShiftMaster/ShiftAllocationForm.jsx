@@ -22,7 +22,9 @@ const ShiftAllocationForm = ({
   onTabChange,
   initialData = {},
   localData,
-  setLocalData
+  setLocalData,
+    onPrevRecord,   // 👈
+  onNextRecord,   // 👈
 }) => {
   // const [localData, setLocalData] = useState(initialData);
   const [errors, setErrors] = useState({});
@@ -69,24 +71,24 @@ const ShiftAllocationForm = ({
     };
     loadDropdowns();
   }, []); 
-  useEffect(() => {
-    if (initialData) {
-      const empName = initialData.employee_name || 
-        employees.find(e => Number(e.Actled_id) === Number(initialData.employee_id))?.Led_name || "";
-      
-      const shiftName = initialData.shift_name || 
-        shifts.find(s => Number(s.shift_id) === Number(initialData.shift_id))?.shift_name || "";
+useEffect(() => {
+    if (!initialData?.allocation_id && !initialData?.employee_id) return; // empty object skip
+    
+    const empName = initialData.employee_name || 
+      employees.find(e => Number(e.Actled_id) === Number(initialData.employee_id))?.Led_name || "";
+    
+    const shiftName = initialData.shift_name || 
+      shifts.find(s => s.shift_id === initialData.shift_id)?.shift_name || "";
 
-      setLocalData({
-        ...initialData,
-        employee_name: empName,
-        shift_name: shiftName,
-        // FIX: Remove the space inside the quotes below
-        allocation_from: initialData.allocation_from ? initialData.allocation_from.split('T')[0] : "", 
-        allocation_to: initialData.allocation_to ? initialData.allocation_to.split('T')[0] : "",
-      });
-    }
-  }, [initialData, employees, shifts, setLocalData]);
+    setLocalData({
+      ...initialData,
+      employee_name: empName,
+      shift_name: shiftName,
+      allocation_from: initialData.allocation_from ? initialData.allocation_from.split('T')[0] : "",
+      allocation_to: initialData.allocation_to ? initialData.allocation_to.split('T')[0] : "",
+    });
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [initialData?.allocation_id, initialData?.employee_id, employees.length, shifts.length]);
 
   const handleChange = (field, value) => {
     let updatedData = { ...localData };
@@ -213,6 +215,10 @@ const ShiftAllocationForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+  totalRecords={totalRecords}        // 👈
+  onPrevRecord={onPrevRecord}        // 👈
+  onNextRecord={onNextRecord}        // 👈
       />
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">

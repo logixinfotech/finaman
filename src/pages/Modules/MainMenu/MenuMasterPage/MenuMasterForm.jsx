@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, } from "react";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
+import { focusSaveOrUpdateButton } from "../../../../utils/erpShortcuts";
 
 const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 const inputClass = "h-[30px] px-2 text-[13px] border border-gray-300 rounded-md bg-white focus:border-blue-500 outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed";
@@ -21,7 +22,7 @@ const MenuMasterForm = ({
     if (isEdit && (fieldName === "masmod_id" || fieldName === "pad_name")) return true;
     return false;
   };
-
+ const saveBtnRef=useRef(null)
   const [errors, setErrors] = useState({});
   const containerRef = useRef(null); 
   useEffect(() => {
@@ -44,10 +45,7 @@ const MenuMasterForm = ({
       if (index > -1 && index < elements.length - 1) {
         elements[index + 1].focus();
       } else {
-        const btn=document.querySelector("#save")|| document.querySelector("#update")
-        if(btn){
-          btn.focus();
-        }
+        focusSaveOrUpdateButton(saveBtnRef)
       }
     }
   };
@@ -221,6 +219,7 @@ const MenuMasterForm = ({
         isEditMode={isEdit && !isView}
         isViewMode={isView}
         saving={saving}
+        saveBtnRef={saveBtnRef}
         handleSubmit={handleSubmit}
         onModify={rights.mod === 1 ? onModify : null}
         onDelete={rights.del === 1 ? onDelete : null}

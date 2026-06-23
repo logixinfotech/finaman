@@ -101,6 +101,39 @@ const LWFMaster = ({ tab }) => {
       }
     }
   };
+      const handleDeleteMultiple = async (selected) => {
+          const ids = (selected || []).map((item) =>
+              typeof item === "object" ? item.statutory_id : item
+          );
+  
+          if (ids.length === 0) return;
+  
+          const confirmed = await confirmDelete({
+              title: `Delete ${ids.length} Fund${ids.length > 1 ? "s" : ""}?`,
+              text: "This action cannot be undone",
+          });
+          if (!confirmed) return;
+  
+          try {
+              const results = await Promise.all(ids.map((id) => deleteLWF(id)));
+              const failed = results.filter((r) => !r?.success).length;
+  
+              if (failed === 0) {
+                  showToast({ icon: "success", title: `${ids.length} deleted successfully` });
+              } else {
+                  showToast({
+                      icon: "warning",
+                      title: `${ids.length - failed} deleted, ${failed} failed`,
+                  });
+              }
+  
+              loadList();
+              setShowForm(false);
+          } catch (err) {
+              alertError("Delete Error", "Failed to delete some OT rules");
+          }
+      };
+  
 
   useEffect(() => {
     setERPHandlers({
@@ -117,6 +150,8 @@ const LWFMaster = ({ tab }) => {
       {showForm ? (
         <LWFMasterForm
           initialData={formData}
+          formData={formData}
+          setFormData={setFormData}
           onSave={handleSave}
           onDelete={handleDelete}
           onCancel={() => setShowForm(false)}
@@ -134,8 +169,11 @@ const LWFMaster = ({ tab }) => {
       ) : (
         <div className="p-4 bg-slate-50 h-full">
           <Table
+           activeTab={"search"}
+                    onTabChange={handleTabChange}
             title="Labour Welfare Fund Master"
             data={list}
+            onDeleteMultiple={handleDeleteMultiple}
             columns={columns}
             rowKey="statutory_id"
             loading={loading}

@@ -49,8 +49,7 @@ const UserAuthForm = ({
   selectedUser, 
   mode        = "view",
   saving,
-  rights,
-  /* navigation */
+  rights, 
   currentRecord,
   totalRecords,
   onNextRecord,

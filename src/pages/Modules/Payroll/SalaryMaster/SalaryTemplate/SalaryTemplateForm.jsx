@@ -25,6 +25,7 @@ const SalaryTemplateForm = ({
   setFormData,
   incomeHeads = [],
   deductionHeads = [],
+  isEmbedded,
 }) => {
   const [errors, setErrors] = useState({});
 
@@ -93,11 +94,27 @@ const SalaryTemplateForm = ({
     );
   };
 
-  const getInputClass = (disabled, field) =>
-    `h-[30px] px-2 text-[16px] border rounded-md ${
-      errors[field] ? "border-red-500" : "border-gray-300"
-    } ${disabled ? "bg-gray-100 cursor-not-allowed" : "bg-white focus:border-blue-500"}`;
+    const getInputClass = (disabled, field) => {
+  // 1. Base styles (jo hamesha rahengi)
+  const base = "h-[35px] md:h-[30px] px-2 text-[15px] border rounded-md outline-none transition-all w-full";
+  
+  // 2. State specific styles (error ya disabled)
+  const state = disabled 
+    ? "bg-gray-100 cursor-not-allowed border-gray-200" 
+    : "bg-white";
+    
+  // 3. Border color (Default vs Error)
+  const border = errors[field] 
+    ? "border-red-500" 
+    : "border-gray-300";
 
+  // 4. Focus style (Sirf us element par jise click kiya hai)
+  const focus = !disabled 
+    ? "focus:border-blue-50 focus:ring-1 focus:ring-[#1a56db]" 
+    : "";
+
+  return `${base} ${state} ${border} ${focus}`;
+};
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
     let newErrors = {};
@@ -220,6 +237,7 @@ const SalaryTemplateForm = ({
     },
     [isViewMode],
   );
+  console.log(isEmbedded);
 
   const selectedIncomeIds = new Set(
     (formData.incomeHeads || []).map((h) => h.income_head_id),
@@ -233,7 +251,8 @@ const SalaryTemplateForm = ({
       className="w-full max-w-[1300px] mx-auto h-[calc(100vh-120px)] bg-[#eef1f6] flex flex-col"
       style={{ fontFamily: FONT }}
     >
-      <ERPHeader
+    
+      {!isEmbedded&&(<ERPHeader
         title="SALARY TEMPLATE ENTRY"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
@@ -241,9 +260,9 @@ const SalaryTemplateForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
-      />
+      />)}
 
-      <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-start lg:justify-center items-start w-full">
+      <div className="flex-1  overflow-y-auto flex justify-start lg:justify-center items-start w-full">
         <div
           id="salary-template-form-container"
           className="w-full bg-white border rounded-md p-3 sm:p-4 flex flex-col gap-4"
@@ -339,7 +358,7 @@ onChange={(value) => handleChange("effective_from", value)}
                 </span>
               </div>
 
-              <div className="max-h-[270px] overflow-y-auto">
+              <div className="max-h-[49vh] overflow-y-auto">
                 {incomeHeads.map((head) => {
                   const isSelected = selectedIncomeIds.has(head.income_head_id);
                   const selectedHead = (formData.incomeHeads || []).find(
@@ -463,7 +482,7 @@ onChange={(value) => handleChange("effective_from", value)}
                 </span>
               </div>
 
-              <div className="max-h-[270px] overflow-y-auto">
+              <div className="max-h-[49vh] overflow-y-auto">
                 {deductionHeads.map((head) => {
                   const isSelected = selectedDeductionIds.has(
                     head.deduction_head_id,

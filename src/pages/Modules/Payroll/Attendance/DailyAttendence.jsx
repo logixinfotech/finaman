@@ -348,7 +348,8 @@ const DailyAttendancePage = ({ tab }) => {
           columns={columns}
           rowKey="log_id"
           loading={loading}
-
+          activeTab={"search"}
+                    onTabChange={handleTabChange}
           onRefresh={() => loadData(filters, page, pageSize)}
 
           showForm={showFilter}

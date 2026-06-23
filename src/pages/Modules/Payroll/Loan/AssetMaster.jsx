@@ -7,6 +7,7 @@ import Table from "../../../../components/Reusable/table/Table";
 import AssetMasterForm from "./AssetMasterForm";
 
 import {
+  alertError,
   confirmDelete,
   showToast,
 } from "../../../../components/Reusable/alert";
@@ -43,30 +44,31 @@ const columns = [
     key: "employee_name",
     label: "Employee Name",
   },
-
   {
     key: "asset_type",
     label: "Asset Type",
   },
-
   {
     key: "asset_name",
     label: "Asset Name",
   },
-
   {
     key: "recovery_value",
     label: "Recovery Value",
   },
-
   {
     key: "effective_from",
     label: "Effective From",
+    render: (row) => row.effective_from
+      ? row.effective_from.split("T")[0]
+      : "—",
   },
-
   {
     key: "effective_to",
     label: "Effective To",
+    render: (row) => row.effective_to
+      ? row.effective_to.split("T")[0]
+      : "—",
   },
 ];
 
@@ -146,6 +148,7 @@ const AssetMaster = ({ tab }) => {
       setShowForm(true);
     }
   };
+  
 
   const handleRowSelect = (row) => {
     const index = list.findIndex(
@@ -203,6 +206,37 @@ const AssetMaster = ({ tab }) => {
 
     loadData();
   };
+  const handleDeleteMultiple = async (selected) => {
+      // Normalize: Table may pass an array of row objects OR an array of keys
+      const ids = (selected || []).map((item) =>
+        typeof item === "object" ? item.asset_name : item
+      );
+  
+      if (ids.length === 0) return;
+  
+      const confirmed = await confirmDelete({
+        title: `Delete ${ids.length} Asset(s)?`,
+      });
+      if (!confirmed) return;
+  
+      try {
+        const results = await Promise.all(ids.map((id) => deleteAssetMaster(id)));
+        const failed = results.filter((r) => !r?.success).length;
+  
+        if (failed === 0) {
+          showToast({ icon: "success", title: `${ids.length} deleted` });
+        } else {
+          showToast({
+            icon: "warning",
+            title: `${ids.length - failed} deleted, ${failed} failed`,
+          });
+        }
+        loadData();
+        setShowForm(false);
+      } catch (err) {
+        alertError("Delete Error", "Failed to delete some ");
+      }
+    };
 
   useEffect(() => {
     setERPHandlers({
@@ -261,6 +295,9 @@ const AssetMaster = ({ tab }) => {
         <div className="p-4 bg-slate-50 h-full">
           <Table
             title="Asset Master"
+            activeTab="search"
+          onTabChange={handleTabChange}
+            onDeleteMultiple={handleDeleteMultiple}
             data={list}
             columns={columns}
             rowKey="id"

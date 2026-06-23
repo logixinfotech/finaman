@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
-import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
+import { focusFirstInput, handleERPEnterNavigation,focusFirstError } from "../../../../utils/erpShortcuts";
 import { fetchGrades } from "../../../../utils/api";
 
 const OTEntryForm = ({
@@ -31,6 +31,14 @@ const OTEntryForm = ({
   const isAddMode = mode === "add";
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
   const requiredFields = ["grade_id", "applicable_day_type", "min_hours_required", "ot_multiplier"];
+  const saveBtnRef=useRef(null)
+  const fieldIndexMap = {
+  grade_id:   0,
+  min_hours_required:1,
+ot_multiplier:2,
+applicable_day_type:3,
+};
+
 
   useEffect(() => {
     if (isAddMode || isEditMode) {
@@ -51,52 +59,81 @@ const OTEntryForm = ({
     loadGrades();
   }, []);
 
-  const handleChange = (field, value) => {
-    if (["min_hours_required", "max_hours_allowed", "ot_multiplier"].includes(field)) {
-      value = value === "" ? "" : parseFloat(value);
-    }
+const handleChange = (field, value) => {
+  if (["min_hours_required", "max_hours_allowed", "ot_multiplier"].includes(field)) {
+    value = value === "" ? "" : parseFloat(value);
+  }
 
-    setFormData((prev) => ({
+  setFormData((prev) => ({
+    ...prev,
+    [field]: value
+  }));
+
+  if (errors[field]) {
+    setErrors((prev) => ({
       ...prev,
-      [field]: value
+      [field]: null
     }));
-  };
+  }
+};
+ const getInputClass = (isDisabled, fieldName) =>
+  [
+    "w-full h-[31px] px-2 text-[16px]",
+    "border rounded-md outline-none transition-colors",
+    errors[fieldName] ? "border-red-500" : "border-gray-300",
+    isDisabled
+      ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
+      : "bg-white text-gray-900 focus:border-blue-300 focus:ring-1 focus:ring-blue-500",
+  ].join(" ");
+// const handleValidateAndSave = useCallback(() => {
+//   if (isViewMode) return;
+//   let newErrors = {};
+//   let firstErrorField = null;
 
-  const getInputClass = (isDisabled, fieldName) =>
-    [
-      "w-full h-[31px] px-2 text-[16px]",
-      "border rounded-md outline-none transition-colors",
-      errors[fieldName] ? "border-red-500" : "border-gray-300",
-      isDisabled
-        ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
-        : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100",
-    ].join(" ");
+//   for (const field of requiredFields) {
+//     let val = formData[field];
+//     if (val === undefined || val === null || val.toString().trim() === "") {
+//       newErrors[field] = "Required";
+//       if (!firstErrorField) firstErrorField = field;
+//     }
+//   }
 
-  const handleValidateAndSave = useCallback(() => {
+//   if (Object.keys(newErrors).length > 0) {
+//     setErrors(newErrors);
+//       focusFirstError(formRef, newErrors, requiredFields, fieldIndexMap);
+   
+//     return;
+//   }
+//   if (onSave) onSave(formData);
+// }, [formData, onSave, isViewMode, requiredFields]);
+ const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
-    let newErrors = {};
-    let firstEmptyField = null;
+    const newErrors = {};
 
-    for (const field of requiredFields) {
-      let val = formData[field];
-      if (val === undefined || val === null || val.toString().trim() === "") {
+    requiredFields.forEach(field => {
+      if (!formData[field] || formData[field].toString().trim() === "") {
         newErrors[field] = "Required";
-        if (!firstEmptyField) firstEmptyField = field;
       }
-    }
+    });
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      // ✅ Error wali exact field pe focus
+      focusFirstError(formRef, newErrors, requiredFields, fieldIndexMap);
       return;
     }
+
     if (onSave) onSave(formData);
-  }, [formData, onSave, isViewMode, requiredFields]);
+  }, [formData, onSave, isViewMode]);
+
 
   const handleKeyDown = useCallback((e) => {
     handleERPEnterNavigation(
       e,
       formRef,
-      isViewMode
+      isViewMode,
+      saveBtnRef
+
     );
   }, [isViewMode]);
 
@@ -236,6 +273,7 @@ const OTEntryForm = ({
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         saving={saving}
+        saveBtnRef={saveBtnRef}
         handleSubmit={handleValidateAndSave}
         onModify={onModify}
         onDelete={() => onDelete && onDelete(formData)}

@@ -8,39 +8,40 @@ const initials = (name = "") =>
   name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
 const AVATAR_COLORS = [
-  { bg: "bg-blue-100",   text: "text-blue-800"   },
-  { bg: "bg-purple-100", text: "text-purple-800"  },
-  { bg: "bg-teal-100",   text: "text-teal-800"    },
-  { bg: "bg-amber-100",  text: "text-amber-800"   },
+  { bg: "bg-blue-100", text: "text-blue-800" },
+  { bg: "bg-purple-100", text: "text-purple-800" },
+  { bg: "bg-teal-100", text: "text-teal-800" },
+  { bg: "bg-amber-100", text: "text-amber-800" },
 ];
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-IN", {
-        day: "2-digit", month: "short", year: "numeric" }) : "—";
+    day: "2-digit", month: "short", year: "numeric"
+  }) : "—";
 
 const daysUntil = (d) => {
   const diff = Math.ceil((new Date(d) - new Date()) / 864e5);
-  if (diff <= 0) return { label: "Starting today", color: "red",   urgent: true  };
-  if (diff === 1) return { label: "Starts tomorrow", color: "red",  urgent: true  };
-  if (diff <= 3)  return { label: `In ${diff} days`, color: "amber", urgent: true  };
-  if (diff <= 7)  return { label: `In ${diff} days`, color: "amber", urgent: false };
-  return               { label: `In ${diff} days`, color: "gray",  urgent: false };
+  if (diff <= 0) return { label: "Starting today", color: "red", urgent: true };
+  if (diff === 1) return { label: "Starts tomorrow", color: "red", urgent: true };
+  if (diff <= 3) return { label: `In ${diff} days`, color: "amber", urgent: true };
+  if (diff <= 7) return { label: `In ${diff} days`, color: "amber", urgent: false };
+  return { label: `In ${diff} days`, color: "gray", urgent: false };
 };
 
 const URGENCY_PILL = {
-  red:   "bg-red-50   text-red-700   border border-red-200",
+  red: "bg-red-50   text-red-700   border border-red-200",
   amber: "bg-amber-50 text-amber-700 border border-amber-200",
-  gray:  "bg-slate-50 text-slate-500 border border-slate-200",
+  gray: "bg-slate-50 text-slate-500 border border-slate-200",
 };
 
-const CHAIN_ROLES = ["Manager", "HR", "Director"];
+// const CHAIN_ROLES = [];
 const TABS = ["Pending", "Approved", "Forwarded", "Rejected", "All"];
 
 const ACTION_STYLE = {
-  Pending:   { bg: "bg-[#FAEEDA]", text: "text-[#633806]", border: "border-[#e8c98a]" },
-  Approved:  { bg: "bg-[#EAF3DE]", text: "text-[#27500A]", border: "border-[#b0d47a]" },
+  Pending: { bg: "bg-[#FAEEDA]", text: "text-[#633806]", border: "border-[#e8c98a]" },
+  Approved: { bg: "bg-[#EAF3DE]", text: "text-[#27500A]", border: "border-[#b0d47a]" },
   Forwarded: { bg: "bg-[#EDE9FE]", text: "text-[#4C1D95]", border: "border-[#c4b5fd]" },
-  Rejected:  { bg: "bg-[#FCEBEB]", text: "text-[#791F1F]", border: "border-[#f5a0a0]" },
+  Rejected: { bg: "bg-[#FCEBEB]", text: "text-[#791F1F]", border: "border-[#f5a0a0]" },
 };
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
@@ -67,19 +68,19 @@ const StatusPill = ({ action }) => {
 // ── Sidebar (matches POApproval exactly) ─────────────────────────────────────
 const Sidebar = ({ allRequests, selected, onSelect, activeTab, setActiveTab }) => {
   const stats = {
-    Pending:   allRequests.filter(r => r.action === "Pending"   || !r.action).length,
-    Approved:  allRequests.filter(r => r.action === "Approved").length,
-    Rejected:  allRequests.filter(r => r.action === "Rejected").length,
-    Forwarded: allRequests.filter(r => r.action === "Forwarded").length,
+    Pending: allRequests.filter(r => r._display === "pending").length,
+    Approved: allRequests.filter(r => r._display === "approved").length,
+    Rejected: allRequests.filter(r => r._display === "rejected").length,
+    Forwarded: allRequests.filter(r => r._display === "forwarded").length,
   };
 
   const filtered = activeTab === "All"
     ? allRequests
     : allRequests.filter(r =>
-        activeTab === "Pending"
-          ? (r.action === "Pending" || !r.action)
-          : r.action === activeTab
-      );
+      activeTab === "Pending"
+        ? (r.action === "Pending" || !r.action)
+        : r.action === activeTab
+    );
 
   return (
     <div className="flex flex-col bg-white h-full overflow-hidden">
@@ -91,10 +92,10 @@ const Sidebar = ({ allRequests, selected, onSelect, activeTab, setActiveTab }) =
         </span>
         <div className="flex gap-1 shrink-0">
           {[
-            { key: "Pending",   label: "Pend", bg: "bg-[#FAEEDA]", color: "text-[#633806]" },
-            { key: "Approved",  label: "Appr", bg: "bg-[#EAF3DE]", color: "text-[#27500A]" },
-            { key: "Rejected",  label: "Rej",  bg: "bg-[#FCEBEB]", color: "text-[#791F1F]" },
-            { key: "Forwarded", label: "Fwd",  bg: "bg-[#EDE9FE]", color: "text-[#4C1D95]" },
+            { key: "Pending", label: "Pend", bg: "bg-[#FAEEDA]", color: "text-[#633806]" },
+            { key: "Approved", label: "Appr", bg: "bg-[#EAF3DE]", color: "text-[#27500A]" },
+            { key: "Rejected", label: "Rej", bg: "bg-[#FCEBEB]", color: "text-[#791F1F]" },
+            { key: "Forwarded", label: "Fwd", bg: "bg-[#EDE9FE]", color: "text-[#4C1D95]" },
           ].map(({ key, label, bg, color }) => (
             <div key={key} className={`flex-1 text-center py-1 px-1.5 rounded-md ${bg}`}>
               <div className={`text-[13px] font-semibold leading-none ${color}`}>{stats[key]}</div>
@@ -106,7 +107,7 @@ const Sidebar = ({ allRequests, selected, onSelect, activeTab, setActiveTab }) =
 
       {/* Tabs — no-scrollbar */}
       <div className="flex px-2 border-b border-slate-100 overflow-x-auto"
-           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {TABS.map(t => (
           <button
             key={t}
@@ -128,21 +129,21 @@ const Sidebar = ({ allRequests, selected, onSelect, activeTab, setActiveTab }) =
 
       {/* List */}
       <div className="flex-1 overflow-y-auto p-2"
-           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2 py-10">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M9 11l3 3L22 4"/>
-              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
             </svg>
             <span className="text-[12px]">No records</span>
           </div>
         ) : (
           filtered.map((req, i) => {
             const globalIdx = allRequests.indexOf(req);
-            const urgInfo   = daysUntil(req.from_date);
+            const urgInfo = daysUntil(req.from_date);
             const isPending = req.action === "Pending" || !req.action;
-            const isActive  = selected?.request_id === req.request_id
+            const isActive = selected?.request_id === req.request_id
               && selected?.transaction_id === req.transaction_id
               && selected?.action === req.action;
 
@@ -190,48 +191,58 @@ const Sidebar = ({ allRequests, selected, onSelect, activeTab, setActiveTab }) =
 };
 
 // ── Approval Chain ────────────────────────────────────────────────────────────
-const ApprovalChain = ({ currentLevel, totalLevels = 3 }) => {
+const ApprovalChain = ({ currentLevel, totalLevels, roles = [], levelActions = {} }) => {
   const levels = Array.from({ length: totalLevels }, (_, i) => i + 1);
   return (
     <div className="flex flex-col gap-0">
       {levels.map((lvl) => {
-        const done   = lvl < currentLevel;
-        const active = lvl === currentLevel;
-        const wait   = lvl > currentLevel;
+        const levelAction = levelActions[lvl]; // "Approved" | "Rejected" | "Forwarded" | undefined
+        const done = levelAction === "Approved";
+        const isRejected = levelAction === "Rejected";
+        const isForwarded = levelAction === "Forwarded";
+        const active = !levelAction && lvl === currentLevel;
+        const wait = !levelAction && lvl > currentLevel;
         const isLast = lvl === totalLevels;
-        const role   = CHAIN_ROLES[lvl - 1] || `Level ${lvl}`;
+        const role = roles[lvl - 1] || `Level ${lvl}`;
         return (
           <div key={lvl} className="flex gap-2.5 items-start">
             <div className="flex flex-col items-center w-7 shrink-0">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium
-                ${done   ? "bg-green-100 text-green-800 border border-green-300" : ""}
-                ${active ? "bg-blue-500 text-white" : ""}
-                ${wait   ? "bg-slate-100 text-slate-400 border border-slate-200" : ""}`}>
+  ${done ? "bg-green-100 text-green-800 border border-green-300" : ""}
+  ${active ? "bg-blue-500 text-white" : ""}
+  ${wait ? "bg-slate-100 text-slate-400 border border-slate-200" : ""}
+  ${isRejected ? "bg-red-100 text-red-700 border border-red-300" : ""}
+  ${isForwarded ? "bg-purple-100 text-purple-700 border border-purple-300" : ""}`}>
                 {done ? (
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                    <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="#166534" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="#166534" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                ) : lvl}
+                ) : isRejected ? "✕" : lvl}
               </div>
               {!isLast && <div className={`w-px flex-1 min-h-[18px] ${done ? "bg-green-200" : "bg-slate-200"}`} />}
             </div>
             <div className={`flex-1 pb-4 ${isLast ? "pb-1" : ""}`}>
               <div className="flex items-center justify-between">
                 <p className={`text-[13px] font-medium
-                  ${done   ? "text-green-800" : ""}
-                  ${active ? "text-blue-700"  : ""}
-                  ${wait   ? "text-slate-400" : ""}`}>
+  ${done ? "text-green-800" : ""}
+  ${active ? "text-blue-700" : ""}
+  ${wait ? "text-slate-400" : ""}
+  ${isRejected ? "text-red-700" : ""}
+  ${isForwarded ? "text-purple-700" : ""}`}>
                   {role}
                   {active && <span className="ml-1.5 text-[13px] font-normal text-blue-800">· you</span>}
                 </p>
-                {done   && <span className="text-[11px] px-2 py-1 rounded-full bg-green-50 text-green-800 border border-green-300">Approved</span>}
+                {done && <span className="text-[11px] px-2 py-1 rounded-full bg-green-50 text-green-800 border border-green-300">Approved</span>}
                 {active && <span className="text-[11px] px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-300 animate-pulse">Your Turn</span>}
-                {wait   && <span className="text-[11px] px-2 py-1 rounded-full bg-slate-50 text-slate-500 border border-slate-300">Waiting</span>}
-              </div>
+                {wait && <span className="text-[11px] px-2 py-1 rounded-full bg-slate-50 text-slate-500 border border-slate-300">Waiting</span>}
+                {isRejected && <span className="text-[11px] px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-300">Rejected</span>}
+                {isForwarded && <span className="text-[11px] px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-300">Forwarded</span>}              </div>
               <p className={`text-[12px] mt-0.5 ${done || active ? "text-slate-500" : "text-slate-400"}`}>
-                {done   && "Reviewed and approved"}
+                {done && "Reviewed and approved"}
                 {active && "Action required from you"}
-                {wait   && `Waiting for level ${currentLevel}`}
+                {wait && `Waiting for level ${lvl - 1} action`}
+                {isRejected && "Request rejected at this level"}
+                {isForwarded && "Forwarded to next level"}
               </p>
             </div>
           </div>
@@ -245,10 +256,10 @@ const ApprovalChain = ({ currentLevel, totalLevels = 3 }) => {
 const EmptyDetail = () => (
   <div className="flex flex-col items-center justify-center h-full text-slate-300 gap-3">
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="9" y1="13" x2="15" y2="13"/>
-      <line x1="9" y1="17" x2="11" y2="17"/>
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="11" y2="17" />
     </svg>
     <p className="text-[13px]">Select a request to review</p>
   </div>
@@ -266,10 +277,10 @@ const RequestDetail = ({
 
   if (!req) return <EmptyDetail />;
 
-  const urgInfo   = daysUntil(req.from_date);
-  const fromFmt   = fmtDate(req.from_date);
-  const toFmt     = fmtDate(req.to_date);
-  const sameDay   = fromFmt === toFmt;
+  const urgInfo = daysUntil(req.from_date);
+  const fromFmt = fmtDate(req.from_date);
+  const toFmt = fmtDate(req.to_date);
+  const sameDay = fromFmt === toFmt;
   const isPending = req.action === "Pending" || !req.action;
   const globalIdx = allRequests.indexOf(req);
 
@@ -299,7 +310,7 @@ const RequestDetail = ({
             title="Previous"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <polyline points="15 18 9 12 15 6"/>
+              <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
           <button
@@ -309,7 +320,7 @@ const RequestDetail = ({
             title="Next"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <polyline points="9 18 15 12 9 6"/>
+              <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
           <button
@@ -318,8 +329,8 @@ const RequestDetail = ({
             className="w-7 h-7 flex items-center justify-center rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-400 transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M11 6.5A4.5 4.5 0 1 1 6.5 2a4.5 4.5 0 0 1 3.18 1.32" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              <path d="M9.5 1.5v2.5H12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M11 6.5A4.5 4.5 0 1 1 6.5 2a4.5 4.5 0 0 1 3.18 1.32" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M9.5 1.5v2.5H12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
@@ -347,9 +358,9 @@ const RequestDetail = ({
         {/* Meta grid */}
         <div className="grid grid-cols-5 gap-3">
           {[
-            { label: "From",  value: fromFmt },
-            { label: "To",    value: sameDay ? "Same day" : toFmt },
-            { label: "Days",  value: `${req.total_days} day${req.total_days > 1 ? "s" : ""}` },
+            { label: "From", value: fromFmt },
+            { label: "To", value: sameDay ? "Same day" : toFmt },
+            { label: "Days", value: `${req.total_days} day${req.total_days > 1 ? "s" : ""}` },
           ].map(({ label, value }) => (
             <div key={label} className="bg-blue-100/60 rounded-lg px-3 py-2">
               <p className="text-[11px] text-blue-600 uppercase tracking-wide font-semibold">{label}</p>
@@ -378,8 +389,12 @@ const RequestDetail = ({
         <p className="text-[12px] font-medium text-slate-500 uppercase tracking-wide mb-4">
           Approval chain
         </p>
-        <ApprovalChain currentLevel={req.level_no} totalLevels={req.total_levels || 3} />
-
+        <ApprovalChain
+          currentLevel={req.level_no}
+          levelActions={req.levelActions || {}}
+          totalLevels={req.total_levels || 2}
+          roles={req.workflow_roles || []}
+        />
         {/* Decision details if actioned */}
         {req.action_date && !isPending && (
           <div className="mt-4 pt-4 border-t border-slate-200">
@@ -412,7 +427,7 @@ const RequestDetail = ({
           <div className="flex items-center gap-1.5 mb-2.5">
             <span className="text-[13px] text-slate-500">Your action</span>
             <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-800 border border-purple-300">
-              Level {req.level_no} · {CHAIN_ROLES[(req.level_no - 1)] || "Approver"}
+              Level {req.level_no} · {req.approver_role || "Approver"}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -428,25 +443,27 @@ const RequestDetail = ({
               onClick={() => onAction("Approved")}
               className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#EAF3DE] text-[#27500A] border border-[#b0d47a] hover:bg-[#C0DD97] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="#166534" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="#166534" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               {acting === "Approved" ? "Approving..." : "Approve"}
             </button>
-            <button
-              disabled={!!acting}
-              onClick={() => onAction("Forwarded")}
-              className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#EDE9FE] text-[#4C1D95] border border-[#c4b5fd] hover:bg-[#DDD6FE] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                <path d="M2 5.5h6.5M6 2.5l3 3-3 3" stroke="#6d28d9" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Forward
-            </button>
+            {Number(req.level_no) < Number(req.total_levels || 99) && (
+              <button
+                disabled={!!acting}
+                onClick={() => onAction("Forwarded")}
+                className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#EDE9FE] text-[#4C1D95] border border-[#c4b5fd] hover:bg-[#DDD6FE] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <path d="M2 5.5h6.5M6 2.5l3 3-3 3" stroke="#6d28d9" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Forward
+              </button>
+            )}
             <button
               disabled={!!acting}
               onClick={() => onAction("Rejected")}
               className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#FCEBEB] text-[#791F1F] border border-[#f5a0a0] hover:bg-[#F7C1C1] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                <path d="M2.5 2.5l6 6M8.5 2.5l-6 6" stroke="#dc2626" strokeWidth="1.3" strokeLinecap="round"/>
+                <path d="M2.5 2.5l6 6M8.5 2.5l-6 6" stroke="#dc2626" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
               {acting === "Rejected" ? "Rejecting..." : "Reject"}
             </button>
@@ -464,33 +481,38 @@ const RequestDetail = ({
   );
 };
 
+const getTabFiltered = (list, tab) => {
+  if (tab === "All") return list;
+  if (tab === "Pending") return list.filter(r => r._display === "pending");
+  if (tab === "Approved") return list.filter(r => r._display === "approved");
+  if (tab === "Rejected") return list.filter(r => r._display === "rejected");
+  // ✅ Forwarded tab mein sirf woh jo actually forwarded hain aur approved/rejected nahi hue
+  if (tab === "Forwarded") return list.filter(r =>
+    r._display === "forwarded" &&
+    r._source === "history"
+  );
+  return list;
+};
 // ── Main component ────────────────────────────────────────────────────────────
 const ApprovalTransaction = ({ tab }) => {
-  const [allRequests,  setAllRequests]  = useState([]);
-  const [loading,      setLoading]      = useState(false);
-  const [selected,     setSelected]     = useState(null);
-  const [activeTab,    setActiveTab]    = useState("Pending");
-  const [remark,       setRemark]       = useState("");
-  const [acting,       setActing]       = useState(null);
+  const [allRequests, setAllRequests] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [activeTab, setActiveTab] = useState("Pending");
+  const [remark, setRemark] = useState("");
+  const [acting, setActing] = useState(null);
 
   const approverId = 1; // TODO: replace with auth context
+  const filteredList = getTabFiltered(allRequests, activeTab);
 
-  const filteredList = activeTab === "All"
-    ? allRequests
-    : allRequests.filter(r =>
-        activeTab === "Pending"
-          ? (r.action === "Pending" || !r.action)
-          : r.action === activeTab
-      );
 
   const currentIndex = selected
     ? filteredList.findIndex(r =>
-        r.request_id === selected.request_id &&
-        r.transaction_id === selected.transaction_id &&
-        r.action === selected.action
-      )
+      r.request_id === selected.request_id &&
+      r.transaction_id === selected.transaction_id &&
+      r.action === selected.action
+    )
     : -1;
-
   const loadAll = useCallback(async () => {
     try {
       setLoading(true);
@@ -499,39 +521,117 @@ const ApprovalTransaction = ({ tab }) => {
         getAllApprovalTransactions(),
       ]);
 
-      const pending = (pendingRes?.data || []).map(r => ({
-        ...r,
-        action: r.action || "Pending",
-        _source: "pending",
-      }));
+      const pendingList = pendingRes?.data || [];
+      const historyList = allRes?.data || [];
 
-      const historical = (allRes?.data || []).map(r => ({
-        ...r,
-        _source: "history",
-      }));
+      // ✅ Pending requests — ye woh hain jo abhi current approver ke liye action chahiye
+      const pendingMapped = pendingList.map(r => {
+        const levelActions = {};
+        if (r.completed_levels_str) {
+          r.completed_levels_str.split("|").forEach(pair => {
+            const [lvl, act] = pair.split(":");
+            levelActions[Number(lvl)] = act;
+          });
+        }
+        return {
+          ...r,
+          action: "Pending",
+          _source: "pending",
+          _display: "pending",
+          workflow_roles: r.workflow_roles_str ? r.workflow_roles_str.split(",") : [],
+          levelActions,
+        };
+      });
 
-      // Deduplicate: pending has priority
-      const pendingKeys = new Set(pending.map(r => `${r.request_id}-${r.level_no}`));
-      const uniqueHistorical = historical.filter(
-        r => !pendingKeys.has(`${r.request_id}-${r.level_no}`)
-      );
+      const pendingRequestIds = new Set(pendingList.map(r => r.request_id));
 
-      const merged = [...pending, ...uniqueHistorical];
+      // ✅ History group by request_id
+      const historyByRequest = {};
+      historyList.forEach(r => {
+        const key = r.request_id;
+        if (!historyByRequest[key]) historyByRequest[key] = [];
+        historyByRequest[key].push(r);
+      });
+
+      const historyMapped = Object.entries(historyByRequest)
+        .filter(([requestId]) => !pendingRequestIds.has(requestId))
+        .map(([requestId, transactions]) => {
+          const sorted = [...transactions].sort(
+            (a, b) => new Date(b.action_date || b.created_at) - new Date(a.action_date || a.created_at)
+          );
+          const latest = sorted[0];
+
+          // ✅ Har level ka apna action — kabhi overwrite nahi hota
+          // levelActions[1] = "Approved", levelActions[2] = "Rejected" — dono independent
+          const levelActions = {};
+          transactions.forEach(t => {
+            levelActions[Number(t.level_no)] = t.action;
+          });
+
+          const completedLevels = Object.entries(levelActions)
+            .filter(([, act]) => act === "Approved")
+            .map(([lvl]) => Number(lvl));
+
+          const rejectedEntry = Object.entries(levelActions).find(([, act]) => act === "Rejected");
+          const forwardedEntry = Object.entries(levelActions).find(([, act]) => act === "Forwarded");
+
+          const finalAction =
+            latest.leave_status === "Approved" ? "Approved"
+              : rejectedEntry ? "Rejected"
+                : latest.leave_status === "Rejected" ? "Rejected"
+                  : forwardedEntry ? "Forwarded"
+                    : "Pending";
+
+          const _display =
+            finalAction === "Approved" ? "approved"
+              : finalAction === "Rejected" ? "rejected"
+                : finalAction === "Forwarded" ? "forwarded"
+                  : "pending";
+
+          const rolesByLevel = {};
+          transactions.forEach(t => {
+            if (t.approver_role) rolesByLevel[Number(t.level_no)] = t.approver_role;
+          });
+          const maxLevel = Number(latest.total_levels || 2);
+          const workflow_roles = Array.from(
+            { length: maxLevel },
+            (_, i) => rolesByLevel[i + 1] || `Level ${i + 1}`
+          );
+
+          return {
+            ...latest,
+            action: finalAction,
+            _source: "history",
+            _display,
+            completedLevels,
+            levelActions,   // ✅ naya — har level ka apna status
+            rejectedLevel: rejectedEntry ? Number(rejectedEntry[0]) : null,
+            forwardedLevel: forwardedEntry ? Number(forwardedEntry[0]) : null,
+            workflow_roles,
+          };
+        });
+
+      // ✅ Forwarded requests jo pending tab mein dikhne chahiye (next level pending)
+      // Inhe pending tab mein bhi dikhao agar current approver next level hai
+      const forwardedAsPending = historyMapped
+        .filter(r => r._display === "forwarded")
+        .map(r => ({
+          ...r,
+          action: "Pending",
+          _display: "pending",
+        }));
+
+      const merged = [
+        ...pendingMapped,
+        ...forwardedAsPending,  // ✅ forwarded bhi pending mein dikhe
+        ...historyMapped,
+      ];
+
       setAllRequests(merged);
 
-      // Auto-select first in current tab
-      const tabFiltered = activeTab === "All"
-        ? merged
-        : merged.filter(r =>
-            activeTab === "Pending"
-              ? (r.action === "Pending" || !r.action)
-              : r.action === activeTab
-          );
-      if (tabFiltered.length > 0) {
-        setSelected(tabFiltered[0]);
-      } else {
-        setSelected(null);
-      }
+      const tabList = getTabFiltered(merged, activeTab);
+      setSelected(tabList.length > 0 ? tabList[0] : null);
+
     } catch (err) {
       console.error("ApprovalTransaction load error:", err);
     } finally {
@@ -549,13 +649,7 @@ const ApprovalTransaction = ({ tab }) => {
 
   const handleTabChange = (t) => {
     setActiveTab(t);
-    const newFiltered = t === "All"
-      ? allRequests
-      : allRequests.filter(r =>
-          t === "Pending"
-            ? (r.action === "Pending" || !r.action)
-            : r.action === t
-        );
+    const newFiltered = getTabFiltered(allRequests, t);
     setSelected(newFiltered.length > 0 ? newFiltered[0] : null);
     setRemark("");
   };
@@ -574,18 +668,18 @@ const ApprovalTransaction = ({ tab }) => {
     setActing(action);
     try {
       await approvalAction({
-        request_id:  selected.request_id,
+        request_id: selected.request_id,
         workflow_id: selected.workflow_id,
-        level_no:    selected.level_no,
+        level_no: selected.level_no,    // ✅ Ye sahi level aa raha hai?
         approver_id: approverId,
         action,
         remarks: remark,
       });
       showToast({
-        icon:  action === "Approved" ? "success" : action === "Rejected" ? "error" : "info",
+        icon: action === "Approved" ? "success" : action === "Rejected" ? "error" : "info",
         title: action === "Approved" ? "Leave approved successfully"
-             : action === "Rejected" ? "Leave rejected"
-             : "Request forwarded to next level",
+          : action === "Rejected" ? "Leave rejected"
+            : "Request forwarded to next level",
       });
       setRemark("");
       await loadAll();

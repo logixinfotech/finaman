@@ -1,12 +1,16 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState,useRef, useCallback, useEffect } from "react";
 import ERPHeader from "../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../components/Reusable/form/FooterForm";
 import ERPDateInput from "../../components/Reusable/input/Date";
+import { handleERPBackspaceNavigation, handleERPEnterNavigation } from "../../utils/erpShortcuts";
+import { User } from "lucide-react";
 
 const HolidayMasterForm = ({
   formData = {},
   setFormData,
   onSave,
+  activeTab    = "entry",
+  onTabChange,
   onCancel,
   onDelete,
   onEditCancel,
@@ -46,7 +50,8 @@ const HolidayMasterForm = ({
       });
     }
   };
-
+  const formRef=useRef(null);
+  const saveBtnRef=useRef(null);
   const getInputClass = (isDisabled, fieldName) =>
     `w-full h-[30px] px-2 text-[16px] border rounded-md outline-none transition-colors ${errors[fieldName] ? "border-red-500" : "border-gray-300"
     } ${isDisabled
@@ -103,55 +108,60 @@ const HolidayMasterForm = ({
     if (onSave) onSave(formData);
   }, [formData, onSave, isViewMode, requiredFields]);
 
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (isViewMode) return;
+  // const handleKeyDown = useCallback(
+  //   (e) => {
+  //     if (isViewMode) return;
 
-      const container = document.getElementById("holiday-form-container");
-      if (!container) return;
+  //     const container = document.getElementById("holiday-form-container");
+  //     if (!container) return;
 
-      const focusableElements = Array.from(
-        container.querySelectorAll("input:not([disabled]), textarea:not([disabled])")
-      );
-      const index = focusableElements.indexOf(e.target);
+  //     const focusableElements = Array.from(
+  //       container.querySelectorAll("input:not([disabled]), textarea:not([disabled])")
+  //     );
+  //     const index = focusableElements.indexOf(e.target);
 
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (index > -1) {
-          if (index < focusableElements.length - 1) {
-            focusableElements[index + 1].focus();
-          } else {
-            const allButtons = Array.from(document.querySelectorAll("button"));
-            const saveBtn = allButtons.find((btn) =>
-              btn.textContent.toLowerCase().includes("save") || btn.textContent.toLowerCase().includes("update")&&!btn.disabled
-            );
+  //     if (e.key === "Enter") {
+  //       e.preventDefault();
+  //       if (index > -1) {
+  //         if (index < focusableElements.length - 1) {
+  //           focusableElements[index + 1].focus();
+  //         } else {
+  //           const allButtons = Array.from(document.querySelectorAll("button"));
+  //           const saveBtn = allButtons.find((btn) =>
+  //             btn.textContent.toLowerCase().includes("save") || btn.textContent.toLowerCase().includes("update")&&!btn.disabled
+  //           );
 
-            if (saveBtn) {
-              saveBtn.focus();
-            } 
-          }
-        }
-      }
+  //           if (saveBtn) {
+  //             saveBtn.focus();
+  //           } 
+  //         }
+  //       }
+  //     }
 
-      if (e.key === "Backspace") {
-        const isAtStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+  //     if (e.key === "Backspace") {
+  //       const isAtStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
 
-        if (isAtStart && index > 0) {
-          e.preventDefault();
-          const prevField = focusableElements[index - 1];
-          prevField.focus();
+  //       if (isAtStart && index > 0) {
+  //         e.preventDefault();
+  //         const prevField = focusableElements[index - 1];
+  //         prevField.focus();
 
-          setTimeout(() => {
-            if (prevField.setSelectionRange) {
-              const len = prevField.value?.length || 0;
-              prevField.setSelectionRange(len, len);
-            }
-          }, 0);
-        }
-      }
-    },
-    [isViewMode, handleValidateAndSave]
-  );
+  //         setTimeout(() => {
+  //           if (prevField.setSelectionRange) {
+  //             const len = prevField.value?.length || 0;
+  //             prevField.setSelectionRange(len, len);
+  //           }
+  //         }, 0);
+  //       }
+  //     }
+  //   },
+  //   [isViewMode, handleValidateAndSave]
+  // );
+   const handleKeyDown = useCallback((e) => {
+      handleERPEnterNavigation(e, formRef, isViewMode, saveBtnRef);
+      handleERPBackspaceNavigation(e, formRef, isViewMode);
+    }, [isViewMode]);
+  
 
   return (
     <div
@@ -159,6 +169,8 @@ const HolidayMasterForm = ({
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
+       activeTab={activeTab}
+        onTabChange={onTabChange}
         title="Holiday Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
@@ -234,6 +246,7 @@ const HolidayMasterForm = ({
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         saving={saving}
+        saveBtnRef={saveBtnRef        }
         handleSubmit={handleValidateAndSave}
         onModify={onModify}
         onDelete={() => onDelete && onDelete(formData)}

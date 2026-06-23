@@ -15,7 +15,7 @@ const initialState = {
 };
 
 const columns = [
-    { key: "group_id", label: "ID" },
+{key:"Sr", label:"Sr"},
     { key: "group_name", label: "Department Name" },
     { key: "remarks", label: "Remarks" },
 ];
@@ -64,14 +64,17 @@ const DepartmentMasterPage = ({ tab }) => {
     useEffect(() => {
         loadGroups();
     }, [loadGroups]);
-
+   
     // 🔁 Sync selected row
     useEffect(() => {
         if (showForm && mode === "view" && list.length > 0) {
             setFormData(list[currentIndex]);
         }
     }, [currentIndex, list, showForm, mode]);
-
+     const listWithSr = list.map((item, index) => ({
+  ...item,
+  Sr: index + 1
+}));
     const handleRowSelect = (row) => {
         const index = list.findIndex(item => item.group_id === row.group_id);
         if (index !== -1) setCurrentIndex(index);
@@ -130,7 +133,7 @@ const DepartmentMasterPage = ({ tab }) => {
         if (targetTab === "entry") setShowForm(true);
     };
     return (
-        <div>
+        <div className="h-full">
             {showForm ? (
                 <UserGroupForm
                     title="Department Master"
@@ -156,8 +159,10 @@ const DepartmentMasterPage = ({ tab }) => {
                 />
             ) : (
                 <Table
+                activeTab="search" 
+             onTabChange={handleTabChange}
                     title="Department Master"
-                    data={list}
+                    data={listWithSr}
                     columns={columns}
                     rowKey="group_id"
                     loading={loading}

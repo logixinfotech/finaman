@@ -317,6 +317,7 @@ const OvertimeDetailsReport = () => {
           title="Overtime Details Report"
           data={filteredList}
           columns={columns}
+          isHidden={true}
           rowKey="ot_id"
           loading={false}
           onRefresh={handleRefresh}

@@ -222,6 +222,8 @@ const OTTransaction = ({ tab }) => {
         />
       ) : (
         <Table
+        activeTab="search"
+          onTabChange={handleTabChange}
           title="OT Transactions"
           data={list}
           columns={columns}

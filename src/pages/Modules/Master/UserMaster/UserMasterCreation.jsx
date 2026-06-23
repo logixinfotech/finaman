@@ -25,14 +25,14 @@ const initialState = {
     user_group: "",
     setting_pass: "",
     signature: ""
-}; 
+};
 const columns = [
-    { 
-        key: "user_name", 
-        label: "User Name", 
+    {
+        key: "user_name",
+        label: "User Name",
         editable: true,
         onCellSave: async (row, key, newValue) => {
-            try { 
+            try {
                 const response = await updateUser(row.user_id, { ...row, [key]: newValue });
                 if (response.success) {
                     showToast({ icon: "success", title: "Updated successfully" });
@@ -45,13 +45,13 @@ const columns = [
         }
     },
     { key: "user_id", label: "User ID" }, // ID usually stays non-editable
-    { 
-        key: "user_type", 
+    {
+        key: "user_type",
         label: "User Type",
         editable: true,
         onCellSave: async (row, key, newValue) => {
-             await updateUser(row.user_id, { ...row, [key]: newValue });
-             showToast({ icon: "success", title: "Type Updated" });
+            await updateUser(row.user_id, { ...row, [key]: newValue });
+            showToast({ icon: "success", title: "Type Updated" });
         }
     },
     { key: "user_group", label: "Group", editable: true },
@@ -98,12 +98,10 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
             return isEdit ? await updateUser(data.user_id, data) : await createUser(data);
         },
         loadUsers,
-        tab.appl_name 
+        tab.appl_name
     );
 
     useEffect(() => { loadUsers(); }, [loadUsers]);
-
-    // Sync Form Data when navigating records
     useEffect(() => {
         if (showForm && mode === "view" && list.length > 0) {
             setFormData(list[currentIndex]);
@@ -115,58 +113,49 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
         if (index !== -1) setCurrentIndex(index);
         handleView(row);
     };
-
-    // const handleSave = async () => {
-    //     // Validation check before calling performSave
-    //     if (!formData.user_id || !formData.password || !formData.user_type) {
-    //         alertError("Validation Error", "Please fill all required fields marked with *");
-    //         return;
-    //     }
-
-    //     const response = await performSave("user_id", formData);
-    //     if (response?.success) {
-    //         showToast({
-    //             icon: "success",
-    //             title: isEditMode ? "User updated successfully" : "User added successfully",
-    //         });
-    //         await loadUsers();
-    //     }
-    // }; 
     const handleSave = async () => {
-    // Validation check before calling performSave
-    if (!formData.user_id || !formData.password || !formData.user_type) {
-        alertError("Validation Error", "Please fill all required fields marked with *");
-        return;
-    }
-
-    const response = await performSave("user_id", formData);
-
-    if (response?.success) {
-
-        // 🔥 Reload latest data
-        const data = await fetchUsers();
-        const finalData = Array.isArray(data) ? data : data?.data || [];
-
-        setList(finalData);
-
-        // 🔥 Find same saved record again
-        const savedIndex = finalData.findIndex(
-            item => item.user_id === formData.user_id
-        );
-
-        if (savedIndex !== -1) {
-            setCurrentIndex(savedIndex);
-            setFormData(finalData[savedIndex]);
+        if (!formData.user_id || !formData.password || !formData.user_type) {
+            alertError("Validation Error", "Please fill all required fields marked with *");
+            return;
         }
+        console.log("MODE:", mode, "| isEditMode:", isEditMode, "| user_id:", formData.user_id);
 
-        showToast({
-            icon: "success",
-            title: isEditMode
-                ? "User updated successfully"
-                : "User added successfully",
-        });
-    }
-};
+        const response = await performSave("user_id", formData);
+
+        if (response?.success) {
+
+            // 🔥 Reload latest data
+            const data = await fetchUsers();
+            const finalData = Array.isArray(data) ? data : data?.data || [];
+
+            setList(finalData);
+
+            // 🔥 Find same saved record again
+            const savedIndex = finalData.findIndex(
+                item => item.user_id === formData.user_id
+            );
+
+            if (savedIndex !== -1) {
+                setCurrentIndex(savedIndex);
+                setFormData(finalData[savedIndex]);
+            }
+
+            showToast({
+                icon: "success",
+                title: isEditMode
+                    ? "User updated successfully"
+                    : "User added successfully",
+            });
+} else if (response?.message?.toLowerCase().includes("already exists")) {
+    // 👇 ADD THIS
+    alertError("Duplicate User ID", `User ID "${formData.user_id}" already exists. Please choose a different ID.`);
+    // Focus back on user_id field
+    setTimeout(() => {
+        const el = document.querySelector('[name="user_id"]');
+        if (el) { el.focus(); el.select(); }
+    }, 100);
+}
+    };
 
     const handleTabChange = (targetTab) => {
         if (targetTab === "search") setShowForm(false);
@@ -239,6 +228,8 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
             ) : (
                 <Table
                     title="User Master"
+                    activeTab="search"
+                    onTabChange={handleTabChange}
                     data={list}
                     columns={columns}
                     rowKey="user_id"

@@ -1,9 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Table from "../components/Reusable/table/Table";
 import EmployeeMasterForm from "../components/EmployeeMaster/EmpolyeeMasterForm";
-import { getActledList, createEmployee, updateEmployee, deleteEmployee, createLeaveBalance } from "../utils/api";
+import { getActledList, createEmployee, updateEmployee, deleteEmployee, createLeaveBalance,fetchUserGroupsByType } from "../utils/api";
 import { transformToBackend } from "../utils/employeeMapper";
-
 
 import {
   confirmDelete,
@@ -14,43 +13,57 @@ import {
 import { setERPHandlers } from "../utils/erpShortcuts";
 import { useERPMode } from "../components/Reusable/form/useFormMode";
 
-// ✅ INITIAL STATE (MATCHES FORM)
+// ✅ INITIAL STATE KEYS MATCHED WITH FORM FIELDS
 const initialState = {
   employee_id: null,
-  employee_name: "",
-  gender: "",
-  dob: "",
-  father_name: "",
-  mother_name: "",
-  married: "",
-  spouse: "",
-  blood_group: "",
-  religion: "",
-  mobile: "",
-  email: "",
-  address: "",
-  city: "",
-  state: "",
-  pin_code: "",
-  permanent_address: "",
-  permanent_city: "",
-  permanent_state: "",
-  permanent_pin_code: "",
-  aadhar_no: "",
-  pan_no: "",
-  voter_id: "",
-  driving_license: "",
-  passport: "",
-  bank_name: "",
-  bank_ifsc: "",
-  bank_account: "",
-  department: "",
-  designation: "",
-  joining_date: "",
+  "Employee ID": "",
+  "Title": "",
+  "First Name": "",
+  "Middle Name": "",
+  "Last Name": "",
+  "Gender": "",
+  "Date of Birth": "",
+  "Blood Group": "",
+  "Nationality": "Indian",
+  "Religion": "",
+  "Category": "",
+  "Marital Status": "",
+  "Spouse Name": "",
+  "Anniversary Date": "",
+  "No. of Children": "",
+  "Mother's Name": "",
+  "Father's / Guardian's Name": "",
+  "Qualification": "",
+  "Professional Qualification": "",
+  "Specialization": "",
+  "Mobile No": "",
+  "Alternate Mobile": "",
+  "Personal Email": "",
+  "Work Email": "",
+  "PAN Number": "",
+  "Aadhaar No": "",
+  "Voter ID": "",
+  "Driving Licence": "",
+  "Passport No": "",
+  "C_Address Line 1": "",
+  "C_City": "",
+  "C_District": "",
+  "C_Pin Code": "",
+  "C_State": "",
+  "P_Address Line 1": "",
+  "P_City": "",
+  "P_District": "",
+  "P_Pin Code": "",
+  "P_State": "",
+  "Bank Name": "",
+  "IFSC Code": "",
+  "Account Number": "",
+  "Department": "",
+  "Designation": "",
+  "Joining Date": "",
   status: "Active",
 };
 
-// ✅ TABLE COLUMNS
 const columns = [
   { key: "employee_name", label: "Employee Name" },
   { key: "mobile", label: "Mobile" },
@@ -77,8 +90,7 @@ const EmployeeMaster = ({ tab }) => {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // ✅ ERP MODE HOOK
+  const formRef = useRef(null);
   const {
     mode,
     formData,
@@ -99,31 +111,46 @@ const EmployeeMaster = ({ tab }) => {
       const backendData = transformToBackend(data);
 
       if (backendData.Gender) {
-        backendData.Gender = backendData.Gender === "Male" ? "M"
-          : backendData.Gender === "Female" ? "F"
-            : backendData.Gender;
+        backendData.Gender = backendData.Gender?.toUpperCase() === "MALE" ? "M"
+          : backendData.Gender?.toUpperCase() === "FEMALE" ? "F"
+            : backendData.Gender || null;
       }
 
-      backendData.Is_bill = data["Married"] === "Yes" ? 1 : 0;
-      if (data["Married"] !== "Yes") {
+      backendData.Is_bill = data["Marital Status"] === "Married" ? 1 : 0;
+      if (data["Marital Status"] !== "Married") {
         backendData.Doa = null;
         backendData.Spouse = null;
       }
 
-      // ✅ Sab Op_id fields INT hain
-      ["Op_id1", "Op_id2", "Op_id3", "Op_id4", "Op_id5", "Op_id6"].forEach(key => {
+      ["Op_id1", "Op_id2", "Op_id3", "Op_id5", "Op_id6"].forEach(key => {
         if (backendData[key] !== undefined) {
           const n = Number(backendData[key]);
           backendData[key] = isNaN(n) ? null : n;
         }
       });
 
-      // ✅ Numeric fields
       backendData.Is_tds = backendData.Is_tds && Number(backendData.Is_tds) > 0 ? 1 : 0;
       backendData.Pay_amt = backendData.Pay_amt ? Number(backendData.Pay_amt) : null;
       backendData.Gratuity = backendData.Gratuity ? parseFloat(backendData.Gratuity) : null;
+      backendData.Approved = data["Status"] === "Active" ? 1 : 0;
 
-
+      const dateFields = ["Dob", "Doj", "Doc", "Doa", "Passport_expiry", "Salary_eff_date"];
+      dateFields.forEach(key => {
+        if (!backendData[key] || backendData[key] === "") {
+          backendData[key] = null;
+        } else {
+          // "Jun 30 2026 12:00AM" ya "2026-06-30" dono handle karo
+          const d = new Date(backendData[key]);
+          if (!isNaN(d.getTime())) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const dd = String(d.getDate()).padStart(2, "0");
+            backendData[key] = `${yyyy}-${mm}-${dd}`;
+          } else {
+            backendData[key] = null;
+          }
+        }
+      });
       return isEdit
         ? await updateEmployee(data.employee_id, backendData)
         : await createEmployee(backendData);
@@ -132,129 +159,330 @@ const EmployeeMaster = ({ tab }) => {
     tab?.appl_name
   );
 
-  const handleTabChange = (targetTab) => {
-    if (targetTab === "search") {
-      setShowForm(false);
-    }
 
-    if (targetTab === "entry") {
-      setShowForm(true);
-    }
+  const handleTabChange = (targetTab) => {
+    if (targetTab === "search") setShowForm(false);
+    if (targetTab === "entry") setShowForm(true);
   };
 
-  const loadEmployees = useCallback(async () => {
+  const formatDateOnly = (val) => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return "";
+    // YYYY-MM-DD format — ERPDateInput isi format mein kaam karta hai
+    return d.toISOString().split("T")[0];
+  };
+
+  // const loadEmployees = useCallback(async () => {
+  //   try {
+  //     setLoading(true)
+  //     const res = await getActledList();
+
+  //     const mappedData = (res || []).map((item) => ({
+  //       ...item,
+  //       employee_id: item.Actled_id,
+
+  //       // Exact match with EmployeeMasterForm Form Schema Fields
+  //       "Employee ID": item.Led_code || "",
+  //       "Title": item.Title || "",
+  //       "First Name": item.Led_name || "",
+  //       "Last Name": item.Led_alias || "",
+  //       "Gender": item.Gender === "M" ? "Male" : item.Gender === "F" ? "Female" : item.Gender || "",
+  //       "Date of Birth": formatDateOnly(item.Dob),
+
+  //       "Marital Status": item.Is_bill === 1 ? "Married" : "Single",
+  //       "Spouse Name": item.Spouse || "",
+  //       "Anniversary Date": formatDateOnly(item.Doa),
+
+  //       "Father's / Guardian's Name": item.F_name || "",
+  //       "Mother's Name": item.M_name || "",
+
+  //       "Qualification": item.E_qua || "",
+  //       "Professional Qualification": item.P_qua || "",
+
+  //       "Mobile No": item.Mobile || "",
+  //       "Personal Email": item.Email || "",
+
+  //       "PAN Number": item.Pan_no || "",
+  //       "Aadhaar No": item.Aadhar || "",
+  //       "Voter ID": item.Voter || "",
+  //       "Driving Licence": item.Driving || "",
+  //       "Passport No": item.Passport || "",
+  //       "Emerg_Contact Person": item.Person || "",
+  //       "Emerg_Relationship": item.Relation || "",
+  //       "Emerg_Mobile No": item.Phone || "",
+  //       "Emerg_Alternate No": item.Alt_phone || "",
+
+  //       "C_Address Line 1": item.Add1 || "",
+  //       "C_City": item.City || "",
+  //       "C_District": item.Area || "",
+  //       "C_Pin Code": item.Pin || "",
+  //       "C_State": item.State || "",
+
+  //       "P_Address Line 1": item.Padd1 || "",
+  //       "P_City": item.Pcity || "",
+  //       "P_District": item.Parea || "",
+  //       "P_Pin Code": item.Ppin || "",
+  //       "P_State": item.Pstate || "",
+
+  //       "Bank Name": item.Bank_name || "",
+  //       "IFSC Code": item.Bank_ifsc || "",
+  //       "Account Number": item.Bank_acc || "",
+  //       "Branch Name": item.Bank_add || "",
+
+  //       "Department": item.Op_id3 || "",
+  //       "Designation": item.Op_id5 || "",
+  //       "Grade / Level": item.Op_id1 || "",
+  //       "Division": item.Op_id2 || "",
+  //       "Branch / Location": item.Branch_location || "",
+  //       "Reporting Manager": item.Op_id6 || "",
+  //       "Employment Type": item.Emp_type || "",
+
+  //       "Joining Date": formatDateOnly(item.Doj),
+  //       "Confirmation Date": formatDateOnly(item.Doc),
+
+  //       "PF Number": item.Epf_no || "",
+  //       "ESI Number": item.Esic_no || "",
+  //       "Basic": item.Pay_amt || "",
+  //       "Remarks": item.Pay_rmks || "",
+  //       "Leave allow names": item.leave_san ? item.leave_san.split(",") : [],
+  //       "Status": item.Approved === 1 ? "Active" : "Inactive",
+  //       "photo_url": item.Ledimg
+  //         ? `${process.env.REACT_APP_API_URL || "http://localhost:63554"}${item.Ledimg}`
+  //         : "",
+  //       // Existing mappings ke baad add karo:
+  //       "Middle Name": item.Middle_name || "",
+  //       "Nationality": item.Nationality || "Indian",
+  //       "Category": item.Category || "",
+  //       "No. of Children": item.No_of_children || "",
+  //       "Passport Expiry": formatDateOnly(item.Passport_expiry),
+  //       "Specialization": item.Specialization || "",
+  //       "Alternate Mobile": item.Alt_mobile || "",
+  //       "Work Email": item.Work_email || "",
+  //       "Phone Extension": item.Phone_ext || "",
+  //       "C_Address Line 2": item.C_Address2 || "",
+  //       "C_Country": item.C_Country || "",
+  //       "P_Address Line 2": item.P_Address2 || "",
+  //       "P_Country": item.P_Country || "",
+  //       "Cost Centre": item.Cost_centre || "",
+  //       "Work Shift": item.Work_shift || "",
+  //       "Work Location Type": item.Work_loc_type || "",
+  //       "Employee Category": item.Emp_category || "",
+  //       "Probation Period": item.Probation_period || "",
+  //       "Notice Period": item.Notice_period || "",
+  //       "Previous Company": item.Prev_company || "",
+  //       "Last Designation": item.Last_desig || "",
+  //       "Last CTC": item.Last_ctc || "",
+  //       "Reason for Leaving": item.Reason_leaving || "",
+  //       "PF Account": item.Pf_account_prev || "",
+  //       "Account Type": item.Account_type || "",
+  //       "Holder Name": item.Holder_name || "",
+  //       "MICR Code": item.Micr_code || "",
+  //       "CTC": item.Ctc || "",
+  //       "HRA": item.Hra || "",
+  //       "Special Allowance": item.Special_allow || "",
+  //       "Salary Effective Date": formatDateOnly(item.Salary_eff_date),
+  //       "UAN": item.Uan || "",
+  //       "PT State": item.Pt_state || "",
+  //       "PF Applicable": item.Pf_applicable || "",
+  //       "ESI Applicable": item.Esi_applicable || "",
+  //       "Gratuity Eligible": item.Gratuity_eligible || "",
+  //       "TDS Category": item.Tds_category || "",
+  //       "Previous Experience": item.Prev_exp || "",
+  //       "Total Experience": (() => {
+  //         if (!item.Doj) return "";
+  //         const join = new Date(item.Doj);
+  //         if (isNaN(join)) return "";
+  //         const now = new Date();
+  //         const years = now.getFullYear() - join.getFullYear();
+  //         const months = now.getMonth() - join.getMonth();
+  //         const totalMonths = years * 12 + months;
+  //         const y = Math.floor(totalMonths / 12);
+  //         const m = totalMonths % 12;
+  //         return `${y}y ${m}m`;
+  //       })(),
+  //       "Blood Group": item.Blood || "",
+  //       "Phone (Residence)": item.Phone_residence || "",
+
+  //       // Table List Display Fields
+  //       employee_name: item.Led_name || "",
+  //       mobile: item.Mobile || "",
+  //       email: item.Email || "",
+  //       department: item.Op_id3 || "",
+  //       designation: item.Op_id5 || "",
+  //       joining_date: item.Doj || "",
+  //       status: item.Approved === 1 ? "Active" : "Inactive",
+  //     }));
+
+  //     setList(mappedData);
+  //     return mappedData; // Important for instantaneous post-save lookup
+  //   } catch (err) {
+  //     alertError("Error", "Failed to load employees");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, []);
+const loadEmployees = useCallback(async () => {
     try {
       setLoading(true);
 
-      const res = await getActledList();
+      // 🔥 Fetch Employees AND Group Mappings simultaneously
+      const [res, deptRes, desgRes] = await Promise.all([
+        getActledList(),
+        fetchUserGroupsByType("DEP"),
+        fetchUserGroupsByType("DESG")
+      ]);
 
-      console.log("API DATA:", res);
+      const deptList = deptRes?.data || [];
+      const desgList = desgRes?.data || [];
+
+      // Helper function to map an ID to a Name
+      const getGroupName = (list, id) => {
+        if (!id) return "";
+        const found = list.find((g) => String(g.group_id) === String(id));
+        return found ? found.group_name : id; // Returns Name if found, otherwise falls back to ID
+      };
 
       const mappedData = (res || []).map((item) => ({
         ...item,
-
         employee_id: item.Actled_id,
 
-        // ✅ FORM FIELD MAPPING
+        "Employee ID": item.Led_code || "",
         "Title": item.Title || "",
-        "Gender":
-          item.Gender === "M"
-            ? "Male"
-            : item.Gender === "F"
-              ? "Female"
-              : item.Gender || "",
-
         "First Name": item.Led_name || "",
         "Last Name": item.Led_alias || "",
+        "Gender": item.Gender === "M" ? "Male" : item.Gender === "F" ? "Female" : item.Gender || "",
+        "Date of Birth": formatDateOnly(item.Dob),
 
-        "DOB": item.Dob || "",
+        "Marital Status": item.Is_bill === 1 ? "Married" : "Single",
+        "Spouse Name": item.Spouse || "",
+        "Anniversary Date": formatDateOnly(item.Doa),
+
+        "Father's / Guardian's Name": item.F_name || "",
+        "Mother's Name": item.M_name || "",
 
         "Qualification": item.E_qua || "",
-        "Professional": item.P_qua || "",
-
-        "Mother": item.M_name || "",
-        "Father": item.F_name || "",
-
-        "Married": item.Is_bill === 1 ? "Yes" : "No",
-        "Aniversary": item.Doa || "",
-        "Spouse": item.Spouse || "",
+        "Professional Qualification": item.P_qua || "",
 
         "Mobile No": item.Mobile || "",
-        "Email Id": item.Email || "",
+        "Personal Email": item.Email || "",
 
-        "Driving Licence No": item.Driving || "",
-        "Adhar Card No": item.Aadhar || "",
-        "Voter Id": item.Voter || "",
-        "Pan No": item.Pan_no || "",
-        "Passport": item.Passport || "",
+        "PAN Number": item.Pan_no || "",
+        "Aadhaar No": item.Aadhar || "",
+        "Voter ID": item.Voter || "",
+        "Driving Licence": item.Driving || "",
+        "Passport No": item.Passport || "",
+        "Emerg_Contact Person": item.Person || "",
+        "Emerg_Relationship": item.Relation || "",
+        "Emerg_Mobile No": item.Phone || "",
+        "Emerg_Alternate No": item.Alt_phone || "",
 
-        "Basic_Emerg_Contact Person": item.Person || "",
-        "Basic_Emerg_Relation": item.Relation || "",
-        "Basic_Emerg_Mobile No": item.Phone || "",
-
-        "C_Adress Line": item.Add1 || "",
+        "C_Address Line 1": item.Add1 || "",
         "C_City": item.City || "",
         "C_District": item.Area || "",
         "C_Pin Code": item.Pin || "",
         "C_State": item.State || "",
 
-        "P_Adress Line": item.Padd1 || "",
+        "P_Address Line 1": item.Padd1 || "",
         "P_City": item.Pcity || "",
         "P_District": item.Parea || "",
         "P_Pin Code": item.Ppin || "",
         "P_State": item.Pstate || "",
 
         "Bank Name": item.Bank_name || "",
-        "Bank Ifsc": item.Bank_ifsc || "",
-        "Bank Address": item.Bank_add || "",
-        "Bank Account": item.Bank_acc || "",
+        "IFSC Code": item.Bank_ifsc || "",
+        "Account Number": item.Bank_acc || "",
+        "Branch Name": item.Bank_add || "",
 
-        "Employee Type": item.Emp_type || "",
-        "Employee Code": item.Led_code || "",
-        "Punch Card No": item.Punch_no || "",
-
-        "Confirm Date": item.Doc || "",
-
-        "Grade": item.Op_id1 || "",
-        "Division": item.Op_id2 || "",
+        // 👉 Keep these as raw IDs so the Form bindings don't break
         "Department": item.Op_id3 || "",
-        "Branch": item.Op_id4 || "",
         "Designation": item.Op_id5 || "",
-        "Reporting to": item.Op_id6 || "",
+        "Grade / Level": item.Op_id1 || "",
+        "Division": item.Op_id2 || "",
+        "Branch / Location": item.Branch_location || "",
+        "Reporting Manager": item.Op_id6 || "",
+        "Employment Type": item.Emp_type || "",
 
-        "EPF Number": item.Epf_no || "",
-        "PF Join Date": item.Doepf || "",
-        "PF Leaving Date": item.Dolepf || "",
-        "PF Reason": item.Epf_rsn || "",
+        "Joining Date": formatDateOnly(item.Doj),
+        "Confirmation Date": formatDateOnly(item.Doc),
 
-        "EDLI Number": item.Edli_no || "",
-        "ESIC Number": item.Esic_no || "",
-        "EDLI Join Date": item.Dojesic || "",
-
-        "Gratuity Number": item.Gratuity || "",
-
-        "Status Join Date": item.Doj || "",
-        "Status Leaving Date": item.Dol || "",
-        "Status Reason": item.Led_rsn || "",
-
-        "Basic Salary": item.Pay_amt || "",
-        "TDS": item.Is_tds || "",
+        "PF Number": item.Epf_no || "",
+        "ESI Number": item.Esic_no || "",
+        "Basic": item.Pay_amt || "",
         "Remarks": item.Pay_rmks || "",
-        "Leave allow names": item.leave_san
-          ? item.leave_san.split(",")
-          : [],
+        "Leave allow names": item.leave_san ? item.leave_san.split(",") : [],
+        "Status": item.Approved === 1 ? "Active" : "Inactive",
+        "photo_url": item.Ledimg
+          ? `${process.env.REACT_APP_API_URL || "http://localhost:63554"}${item.Ledimg}`
+          : "",
+        "Middle Name": item.Middle_name || "",
+        "Nationality": item.Nationality || "Indian",
+        "Category": item.Category || "",
+        "No. of Children": item.No_of_children || "",
+        "Passport Expiry": formatDateOnly(item.Passport_expiry),
+        "Specialization": item.Specialization || "",
+        "Alternate Mobile": item.Alt_mobile || "",
+        "Work Email": item.Work_email || "",
+        "Phone Extension": item.Phone_ext || "",
+        "C_Address Line 2": item.C_Address2 || "",
+        "C_Country": item.C_Country || "",
+        "P_Address Line 2": item.P_Address2 || "",
+        "P_Country": item.P_Country || "",
+        "Cost Centre": item.Cost_centre || "",
+        "Work Shift": item.Work_shift || "",
+        "Work Location Type": item.Work_loc_type || "",
+        "Employee Category": item.Emp_category || "",
+        "Probation Period": item.Probation_period || "",
+        "Notice Period": item.Notice_period || "",
+        "Previous Company": item.Prev_company || "",
+        "Last Designation": item.Last_desig || "",
+        "Last CTC": item.Last_ctc || "",
+        "Reason for Leaving": item.Reason_leaving || "",
+        "PF Account": item.Pf_account_prev || "",
+        "Account Type": item.Account_type || "",
+        "Holder Name": item.Holder_name || "",
+        "MICR Code": item.Micr_code || "",
+        "CTC": item.Ctc || "",
+        "HRA": item.Hra || "",
+        "Special Allowance": item.Special_allow || "",
+        "Salary Effective Date": formatDateOnly(item.Salary_eff_date),
+        "UAN": item.Uan || "",
+        "PT State": item.Pt_state || "",
+        "PF Applicable": item.Pf_applicable || "",
+        "ESI Applicable": item.Esi_applicable || "",
+        "Gratuity Eligible": item.Gratuity_eligible || "",
+        "TDS Category": item.Tds_category || "",
+        "Previous Experience": item.Prev_exp || "",
+        "Total Experience": (() => {
+          if (!item.Doj) return "";
+          const join = new Date(item.Doj);
+          if (isNaN(join)) return "";
+          const now = new Date();
+          const years = now.getFullYear() - join.getFullYear();
+          const months = now.getMonth() - join.getMonth();
+          const totalMonths = years * 12 + months;
+          const y = Math.floor(totalMonths / 12);
+          const m = totalMonths % 12;
+          return `${y}y ${m}m`;
+        })(),
+        "Blood Group": item.Blood || "",
+        "Phone (Residence)": item.Phone_residence || "",
 
-        // ✅ TABLE DISPLAY
+        // ----------------------------------------------------
+        // 🔥 MAGIC: TABLE LIST DISPLAY FIELDS
+        // ----------------------------------------------------
         employee_name: item.Led_name || "",
         mobile: item.Mobile || "",
         email: item.Email || "",
-        department: item.Op_id3 || "",
-        designation: item.Op_id5 || "",
+        // 👉 Convert the ID to the actual Name using the helper function
+        department: getGroupName(deptList, item.Op_id3),
+        designation: getGroupName(desgList, item.Op_id5),
         joining_date: item.Doj || "",
         status: item.Approved === 1 ? "Active" : "Inactive",
       }));
-      setList(mappedData);
 
+      setList(mappedData);
+      return mappedData; 
     } catch (err) {
       alertError("Error", "Failed to load employees");
     } finally {
@@ -266,98 +494,139 @@ const EmployeeMaster = ({ tab }) => {
     loadEmployees();
   }, [loadEmployees]);
 
-  // ✅ SYNC CURRENT RECORD
+
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
-      setFormData(list[currentIndex]);
+      // Sirf tab trigger karo jab user manually navigate kare
+      const current = list[currentIndex];
+      if (current) {
+        setFormData(current);
+      }
     }
-  }, [currentIndex, list, showForm, mode, setFormData]);
+  }, [currentIndex]);
 
-  // ✅ ROW SELECT
   const handleRowSelect = (row) => {
-    const index = list.findIndex(
-      (i) => i.employee_id === row.employee_id
-    );
-    if (index !== -1) {
-      setCurrentIndex(index);
+  const index = list.findIndex((i) => i.employee_id === row.employee_id);
+  if (index !== -1) {
+    setCurrentIndex(index);
+    const freshRow = { ...list[index] };
+    // Photo URL mein cache bust add karo
+    if (freshRow.photo_url) {
+      freshRow.photo_url = `${freshRow.photo_url}?t=${Date.now()}`;
     }
-    handleView(row);
-    setShowForm(true); // ✅ IMPORTANT
-  };
+    handleView(freshRow);
+    setFormData(freshRow);
+  }
+  setShowForm(true);
+};
 
 
-  // EmployeeMaster.jsx - handleSave
-  const handleSave = async () => {
-    if (!formData["First Name"]) {
-      alertError("Validation", "First Name required");
+  // ✅ FIXED SAVE LOGIC: AUTOMATIC TRANSITION TO VIEW MODE
+const handleSave = async () => {
+  if (!formData["First Name"]) {
+    alertError("Validation", "First Name required");
+    return;
+  }
+
+  const leaveTypeIds = Array.isArray(formData["Leave allow"]) ? formData["Leave allow"] : [];
+
+  // 1. Perform core save
+  await performSave("employee_id");
+
+  try {
+    const latestRes = await getActledList();
+    const allEmployees = latestRes || [];
+
+    // Find the ID we just processed
+    let savedEmployeeId = formData.employee_id;
+    if (!savedEmployeeId) {
+      const maxId = Math.max(...allEmployees.map(e => e.Actled_id || 0));
+      savedEmployeeId = maxId > 0 ? maxId : null;
+    }
+
+    // 2. Save Leave Balances if applicable
+    if (leaveTypeIds.length > 0 && savedEmployeeId) {
+      await createLeaveBalance({
+        employee_id: savedEmployeeId,
+        leave_type_ids: leaveTypeIds,
+        financial_year: new Date().getFullYear(),
+      });
+    }
+
+    // 3. Refresh list
+    const updatedList = await loadEmployees();
+
+    if (savedEmployeeId && updatedList.length > 0) {
+      const matchIdx = updatedList.findIndex(e => e.employee_id === savedEmployeeId);
+      const safeIdx = matchIdx !== -1 ? matchIdx : 0;
+      setCurrentIndex(safeIdx);
+
+      // 4. Photo upload karo — return value lo
+      let photoUrl = null;
+      if (formRef.current?.hasPendingPhoto?.()) {
+        photoUrl = await formRef.current.uploadPendingPhoto(savedEmployeeId);
+      }
+
+      // 5. Photo upload ke baad fresh list lo
+      const freshList = await loadEmployees();
+      const freshRecord = freshList?.find(e => e.employee_id === savedEmployeeId);
+      const recordToShow = freshRecord || updatedList[safeIdx];
+
+      // 6. Agar photo abhi upload hui to URL inject karo
+      if (photoUrl && recordToShow) {
+        recordToShow.photo_url = photoUrl;
+      }
+
+      handleView(recordToShow);
+      setFormData(recordToShow);
+      showToast({ icon: "success", title: "Saved Successfully" });
       return;
     }
+  } catch (err) {
+    console.error("Post-save pipeline breakdown:", err);
+  }
 
-    const leaveTypeIds = Array.isArray(formData["Leave allow"])
-      ? formData["Leave allow"]
-      : [];
+  // Fallback
+  showToast({ icon: "success", title: "Saved Successfully" });
+  loadEmployees();
+  setShowForm(false);
+};
+const handleDelete = async (row) => {
+  const confirm = await confirmDelete({
+    title: `Delete "${row.employee_name}"?`,
+  });
 
-    // ✅ performSave alag se call — response ignore karo
-    await performSave("employee_id");
+  if (!confirm) return;
 
-    // ✅ Latest Actled_id directly backend se fetch karo
-    try {
-      const latestRes = await getActledList();
-      const allEmployees = latestRes || [];
+  try {
+    const res = await deleteEmployee(row.employee_id);
 
-      // Sabse bada Actled_id = abhi insert hua
-      const maxId = Math.max(...allEmployees.map(e => e.Actled_id || 0));
-      const newEmployeeId = maxId > 0 ? maxId : null;
+    if (res?.data?.success) {
+      await loadEmployees();
 
-      console.log("NEW EMPLOYEE ID =>", newEmployeeId);
+      showToast({
+        icon: "success",
+        title: "Deleted Successfully",
+      });
 
-      if (leaveTypeIds.length > 0 && newEmployeeId) {
-        await createLeaveBalance({
-          employee_id: newEmployeeId,
-          leave_type_ids: leaveTypeIds,
-          financial_year: new Date().getFullYear(),
-        });
-        console.log("✅ Leave Balance Saved!");
-      }
-    } catch (err) {
-      console.error("Balance save failed:", err);
+      setShowForm(false);
     }
+  } catch (err) {
+  showToast({
+    icon: "error",
+    title:
+      err?.response?.data?.message ||
+      "Employee cannot be deleted.",
+  });
+}
+};
 
-    showToast({ icon: "success", title: "Saved Successfully" });
-    loadEmployees();
-    setShowForm(false);
-  };
-
-  // ✅ DELETE
-  const handleDelete = async (row) => {
-    const confirm = await confirmDelete({
-      title: `Delete "${row.employee_name}"?`,
-    });
-
-    if (confirm) {
-      const res = await deleteEmployee(row.employee_id);
-
-      if (res?.success) {
-        showToast({ icon: "success", title: "Deleted" });
-        loadEmployees();
-        setShowForm(false);
-      }
-    }
-  };
-
-  // ✅ ERP SHORTCUTS
   useEffect(() => {
     setERPHandlers({
-      onNextRecord: () =>
-        setCurrentIndex((p) => Math.min(p + 1, list.length - 1)),
-
-      onPrevRecord: () =>
-        setCurrentIndex((p) => Math.max(p - 1, 0)),
-
+      onNextRecord: () => setCurrentIndex((p) => Math.min(p + 1, list.length - 1)),
+      onPrevRecord: () => setCurrentIndex((p) => Math.max(p - 1, 0)),
       onNew: () => rights?.add && handleAdd(),
-
       onSave: handleSave,
-
       onEsc: () => setShowForm(false),
     });
   }, [list, rights, handleAdd]);
@@ -366,6 +635,7 @@ const EmployeeMaster = ({ tab }) => {
     <div className="h-full w-full">
       {showForm ? (
         <EmployeeMasterForm
+          ref={formRef}
           formData={formData}
           setFormData={setFormData}
           onSave={handleSave}
@@ -384,38 +654,35 @@ const EmployeeMaster = ({ tab }) => {
           onTabChange={handleTabChange}
         />
       ) : (
-      <div className=" bg-slate-50 h-full">
-        <Table
-          title="Employee Master"
-          data={list}
-          columns={columns}
-          rowKey="employee_id"
-          loading={loading}
-
-          onAdd={rights?.add === 1 ? handleAdd : null}
-          onRowDoubleClick={handleRowSelect}
-          onDeleteMultiple={async (ids) => {
-            const confirmed = await confirmDelete({
-              title: `Delete ${ids.length} employee${ids.length > 1 ? "s" : ""}?`,
-              text: "This action cannot be undone.",
-            });
-
-            if (!confirmed) return;
-
-            try {
-              setLoading(true);
-              await Promise.all(ids.map(id => deleteEmployee(id)));
-
-              showToast({ icon: "success", title: "Deleted successfully" });
-            } catch (err) {
-              alertError("Delete Error", "Some employees could not be deleted");
-            } finally {
-              // List ko refresh karein
-              await loadEmployees();
-            }
-          }}
-        />
-           </div>
+        <div className="bg-slate-50 h-full">
+          <Table
+             activeTab="search" 
+             onTabChange={handleTabChange}
+            title="Employee Master"
+            data={list}
+            columns={columns}
+            rowKey="employee_id"
+            loading={loading}
+            onAdd={rights?.add === 1 ? handleAdd : null}
+            onRowDoubleClick={handleRowSelect}
+            onDeleteMultiple={async (ids) => {
+              const confirmed = await confirmDelete({
+                title: `Delete ${ids.length} employee${ids.length > 1 ? "s" : ""}?`,
+                text: "This action cannot be undone.",
+              });
+              if (!confirmed) return;
+              try {
+                setLoading(true);
+                await Promise.all(ids.map(id => deleteEmployee(id)));
+                showToast({ icon: "success", title: "Deleted successfully" });
+              } catch (err) {
+                alertError("Delete Error", "Some employees could not be deleted");
+              } finally {
+                await loadEmployees();
+              }
+            }}
+          />
+        </div>
       )}
     </div>
   );

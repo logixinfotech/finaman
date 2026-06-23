@@ -110,3 +110,16 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* Sabhi elements par apply karne ke liye universal selector (*) ka use */
+* {
+  /* Firefox ke liye */
+  scrollbar-width: none; 
+  
+  /* IE aur purane Edge ke liye */
+  -ms-overflow-style: none; 
+}
+
+/* Chrome, Safari, aur naye Edge browsers ke liye */
+*::-webkit-scrollbar {
+  display: none;
+}

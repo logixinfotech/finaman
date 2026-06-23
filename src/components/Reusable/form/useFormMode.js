@@ -115,7 +115,7 @@ const performSave = useCallback(async (idField, overrideData = null) => {
         setOriginalData(savedData);
         setMode("view");
         setCanPrint(true);
-        if (loadList) await loadList();
+        
         showToast({ icon: "success", title: "Saved Successfully" });
         return { success: true, data: savedData };
       }

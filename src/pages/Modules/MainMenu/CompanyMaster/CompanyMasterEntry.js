@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ERPFormBuilder from "../../../../components/Reusable/form/ERPFormBuilder";
-import { fieldGroups  , validateFullForm, widthConfig } from "./companyValidation";
+import { fieldGroups ,sidebarConfig , validateFullForm, widthConfig ,requiredFields,cleanAndSliceField,validateSingleField} from "./companyValidation";
 import { fetchCountries, fetchStates } from "../../../../utils/api"; 
 import { COMPANY_SETTINGS_CONFIG, COMPANY_SETTINGS_DEFAULTS } from './companySettingsConfig';
  
 const tabs = Object.keys(fieldGroups);  
-const requiredFields = ["company_name", "business_type", "email_address"];
+
 
 const CompanyMasterEntry = ({
   formData,
@@ -140,7 +140,7 @@ const handleKeyDown = useCallback((e) => {
         }
         tabs={tabs}
         fieldGroups={fieldGroups}
-       
+        sidebarConfig={sidebarConfig(formData)}
         twoColumn={true}
         customTabs={{}}
         formData={formData}
@@ -149,15 +149,17 @@ const handleKeyDown = useCallback((e) => {
         widthConfig={widthConfig}
         requiredFields={requiredFields}
         mode={mode}
-         headerActiveTab={headerActiveTab}
+        headerActiveTab={headerActiveTab}
         saving={saving}
         rights={rights}
         canPrint={canPrint}
+        cleanAndSliceField={cleanAndSliceField}
         onSave={onSave}
         onCancel={onCancel}
         onDelete={onDelete}
         onModify={onModify}
         onNewEntry={onNewEntry}
+        validateSingleField={validateSingleField}
         onPrint={onPrint}
         onEditCancel={onEditCancel}
         currentRecord={currentRecord}
@@ -166,10 +168,9 @@ const handleKeyDown = useCallback((e) => {
         showSettingsTab={showSettingsTab} 
         onTabChange={handleTabChange}
         onHeaderTabChange={onHeaderTabChange}
-           settingsConfig={COMPANY_SETTINGS_CONFIG}    // ← add
+        settingsConfig={COMPANY_SETTINGS_CONFIG}    // ← add
         settingsDefaults={COMPANY_SETTINGS_DEFAULTS} // ← add
         onSettingsSave={async (values) => { 
-          console.log("Company settings saved:", values);
         }}
       />
     </div>

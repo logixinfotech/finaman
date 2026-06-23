@@ -3,6 +3,7 @@ import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import Table from "../../../../components/Reusable/table/Table";
 import ApprovalWorkflowForm from "./Approvalworkflowform";
 import {
+  alertError,
   confirmDelete,
   showToast,
 } from "../../../../components/Reusable/alert";
@@ -112,45 +113,115 @@ const ApprovalWorkflow = ({ tab }) => {
   };
 
   // ── Row select ─────────────────────────────────────────────────────────
-  const handleRowSelect = (row) => {
-    const index = list.findIndex(item => item.workflow_id === row.workflow_id);
-    if (index !== -1) setCurrentIndex(index);
-    handleView(row);
-  };
+const handleRowSelect = (row) => {
+  const index = list.findIndex(item => item.workflow_id === row.workflow_id);
+  if (index !== -1) setCurrentIndex(index);
+  handleView(row);
+  setShowForm(true);  // ✅ add karo
+};
+
 
   // ── Save ───────────────────────────────────────────────────────────────
-  const handleSave = async (updatedData = formData) => {
-    if (!updatedData.applicable_to) {
-      showToast({ icon: "error", title: "Please select Applicable To" });
-      return;
-    }
-    if (!updatedData.approver_role) {
-      showToast({ icon: "error", title: "Please select Approver Role" });
-      return;
-    }
-    if (!updatedData.level_no) {
-      showToast({ icon: "error", title: "Please select Approval Level" });
-      return;
+const handleSave = async (updatedData = formData) => {
+  if (!updatedData.applicable_to) {
+    showToast({ icon: "error", title: "Please select Applicable To" });
+    return;
+  }
+  if (!updatedData.approver_role) {
+    showToast({ icon: "error", title: "Please select Approver Role" });
+    return;
+  }
+  if (!updatedData.level_no) {
+    showToast({ icon: "error", title: "Please select Approval Level" });
+    return;
+  }
+
+  const response = await performSave("workflow_id", updatedData);
+
+  if (response?.success) {
+    showToast({ icon: "success", title: "Workflow rule saved successfully" });
+    
+    const freshRes = await getApprovalWorkflow();
+    const freshList = freshRes?.data || [];
+    setList(freshList);  // ✅ list bhi update karo
+
+    // ✅ workflow_id — edit mode mein updatedData se, add mein last record
+    const savedId = updatedData.workflow_id;
+    
+    let freshRecord;
+    if (savedId) {
+      freshRecord = freshList.find(r => r.workflow_id === savedId);
+    } else {
+      // Add mode — last inserted record
+      freshRecord = freshList[freshList.length - 1];
     }
 
-    const response = await performSave("workflow_id", updatedData);
-
-    if (response?.success) {
-      showToast({ icon: "success", title: "Workflow rule saved successfully" });
-      await loadData();
+    if (freshRecord) {
+      handleView(freshRecord);
     }
-  };
+  }
+};
 
   // ── Delete ─────────────────────────────────────────────────────────────
-  const handleDelete = async (row) => {
+const handleDelete = async (row) => {
+  const confirmed = await confirmDelete({
+    title: `Delete workflow rule for "${row.approver_role}" — Level ${row.level_no}?`,
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await deleteApprovalWorkflow(row.workflow_id);
+    if (res?.success) {
+      showToast({ icon: "success", title: "Deleted" });
+      setShowForm(false);
+      loadData();
+    } else {
+      // ✅ Backend ka message dikhao
+      alertError("Cannot Delete", res?.message || "This workflow could not be deleted.");
+    }
+  } catch (err) {
+    alertError("Cannot Delete", err?.response?.data?.message || "This workflow is in use and cannot be deleted.");
+  }
+};
+
+ const handleDeleteMultiple = async (selected) => {
+    // Normalize: Table may pass an array of row objects OR an array of keys
+    const ids = (selected || []).map((item) =>
+      typeof item === "object" ? item.workflow_id : item
+    );
+
+    if (ids.length === 0) return;
+
     const confirmed = await confirmDelete({
-      title: `Delete workflow rule for "${row.approver_role}" — Level ${row.level_no}?`,
+      title: `Delete ${ids.length} Approval(s)?`,
     });
     if (!confirmed) return;
-    await deleteApprovalWorkflow(row.workflow_id);
-    showToast({ icon: "success", title: "Deleted" });
-    setShowForm(false);
-    loadData();
+
+    try {
+      const results = await Promise.all(ids.map((id) => deleteApprovalWorkflow(id)));
+      const failed = results.filter((r) => !r?.success).length;
+
+      if (failed === 0) {
+        showToast({ icon: "success", title: `${ids.length} deleted` });
+      } else { 
+          
+          
+      }
+      loadData();
+      setShowForm(false);
+    }  catch (err) {
+        alertError("Cannot Delete", err?.response?.data?.message || "This workflow is in use and cannot be deleted.");
+  
+  // Check if backend sent the foreign key error message
+  if (err?.message?.includes("REFERENCE") || err?.message?.includes("conflicted")) {
+    alertError(
+      "Cannot Delete", 
+      "Some workflows cannot be deleted because they are currently being used in active transactions."
+    );
+  } else {
+    alertError("Delete Error", "An unexpected error occurred during batch deletion.");
+  }
+}
   };
 
   // ── ERP Shortcuts ──────────────────────────────────────────────────────
@@ -189,8 +260,11 @@ const ApprovalWorkflow = ({ tab }) => {
       ) : (
         <div className="p-4 bg-slate-50 h-full">
           <Table
+           activeTab="search"
+          onTabChange={handleTabChange}
             title="Approval Workflow"
             data={list}
+            onDeleteMultiple={handleDeleteMultiple}
             columns={columns}
             rowKey="workflow_id"
             loading={loading}

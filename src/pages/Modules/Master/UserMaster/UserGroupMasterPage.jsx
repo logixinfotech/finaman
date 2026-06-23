@@ -1,3 +1,225 @@
+
+// import { useEffect, useState, useCallback } from "react";
+// import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
+// import Table from "../../../../components/Reusable/table/Table";
+// import UserGroupForm from "../UserMaster/UserGroupform";
+// import { fetchUserGroups, deleteUserGroup, createUserGroup, updateUserGroup } from "../../../../utils/api";
+// import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
+// import { setERPHandlers } from "../../../../utils/erpShortcuts";
+
+// const initialState = {
+//   group_id: "",
+//   group_name: "",
+//   remarks: "",
+// };
+
+// const columns = [
+//   { key: "group_id",   label: "ID"         },
+//   { key: "group_name", label: "Group Name" },
+//   { key: "remarks",    label: "Remarks"    },
+// ];
+
+// const UserGroupMasterPage = ({ tab }) => {
+//   const [list,         setList]         = useState([]);
+//   const [loading,      setLoading]      = useState(true);
+//   const [currentIndex, setCurrentIndex] = useState(0);
+
+//   const {
+//     mode,
+//     formData, setFormData,
+//     showForm, setShowForm,
+//     saving,
+//     handleEditCancel,
+//     handleView,
+//     handleAdd,
+//     handleModify,
+//     performSave,
+//     rights,
+//     activeTab, setActiveTab,
+//   } = useERPMode(
+//     initialState,
+//     async (data, isEdit) => {
+//       if (isEdit) return await updateUserGroup(data.group_id, data);
+//       return await createUserGroup(data);
+//     },
+//     // Pass no-op: handleSave owns the reload — prevents double fetch
+//     () => {},
+//     tab.appl_name
+//   );
+
+//   const handleTabChange = useCallback((targetTab) => {
+//     setActiveTab(targetTab);
+//     if (targetTab === "search") {
+//       setShowForm(false);
+//     } else if (targetTab === "entry") {
+//       if (list.length > 0) setShowForm(true);
+//     }
+//   }, [setActiveTab, setShowForm, list.length]);
+
+//   // Always returns the fresh array
+//   const loadGroups = useCallback(async () => {
+//     try {
+//       setLoading(true);
+//       const data = await fetchUserGroups("DEP");
+//       const arr  = Array.isArray(data) ? data : (data?.data ?? []);
+//       setList(arr);
+//       return arr;
+//     } catch (err) {
+//       alertError("Fetch Error", "Failed to load groups");
+//       return [];
+//     } finally {
+//       setLoading(false);
+//     }
+//   }, []);
+
+//   useEffect(() => { loadGroups(); }, [loadGroups]);
+
+//   // THE REMOVED useEffect([currentIndex, list, showForm, mode]) stays removed.
+//   // It caused the stale-data overwrite. Navigation and save both use
+//   // handleView() directly below.
+
+//   const handleRowSelect = useCallback((row) => {
+//     const index = list.findIndex(item => item.group_id === row.group_id);
+//     if (index !== -1) setCurrentIndex(index);
+//     handleView(row);
+//     setShowForm(true);
+//   }, [list, handleView, setShowForm]);
+
+// const handleSave = async (updatedData) => {
+//     console.log("🟢 1. Starting save. User input data:", updatedData);
+    
+//     const response = await performSave("group_id", updatedData);
+//     console.log("🟢 2. performSave finished. Response:", response);
+    
+//     if (response?.success) {
+//       // Find the ID. Add operations might not have an ID yet if the backend doesn't return it.
+//       const savedId = updatedData.group_id ?? response?.data?.group_id;
+//       console.log("🟢 3. Target Record ID to look for:", savedId);
+      
+//       // OPTIMISTIC UPDATE
+//       const optimisticData = { ...updatedData, group_id: savedId };
+//       console.log("🟢 4. Pushing Optimistic Data to View:", optimisticData);
+//       handleView(optimisticData); 
+
+//       // SERVER FETCH
+//       const freshList = await loadGroups(); 
+//       console.log(`🟢 5. loadGroups finished. Fetched ${freshList.length} records.`);
+//       setFormData(updatedData)
+//       handleView(updatedData)
+//       // SYNC
+//       const newIndex = freshList.findIndex(i => i.group_id === savedId);
+//       console.log("🟢 6. Found matching record at array index:", newIndex);
+
+//       if (newIndex !== -1) {
+//         setCurrentIndex(newIndex);
+//         handleView(freshList[newIndex]); 
+//         console.log("🟢 7. SUCCESS: Synced with exact server record.");
+//       } else {
+//         console.warn("🟠 WARNING: Could not find the exact ID in the fresh list. Falling back.");
+//         if (freshList.length > 0) {
+//           // If sorting changed (e.g., newest first), the last item might be the WRONG record.
+//           const fallbackIndex = freshList.length - 1; 
+//           setCurrentIndex(fallbackIndex);
+//           handleView(freshList[fallbackIndex]);
+//           console.log("🟢 7. Fallback: Showing record at index", fallbackIndex);
+//         }
+//       }
+//     } else {
+//       console.error("🔴 performSave failed or returned false success.", response);
+//     }
+//   };
+
+//   const handleDelete = useCallback(async (row) => {
+//     const confirmed = await confirmDelete({
+//       title: `Delete Group "${row.group_name}"?`,
+//     });
+//     if (!confirmed) return;
+
+//     const res = await deleteUserGroup(row.group_id);
+//     if (res?.success) {
+//       showToast({ icon: "success", title: "Deleted" });
+//       const freshList = await loadGroups();
+//       setShowForm(false);
+//       if (freshList.length > 0) {
+//         const nextIndex = Math.min(currentIndex, freshList.length - 1);
+//         setCurrentIndex(nextIndex);
+//       }
+//     }
+//   }, [currentIndex, loadGroups, setShowForm]);
+
+
+//   useEffect(() => {
+//     setERPHandlers({
+//       onNextRecord: () => {
+//         const next = Math.min(currentIndex + 1, list.length - 1);
+//         setCurrentIndex(next);
+//         if (list[next]) handleView(list[next]);
+//       },
+//       onPrevRecord: () => {
+//         const prev = Math.max(currentIndex - 1, 0);
+//         setCurrentIndex(prev);
+//         if (list[prev]) handleView(list[prev]);
+//       },
+//       onNew:  handleAdd,
+//       onSave: handleSave,
+//       onEsc:  () => setShowForm(false),
+//     });
+//   }, [list, currentIndex, handleSave, handleAdd, handleView, setShowForm]);
+
+//   return (
+//     <div>
+//       {showForm ? (
+//         <UserGroupForm
+//           formData={formData}
+//           setFormData={setFormData}
+//           onSave={handleSave}
+//           onCancel={() => setShowForm(false)}
+//           onDelete={handleDelete}
+//           mode={mode}
+//           saving={saving}
+//           onModify={handleModify}
+//           onNewEntry={handleAdd}
+//           currentRecord={currentIndex + 1}
+//           totalRecords={list.length}
+//           rights={rights}
+//           onEditCancel={handleEditCancel}
+//           activeTab={activeTab}
+//           showSettingsTab={true}
+//           onTabChange={handleTabChange}
+//         />
+//       ) : (
+//         <Table
+//           title="User Group Master"
+//           data={list}
+//           columns={columns}
+//           rowKey="group_id"
+//           loading={loading}
+//           onAdd={rights?.add === 1 ? handleAdd : null}
+//           onRowDoubleClick={handleRowSelect}
+//           onDeleteMultiple={async (ids) => {
+//             const confirmed = await confirmDelete({
+//               title: `Delete ${ids.length} record${ids.length > 1 ? "s" : ""}?`,
+//               text:  "This action cannot be undone.",
+//             });
+//             if (!confirmed) return;
+//             const results = await Promise.allSettled(
+//               ids.map(id => deleteUserGroup(id))
+//             );
+//             const failed = results.filter(r => r.status === "rejected").length;
+//             if (failed > 0) {
+//               alertError("Delete Error", `${failed} record(s) could not be deleted.`);
+//             } else {
+//               showToast({ icon: "success", title: "Deleted successfully" });
+//             }
+//             await loadGroups();
+//           }}
+//         />
+//       )}
+//     </div>
+//   );
+// };
+
+// export default UserGroupMasterPage;
 import { useEffect, useState, useCallback } from "react";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import Table from "../../../../components/Reusable/table/Table";
@@ -5,109 +227,154 @@ import UserGroupForm from "../UserMaster/UserGroupform";
 import { fetchUserGroups, deleteUserGroup, createUserGroup, updateUserGroup } from "../../../../utils/api";
 import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
-import ERPSettings from "../../../../components/Reusable/ERPSettings";
 
 const initialState = {
-  group_id: null,
+  group_id: null,  // ✅ null rakho "" nahi — findIndex mein match hoga
   group_name: "",
   remarks: "",
 };
+
 const columns = [
-  { key: "group_id", label: "ID" },
+  { key: "Sr",   label: "Sr"         },
   { key: "group_name", label: "Group Name" },
-  { key: "remarks", label: "Remarks" },
+  { key: "remarks",    label: "Remarks"    },
 ];
+
 const UserGroupMasterPage = ({ tab }) => {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [list,         setList]         = useState([]);
+  const [loading,      setLoading]      = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const {
     mode,
     formData, setFormData,
     showForm, setShowForm,
-    saving, handleEditCancel,
-    handleView, handleAdd, handleModify, performSave, rights,
-    isEditMode ,activeTab, setActiveTab
+    saving,
+    handleEditCancel,
+    handleView,
+    handleAdd,
+    handleModify,
+    performSave,
+    rights,
+    activeTab, setActiveTab,
   } = useERPMode(
     initialState,
     async (data, isEdit) => {
-      if (isEdit) {
-        return await updateUserGroup(data.group_id, data);
-      } else {
-        return await createUserGroup(data);
-      }
+      if (isEdit) return await updateUserGroup(data.group_id, data);
+      return await createUserGroup(data);
     },
-    () => loadGroups(), tab.appl_name
+    () => {},
+    tab.appl_name
   );
-  const handleTabChange = (targetTab) => {
-  setActiveTab(targetTab);
-  if (targetTab === "search") setShowForm(false);
-  if (targetTab === "entry")  setShowForm(true);
-  };
+  // लिस्ट में फ्रंटएंड पर ही Sr नंबर जोड़ना
+const listWithSr = list.map((item, index) => ({
+  ...item,
+  Sr: index + 1
+}));
+
+  const handleTabChange = useCallback((targetTab) => {
+    setActiveTab(targetTab);
+    if (targetTab === "search") setShowForm(false);
+    else if (targetTab === "entry" && list.length > 0) setShowForm(true);
+  }, [setActiveTab, setShowForm, list.length]);
+
+  // ✅ returns fresh array — handleSave uses it
   const loadGroups = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchUserGroups("DEP");
-      setList(Array.isArray(data) ? data : data?.data || []);
+      const arr = Array.isArray(data) ? data : (data?.data ?? []);
+      setList(arr);
+      return arr;
     } catch (err) {
       alertError("Fetch Error", "Failed to load groups");
+      return [];
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { loadGroups(); }, [loadGroups]);
+
+  // next/prev navigation
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
       setFormData(list[currentIndex]);
     }
-  }, [currentIndex, list, showForm, mode]);
+  }, [currentIndex, list, showForm, mode, setFormData]);
 
-  const handleRowSelect = (row) => {
+  const handleRowSelect = useCallback((row) => {
     const index = list.findIndex(item => item.group_id === row.group_id);
     if (index !== -1) setCurrentIndex(index);
     handleView(row);
-    setShowForm(true); 
-  };
+    setShowForm(true);
+  }, [list, handleView, setShowForm]);
 
-  const handleSave = async () => {
-    if (!formData.group_name) {
-      alertError("Validation", "Group Name is required");
-      return;
-    }
-    const response = await performSave("group_id");
+  // ✅ clean handleSave — sirf ek baar setFormData, no race condition
+  const handleSave = async (updatedData) => {
+    // group_id null ho sakta hai edit mein — formData se lo
+    const dataToSave = { ...updatedData, group_id: updatedData.group_id ?? formData.group_id };
+
+    const response = await performSave("group_id", dataToSave);
+
     if (response?.success) {
-      showToast({ icon: "success", title: "Saved Successfully" });
-      loadGroups();
-    }
-  };
+      const freshList = await loadGroups(); // server se fresh list
 
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({ title: `Delete Group "${row.group_name}"?` });
-    if (confirmed) {
-      const res = await deleteUserGroup(row.group_id);
-      if (res.success) {
-        showToast({ icon: "success", title: "Deleted" });
-        loadGroups();
-        setShowForm(false);
+      // pehle group_id se dhundho
+      let newIndex = freshList.findIndex(i => i.group_id === dataToSave.group_id);
+
+      // naya record — name se dhundho
+      if (newIndex === -1) {
+        newIndex = freshList.findIndex(i => i.group_name === dataToSave.group_name);
+      }
+
+      // abhi bhi nahi mila — pehla record
+      if (newIndex === -1 && freshList.length > 0) newIndex = 0;
+
+      if (newIndex !== -1) {
+        setCurrentIndex(newIndex);
+        // ✅ sirf ek baar — server ka bilkul fresh data
+        setFormData({ ...freshList[newIndex] });
       }
     }
   };
 
+  const handleDelete = useCallback(async (row) => {
+    const confirmed = await confirmDelete({ title: `Delete Group "${row.group_name}"?` });
+    if (!confirmed) return;
+
+    const res = await deleteUserGroup(row.group_id);
+    if (res?.success) {
+      showToast({ icon: "success", title: "Deleted" });
+      const freshList = await loadGroups();
+      setShowForm(false);
+      if (freshList.length > 0) {
+        const nextIndex = Math.min(currentIndex, freshList.length - 1);
+        setCurrentIndex(nextIndex);
+      }
+    }
+  }, [currentIndex, loadGroups, setShowForm]);
+
   useEffect(() => {
     setERPHandlers({
-      onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
-      onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
-      onNew: handleAdd,
-      onSave: handleSave,
-      onEsc: () => setShowForm(false),
+      onNextRecord: () => {
+        const next = Math.min(currentIndex + 1, list.length - 1);
+        setCurrentIndex(next);
+        if (list[next]) handleView(list[next]);
+      },
+      onPrevRecord: () => {
+        const prev = Math.max(currentIndex - 1, 0);
+        setCurrentIndex(prev);
+        if (list[prev]) handleView(list[prev]);
+      },
+      onNew:  handleAdd,
+      onSave: () => handleSave(formData),
+      onEsc:  () => setShowForm(false),
     });
-  }, [list]);
-
+  }, [list, currentIndex, handleAdd, formData, handleView, setShowForm]);
 
   return (
-    <div>
+    <div className="h-full">
       {showForm ? (
         <UserGroupForm
           formData={formData}
@@ -123,33 +390,39 @@ const UserGroupMasterPage = ({ tab }) => {
           totalRecords={list.length}
           rights={rights}
           onEditCancel={handleEditCancel}
-         activeTab={activeTab}
-          showSettingsTab={true} 
+          activeTab={activeTab}
+          showSettingsTab={true}
           onTabChange={handleTabChange}
-
         />
       ) : (
         <Table
           title="User Group Master"
-          data={list}
+          data={listWithSr}
+          activeTab="search" 
+             onTabChange={handleTabChange}
           columns={columns}
           rowKey="group_id"
           loading={loading}
-          onAdd={rights.add === 1 ? handleAdd : null} 
+          onAdd={rights?.add === 1 ? handleAdd : null}
           onRowDoubleClick={handleRowSelect}
-          onDeleteMultiple={async (ids) => {
+          onDeleteMultiple={async (selected) => {
+            const ids = (selected || []).map(item =>
+              typeof item === "object" ? item.group_id : item
+            );
+            if (ids.length === 0) return;
             const confirmed = await confirmDelete({
               title: `Delete ${ids.length} record${ids.length > 1 ? "s" : ""}?`,
-              text: "This action cannot be undone.",
             });
             if (!confirmed) return;
-            await Promise.all(ids.map(id => deleteUserGroup(id)));
-            showToast({
-              icon: "success",
-              title: "Deleted successfully"
-            });
-
-            loadGroups();
+            const results = await Promise.all(ids.map(id => deleteUserGroup(id)));
+            const failed = results.filter(r => !r?.success).length;
+            if (failed > 0) {
+              alertError("Delete Error", `${failed} record(s) could not be deleted.`);
+            } else {
+              showToast({ icon: "success", title: "Deleted successfully" });
+            }
+            await loadGroups();
+            setShowForm(false);
           }}
         />
       )}

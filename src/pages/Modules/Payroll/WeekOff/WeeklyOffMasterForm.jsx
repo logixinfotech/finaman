@@ -3,7 +3,7 @@ import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import ERPDateInput from "../../../../components/Reusable/input/Date";
-import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
+import { focusFirstInput, handleERPEnterNavigation ,handleERPBackspaceNavigation} from "../../../../utils/erpShortcuts";
 import { getActledList } from "../../../../utils/api";
 
 const WeeklyOffMasterForm = ({
@@ -28,6 +28,7 @@ const WeeklyOffMasterForm = ({
   const formRef = useRef(null);
   const [employees, setEmployees] = useState([]); // Full objects from API
   const [employeeNames, setEmployeeNames] = useState([]); // Strings for Autocomplete options
+  const saveBtnRef=useRef(null)
 
   const daysOfWeek = [
     { id: 0, name: "Sunday" },
@@ -89,7 +90,8 @@ const WeeklyOffMasterForm = ({
 
   const handleKeyDown = useCallback(
     (e) => {
-      handleERPEnterNavigation(e, formRef, isViewMode);
+      handleERPEnterNavigation(e, formRef, isViewMode,saveBtnRef);
+      handleERPBackspaceNavigation(e, formRef, isViewMode);
     },
     [isViewMode]
   );
@@ -132,8 +134,7 @@ const WeeklyOffMasterForm = ({
       ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
       : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`;
-
-  const handleValidateAndSave = useCallback(() => {
+const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
 
     let newErrors = {};
@@ -146,6 +147,29 @@ const WeeklyOffMasterForm = ({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+
+      // 🔥 AUTO-FOCUS LOGIC START
+      setTimeout(() => {
+        // Pata lagao konsa field fail hua hai (e.g., 'employee_id' ya 'day_of_week')
+        const firstErrorKey = Object.keys(newErrors)[0]; 
+
+        // Hamara ERPAutocomplete/ERPDateInput input tag render karta hai.
+        // Hum formRef ke andar us className ya property se input dhoondh sakte hain.
+        // Since custom components className pass karte hain, hum field name ke basis par input select kar rahe hain.
+        const container = formRef.current;
+        if (container) {
+          // Find input where className contains the field name, OR fallback to the first input with a red border
+          const errorInput = 
+            container.querySelector(`input[class*="${firstErrorKey}"]`) || 
+            container.querySelector(`input.border-red-500`); 
+            
+          if (errorInput) {
+            errorInput.focus();
+          }
+        }
+      }, 50);
+      // 🔥 AUTO-FOCUS LOGIC END
+
       return;
     }
 
@@ -245,6 +269,7 @@ const WeeklyOffMasterForm = ({
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
+        saveBtnRef={saveBtnRef}
         saving={saving}
         handleSubmit={handleValidateAndSave}
         onModify={onModify}

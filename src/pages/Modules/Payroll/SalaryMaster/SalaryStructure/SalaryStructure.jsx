@@ -13,7 +13,9 @@ import {
   fetchSalaryTemplates,
   fetchActiveIncomeHeads,
   fetchActiveDeductionHeads,
+  fetchSalaryStructureById
 } from "../../../../../utils/api";
+import { useGroupOptions } from "../../../../../Hooks/useUserGroupOption";
 
 const initialState = {
   employee_id:        "",
@@ -69,19 +71,47 @@ const SalaryStructure = ({ tab }) => {
   );
 
   // ── Load list ──────────────────────────────────────────────
-  const loadList = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchSalaryStructures();
-      const finalData = Array.isArray(data) ? data : data?.data || [];
-      setList(finalData);
-    } catch (err) {
-      alertError("Fetch Error", "Failed to load salary structures");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { options: groupOptions, loading: optionsLoading } = useGroupOptions(); 
+const formatGradeWithLabel = useCallback((gradeId) => {
+  const matchingGrade = groupOptions?.grade?.find(
+    g => String(g.value) === String(gradeId)
+  );
+  return matchingGrade ? matchingGrade.label : gradeId;
+}, [groupOptions?.grade]);
+const loadList = useCallback(async () => {
+  try {
+    setLoading(true);
+    const data = await fetchSalaryStructures();
+    
+    const rawTemplates = Array.isArray(data) ? data : data?.data || [];
+    
+    const finalData = rawTemplates.map(template => {
+      // Hook ki list se matching grade dhoondo
+      const matchingGrade = groupOptions.grade.find(
+        g => String(g.value) === String(template.grade)
+      );
 
+      return {
+        ...template, 
+        grade: matchingGrade ? matchingGrade.label :undefined
+      };
+    });
+
+    setList(finalData);
+    
+    if (finalData.length > 0) {
+      // Ab yahan direct Grade Name print hoga (jaise "Grade A"), ID nahi!
+
+      
+      setFormData(finalData[0]);
+      setCurrentIndex(0);
+    }
+  } catch (err) {
+    alertError("Fetch Error", "Failed to load salary templates");
+  } finally {
+    setLoading(false);
+  }
+}, [setFormData, groupOptions.grade]);
   // ── Load supporting data once ──────────────────────────────
   const loadSupportingData = useCallback(async () => {
     try {
@@ -116,12 +146,31 @@ const SalaryStructure = ({ tab }) => {
     if (t === "entry")  setShowForm(true);
   };
 
-  const handleRowSelect = (row) => {
-    const index = list.findIndex(i => i.salary_structure_id === row.salary_structure_id);
-    if (index !== -1) setCurrentIndex(index);
-    handleView(row);
-  };
+const handleRowSelect = async (row) => {
+  const index = list.findIndex(i => i.salary_structure_id === row.salary_structure_id);
+  if (index !== -1) setCurrentIndex(index);
 
+  try {
+    const res = await fetchSalaryStructureById(row.salary_structure_id);
+    handleView(res?.data || row);  // ← incomeLines + deductionLines included
+  } catch {
+    handleView(row);  // fallback
+  }
+};
+const handleSidebarViewPick = async (emp) => {
+  const existingStructure = list.find(
+    s => String(s.employee_id) === String(emp.Actled_id)
+  );
+  if (!existingStructure) return;
+  try {
+    const res = await fetchSalaryStructureById(existingStructure.salary_structure_id);
+    handleView(res?.data || existingStructure);
+    const index = list.findIndex(i => i.salary_structure_id === existingStructure.salary_structure_id);
+    if (index !== -1) setCurrentIndex(index);
+  } catch {
+    handleView(existingStructure);
+  }
+};
   const handleSave = async (updatedData) => {
     const response = await performSave("salary_structure_id", updatedData);
     if (response?.success) {
@@ -170,7 +219,7 @@ const SalaryStructure = ({ tab }) => {
   useEffect(() => {
     setERPHandlers({
       onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
-      onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
+      onPrevRecord: () => setCurrentIndex(p => Math. max(p - 1, 0)),
       onNew:  handleAdd,
       onSave: handleSave,
       onEsc:  () => setShowForm(false),
@@ -201,10 +250,13 @@ const SalaryStructure = ({ tab }) => {
           incomeHeads={incomeHeads}
           deductionHeads={deductionHeads}
           structuresList={list}
+           onSidebarViewPick={handleSidebarViewPick}
         />
       ) : (
         <div className="bg-slate-50 h-full">
           <Table
+          activeTab="search"
+          onTabChange={handleTabChange}
             title="Salary Structure"
             data={list}
             columns={columns}

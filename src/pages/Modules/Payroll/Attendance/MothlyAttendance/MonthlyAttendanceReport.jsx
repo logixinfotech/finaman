@@ -129,15 +129,15 @@ const EmployeeAttendanceDetail = ({ employee, employeeList, setSelectedEmployee,
 
 
   // REPLACE chartData
-const chartData = [
-  { name: "Present",     value: kpi.present_days    || 0, color: "#22c55e" },
-  { name: "Absent",      value: kpi.absent_days     || 0, color: "#ef4444" },
-  { name: "Leave",       value: kpi.leave_days      || 0, color: "#3b82f6" },
-  { name: "Week Off",    value: kpi.weekoff_days    || 0, color: "#a855f7" },
-  { name: "Weekoff OT",  value: kpi.weekoff_ot_days || 0, color: "#7c3aed" },
-  { name: "Holiday",     value: kpi.holiday_days    || 0, color: "#ec4899" },
-  { name: "Holiday OT",  value: kpi.holiday_ot_days || 0, color: "#f97316" },
-].filter(d => d.value > 0);
+  const chartData = [
+    { name: "Present", value: kpi.present_days || 0, color: "#22c55e" },
+    { name: "Absent", value: kpi.absent_days || 0, color: "#ef4444" },
+    { name: "Leave", value: kpi.leave_days || 0, color: "#3b82f6" },
+    { name: "Week Off", value: kpi.weekoff_days || 0, color: "#a855f7" },
+    { name: "Weekoff OT", value: kpi.weekoff_ot_days || 0, color: "#7c3aed" },
+    { name: "Holiday", value: kpi.holiday_days || 0, color: "#ec4899" },
+    { name: "Holiday OT", value: kpi.holiday_ot_days || 0, color: "#f97316" },
+  ].filter(d => d.value > 0);
 
 
 
@@ -353,8 +353,8 @@ const MonthlyAttendanceReport = () => {
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
-    month: 5,
-    year: 2026,
+    month: currentDate.getMonth() + 1, // 1-12
+    year: currentDate.getFullYear(),   // 2026
     employee_id: "",
     department_id: ""
   });
@@ -364,9 +364,25 @@ const MonthlyAttendanceReport = () => {
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
+
+    console.log("===============");
+    console.log("MONTH SENT =", filters.month);
+    console.log("YEAR SENT =", filters.year);
+    console.log("===============");
+
     try {
-      const res = await fetchMonthlyAttendanceSummary(filters.month, filters.year);
-      if (res.success) setTableData(res.data);
+      const res = await fetchMonthlyAttendanceSummary(
+        filters.month,
+        filters.year
+      );
+
+      console.log("API RESPONSE =", res);
+
+      if (res.success) {
+        console.log("TOTAL ROWS =", res.data?.length);
+        console.log("DATA =", res.data);
+        setTableData(res.data);
+      }
     } catch (e) {
       console.error("Summary fetch error:", e);
     } finally {
@@ -410,6 +426,7 @@ const MonthlyAttendanceReport = () => {
         title="Monthly Attendance Summary Report"
         data={filteredData} // --- UPDATED PROP: Now uses filteredData instead of dummyAttendanceData
         columns={columns}
+        isHidden={true}
         rowKey="employee_code"
         loading={loading}
         onRefresh={loadSummary}
@@ -450,8 +467,8 @@ const MonthlyAttendanceReport = () => {
             onApply={loadSummary}
             onClear={() => {
               setFilters({
-                month: 5,
-                year: 2026,
+                month: currentDate.getMonth() + 1, // 1-12
+                year: currentDate.getFullYear(),   // 2026
                 employee_id: "",
                 department_id: ""
               });

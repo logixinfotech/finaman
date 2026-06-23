@@ -8,6 +8,7 @@ import {
   fetchActiveIncomeHeads, fetchActiveDeductionHeads,
 } from "../../../../../utils/api"; 
 import { setERPHandlers } from "../../../../../utils/erpShortcuts";
+import { useGroupOptions } from "../../../../../Hooks/useUserGroupOption";
 
 const initialState = {
   grade:          "",
@@ -48,22 +49,60 @@ const SalaryTemplate = ({ tab }) => {
   );
 
   // ── Load template list ──────────────────────────────────────
-  const loadList = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchSalaryTemplates();
-      const finalData = Array.isArray(data) ? data : data?.data || [];
-      setList(finalData);
-      if (finalData.length > 0) {
-        setFormData(finalData[0]);
-        setCurrentIndex(0);
-      }
-    } catch (err) {
-      alertError("Fetch Error", "Failed to load salary templates");
-    } finally {
-      setLoading(false);
+  // const loadList = useCallback(async () => {
+  //   try {
+  //     setLoading(true);
+  //     const data = await fetchSalaryTemplates();
+     
+  //     const finalData = Array.isArray(data) ? data : data?.data || [];
+  //     setList(finalData);
+  //     console.log( finalData[0].grade)
+  //     if (finalData.length > 0) {
+  //       setFormData(finalData[0]);
+  //       setCurrentIndex(0);
+  //     }
+  //   } catch (err) {
+  //     alertError("Fetch Error", "Failed to load salary templates");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, [setFormData]);
+  const { options: groupOptions, loading: optionsLoading } = useGroupOptions();
+const loadList = useCallback(async () => {
+  try {
+    setLoading(true);
+    const data = await fetchSalaryTemplates();
+    
+    const rawTemplates = Array.isArray(data) ? data : data?.data || [];
+    
+    const finalData = rawTemplates.map(template => {
+      // Hook ki list se matching grade dhoondo
+      const matchingGrade = groupOptions.grade.find(
+        g => String(g.value) === String(template.grade)
+      );
+
+      return {
+        ...template,
+        // 👇 Yahan hum 'grade' key ko hi overwrite kar rahe hain ID ke jagah Name se
+        grade: matchingGrade ? matchingGrade.label :undefined
+      };
+    });
+
+    setList(finalData);
+    
+    if (finalData.length > 0) {
+      // Ab yahan direct Grade Name print hoga (jaise "Grade A"), ID nahi!
+
+      
+      setFormData(finalData[0]);
+      setCurrentIndex(0);
     }
-  }, [setFormData]);
+  } catch (err) {
+    alertError("Fetch Error", "Failed to load salary templates");
+  } finally {
+    setLoading(false);
+  }
+}, [setFormData, groupOptions.grade]);
 
   // ── Load income + deduction heads for the form checklist ───
   const loadHeads = useCallback(async () => {
@@ -188,6 +227,8 @@ const SalaryTemplate = ({ tab }) => {
       ) : (
         <div className=" bg-slate-50 h-full">
           <Table
+           activeTab="search"
+          onTabChange={handleTabChange}
             title="Salary Template Master"
             data={list}
             columns={columns}

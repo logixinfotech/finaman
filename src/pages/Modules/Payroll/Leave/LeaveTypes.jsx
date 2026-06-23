@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import Table from "../../../../components/Reusable/table/Table";
 import LeaveTypeForm from "./LeaveTypeForm";
-import { confirmDelete, showToast } from "../../../../components/Reusable/alert";
+import { alertError, confirmDelete, showToast } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 import { getLeaveTypes, createLeaveType, updateLeaveType, deleteLeaveType } from "../../../../utils/api";
 
@@ -94,6 +94,30 @@ const LeaveTypes = ({ tab }) => {
     loadData();
   };
 
+   const handleDeleteMultiple = async (selected) => {
+      const ids = (selected || []).map((item) =>
+        typeof item === "object" ? item.leave_name : item
+      );
+      if (ids.length === 0) return;
+  
+      const confirmed = await confirmDelete({ title: `Delete ${ids.length} record(s)?` });
+      if (!confirmed) return;
+  
+      try {
+        const results = await Promise.all(ids.map((id) => deleteLeaveType(id)));
+        const failed = results.filter((r) => !r?.success).length;
+        if (failed === 0) {
+          showToast({ icon: "success", title: `${ids.length} deleted` });
+        } else {
+          showToast({ icon: "warning", title: `${ids.length - failed} deleted, ${failed} failed` });
+        }
+        loadData();
+        setShowForm(false);
+      } catch (err) {
+        alertError("Delete Error", "Failed to delete some leave records");
+      }
+    };
+  
   useEffect(() => {
     setERPHandlers({
       onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
@@ -128,7 +152,11 @@ const LeaveTypes = ({ tab }) => {
       ) : (
         <div className="p-4 bg-slate-50 h-full">
           <Table
+          activeTab="search"
+          onTabChange={handleTabChange}
+          
             title="Leave Type List"
+            onDeleteMultiple={handleDeleteMultiple}
             data={list}
             columns={columns}
             rowKey="leave_type_id"

@@ -166,6 +166,8 @@ const handleDeleteMultiple = async (selected) => {
       ) : (
         <div className=" bg-slate-50 h-full">
           <Table
+           activeTab={"search"}
+                    onTabChange={handleTabChange}
             title="Shift Master List"
             data={list}
             columns={columns}

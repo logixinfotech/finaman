@@ -40,12 +40,13 @@ export const validateSingleField = (fieldName, value) => {
   
   else if (nameStr.includes("aadhaar") || nameStr.includes("adhar")) {
     if (!/^\d{12}$/.test(valStr)) {
+      
       return "Aadhaar must be exactly 12 digits";
     }
   }
 
  
-  else if (nameStr.includes("mobile") || nameStr.includes("phone")) {
+  else if (nameStr.includes("mobile") || nameStr.includes("alternate no")) {
     if (!/^[6-9]\d{9}$/.test(valStr)) {
       return "Enter valid 10-digit mobile number (starts with 6-9)";
     }
@@ -73,7 +74,7 @@ export const validateSingleField = (fieldName, value) => {
   }
 
 
-  else if (nameStr.includes("pan no") || nameStr === "pan card") {
+  else if (nameStr.includes("pan ") || nameStr === "pan card") {
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(valStr)) {
       return "Invalid PAN format (e.g., ABCDE1234F)";
     }
@@ -86,15 +87,26 @@ export const validateSingleField = (fieldName, value) => {
     }
   }
 
-  else if (nameStr.includes("bank account") || nameStr.includes("account no")) {
+  else if (nameStr.includes("bank account") || nameStr.includes("account number")) {
     if (!/^\d{9,18}$/.test(valStr)) {
       return "Account number must be between 9 and 18 digits";
     }
   }
-  
+  else if (nameStr.includes("driving licence")) {
+  // Regex allows standard 15 characters, handling optional space or hyphen after the RTO code
+  if (!/^([A-Z]{2}\d{2}[ -]?\d{4}\d{7})$/i.test(valStr)) {
+    return "Invalid Driving Licence format. DL1420110012345 ";
+  }
+}
+else if (nameStr.includes("ctc") || nameStr.includes("last ctc") || nameStr.includes("Last CTC")|| nameStr.includes("number")||nameStr.includes("uan")) {
+  // Regex checks if the string contains only numbers and is not empty
+  if (!/^\d+$/.test(valStr)) {
+    return "This field must contain numbers only";
+  }
+}
 
   else if (
-    nameStr.includes("salary") || 
+    nameStr==="ctc"||
     nameStr === "hra" || 
     nameStr === "da" || 
     nameStr === "pf" || 

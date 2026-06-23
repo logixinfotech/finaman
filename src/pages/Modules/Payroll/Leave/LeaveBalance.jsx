@@ -50,6 +50,7 @@ const loadData = useCallback(async () => {
   return (
     <div className="p-4 bg-slate-50 h-full">
       <Table
+      isHidden={true}
         title="Leave Balance"
         data={list}
         columns={columns}

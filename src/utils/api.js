@@ -131,14 +131,12 @@ export const updateUserAuth = (id) =>
   handleApi(() => api.delete(`//api/user/permissions/${id}`));
 
 //------------------------------------Holiday Master --------------------------------------------------------
-
-export const fetchHolidays = async () => {
+export const fetchHolidays = async (search = "", pageSize = 20) => {
   try {
-    const res = await api.get("/api/holiday");
+    const res = await api.get(`/api/holiday?pageSize=${pageSize}&search=${search}`);
     const rawData = res.data.success ? res.data.data : [];
-
     return rawData.map((item) => ({
-      id: item.H_id,          // Database H_id -> Frontend id
+      id: item.H_id,
       date: item.H_date ? item.H_date.split("T")[0] : "",
       purpose: item.Purpose,
       remarks: item.Remarks,
@@ -149,6 +147,7 @@ export const fetchHolidays = async () => {
     return [];
   }
 };
+ 
 
 export const createHoliday = (data) =>
   handleApi(() => api.post("/api/holiday", data));
@@ -201,7 +200,7 @@ export const getCompanyList = (params) =>
       params: {
         page: params.page,
         pageSize: params.pageSize,
-        ...params.filters // Spreads company_name, city, etc. directly into params
+        ...params.filters 
       }
     })
   );
@@ -238,9 +237,7 @@ export const updateCompany = async (companyId, companyData) => {
 
     const response = await api.put(
       `/api/companymaster/${companyId}`,
-      companyData,
-
-    );
+      companyData,   );
 
     return response.data;
 
@@ -392,6 +389,31 @@ export const deleteEmployee = (id) => {
   return api.delete(`/api/employee/actled/${id}`);
 };
 
+// ── Employee Documents ───────────────────────────────────────
+export const getEmployeeDocuments = (empId) =>
+  handleApi(() => api.get(`/api/employee/actled/${empId}/documents`));
+
+export const uploadEmployeeDocument = (empId, formData) =>
+  handleApi(() => api.post(`/api/employee/actled/${empId}/documents`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  }));
+
+export const deleteEmployeeDocument = (empId, docId) =>
+  handleApi(() => api.delete(`/api/employee/actled/${empId}/documents/${docId}`));
+
+export const viewEmployeeDocument = (empId, docId) => {
+  const token = sessionStorage.getItem("token");
+  return `${config.apiUrl}/api/employee/actled/${empId}/documents/${docId}/view?token=${token}`;
+};
+
+export const uploadEmployeePhoto = (empId, formData) =>
+  handleApi(() => api.post(`/api/employee/actled/${empId}/photo`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  }));
+
+export const getEmployeePhotoUrl = (empId) =>
+  `${api.defaults.baseURL}/api/employee/actled/${empId}/photo`;
+
 // ──────────────────────────────────────────────────HIFT MASTER ENDPOINTS ─────────────────────────────────── 
 
  export const fetchShifts = () =>
@@ -488,7 +510,7 @@ export const getLeaveBalance = () =>
 export const createLeaveBalance = (data) =>
   handleApi(() => api.post("/api/leavetypes/balance", data));
 
-// ───────────────────────────────────────── EAVE Request ──────────────────────────────────────────────────
+// ───────────────────────────────────────── LEAVE Request ──────────────────────────────────────────────────
 
 export const getLeaveRequests     = ()         =>
   handleApi(() => api.get("/api/leaverequest"));
@@ -501,6 +523,15 @@ export const updateLeaveRequest = (id, data) =>
 
 export const deleteLeaveRequest   = (id)       =>
   handleApi(() => api.delete(`/api/leaverequest/${id}`));
+
+export const getApprovedLeaves = ({ date, employee_id, month, year }) => {
+  const params = new URLSearchParams();
+  if (date)        params.append("date", date);
+  if (employee_id) params.append("employee_id", employee_id);
+  if (month)       params.append("month", month);
+  if (year)        params.append("year", year);
+  return handleApi(() => api.get(`/api/leaverequest/approved?${params.toString()}`));
+};
 
 // ──────────────────────────────────────── INCOME HEADS ──────────────────────────────────────────────────────────
 
@@ -795,6 +826,10 @@ export const updateSalaryStructure = (id, data) =>
 
 export const deleteSalaryStructure = (id) =>
   api.delete(`/api/salary-master/salary-structures/${id}`).then(r => r.data);
+export const fetchSalaryStructureById = async (id) => {
+  const res = await api.get(`/api/salary-master/salary-structures/${id}`);
+  return res.data;
+};
 // ─────────────────────────────────── Salary Transactions ───────────────────────────────────
  
 export const fetchSalaryTransactions = (params = "") =>
@@ -811,9 +846,103 @@ export const updateSalaryTransaction = (id, data) =>
  
 export const deleteSalaryTransaction = (id) =>
   handleApi(() => api.delete(`/api/salary-master/salary-transactions/${id}`));
- 
-// Payroll run ke time use karo
+
 export const fetchPayrollSummary = (emp_id, month_year) =>
   handleApi(() =>
     api.get(`/api/salary-master/salary-transactions/payroll-summary?emp_id=${emp_id}&month_year=${month_year}`)
   );
+// ─── Work Diary API functions ─────────────────────────────────────
+// Replace the existing work diary section in your api.js with this
+
+export const fetchWorkDiaries = (params = "") =>
+  handleApi(() => api.get(`/api/work-diary${params ? `?${params}` : ""}`));
+
+export const createWorkDiary = (data) =>
+  handleApi(() => api.post("/api/work-diary", data));
+
+export const updateWorkDiary = (id, data) =>
+  handleApi(() => api.put(`/api/work-diary/${id}`, data));
+
+export const deleteWorkDiary = (id) =>
+  handleApi(() => api.delete(`/api/work-diary/${id}`));
+
+export const deleteTaskLine = (line_id) =>
+  handleApi(() => api.delete(`/api/work-diary/lines/${line_id}`));
+export const fetchYesterdayTasks = (empId, date) =>
+  handleApi(() => api.get(`/api/work-diary/yesterday/${empId}/${date}`));
+
+export const fetchPendingDiaries = () =>
+  handleApi(() => api.get("/api/work-diary/review"));
+export const fetchWorkDiaryCategories = () =>
+handleApi(() => api.get('/api/work-diary/categories'));
+export const approveDiary = (id, data) =>
+  handleApi(() => api.post(`/api/work-diary/${id}/approve`, data));
+
+export const rejectDiary = (id, data) =>
+  handleApi(() => api.post(`/api/work-diary/${id}/reject`, data));
+
+export const fetchMyTasks = () =>
+  handleApi(() => api.get("/api/work-diary/my-tasks"));
+
+export const fetchAssignedByMeTasks = () =>
+  handleApi(() => api.get("/api/work-diary/assigned-by-me"));
+
+export const fetchWorkDiaryReport = (params = {}) => {
+  const q = new URLSearchParams(params).toString();
+  return handleApi(() =>
+    api.get(`/api/work-diary/report${q ? `?${q}` : ""}`)
+  );
+};
+// ─── Subtasks ─────────────────────────────────────────────────────
+export const fetchSubtasks = (line_id) =>
+  handleApi(() => api.get(`/api/work-diary/subtasks/${line_id}`));
+
+export const addSubtask = (data) =>
+  // data: { line_id, diary_id, subtask_text, sort_order? }
+  handleApi(() => api.post("/api/work-diary/subtasks", data));
+
+export const toggleSubtask = (subtask_id, is_done) =>
+  handleApi(() => api.patch(`/api/work-diary/subtasks/${subtask_id}`, { is_done }));
+
+export const deleteSubtask = (subtask_id) =>
+  handleApi(() => api.delete(`/api/work-diary/subtasks/${subtask_id}`));
+export const fetchWorkDiaryById = (id) =>
+  handleApi(() => api.get(`/api/work-diary/${id}`));
+// api.js mein change karo:
+export const fetchWorkDiariesByDept = (dept) =>
+  handleApi(() => api.get(`/api/work-diary?all=1&include_lines=1&department=${encodeURIComponent(dept)}`));
+//                                          ↑ ye add karo
+// ─── Comments ─────────────────────────────────────────────────────
+export const fetchComments = (line_id) =>
+  handleApi(() => api.get(`/api/work-diary/comments/${line_id}`));
+
+export const addComment = (data) =>
+  handleApi(() => api.post("/api/work-diary/comments", data));
+
+ export const updateTaskLineStatus = (line_id, status) =>
+  handleApi(() => api.patch(`/api/work-diary/lines/${line_id}/status`, { status }));
+ 
+ // ── Payroll Monthly ───────────────────────────────────────────
+export const getPayrollMonthly = (month_year) =>
+  handleApi(() => api.get(`/api/payroll-monthly${month_year ? `?month_year=${month_year}` : ""}`));
+
+export const getPayslipData = (payrollId) =>
+  handleApi(() => api.get(`/api/payroll-monthly/${payrollId}/payslip`));
+
+// export const getPayrollById = (id) =>
+//   handleApi(() => api.get(`/api/payroll-monthly/${id}`));
+
+export const calculatePayroll = (data) =>
+  handleApi(() => api.post("/api/payroll-monthly/calculate", data));
+ 
+export const approvePayroll = (data) =>
+  handleApi(() => api.post("/api/payroll-monthly/approve", data));
+
+// export const updatePayrollStatus = (id, data) =>
+//   handleApi(() => api.put(`/api/payroll-monthly/${id}/status`, data));
+
+export const bulkUpdatePayrollStatus = (data) =>
+  handleApi(() => api.put("/api/payroll-monthly/bulk/status", data));
+
+// export const deletePayroll = (id) =>
+//   handleApi(() => api.delete(`/api/payroll-monthly/${id}`));

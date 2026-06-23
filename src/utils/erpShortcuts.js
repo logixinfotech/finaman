@@ -19,6 +19,7 @@ export const setERPHandlers = (handlers) => {
   currentHandlers = handlers || {};
 };
 
+
 const isInputField = (el) => {
   if (!el) return false;
   const tag = el.tagName?.toLowerCase();
@@ -226,7 +227,8 @@ export const focusFirstInput = (formRef) => {
 export const handleERPEnterNavigation = (
   e,
   formRef,
-  isViewMode
+  isViewMode,
+  saveBtnRef
 ) => {
   if (isViewMode || e.key !== "Enter") return;
 
@@ -238,10 +240,10 @@ export const handleERPEnterNavigation = (
 
     e.preventDefault();
 
-    focusSaveOrUpdateButton();
+    focusSaveOrUpdateButton(saveBtnRef);
     return;
   }
-
+   focusSaveOrUpdateButton(saveBtnRef);
   e.preventDefault();
 
   if (!formRef?.current) return;
@@ -271,29 +273,91 @@ export const handleERPEnterNavigation = (
     focusSaveOrUpdateButton();
   }
 }; 
-// NAYA
-export const focusSaveOrUpdateButton = () => {
-  // 1st: data-erp-role attribute se dhundo (most reliable)
-  const byRole = document.querySelector(
-    'button[data-erp-role="save"]:not([disabled]), button[data-erp-role="update"]:not([disabled])'
-  );
-  if (byRole) { byRole.focus(); return; }
+// ── Add these two functions to your existing erpShortcuts.js ────────────────
 
-  // 2nd: id se fallback
-  const byId = document.querySelector(
-    'button#save:not([disabled]), button#update:not([disabled])'
-  );
-  if (byId) { byId.focus(); return; }
+/**
+ * Error wali pehli field pe focus karo
+ * @param {React.RefObject} formRef - form container ref
+ * @param {object} newErrors        - { fieldKey: "Required", ... }
+ * @param {string[]} requiredFields - ordered array of field keys
+ * @param {object} fieldIndexMap    - { fieldKey: domInputIndex } override for custom components
+ */
+export const focusFirstError = (formRef, newErrors, requiredFields, fieldIndexMap = {}) => {
+  if (!formRef?.current) return;
+  requestAnimationFrame(() => {
+    const firstErrorKey = requiredFields.find(f => newErrors[f]);
+    if (!firstErrorKey) return;
 
-  // 3rd: sirf direct text nodes match karo (Kbd span ignore)
-  const byText = Array.from(document.querySelectorAll("button:not([disabled])")).find(b => {
-    const ownText = Array.from(b.childNodes)
-      .filter(n => n.nodeType === Node.TEXT_NODE)
-      .map(n => n.textContent.trim().toLowerCase())
-      .join(" ");
-    return ownText.includes("save") || ownText.includes("update");
+    const allInputs = Array.from(
+      formRef.current.querySelectorAll(
+        "input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
+      )
+    );
+
+    let el = null;
+
+    // Custom index override diya hai (e.g. ERPAutocomplete)
+    if (fieldIndexMap[firstErrorKey] !== undefined) {
+      el = allInputs[fieldIndexMap[firstErrorKey]];
+    }
+
+    // name attribute se dhundo
+    if (!el) {
+      el = formRef.current.querySelector(`[name="${firstErrorKey}"]`);
+    }
+
+    // fallback: pehla input
+    if (!el) el = allInputs[0];
+
+    if (el) el.focus();
   });
-  if (byText) byText.focus();
+};
+
+/**
+ * Shift+Backspace → previous field
+ * Plain Backspace on time input empty minute → jump to hour
+ * @param {KeyboardEvent} e
+ * @param {React.RefObject} formRef
+ * @param {boolean} isViewMode
+ */
+export const handleERPBackspaceNavigation = (e, formRef, isViewMode) => {
+  if (isViewMode) return;
+  if (!formRef?.current) return;
+
+  const elements = Array.from(
+    formRef.current.querySelectorAll(
+      "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [data-auto]"
+    )
+  ).filter(el => !el.disabled);
+
+  let index = elements.indexOf(e.target);
+  if (index === -1) {
+    index = elements.findIndex(
+      el => el.contains(e.target) || e.target.contains(el)
+    );
+  }
+
+  // Shift+Backspace → previous field
+  if (e.key === "Backspace" && e.shiftKey) {
+    e.preventDefault();
+    if (index > 0) elements[index - 1].focus();
+    return;
+  }
+
+  // Time input: plain Backspace on empty/zero minute → jump to hour
+  if (e.key === "Backspace" && !e.shiftKey && e.target.type === "time") {
+    const val    = e.target.value || "";
+    const pos    = e.target.selectionStart;
+    const minute = val.slice(3, 5);
+    if (pos >= 3 && (minute === "00" || minute === "" || minute === "--")) {
+      e.preventDefault();
+      e.target.setSelectionRange(0, 2);
+    }
+  }
+};
+// NAYA
+export const focusSaveOrUpdateButton = (saveBtnRef) => {
+   saveBtnRef?.current?.focus();
 };
 
 let isInitialized = false;

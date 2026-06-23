@@ -239,7 +239,7 @@
 // };
 
 // export default DeductionHeadForm;
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback ,useRef} from "react";
 import ERPHeader from "../../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../../components/Reusable/input/ERPAutocomplete";
@@ -265,7 +265,7 @@ const DeductionHeadForm = ({
   initialData = {},
 }) => {
   const [errors, setErrors] = useState({});
-
+  const saveBtnRef=useRef(null)
   const isViewMode = mode === "view";
   const isAddMode = mode === "add";
   const isEditMode = mode === "edit";
@@ -292,11 +292,27 @@ const DeductionHeadForm = ({
     }
   };
 
-  const getInputClass = (disabled, field) =>
-    `h-[35px] md:h-[30px] px-2 text-[15px] border rounded-md w-full ${
-      errors[field] ? "border-red-500" : "border-gray-300"
-    } ${disabled ? "bg-gray-100 cursor-not-allowed" : "bg-white focus:border-blue-500"}`;
+   const getInputClass = (disabled, field) => {
+  // 1. Base styles (jo hamesha rahengi)
+  const base = "h-[35px] md:h-[30px] px-2 text-[15px] border rounded-md outline-none transition-all w-full";
+  
+  // 2. State specific styles (error ya disabled)
+  const state = disabled 
+    ? "bg-gray-100 cursor-not-allowed border-gray-200" 
+    : "bg-white";
+    
+  // 3. Border color (Default vs Error)
+  const border = errors[field] 
+    ? "border-red-500" 
+    : "border-gray-300";
 
+  // 4. Focus style (Sirf us element par jise click kiya hai)
+  const focus = !disabled 
+    ? "focus:border-blue-50 focus:ring-1 focus:ring-[#1a56db]" 
+    : "";
+
+  return `${base} ${state} ${border} ${focus}`;
+};
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
     let newErrors = {};
@@ -346,13 +362,7 @@ const DeductionHeadForm = ({
       } 
       // Agar list ke ekdum end (Status Dropdown) pe khade ho, to seedha Save button pe jao
       else if (index === elements.length - 1) {
-        const buttons = Array.from(document.querySelectorAll("button"));
-        const saveBtn = buttons.find((btn) =>
-          btn.textContent.toLowerCase().includes("save") || btn.textContent.toLowerCase().includes("update")
-        );
-        if (saveBtn) {
-          saveBtn.focus();
-        } 
+        saveBtnRef?.current?.focus();
       }
     }
     
@@ -463,6 +473,7 @@ const DeductionHeadForm = ({
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
+        saveBtnRef={saveBtnRef}
         saving={saving}
         handleSubmit={handleValidateAndSave}
         onModify={onModify}

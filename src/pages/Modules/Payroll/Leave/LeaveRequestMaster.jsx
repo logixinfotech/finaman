@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import Table from "../../../../components/Reusable/table/Table";
 import LeaveRequestForm from "./LeaveRequestForm";
-import { confirmDelete, showToast } from "../../../../components/Reusable/alert";
+import { alertError, confirmDelete, showToast } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 import { getLeaveRequests, createLeaveRequest, updateLeaveRequest, deleteLeaveRequest,} from "../../../../utils/api";
 
@@ -113,27 +113,53 @@ const LeaveRequestMaster = ({ tab }) => {
     };
 
     // ── Save (new request) ────────────────────────────────────
-    const handleSave = async (updatedData = formData) => {
-        if (!updatedData.employee_id) {
-            showToast({ icon: "error", title: "Please select an employee" });
-            return;
-        }
-        if (!updatedData.leave_type_id) {
-            showToast({ icon: "error", title: "Please select leave type" });
-            return;
-        }
-        if (!updatedData.from_date || !updatedData.to_date) {
-            showToast({ icon: "error", title: "Please select from and to dates" });
-            return;
+ const handleSave = async (updatedData = formData) => {
+    if (!updatedData.employee_id) {
+        showToast({ icon: "error", title: "Please select an employee" });
+        return;
+    }
+    if (!updatedData.leave_type_id) {
+        showToast({ icon: "error", title: "Please select leave type" });
+        return;
+    }
+    if (!updatedData.from_date || !updatedData.to_date) {
+        showToast({ icon: "error", title: "Please select from and to dates" });
+        return;
+    }
+
+    const response = await performSave("request_id", updatedData);
+
+    if (response?.success) {
+        showToast({ icon: "success", title: "Leave Request Submitted!" });
+
+        // Fresh list lo
+        const res = await getLeaveRequests();
+        const freshList = res.data || [];
+        setList(freshList);
+
+        // Saved record dhoondo — request_id se (edit) ya latest entry se (add)
+        let savedId = updatedData.request_id;
+        if (!savedId && response.data?.request_id) {
+            savedId = response.data.request_id;
         }
 
-        const response = await performSave("request_id", updatedData);
+        let matchedRecord = savedId
+            ? freshList.find((r) => r.request_id === savedId)
+            : null;
 
-        if (response?.success) {
-            showToast({ icon: "success", title: "Leave Request Submitted!" });
-            await loadData();
+        // Fallback — add mode mein agar id nahi mili to sabse latest record uthao
+        if (!matchedRecord && freshList.length > 0) {
+            matchedRecord = freshList[freshList.length - 1];
         }
-    };
+
+        if (matchedRecord) {
+            const idx = freshList.findIndex((r) => r.request_id === matchedRecord.request_id);
+            setCurrentIndex(idx !== -1 ? idx : 0);
+            handleView(matchedRecord);
+            setFormData(matchedRecord);
+        }
+    }
+};
 
     const handleDelete = async (row) => {
         if (row.status !== "PENDING") {
@@ -152,6 +178,37 @@ const LeaveRequestMaster = ({ tab }) => {
             setShowForm(false);
         }
     };
+ const handleDeleteMultiple = async (selected) => {
+    // Normalize: Table may pass an array of row objects OR an array of keys
+    const ids = (selected || []).map((item) =>
+      typeof item === "object" ? item.employee_name : item
+    );
+
+    if (ids.length === 0) return;
+
+    const confirmed = await confirmDelete({
+      title: `Delete ${ids.length} leave(s)?`,
+    });
+    if (!confirmed) return;
+
+    try {
+      const results = await Promise.all(ids.map((id) => deleteLeaveRequest(id)));
+      const failed = results.filter((r) => !r?.success).length;
+
+      if (failed === 0) {
+        showToast({ icon: "success", title: `${ids.length} deleted` });
+      } else {
+        showToast({
+          icon: "warning",
+          title: `${ids.length - failed} deleted, ${failed} failed`,
+        });
+      }
+      loadData();
+      setShowForm(false);
+    } catch (err) {
+      alertError("Delete Error", "Failed to delete some leave request");
+    }
+  };
 
     // ── ERP keyboard shortcuts ────────────────────────────────
     useEffect(() => {
@@ -188,6 +245,9 @@ const LeaveRequestMaster = ({ tab }) => {
             ) : (
                 <div className="p-4 bg-slate-50 h-full">
                     <Table
+                    onDeleteMultiple={handleDeleteMultiple}
+                    activeTab="search"
+                    onTabChange={handleTabChange}
                         title="Leave Request"
                         data={list}
                         columns={columns}

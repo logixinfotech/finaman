@@ -3,6 +3,7 @@ import { useERPMode } from "../../../../../components/Reusable/form/useFormMode"
 import { confirmDelete, alertError, showToast } from "../../../../../components/Reusable/alert";
 import SalaryTransactionForm from "./SalaryTransactionForm";
 import { getActledList } from "../../../../../utils/api";
+import Table from "../../../../../components/Reusable/table/Table";
 import {
   fetchSalaryTransactions,
   createSalaryTransaction,
@@ -18,6 +19,15 @@ const initialState = {
   installment_no: "", total_installments: "",
   reference_id: "", remarks: "", approved_by: "", status: "Pending",
 };
+
+const columns = [
+  { key: "emp_name",        label: "Employee"    },
+  { key: "transaction_type", label: "Type"       },
+  { key: "amount",          label: "Amount"      },
+  { key: "status",          label: "Status"      },
+  { key: "effective_date",  label: "Effective"   },
+  { key: "month_year",      label: "Month"       },
+];
 
 const TYPE_SHORT = {
   INCREMENT: "Increment", BONUS: "Bonus",
@@ -37,9 +47,10 @@ const SalaryTransaction = ({ tab }) => {
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [filterTab, setFilterTab] = useState("All");
+ 
 
   const {
-    mode, formData, setFormData, saving,
+    mode, formData, setFormData, saving, showForm, setShowForm,  
     handleEditCancel, handleView, handleAdd, handleModify, performSave, rights,
   } = useERPMode(
     initialState,
@@ -91,6 +102,11 @@ const SalaryTransaction = ({ tab }) => {
 
   const handleRowSelect = (row, index) => { setCurrentIndex(index); handleView(row); };
 
+const handleTabChange = (targetTab) => {
+  if (targetTab === "search") setShowForm(false);
+  if (targetTab === "entry")  setShowForm(true);
+};
+
   const handleSave = async (updatedData) => {
     const response = await performSave("id", updatedData);
     if (response?.success) await loadList();
@@ -126,7 +142,9 @@ const SalaryTransaction = ({ tab }) => {
   return (
     <div style={{ display: "flex", height: "100%", width: "100%", overflow: "hidden", background: "#f0f2f7", fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
 
+
       {/* ── SIDEBAR ──────────────────────────────────────────────────────── */}
+       {showForm && (
       <div style={{ width: 200, minWidth: 200, display: "flex", flexDirection: "column", height: "100%", background: "#fff", borderRight: "1px solid #e8eaf0" }}>
 
         {/* Header */}
@@ -203,18 +221,41 @@ const SalaryTransaction = ({ tab }) => {
           })}
         </div>
       </div>
+  )}
+    
+{/* ── RIGHT PANEL ── */}
+<div style={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
+  {showForm ? (
+    <SalaryTransactionForm
+      formData={formData} setFormData={setFormData} mode={mode} saving={saving}
+      onSave={handleSave} onDelete={handleDelete}
+      onCancel={() => setShowForm(false)}
+      onModify={handleModify} onNewEntry={handleAdd} onEditCancel={handleEditCancel}
+      currentRecord={list.length > 0 ? currentIndex + 1 : 0}
+      totalRecords={list.length} rights={rights}
+      activeTab="entry" onTabChange={handleTabChange}
+    />
+  ) : (
+    // ← YAHAN TABLE LAGAO, message nahi
+    <div className="bg-slate-50 h-full">
+      <Table
+      activeTab="search"
+          onTabChange={handleTabChange}
+        title="Salary Transactions"
+        data={list}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        onAdd={rights?.add === 1 ? handleAdd : null}
+        onRowDoubleClick={(row) => {
+          const index = list.findIndex(i => i.id === row.id);
+          handleRowSelect(row, index);
+        }}
+      />
+    </div>
+  )}
+</div>
 
-      {/* ── RIGHT PANEL ──────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
-        <SalaryTransactionForm
-          formData={formData} setFormData={setFormData} mode={mode} saving={saving}
-          onSave={handleSave} onDelete={handleDelete} onCancel={handleEditCancel}
-          onModify={handleModify} onNewEntry={handleAdd} onEditCancel={handleEditCancel}
-          currentRecord={list.length > 0 ? currentIndex + 1 : 0}
-          totalRecords={list.length} rights={rights}
-          activeTab="entry" onTabChange={() => { }}
-        />
-      </div>
     </div>
   );
 };

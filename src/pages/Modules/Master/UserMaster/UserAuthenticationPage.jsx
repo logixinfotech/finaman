@@ -2,15 +2,28 @@ import { useEffect, useState, useCallback } from "react";
 import { fetchUsers } from "../../../../utils/api";
 import Table from "../../../../components/Reusable/table/Table";
 import UserAuthForm from "../UserMaster/UserAuthForm";
- import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
- 
+ import { useERPMode } from "../../../../components/Reusable/form/useFormMode"; 
 import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 
-// ─── UserAuthenticationPage.jsx ────────────────────────────────────────────
-// Mirrors the pattern in UserGroupMasterPage exactly:
-//   useERPMode → list → Table / UserAuthForm
-
+  const columns = [
+    { key: "user_id",   label: "User ID",           className: "font-bold text-blue-600" },
+    { key: "user_name", label: "User Name" },
+    { key: "role",      label: "Role / Designation" },
+    {
+      key: "block",
+      label: "Status",
+      render: (row) => (
+        <span className={`px-2 py-0.5 rounded-full text-[10px]   ${
+          row.block === 0
+            ? "bg-green-100 text-green-700"
+            : "bg-red-100 text-red-700"
+        }`}>
+          {row.block === 0 ? "ACTIVE" : "BLOCKED"}
+        </span>
+      ),
+    },
+  ];
 const UserAuthenticationPage = ({ tab }) => {
   const [list, setList]               = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -23,7 +36,7 @@ const UserAuthenticationPage = ({ tab }) => {
     saving,
     handleEditCancel,
     handleView,
-    handleAdd,       // not really used here (auth is view-only) — keep for rights
+    handleAdd,        
     handleModify,
     performSave,
     rights,
@@ -58,24 +71,19 @@ const UserAuthenticationPage = ({ tab }) => {
     }
   }, []);
 
-  useEffect(() => { loadUsers(); }, [loadUsers]);
-
-  /* ── Keep formData in sync with currentIndex (view mode navigation) ── */
+  useEffect(() => { loadUsers(); }, [loadUsers]); 
   useEffect(() => {
     if (showForm && list.length > 0) {
       setFormData(list[currentIndex]);
     }
   }, [currentIndex, list, showForm]);
-
-  /* ── Row select from table ── */
+ 
   const handleRowSelect = (row) => {
     const index = list.findIndex(item => item.userma_id === row.userma_id);
     if (index !== -1) setCurrentIndex(index);
     handleView(row);
     setShowForm(true);
-  };
-
-  /* ── Keyboard / toolbar navigation (same pattern as UserGroupMasterPage) ── */
+  }; 
   useEffect(() => {
     setERPHandlers({
       onNextRecord:  () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
@@ -85,48 +93,24 @@ const UserAuthenticationPage = ({ tab }) => {
       onEsc:         () => setShowForm(false),
     });
   }, [list]);
+ 
 
-  /* ── Table columns ── */
-  const columns = [
-    { key: "user_id",   label: "User ID",           className: "font-bold text-blue-600" },
-    { key: "user_name", label: "User Name" },
-    { key: "role",      label: "Role / Designation" },
-    {
-      key: "block",
-      label: "Status",
-      render: (row) => (
-        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-          row.block === 0
-            ? "bg-green-100 text-green-700"
-            : "bg-red-100 text-red-700"
-        }`}>
-          {row.block === 0 ? "ACTIVE" : "BLOCKED"}
-        </span>
-      ),
-    },
-  ];
 
   return (
     <div className="w-full">
       {showForm ? (
-        <UserAuthForm
-          /* ── user data ── */
-          selectedUser={list[currentIndex]}
-
-          /* ── mode & form state (mirrors UserGroupForm props) ── */
+        <UserAuthForm 
+          selectedUser={list[currentIndex]} 
           mode={mode}
           saving={saving}
           rights={rights}
-
-          /* ── navigation ── */
+ 
           currentRecord={list.length > 0 ? currentIndex + 1 : 0}
           totalRecords={list.length}
           onNextRecord={()  => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
           onPrevRecord={()  => setCurrentIndex(p => Math.max(p - 1, 0))}
           onFirstRecord={()  => setCurrentIndex(0)}
-          onLastRecord={()  => setCurrentIndex(list.length - 1)}
-
-          /* ── actions ── */
+          onLastRecord={()  => setCurrentIndex(list.length - 1)} 
           onModify={handleModify}
           onEditCancel={handleEditCancel}
           onCancel={() => { setShowForm(false); loadUsers(); }} 
@@ -136,6 +120,8 @@ const UserAuthenticationPage = ({ tab }) => {
       ) : (
         <Table
           title="User Authentication Master"
+          activeTab="search" 
+             onTabChange={handleTabChange}
           data={list}
           columns={columns}
           rowKey="userma_id"

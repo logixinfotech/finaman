@@ -245,14 +245,26 @@ const LeaveAccrualBulk = ({ tab }) => {
         );
 
         // Build months — distribute existing accrual_days evenly
-        const months = {};
+         const months = {};
         for (let i = 1; i <= 12; i++) {
-          const match = empAccruals[0];
-          const totalDays = parseFloat(match?.accrual_days) || 0;
+          // Har leave type ka per month alag nikalo
+          const ltBreakdown = empAccruals.map(a => ({
+            leave_type_id: a.leave_type_id,
+            leave_name: a.leave_name,
+            accrual_id: a.accrual_id,
+            perMonth: parseFloat((parseFloat(a.accrual_days || 0) / 12).toFixed(2)),
+          }));
+
+          // Display ke liye sabka combined total
+          const combinedPerMonth = ltBreakdown
+            .reduce((s, l) => s + l.perMonth, 0)
+            .toFixed(2);
+
           months[i] = {
-            accrual_id: match?.accrual_id || null,
-            days: totalDays ? (totalDays / 12).toFixed(2) : "",
-            is_posted: !!match?.is_posted,
+            accrual_ids: empAccruals.map(a => a.accrual_id).filter(Boolean),
+            days: parseFloat(combinedPerMonth) > 0 ? combinedPerMonth : "",
+            ltBreakdown,
+            is_posted: empAccruals.length > 0 && empAccruals.every(a => !!a.is_posted),
           };
         }
 
@@ -367,7 +379,7 @@ const LeaveAccrualBulk = ({ tab }) => {
   };
 
   // ── Save ──────────────────────────────────────────────────────────────
-  const handleSave = async () => {
+ const handleSave = async () => {
     const selRows = rows.filter((r) => selected[r.employee_id] && !r.is_posted);
     if (selRows.length === 0) { showToast({ icon: "error", title: "Select at least one employee" }); return; }
     if (checkedLTList.length === 0) { showToast({ icon: "error", title: "Select at least one leave type" }); return; }
@@ -375,20 +387,25 @@ const LeaveAccrualBulk = ({ tab }) => {
     setPosting(true);
     try {
       const payload = [];
+
       selRows.forEach((row) => {
+        const cf = parseFloat(row.carry_forward) || 0;
+
         checkedLTList.forEach((lt) => {
-          const totalAccrual = Object.values(row.months)
-            .reduce((s, m) => s + (parseFloat(m?.days) || 0), 0);
-          const cf = parseFloat(row.carry_forward) || 0;
+          // Sirf is leave type ki monthly rate use karo
+          const monthlyRate = parseFloat(lt.rate) || 0;
+          // 12 months ka total — sirf is leave type ka
+          const ltAccrualDays = parseFloat((monthlyRate * 12).toFixed(2));
+          const ltTotal = parseFloat((ltAccrualDays + cf).toFixed(2));
+
           payload.push({
-            accrual_id: row.months[1]?.accrual_id || null,
             employee_id: row.employee_id,
             leave_type_id: lt.ltId,
             financial_year: Number(year),
             accrual_type: "Yearly",
-            accrual_days: totalAccrual,
+            accrual_days: ltAccrualDays,   // ← sirf is LT ka
             carry_forward: cf,
-            total_accrued: totalAccrual + cf,
+            total_accrued: ltTotal,         // ← sirf is LT ka
             remarks: "Bulk Accrual",
           });
         });
@@ -484,6 +501,7 @@ const LeaveAccrualBulk = ({ tab }) => {
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
+        isHidden={true}
         activeTab="entry"
         onTabChange={() => { }}
         rightContent={`${rows.length} Employees`}

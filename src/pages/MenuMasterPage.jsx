@@ -61,7 +61,9 @@ const MenuMasterPage = ({ tab }) => {
     try {
       setLoading(true);
       const data = await fetchMenuMasterList(filterParams);
-      setList(data || []);
+      const finalData = Array.isArray(data) ? data : data?.data || [];
+       setList(finalData);
+            return finalData; // ✅ handleSave needs this
     } catch (err) {
       console.error("❌ loadMenuList error:", err);
     } finally {
@@ -107,19 +109,81 @@ const MenuMasterPage = ({ tab }) => {
     handleView(row);
   };
 
-  const handleSave = async () => {
-    const response = await performSave("masmnu_id");
-    if (response?.success) {
+  // const handleSave = async () => {
+  //   const response = await performSave("masmnu_id");
+  //   if (response?.success) {
+  //     showToast({
+  //       icon: "success",
+  //       title: isEditMode ? "Updated successfully" : "Added successfully",
+  //     });
+  //     loadMenuList(filters);
+  //   } else if (response?.message) {
+  //     alertError("Save failed", response.message);
+  //   }
+  // };
+ const handleSave = async () => {
+    const savedData = await performSave("masmnu_id");
+
+    if (savedData?.success) {
       showToast({
         icon: "success",
         title: isEditMode ? "Updated successfully" : "Added successfully",
       });
-      loadMenuList(filters);
-    } else if (response?.message) {
-      alertError("Save failed", response.message);
+
+      // ✅ Fresh list lo
+      const freshList = await loadMenuList(filters);
+
+      // ✅ Saved record ki ID — pehle savedData se lo, fallback formData se
+      const savedId = savedData?.masmnu_id ?? savedData?.data?.masmnu_id ?? formData?.masmnu_id;
+
+      // ✅ ID se index dhundho
+      let newIndex = freshList.findIndex((item) => item.masmnu_id === savedId);
+
+      // ✅ Nahi mila to bar_name se dhundho
+      if (newIndex === -1) {
+        newIndex = freshList.findIndex((item) => item.bar_name === formData?.bar_name);
+      }
+
+      // ✅ Abhi bhi nahi mila to pehla record
+      if (newIndex === -1) newIndex = 0;
+
+      // ✅ Index aur form data dono update karo
+      setCurrentIndex(newIndex);
+      setFormData({ ...freshList[newIndex] });
+
+    } else if (savedData?.message) {
+      alertError("Save failed", savedData.message);
     }
   };
 
+  // const handleSave = async (updatedData) => {
+      
+  //       // group_id null ho sakta hai — formData se lo
+  //       const dataToSave = { ...updatedData, masmnu_id: updatedData.masmnu_id ?? formData.masmnu_id };
+
+  //       const response = await performSave("masmnu_id", dataToSave);
+  //       if (response?.success) {
+  //           const freshList = await loadMenuList(); // ✅ fresh list lo
+
+  //           // Pehle group_id se dhundho
+  //           let newIndex = freshList.findIndex(i => i.masmnu_id === dataToSave.masmnu_id);
+
+  //           // Nahi mila (naya record) — name se dhundho
+  //           if (newIndex === -1) {
+  //               newIndex = freshList.findIndex(i => i.masmnu_id=== dataToSave.masmnu_id);
+  //           }
+
+  //           // Abhi bhi nahi mila — pehla record
+  //           if (newIndex === -1 && freshList.length > 0) {
+  //               newIndex = 0;
+  //           }
+
+  //           if (newIndex !== -1) {
+  //               setCurrentIndex(newIndex);
+  //               setFormData({ ...freshList[newIndex] }); // ✅ server ka bilkul fresh data
+  //           }
+  //       }
+  //   };
   const handleDelete = async (row) => {
     const id = row?.masmnu_id || formData?.masmnu_id;
     const confirmed = await confirmDelete({
@@ -139,6 +203,37 @@ const MenuMasterPage = ({ tab }) => {
       alertError("Delete failed", "Something went wrong");
     }
   };
+  const handleDeleteMultiple = async (selected) => {
+      // Normalize: Table may pass an array of row objects OR an array of keys
+      const ids = (selected || []).map((item) =>
+        typeof item === "object" ? item.masmnu_id : item
+      );
+  
+      if (ids.length === 0) return;
+  
+      const confirmed = await confirmDelete({
+        title: `Delete ${ids.length} menu?`,
+      });
+      if (!confirmed) return;
+  
+      try {
+        const results = await Promise.all(ids.map((id) => deleteMasmnu(id)));
+        const failed = results.filter((r) => !r?.success).length;
+  
+        if (failed === 0) {
+          showToast({ icon: "success", title: `${ids.length} deleted` });
+        } else {
+          showToast({
+            icon: "warning",
+            title: `${ids.length - failed} deleted, ${failed} failed`,
+          });
+        }
+        loadMenuList();
+        setShowForm(false);
+      } catch (err) {
+        alertError("Delete Error", "Failed to delete some income heads");
+      }
+    };
 
   const handleTabChange = (targetTab) => {
     if (targetTab === "search") setShowForm(false);
@@ -185,10 +280,13 @@ const MenuMasterPage = ({ tab }) => {
         />
       ) : (
         <Table
+        activeTab="search" 
+             onTabChange={handleTabChange}
           title="Menu List"
           data={list}
           columns={columns}
           rowKey="masmnu_id"
+          onDeleteMultiple={handleDeleteMultiple}
           loading={loading}
           onRefresh={() => loadMenuList(filters)}
           showForm={showFilter}

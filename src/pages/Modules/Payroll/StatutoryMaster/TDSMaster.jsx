@@ -27,8 +27,8 @@ const columns = [
 ];
 
 const TDSMaster = ({ tab }) => {
-  const [list, setList]                 = useState([]);
-  const [loading, setLoading]           = useState(true);
+  const [list,         setList]         = useState([]);
+  const [loading,      setLoading]      = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const {
@@ -43,29 +43,30 @@ const TDSMaster = ({ tab }) => {
         ? await updateTDS(data.tds_id, data)
         : await createTDS(data);
     },
-    () => loadList(),
+    () => {}, // ✅ empty — handleSave controls reload
     tab.appl_name
   );
 
+  // ✅ returns finalData — handleSave uses it
+  // ✅ setFormData(finalData[0]) hataya — yeh har reload pe index 0 reset karta tha
   const loadList = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchTDSList();
       const finalData = Array.isArray(data) ? data : data?.data || [];
       setList(finalData);
-      if (finalData.length > 0) {
-        setFormData(finalData[0]);
-        setCurrentIndex(0);
-      }
+      return finalData; // ✅ handleSave needs this
     } catch (err) {
       alertError("Fetch Error", "Failed to load TDS records");
+      return [];
     } finally {
       setLoading(false);
     }
-  }, [setFormData]);
+  }, []);
 
   useEffect(() => { loadList(); }, []);
 
+  // next/prev navigation sync
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
       setFormData(list[currentIndex]);
@@ -83,9 +84,33 @@ const TDSMaster = ({ tab }) => {
     handleView(row);
   };
 
+  // ✅ same clean pattern — fresh list se sahi record dhundho aur setFormData karo
   const handleSave = async (updatedData) => {
-    const response = await performSave("tds_id", updatedData);
-    if (response?.success) await loadList();
+    const dataToSave = { ...updatedData, tds_id: updatedData.tds_id ?? formData.tds_id };
+
+    const response = await performSave("tds_id", dataToSave);
+
+    if (response?.success) {
+      const freshList = await loadList();
+
+      // pehle tds_id se dhundho
+      let newIndex = freshList.findIndex(i => i.tds_id === dataToSave.tds_id);
+
+      // naya record — name + financial_year se dhundho
+      if (newIndex === -1) {
+        newIndex = freshList.findIndex(
+          i => i.name === dataToSave.name && i.financial_year === dataToSave.financial_year
+        );
+      }
+
+      // fallback — pehla record
+      if (newIndex === -1 && freshList.length > 0) newIndex = 0;
+
+      if (newIndex !== -1) {
+        setCurrentIndex(newIndex);
+        setFormData({ ...freshList[newIndex] }); // ✅ server ka bilkul fresh data
+      }
+    }
   };
 
   const handleDelete = async (row) => {
@@ -100,15 +125,39 @@ const TDSMaster = ({ tab }) => {
     }
   };
 
+  const handleDeleteMultiple = async (selected) => {
+    const ids = (selected || []).map((item) =>
+      typeof item === "object" ? item.tds_id : item
+    );
+    if (ids.length === 0) return;
+
+    const confirmed = await confirmDelete({ title: `Delete ${ids.length} TDS record(s)?` });
+    if (!confirmed) return;
+
+    try {
+      const results = await Promise.all(ids.map((id) => deleteTDS(id)));
+      const failed = results.filter((r) => !r?.success).length;
+      if (failed === 0) {
+        showToast({ icon: "success", title: `${ids.length} deleted` });
+      } else {
+        showToast({ icon: "warning", title: `${ids.length - failed} deleted, ${failed} failed` });
+      }
+      loadList();
+      setShowForm(false);
+    } catch (err) {
+      alertError("Delete Error", "Failed to delete some TDS records");
+    }
+  };
+
   useEffect(() => {
     setERPHandlers({
       onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
       onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
       onNew:  handleAdd,
-      onSave: handleSave,
+      onSave: () => handleSave(formData),
       onEsc:  () => setShowForm(false),
     });
-  }, [list, handleAdd, handleSave, setShowForm]);
+  }, [list, handleAdd, formData, setShowForm]);
 
   return (
     <div className="h-full w-full">
@@ -116,6 +165,8 @@ const TDSMaster = ({ tab }) => {
         <TDSMasterForm
           initialData={formData}
           onSave={handleSave}
+          formData={formData}
+          setFormData={setFormData}
           onDelete={handleDelete}
           onCancel={() => setShowForm(false)}
           mode={mode}
@@ -132,7 +183,10 @@ const TDSMaster = ({ tab }) => {
       ) : (
         <div className="p-4 bg-slate-50 h-full">
           <Table
+           activeTab={"search"}
+                    onTabChange={handleTabChange}
             title="TDS Master"
+            onDeleteMultiple={handleDeleteMultiple}
             data={list}
             columns={columns}
             rowKey="tds_id"

@@ -4,6 +4,7 @@ import Table from "../../../../components/Reusable/table/Table";
 import LoanReimMasterForm  from "./LoanReimMasterForm";
 
 import {
+  alertError,
   confirmDelete,
   showToast,
 } from "../../../../components/Reusable/alert";
@@ -37,16 +38,19 @@ const initialState = {
 
 const columns = [
   { key: "employee_name", label: "Employee Name" },
-
   { key: "master_type", label: "Master Type" },
-
   { key: "request_name", label: "Request Name" },
-
   { key: "amount", label: "Amount" },
-
-  { key: "effective_from", label: "Effective From" },
-
-  { key: "effective_to", label: "Effective To" },
+  {
+    key: "effective_from",
+    label: "Effective From",
+    render: (row) => row.effective_from ? row.effective_from.split("T")[0] : "—",
+  },
+  {
+    key: "effective_to",
+    label: "Effective To",
+    render: (row) => row.effective_to ? row.effective_to.split("T")[0] : "—",
+  },
 ];
 
 const LoanReimMaster = ({ tab }) => {
@@ -170,6 +174,32 @@ const LoanReimMaster = ({ tab }) => {
 
     loadData();
   };
+  const handleDeleteMultiple = async (selected) => {
+      const ids = (selected || []).map((item) =>
+        typeof item === "object" ? item.request_name : item
+      );
+      if (ids.length === 0) return;
+      const confirmed = await confirmDelete({
+        title: `Delete ${ids.length}  matser(s)?`,
+      });
+      if (!confirmed) return;
+      try {
+        const results = await Promise.all(ids.map((id) => deleteLoanReimbursement(id)));
+        const failed = results.filter((r) => !r?.success).length;
+        if (failed === 0) {
+          showToast({ icon: "success", title: `${ids.length} deleted` });
+        } else {
+          showToast({
+            icon: "warning",
+            title: `${ids.length - failed} deleted, ${failed} failed`,
+          });
+        }
+        loadData();
+        setShowForm(false);
+      } catch (err) {
+        alertError("Delete Error", "Failed to delete some masters");
+      }
+    };
 
   useEffect(() => {
     setERPHandlers({
@@ -221,6 +251,9 @@ const LoanReimMaster = ({ tab }) => {
         <div className="p-4 bg-slate-50 h-full">
           <Table
             title="Loan / Reimbursement Master"
+            onDeleteMultiple={handleDeleteMultiple}
+            activeTab="search"
+          onTabChange={handleTabChange}
             data={list}
             columns={columns}
             rowKey="id"

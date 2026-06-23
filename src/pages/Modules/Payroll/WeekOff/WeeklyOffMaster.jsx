@@ -104,6 +104,30 @@ const handleSave = async (updatedData  = formData) => {
     showToast({ icon: "success", title: "Deleted" });
     loadData();
   };
+    const handleDeleteMultiple = async (selected) => {
+      const ids = (selected || []).map((item) =>
+        typeof item === "object" ? item.tds_id : item
+      );
+      if (ids.length === 0) return;
+  
+      const confirmed = await confirmDelete({ title: `Delete ${ids.length} Weeklyoff record(s)?` });
+      if (!confirmed) return;
+  
+      try {
+        const results = await Promise.all(ids.map((id) => deleteWeekOff(id)));
+        const failed = results.filter((r) => !r?.success).length;
+        if (failed === 0) {
+          showToast({ icon: "success", title: `${ids.length} deleted` });
+        } else {
+          showToast({ icon: "warning", title: `${ids.length - failed} deleted, ${failed} failed` });
+        }
+        loadData();
+        setShowForm(false);
+      } catch (err) {
+        alertError("Delete Error", "Failed to delete some TDS records");
+      }
+    };
+  
 
   useEffect(() => {
     setERPHandlers({
@@ -140,6 +164,9 @@ const handleSave = async (updatedData  = formData) => {
         <div className="p-4 bg-slate-50 h-full">
           <Table
             title="Weekly Off Master List"
+             activeTab={"search"}
+                    onTabChange={handleTabChange}
+            onDeleteMultiple={handleDeleteMultiple}
             data={list}
             columns={columns}
             rowKey="id"

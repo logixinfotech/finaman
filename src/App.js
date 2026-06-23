@@ -10,7 +10,8 @@ import { fetchMasmnuData, logoutUser } from "./utils/api";
 import "./App.css";
 import Swal from "sweetalert2";
 import { useNotifications } from "./theme/NotificationContext";
-import NotificationToast from "./components/Layout/Notification/NotificationToast"; 
+import NotificationToast from "./components/Layout/Notification/NotificationToast";
+
 import 'primeicons/primeicons.css';
 function AppShell({
   theme,
@@ -44,14 +45,26 @@ function AppShell({
   };
 
   return (
-    <div className={`app-layout ${theme}`}>
-      <div className="app-body"> 
+    // Tailwind classes add karein:
+    <div className={`app-layout flex flex-col h-screen overflow-hidden ${theme}`}>
+
+      <Header
+        theme={theme}
+        setTheme={setTheme}
+        onLogout={handleLogout}
+        onToggleSidebar={toggleSidebar}
+        onOpenPage={handleOpenPageFromMenu}
+        allMenus={menusFromBackend}
+        onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+      />
+
+      <div className="app-body flex-1 flex overflow-hidden">
         {mobileSidebarOpen && (
           <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setMobileSidebarOpen(false)}
           />
-        )} 
+        )}
         <div
           className={`
             layout-sidebar
@@ -69,17 +82,9 @@ function AppShell({
             }}
             onToggleSidebar={toggleSidebar}
           />
-        </div> 
-        <div className="layout-main flex-1 min-w-0">
-          <Header
-            theme={theme}
-            setTheme={setTheme}
-            onLogout={handleLogout}
-            onOpenPage={handleOpenPageFromMenu}
-            allMenus={menusFromBackend}
-            onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
-          />
+        </div>
 
+        <div className="layout-main flex-1 min-w-0 overflow-y-auto">
           <div className="layout-content">
             <Dashboard
               activeModule={activeModule}
@@ -94,9 +99,11 @@ function AppShell({
         </div>
       </div>
 
+
       <Footer activeModule={activeModule} />
       <NotificationToast onOpenPage={handleOpenPageFromMenu} />
     </div>
+
   );
 }
 
@@ -165,7 +172,7 @@ function App() {
       }
     };
     if (isAuthenticated) loadMenus();
-  }, [isAuthenticated, syncMenusToContext]); 
+  }, [isAuthenticated, syncMenusToContext]);
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
@@ -186,32 +193,45 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ── Tab / navigation handlers ───────────────────────────────────────────
-  const handleModuleClick = (module) => {
-    const moduleTabId = `mod-${module.masmod_id}`;
-    setActiveModule(module);
-    setTabs((prev) => {
-      const existing = prev.find((t) => t.id === moduleTabId);
-      if (existing) {
-        setActiveTabId(existing.id);
-        return prev;
-      }
-      const moduleTab = {
-        id: moduleTabId,
-        label: module.mod_name,
-        type: "module",
-        module,
-        appl_name: null,
-         icon_name: module.icon_name,
-      };
-      const withoutOldModule = prev.filter((t) => t.type !== "module");
-      const updatedTabs = [moduleTab, ...withoutOldModule];
-      setActiveTabId(moduleTabId);
-      return updatedTabs;
-    });
-    navigate("/app");
-  };
+const handleModuleClick = (module) => {
+  // ── Direct-open override for Work Diary (masmod_id: 2) ──
+if (module.masmod_id === 20) {
+    const workDiaryMenu = {
+      masmnu_id: 642,
+      bar_name: "Task Manager",
+      appl_name: "WorkDiaryForm",
+      appl_type: "A",
+      icon_name: null,
+    };
+    setActiveModule(module); // module context set karo
+    handleOpenPageFromMenu(workDiaryMenu);
+    return; // module dashboard mat dikhao
+  }
 
+  // ── Default behavior (baaki sab modules) ──
+  const moduleTabId = `mod-${module.masmod_id}`;
+  setActiveModule(module);
+  setTabs((prev) => {
+    const existing = prev.find((t) => t.id === moduleTabId);
+    if (existing) {
+      setActiveTabId(existing.id);
+      return prev;
+    }
+    const moduleTab = {
+      id: moduleTabId,
+      label: module.mod_name,
+      type: "module",
+      module,
+      appl_name: null,
+      icon_name: module.icon_name,
+    };
+    const withoutOldModule = prev.filter((t) => t.type !== "module");
+    const updatedTabs = [moduleTab, ...withoutOldModule];
+    setActiveTabId(moduleTabId);
+    return updatedTabs;
+  });
+  navigate("/app");
+};
   const handleOpenPageFromMenu = (menuItem) => {
     const baseId = `page-${menuItem.masmnu_id}`;
     const samePageTabs = tabs.filter((t) => t.id.startsWith(baseId));
@@ -226,7 +246,7 @@ function App() {
         module: activeModule,
         appl_name: menuItem.appl_name,
         duplicateIndex: 1,
-         icon_name: menuItem.icon_name,
+        icon_name: menuItem.icon_name,
       };
       setTabs((prev) => [...prev, newTab]);
       setActiveTabId(newTabId);

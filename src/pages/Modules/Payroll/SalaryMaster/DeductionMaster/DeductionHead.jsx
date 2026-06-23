@@ -54,8 +54,10 @@ const DeductionHead = ({ tab }) => {
         setFormData(finalData[0]);
         setCurrentIndex(0);
       }
+      return finalData;
     } catch (err) {
       alertError("Fetch Error", "Failed to load deduction heads");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -80,12 +82,24 @@ const DeductionHead = ({ tab }) => {
     handleView(row);
   };
 
-  const handleSave = async (updatedData) => {
-    const response = await performSave("deduction_head_id", updatedData);
-    if (response?.success) {
-      await loadList();
+const handleSave = async (updatedData) => {
+  const response = await performSave("deduction_head_id", updatedData); // ✅ fix
+  if (response?.success) {
+    const freshList = await loadList();
+
+    const savedId = updatedData.deduction_head_id ?? response?.data?.deduction_head_id; // ✅ fix
+    const newIndex = freshList.findIndex(i => i.deduction_head_id === savedId); // ✅ fix
+
+    if (newIndex !== -1) {
+      setCurrentIndex(newIndex);
+      handleView(freshList[newIndex]);
+    } else if (freshList.length > 0) {
+      const lastIndex = freshList.length - 1;
+      setCurrentIndex(lastIndex);
+      handleView(freshList[lastIndex]);
     }
-  };
+  }
+};
 
   const handleDelete = async (row) => {
     const confirmed = await confirmDelete({ title: `Delete "${row.name}"?` });
@@ -101,7 +115,7 @@ const DeductionHead = ({ tab }) => {
   const handleDeleteMultiple = async (selected) => {
       // Normalize: Table may pass an array of row objects OR an array of keys
       const ids = (selected || []).map((item) =>
-        typeof item === "object" ? item.income_head_id : item
+            typeof item === "object" ? item.deduction_head_id : item // ✅ fix
       );
   
       if (ids.length === 0) return;
@@ -166,6 +180,8 @@ const DeductionHead = ({ tab }) => {
       ) : (
         <div className=" bg-slate-50 h-full">
           <Table
+           activeTab="search"
+          onTabChange={handleTabChange}
             title="Deduction Head Master"
             data={list}
             columns={columns}
