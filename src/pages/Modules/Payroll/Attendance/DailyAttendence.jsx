@@ -340,6 +340,8 @@ const DailyAttendancePage = ({ tab }) => {
           saving={saving}
           canPrint={canPrint}
           rights={rights}
+          onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
+          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
         <Table
@@ -349,7 +351,7 @@ const DailyAttendancePage = ({ tab }) => {
           rowKey="log_id"
           loading={loading}
           activeTab={"search"}
-                    onTabChange={handleTabChange}
+          onTabChange={handleTabChange}
           onRefresh={() => loadData(filters, page, pageSize)}
 
           showForm={showFilter}
@@ -359,6 +361,7 @@ const DailyAttendancePage = ({ tab }) => {
           totalRecords={totalRecords}
           onPageChange={handlePageChange}
           defaultPageSize={pageSize}
+
 
           formComponent={
             <DailyAttendanceFilter

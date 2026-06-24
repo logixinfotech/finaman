@@ -26,6 +26,7 @@ const getGridConfig = (title) => {
 const ERPFormBuilder = ({
   title,
   sidebarName,
+    onNextRecord,
   sidebarSub, 
   sidebarConfig = {}, 
   completedTabs = [], 
@@ -35,6 +36,7 @@ const ERPFormBuilder = ({
   customTabs = {},
   formData = {},
   setFormData,
+   onPrevRecord,
   validateForm,
   requiredFields = [],
   widthConfig = {},
@@ -366,25 +368,42 @@ const handleFileChange = (e) => {
       }
 
       const tryFocus = (fieldToFocus, attempts = 0) => {
-        if (!isMounted.current || attempts > 12) return;
+  if (!isMounted.current || attempts > 12) return;
 
-        const errorContainer = document.getElementById(`field-container-${fieldToFocus}`);
+  const errorContainer = document.getElementById(`field-container-${fieldToFocus}`);
 
-        if (errorContainer) {
-          errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (errorContainer) {
+    // 1. पूरे विंडो को डिस्टर्ब होने से बचाने के लिए block: 'nearest' या 'inline' का प्रयोग करें
+    // या फिर scrollIntoViewOptions को पूरी तरह से कस्टमाइज़ करें
+    errorContainer.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'nearest', 
+      inline: 'nearest' 
+    });
 
-          setTimeout(() => {
-            const errorInput = errorContainer.querySelector(
-              'input:not([disabled]):not([type="hidden"]):not([type="file"]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
-            );
-            if (errorInput) {
-              errorInput.focus();
-            }
-          }, 30);
-        } else {
-          setTimeout(() => tryFocus(fieldToFocus, attempts + 1), 40);
-        }
-      };
+  
+    if (scrollContainerRef.current) {
+      const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
+      const elementTop = errorContainer.getBoundingClientRect().top;
+      // अगर एलिमेंट कंटेनर से बाहर है, तो केवल कंटेनर का scrollTop चेंज करें
+      if (elementTop < containerTop || elementTop > (containerTop + scrollContainerRef.current.clientHeight)) {
+        scrollContainerRef.current.scrollTop = 
+          errorContainer.offsetTop - scrollContainerRef.current.offsetTop - 10;
+      }
+    }
+
+    setTimeout(() => {
+      const errorInput = errorContainer.querySelector(
+        'input:not([disabled]):not([type="hidden"]):not([type="file"]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
+      );
+      if (errorInput) {
+        errorInput.focus();
+      }
+    }, 30);
+  } else {
+    setTimeout(() => tryFocus(fieldToFocus, attempts + 1), 40);
+  }
+};
 
       if (targetField) {
         tryFocus(targetField);
@@ -567,6 +586,10 @@ const displayPhoto = (rawPhoto && typeof rawPhoto === "string")
         onTabChange={handleHeaderTabChange}
         showSettingsTab={showSettingsTab} 
         rightContent={`${currentRecord || 1}/${totalRecords || 1}`}
+         currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       {headerActiveTab === "settings" ? (

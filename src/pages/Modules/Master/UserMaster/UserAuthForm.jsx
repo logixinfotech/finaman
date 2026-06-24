@@ -50,6 +50,7 @@ const UserAuthForm = ({
   mode        = "view",
   saving,
   rights, 
+  
   currentRecord,
   totalRecords,
   onNextRecord,
@@ -220,6 +221,10 @@ const UserAuthForm = ({
         isViewMode={isViewMode}
         activeTab={activeTab}
         onTabChange={onTabChange}
+         currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
         rightContent={
           isSettings
             ? null

@@ -69,7 +69,7 @@ const ERPHeader = ({
             dot: "bg-slate-400",
           };
 
-  const showNav = (onPrevRecord || onNextRecord) && !isSettingsTab;
+const showNav = (onPrevRecord || onNextRecord) && !isSettingsTab && isViewMode;
   const atStart = typeof currentIndex === "number" && currentIndex <= 1;
   const atEnd =
     typeof currentIndex === "number" &&
@@ -168,8 +168,7 @@ style={{
            marginLeft:"-14px",
             marginRight: "14px",
             borderTopLeftRadius: "11px",
-          }}>
-  {/* High Contrast Soft Blue Icon Box */}
+          }}> 
   <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
     <TitleIcon
       size={12}

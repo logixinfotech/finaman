@@ -203,12 +203,8 @@ const handleValidateAndSave = useCallback(() => {
                     disabled={isViewMode}
                     onKeyDown={handleKeyDown}
                   />
-                  {localData.employee_id && (
-                    <div className="text-[14px] text-blue-600 mt-1 ml-1 font-medium">
-                      EMP ID: <sub className="text-[14px]">{localData.employee_id}</sub>
-                    </div>
-                  )}
-                  {errors.employee_id && <span className="text-[10px] text-red-500 ml-1">Required</span>}
+                 
+
                 </div>
               </div>
 
@@ -246,11 +242,13 @@ const handleValidateAndSave = useCallback(() => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center px-1 flex-1 mt-3 sm:mt-0">
-                <label className="text-black-800 text-[15px] w-[120px] shrink-0">Effective To</label>
+                <label className="text-black-800 text-[15px]  ml-[10px] w-[110px] shrink-0">Effective To</label>
                 <div className="flex-1 w-full">
                   <ERPDateInput
                     value={localData.effective_to || ""}
                     disabled={isViewMode}
+                    minDate={localData.effective_from}
+               
                     onChange={(val) =>
                       handleChange("effective_to", val)
                     }

@@ -18,6 +18,8 @@ const IncomeHeadForm = ({
   onNewEntry,
   currentRecord,
   totalRecords,
+  onPrevRecord,
+  onNextRecord,
   rights,
   activeTab = "entry",
   onTabChange = () => {},
@@ -149,6 +151,10 @@ const IncomeHeadForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+        currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-2 md:p-4 overflow-y-auto">

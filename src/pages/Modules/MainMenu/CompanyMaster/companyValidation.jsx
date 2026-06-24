@@ -165,22 +165,31 @@ export const fieldGroups = {
         type: "date",
         onChange: (value, current) => {
           if (!value) return current;
-          const fromDate = new Date(value);
+          const [year, month, day] = value.split("-").map(Number);
+          const fromDate = new Date(year, month - 1, day);
           if (isNaN(fromDate)) return current;
           
-          const toDate = new Date(fromDate);
-          toDate.setFullYear(toDate.getFullYear() + 1);
-          toDate.setDate(toDate.getDate() - 1);
-          const formatDate = (d) => d.toISOString().split("T")[0];
+          const toDate = new Date(year + 1, month - 1, day - 1);
+          const ymDString = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const dateVal = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${dateVal}`;
+          };
 
           return {
             ...current,
-            fin_year_from: formatDate(fromDate),
-            fin_year_to: formatDate(toDate),
+            fin_year_from: value,
+            fin_year_to: ymDString(toDate),
           };
         },
       },
-      { key: "fin_year_to", label: "Fin Year To", type: "date" },
+      { 
+        key: "fin_year_to", 
+        label: "Fin Year To", 
+        type: "date",
+        getMinDate: (formData) => formData.fin_year_from || "" 
+      },
       { key: "fy_lock", label: "Lock Financial Year", type: "select", options: ["Yes", "No"] },  
     ],
     "Communication": [
@@ -194,8 +203,8 @@ export const fieldGroups = {
       { key: "business_address", label: "Full Address", type: "text" },
       { key: "city", label: "City", type: "text" },
       { key: "postal_code", label: "PIN Code", type: "text" },
-      { key: "state", label: "State", type: "select", },
-      { key: "country", label: "Country", type: "select",  },
+      { key: "state", label: "State", type: "select" },
+      { key: "country", label: "Country", type: "select" },
     ],
     "Contact Person": [
       { key: "contact_person", label: "Contact Person", type: "text" },
@@ -217,13 +226,28 @@ export const fieldGroups = {
     "Compliance": [
       { key: "fssai_no", label: "FSSAI No", type: "text" },
       { key: "fssai_from", label: "Valid From (FSSAI)", type: "date" },
-      { key: "fssai_to", label: "Valid To (FSSAI)", type: "date" },
+      { 
+        key: "fssai_to", 
+        label: "Valid To (FSSAI)", 
+        type: "date",
+        getMinDate: (formData) => formData.fssai_from || "" // FSSAI From se pehle ki date disabled
+      },
       { key: "drug_lic_no", label: "Drug Lic No", type: "text" },  
       { key: "drug_valid_from", label: "Valid From (Drug)", type: "date" },  
-      { key: "drug_valid_to", label: "Valid To (Drug)", type: "date" },  
+      { 
+        key: "drug_valid_to", 
+        label: "Valid To (Drug)", 
+        type: "date",
+        getMinDate: (formData) => formData.drug_valid_from || "" // Drug From se pehle ki date disabled
+      },  
       { key: "mfg_lic_no", label: "Mfg Lic No", type: "text" },  
       { key: "mfg_from", label: "Valid From (Mfg)", type: "date" },  
-      { key: "mfg_to", label: "Valid To (Mfg)", type: "date" },  
+      { 
+        key: "mfg_to", 
+        label: "Valid To (Mfg)", 
+        type: "date",
+        getMinDate: (formData) => formData.mfg_from || "" // Mfg From se pehle ki date disabled
+      },  
     ],
   },
   bank: {
@@ -248,7 +272,6 @@ export const fieldGroups = {
       { key: "tcs_applicable", label: "TCS Applicable", type: "select", options: ["Yes", "No"] },
     ],
   },
-  
 };
 // ==========================================
 // 6. WIDTH CONFIGURATION
@@ -301,8 +324,8 @@ export const validateFullForm = (formData, groups) => {
   let errors = {};
   let firstErrorTab = null;
 
-  // Basic Critical Fields Validation
-  ["company_name", "business_type",  "phone_number"].forEach(f => {
+  // 1. Basic Required Fields Verification
+  requiredFields.forEach(f => {
     const err = validateSingleField(f, formData[f]);
     if (err) { 
       errors[f] = err; 
@@ -310,11 +333,29 @@ export const validateFullForm = (formData, groups) => {
     }
   });
 
-  // Iterating all dynamic tabs
+  // 2. All Date Range Validations Array Map
+  const datePairs = [
+    { from: "fin_year_from", to: "fin_year_to", msg: "Fin Year To cannot be earlier than From date", tab: "basic" },
+    { from: "fssai_from", to: "fssai_to", msg: "FSSAI Valid To cannot be earlier than From date", tab: "legal" },
+    { from: "drug_valid_from", to: "drug_valid_to", msg: "Drug Valid To cannot be earlier than From date", tab: "legal" },
+    { from: "mfg_from", to: "mfg_to", msg: "Manufacturing Valid To cannot be earlier than From date", tab: "legal" }
+  ];
+
+  datePairs.forEach(({ from, to, msg, tab }) => {
+    if (formData[from] && formData[to]) {
+      const fromDate = new Date(formData[from]);
+      const toDate = new Date(formData[to]);
+      if (toDate < fromDate) {
+        errors[to] = msg;
+        if (!firstErrorTab) firstErrorTab = tab;
+      }
+    }
+  });
+
+  // 3. Iterating all dynamic tabs for other standard validations
   for (const [tab, sections] of Object.entries(groups)) {
     Object.values(sections).flat().forEach(field => {
-      // Avoid duplicate checking if already handled above
-      if (errors[field.key]) return;
+      if (errors[field.key]) return; // Pehle se check fail ho chuka hai toh ignore
       
       const err = validateSingleField(field.key, formData[field.key]);
       if (err) { 

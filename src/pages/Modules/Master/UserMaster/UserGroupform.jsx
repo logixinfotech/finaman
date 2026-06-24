@@ -125,6 +125,9 @@ const UserGroupForm = ({
   onCancel,
   onDelete,
   mode,
+  
+   onPrevRecord,
+  onNextRecord,
   saving,
   onModify,
   onNewEntry,
@@ -270,6 +273,10 @@ const UserGroupForm = ({
         onTabChange={onTabChange}
         showSettingsTab={showSettingsTab}
         rightContent={isSettings ? null : `${currentRecord || 1} / ${totalRecords || 1}`}
+         currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       {/* Body: settings panel OR entry form */}

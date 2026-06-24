@@ -64,6 +64,8 @@ const FieldRenderer = ({
   fieldObj,
   value,
   onChange,
+  minDate,
+  minDateLabel,
   disabled,
   error,
   onKeyDown,
@@ -97,6 +99,8 @@ const FieldRenderer = ({
         <ERPDateInput
           value={value || ""}
           onChange={onChange}
+          minDate={minDate}
+          minDateLabel={minDateLabel}
           disabled={disabled}
           className={baseClass}
           onKeyDown={onKeyDown}

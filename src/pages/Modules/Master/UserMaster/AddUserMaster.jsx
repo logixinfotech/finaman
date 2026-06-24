@@ -18,6 +18,8 @@ const AddUserMaster = ({
   mode = "view",
   onSave,
   onCancel,
+   onPrevRecord,
+  onNextRecord,
   onDelete,
   onEditCancel,
   saving,
@@ -327,6 +329,10 @@ console.log(options.grade.label);
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+         currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 overflow-x-auto flex justify-start sm:justify-center items-start w-full">

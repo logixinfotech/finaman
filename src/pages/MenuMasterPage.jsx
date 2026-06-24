@@ -277,6 +277,8 @@ const MenuMasterPage = ({ tab }) => {
           activeTab="entry"
           onTabChange={handleTabChange}
           onNewEntry={handleAdd}
+           onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
+          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
         <Table

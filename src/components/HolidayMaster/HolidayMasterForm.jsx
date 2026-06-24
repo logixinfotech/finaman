@@ -8,6 +8,8 @@ import { User } from "lucide-react";
 const HolidayMasterForm = ({
   formData = {},
   setFormData,
+   onPrevRecord,
+  onNextRecord,
   onSave,
   activeTab    = "entry",
   onTabChange,
@@ -176,6 +178,10 @@ const HolidayMasterForm = ({
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+         currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">

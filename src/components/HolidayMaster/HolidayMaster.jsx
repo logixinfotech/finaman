@@ -445,6 +445,8 @@ const handlePageSizeChange = (newSize) => {
           currentRecord={list.length > 0 ? currentIndex + 1 : 0}
           totalRecords={list.length}
           rights={rights}
+          onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
+          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
           onEditCancel={handleEditCancel}
         />
       ) : (

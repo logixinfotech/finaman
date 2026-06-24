@@ -234,6 +234,8 @@ const handleTabChange = (targetTab) => {
       currentRecord={list.length > 0 ? currentIndex + 1 : 0}
       totalRecords={list.length} rights={rights}
       activeTab="entry" onTabChange={handleTabChange}
+      onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
+          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
     />
   ) : (
     // ← YAHAN TABLE LAGAO, message nahi

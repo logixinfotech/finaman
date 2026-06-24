@@ -81,7 +81,8 @@ const getHeaderStyle = (title) => {
 };
 
 const EmployeeMasterForm = forwardRef(({
-  formData = {}, setFormData, onSave, onCancel, onTabChange, saving, onDelete, mode, onModify, onNewEntry, currentRecord, totalRecords, onPrint, onEditCancel, rights,
+  formData = {}, setFormData, onSave, onCancel, onPrevRecord,
+  onNextRecord, onTabChange, saving, onDelete, mode, onModify, onNewEntry, currentRecord, totalRecords, onPrint, onEditCancel, rights,
 }, ref) => {
   const isAddMode = mode === "add";
   const isViewMode = mode === "view";
@@ -897,7 +898,10 @@ if (type === "email") {
   return (
     <div className="w-full h-full sm:h-[calc(100vh-120px)] bg-[#eef1f8] flex flex-col overflow-hidden font-['Segoe_UI',system-ui,Arial,sans-serif] text-[13px] text-[#0f172a] leading-[1.4]">
 
-      <ERPHeader title="EMPLOYEE MASTER" isAddMode={isAddMode} isEditMode={isEditMode} isViewMode={isViewMode} rightContent={`${currentRecord || 1}/${totalRecords || 1}`} activeTab="entry" onTabChange={onTabChange} />
+      <ERPHeader title="EMPLOYEE MASTER" isAddMode={isAddMode} isEditMode={isEditMode} isViewMode={isViewMode} rightContent={`${currentRecord || 1}/${totalRecords || 1}`} activeTab="entry" onTabChange={onTabChange}  currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}   />
 
       <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full h-full md:h-[calc(100vh-120px)] overflow-hidden">
 

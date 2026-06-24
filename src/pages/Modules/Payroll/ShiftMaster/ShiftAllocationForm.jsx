@@ -130,6 +130,8 @@ useEffect(() => {
     } ${
       isDisabled ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed" : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`;
+  const [fromDate, setFromDate] = useState("");   // db format e.g. "2026-04-01"
+const [toDate, setToDate] = useState("");
 
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
@@ -260,7 +262,8 @@ useEffect(() => {
             </div>
 
             {/* Row 2: Dates */}
-            <div className="flex flex-col sm:flex-row sm:gap-4 w-full ">
+           <div className="flex flex-col sm:flex-row sm:gap-4 w-full ">
+              {/* From Date */}
               <div className="flex flex-col sm:flex-row items-start px-1 flex-1">
                 <label className="text-black-800 text-[15px] w-[130px] pt-1 shrink-0">From Date <span className="text-red-500">*</span></label>
                 <div className="flex-1 w-full relative" id="wrapper_allocation_from">
@@ -268,21 +271,25 @@ useEffect(() => {
                     name="allocation_from"
                     value={localData.allocation_from || ""}
                     disabled={isViewMode}
-                    onChange={(e) => handleChange("allocation_from", e)}
+                    onChange={(val) => handleChange("allocation_from", val)}
                     onKeyDown={handleKeyDown}
                     className={getInputClass(isViewMode, "allocation_from")}
                   />
                   {errors.allocation_from && <span className="text-[10px] text-red-500 ml-1 absolute -bottom-4 left-0">Required</span>}
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row items-start px-1 flex-1  sm:mt-0">
+
+              {/* To Date */}
+              <div className="flex flex-col sm:flex-row items-start px-1 flex-1 sm:mt-0">
                 <label className="text-black-800 text-[15px] sm:w-[100px] pt-1 shrink-0">To Date <span className="text-red-500">*</span></label>
                 <div className="flex-1 w-full relative" id="wrapper_allocation_to">
                   <Date
                     name="allocation_to"
                     value={localData.allocation_to || ""}
                     disabled={isViewMode}
-                    onChange={(e) => handleChange("allocation_to", e)}
+                    minDate={localData.allocation_from} 
+                    minDateLabel="From date"
+                    onChange={(val) => handleChange("allocation_to", val)}
                     onKeyDown={handleKeyDown}
                     className={getInputClass(isViewMode, "allocation_to")}
                   />

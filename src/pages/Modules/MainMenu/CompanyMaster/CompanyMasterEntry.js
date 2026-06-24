@@ -17,6 +17,8 @@ const CompanyMasterEntry = ({
   onDelete,
   onModify,
   onNewEntry,
+ onPrevRecord,
+  onNextRecord,
   onPrint,
   onEditCancel,
   currentRecord,
@@ -130,6 +132,10 @@ const handleKeyDown = useCallback((e) => {
     >
       <ERPFormBuilder
         title="Company Master"
+        currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
         sidebarName="company_name"
         sidebarSub="business_type"
         sidebarIcon={

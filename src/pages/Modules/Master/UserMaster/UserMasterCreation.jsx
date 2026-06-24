@@ -224,6 +224,8 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
                     onOpenPage={onOpenPage}
                     activeTab="entry"
                     onTabChange={handleTabChange}
+                    onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
+          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
                 />
             ) : (
                 <Table

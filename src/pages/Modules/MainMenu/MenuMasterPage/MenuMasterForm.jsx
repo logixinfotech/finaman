@@ -11,7 +11,8 @@ const errorText = "text-[10px] text-red-500 mt-0.5";
 const MenuMasterForm = ({
   mode , modules, formData, setFormData, onSave, onCancel,
   saving, onDelete, onModify, onEditCancel, rights,
-  currentRecord, totalRecords, activeTab, onTabChange,onNewEntry
+  currentRecord, totalRecords, activeTab, onTabChange,onNewEntry ,onPrevRecord,
+  onNextRecord,
 }) => {
   const isView = mode === "view";
   const isEdit = mode === "edit";
@@ -82,6 +83,10 @@ const MenuMasterForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+         currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 flex justify-center items-start overflow-y-auto">

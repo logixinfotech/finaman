@@ -97,7 +97,7 @@ const UserAuthenticationPage = ({ tab }) => {
 
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       {showForm ? (
         <UserAuthForm 
           selectedUser={list[currentIndex]} 
@@ -116,6 +116,8 @@ const UserAuthenticationPage = ({ tab }) => {
           onCancel={() => { setShowForm(false); loadUsers(); }} 
           activeTab={activeTab}
           onTabChange={handleTabChange}
+          onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
+          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
         <Table
