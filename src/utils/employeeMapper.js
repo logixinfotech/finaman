@@ -136,7 +136,7 @@ export const employeeFieldMap = {
   "PT State": "Pt_state",
   "PF Applicable": "Pf_applicable",
   "ESI Applicable": "Esi_applicable",
-  "Gratuity Eligible": "Gratuity_eligible",
+  "Gratuity": "Gratuity",
   "TDS Category": "Tds_category",
 
   // --- Joining & Tenure (nayi columns) ---

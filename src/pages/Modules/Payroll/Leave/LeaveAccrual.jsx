@@ -163,6 +163,7 @@ const LeaveAccrualBulk = ({ tab }) => {
   const [selected, setSelected] = useState({});   // ← EMPTY by default
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Keep original rows for cancel/reset
   const originalRows = useRef([]);
@@ -245,9 +246,15 @@ const LeaveAccrualBulk = ({ tab }) => {
         );
 
         // Build months — distribute existing accrual_days evenly
-         const months = {};
+        const months = {};
+        // Total annual accrual sabka combined
+        const totalAnnual = empAccruals.reduce((s, a) =>
+          s + parseFloat(a.accrual_days || 0), 0
+        );
+        // Per month = annual / 12
+        const perMonthDisplay = parseFloat((totalAnnual / 12).toFixed(2));
+
         for (let i = 1; i <= 12; i++) {
-          // Har leave type ka per month alag nikalo
           const ltBreakdown = empAccruals.map(a => ({
             leave_type_id: a.leave_type_id,
             leave_name: a.leave_name,
@@ -255,14 +262,9 @@ const LeaveAccrualBulk = ({ tab }) => {
             perMonth: parseFloat((parseFloat(a.accrual_days || 0) / 12).toFixed(2)),
           }));
 
-          // Display ke liye sabka combined total
-          const combinedPerMonth = ltBreakdown
-            .reduce((s, l) => s + l.perMonth, 0)
-            .toFixed(2);
-
           months[i] = {
             accrual_ids: empAccruals.map(a => a.accrual_id).filter(Boolean),
-            days: parseFloat(combinedPerMonth) > 0 ? combinedPerMonth : "",
+            days: perMonthDisplay > 0 ? String(perMonthDisplay) : "",
             ltBreakdown,
             is_posted: empAccruals.length > 0 && empAccruals.every(a => !!a.is_posted),
           };
@@ -305,20 +307,37 @@ const LeaveAccrualBulk = ({ tab }) => {
   // ── When a row is selected in modify mode — pre-check its leave types ──
   // This runs when user clicks a row checkbox
   const handleRowSelect = (empId, row) => {
-    setSelected((p) => ({ ...p, [empId]: !p[empId] }));
+    const newSelected = { ...selected, [empId]: !selected[empId] };
+    setSelected(newSelected);
 
-    // ✅ FIX 2: Pre-check existing leave types for this employee
-    if (!selected[empId] && row.existingLTIds) {
-      const newLTs = { ...selectedLTs };
-      Object.keys(row.existingLTIds).forEach((ltId) => {
-        if (!newLTs[ltId]?.checked) {
-          const lt = allLeaveTypes.find((l) => l.leave_type_id === ltId);
-          const rate = lt?.max_days ? (lt.max_days / 12).toFixed(2) : "1.00";
-          newLTs[ltId] = { checked: true, rate };
-        }
-      });
-      setSelectedLTs(newLTs);
+    // Selected employees ke baad unki common leave types compute karo
+    const selRows = rows.filter(r => newSelected[r.employee_id]);
+    if (selRows.length === 0) {
+      // Koi select nahi — dropdown clear karo
+      setSelectedLTs({});
+      return;
     }
+
+    // Sabka union of existingLTIds
+    const allLTIds = new Set();
+    selRows.forEach(r => Object.keys(r.existingLTIds || {}).forEach(id => allLTIds.add(id)));
+
+    const newLTs = {};
+    allLTIds.forEach(ltId => {
+      const lt = allLeaveTypes.find(l => l.leave_type_id === ltId);
+      // Rate — selected employees mein se kisi ka ltBreakdown se nikalo
+      let rate = lt?.max_days ? (lt.max_days / 12).toFixed(2) : "1.00";
+      // Pehle selected employee ka rate use karo agar available ho
+      for (const r of selRows) {
+        for (const m of Object.values(r.months)) {
+          const ltb = m.ltBreakdown?.find(l => l.leave_type_id === ltId);
+          if (ltb?.perMonth) { rate = ltb.perMonth.toFixed(2); break; }
+        }
+        if (rate) break;
+      }
+      newLTs[ltId] = { checked: true, rate };
+    });
+    setSelectedLTs(newLTs);
   };
 
   const toggleSelectAll = () => {
@@ -336,34 +355,42 @@ const LeaveAccrualBulk = ({ tab }) => {
       return;
     }
     const rate = parseFloat(totalRate) || 0;
-    setRows((prev) =>
-      prev.map((row) => {
+    setRows(prev =>
+      prev.map(row => {
         if (row.is_posted || !selected[row.employee_id]) return row;
         const months = { ...row.months };
         for (let m = 1; m <= 12; m++) {
           if (!months[m]?.is_posted) {
-            months[m] = { ...months[m], days: rate.toFixed(2), is_posted: false };
+            // Sirf empty cells fill karo — already filled cells mat change karo
+            // Agar manually kuch likha hai to woh same rahega
+            months[m] = {
+              ...months[m],
+              days: months[m]?.days || rate.toFixed(2),
+              is_posted: false
+            };
           }
         }
         return { ...row, months };
       })
     );
   };
-
   const handleCellChange = (empId, monthNum, value) => {
     if (isViewMode) return;
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.employee_id !== empId) return row;
-        return {
-          ...row,
-          months: {
-            ...row.months,
-            [monthNum]: { ...row.months[monthNum], days: value, is_posted: false },
+    setRows(prev => prev.map(row => {
+      if (row.employee_id !== empId) return row;
+      return {
+        ...row,
+        months: {
+          ...row.months,
+          [monthNum]: {
+            ...row.months[monthNum],
+            days: value,
+            is_posted: false,
+            // ltBreakdown mat touch karo — save mein days se calculate hoga
           },
-        };
-      })
-    );
+        },
+      };
+    }));
   };
 
   const handleCFChange = (empId, value) => {
@@ -379,7 +406,7 @@ const LeaveAccrualBulk = ({ tab }) => {
   };
 
   // ── Save ──────────────────────────────────────────────────────────────
- const handleSave = async () => {
+  const handleSave = async () => {
     const selRows = rows.filter((r) => selected[r.employee_id] && !r.is_posted);
     if (selRows.length === 0) { showToast({ icon: "error", title: "Select at least one employee" }); return; }
     if (checkedLTList.length === 0) { showToast({ icon: "error", title: "Select at least one leave type" }); return; }
@@ -392,20 +419,30 @@ const LeaveAccrualBulk = ({ tab }) => {
         const cf = parseFloat(row.carry_forward) || 0;
 
         checkedLTList.forEach((lt) => {
-          // Sirf is leave type ki monthly rate use karo
-          const monthlyRate = parseFloat(lt.rate) || 0;
-          // 12 months ka total — sirf is leave type ka
-          const ltAccrualDays = parseFloat((monthlyRate * 12).toFixed(2));
-          const ltTotal = parseFloat((ltAccrualDays + cf).toFixed(2));
+          const activeLTCount = checkedLTList.length || 1;
+
+          // Har month ki actual cell value ka sum — annual total
+          const annualTotal = Object.values(row.months).reduce((s, m) => {
+            return s + (parseFloat(m.days) || 0);
+          }, 0);
+
+          // Multiple LTs hain to equal split
+          const ltAccrualDays = parseFloat((annualTotal / activeLTCount).toFixed(2));
+
+          // Fallback — agar koi cell fill nahi
+          const fallback = parseFloat(((parseFloat(lt.rate) || 0) * 12).toFixed(2));
+          const finalAccrualDays = annualTotal > 0 ? ltAccrualDays : fallback;
+
+          const ltTotal = parseFloat((finalAccrualDays + cf).toFixed(2));
 
           payload.push({
             employee_id: row.employee_id,
             leave_type_id: lt.ltId,
             financial_year: Number(year),
             accrual_type: "Yearly",
-            accrual_days: ltAccrualDays,   // ← sirf is LT ka
+            accrual_days: finalAccrualDays,
             carry_forward: cf,
-            total_accrued: ltTotal,         // ← sirf is LT ka
+            total_accrued: ltTotal,
             remarks: "Bulk Accrual",
           });
         });
@@ -474,10 +511,19 @@ const LeaveAccrualBulk = ({ tab }) => {
     if (!confirmed) return;
 
     try {
-      for (const row of selRows) {
-        const accrualIds = Object.values(row.months)
-          .filter((m) => m?.accrual_id)
-          .map((m) => m.accrual_id);
+       for (const row of selRows) {
+        const accrualIds = new Set();
+
+        Object.values(row.months).forEach(m => {
+          // ltBreakdown mein accrual_id hai
+          (m.ltBreakdown || []).forEach(ltb => {
+            if (ltb.accrual_id) accrualIds.add(ltb.accrual_id);
+          });
+          (m.accrual_ids || []).forEach(id => {
+            if (id) accrualIds.add(id);
+          });
+        });
+
         for (const id of accrualIds) {
           await deleteLeaveAccrual(id);
         }
@@ -554,13 +600,36 @@ const LeaveAccrualBulk = ({ tab }) => {
         {/* Status badges */}
         <div className="flex items-center gap-2 self-end pb-0.5">
           <span className="px-2.5 py-1 rounded-full text-[11px] font-medium
-                           bg-amber-50 text-amber-700 border border-amber-200">
-            {draftCount} draft
-          </span>
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-medium
-                           bg-green-50 text-green-700 border border-green-200">
+                 bg-green-50 text-green-700 border border-green-200">
             {postedCount} posted
           </span>
+        </div>
+
+        <div className="flex flex-col gap-1 self-end">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">Search</span>
+          <div className="relative flex items-center">
+            <svg width="12" height="12" className="absolute left-2.5 text-slate-400" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search employee..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="h-[32px] pl-8 pr-3 w-[180px] text-[12px] border border-slate-200
+                 rounded-md bg-white text-slate-700 outline-none focus:border-blue-300"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")}
+                className="absolute right-2 text-slate-400 hover:text-slate-600">
+                <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {!isViewMode && (
@@ -627,125 +696,125 @@ const LeaveAccrualBulk = ({ tab }) => {
                                  w-[68px] uppercase tracking-wide">
                     Total
                   </th>
-                  <th className="px-2 py-2 text-center font-medium text-[11px]
+                  {/* <th className="px-2 py-2 text-center font-medium text-[11px]
                                  text-slate-500 w-[68px] uppercase tracking-wide">
                     Status
-                  </th>
+                  </th> */}
                 </tr>
               </thead>
 
               <tbody>
-                {rows.map((row, rowIdx) => {
-                  const { bg, text } = AVATAR_COLORS[rowIdx % AVATAR_COLORS.length];
-                  const isPosted = row.is_posted;
-                  const isSel = !!selected[row.employee_id];
-                  const total = getTotalBalance(row);
+                {rows
+                  .filter(row =>
+                    !searchQuery ||
+                    row.employee_name.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((row, rowIdx) => {
+                    const { bg, text } = AVATAR_COLORS[rowIdx % AVATAR_COLORS.length];
+                    const isPosted = row.is_posted;
+                    const isSel = !!selected[row.employee_id];
+                    const total = getTotalBalance(row);
 
-                  return (
-                    <tr key={row.employee_id}
-                      className={`border-b border-slate-100 transition-colors
+                    return (
+                      <tr key={row.employee_id}
+                        className={`border-b border-slate-100 transition-colors
                         ${isPosted ? "opacity-60" : ""}
                         ${isSel && !isPosted ? "bg-blue-50/30" : "hover:bg-slate-50"}`}>
 
-                      {/* Checkbox */}
-                      <td className="px-3 py-1.5 border-r border-slate-100 text-center">
-                        {!isViewMode && (
-                          <input
-                            type="checkbox"
-                            checked={isSel}
-                            disabled={isPosted}
-                            onChange={() => handleRowSelect(row.employee_id, row)}
-                            className="w-3.5 h-3.5 accent-blue-600 cursor-pointer
+                        {/* Checkbox */}
+                        <td className="px-3 py-1.5 border-r border-slate-100 text-center">
+                          {!isViewMode && (
+                            <input
+                              type="checkbox"
+                              checked={isSel}
+                              disabled={isPosted}
+                              onChange={() => handleRowSelect(row.employee_id, row)}
+                              className="w-3.5 h-3.5 accent-blue-600 cursor-pointer
                                        disabled:cursor-not-allowed"
-                          />
-                        )}
-                      </td>
+                            />
+                          )}
+                        </td>
 
-                      {/* Employee */}
-                      <td className="px-2 py-1.5 border-r border-slate-100">
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-6 h-6 rounded-full flex items-center
+                        {/* Employee */}
+                        <td className="px-2 py-1.5 border-r border-slate-100">
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-6 h-6 rounded-full flex items-center
                                            justify-center text-[9px] font-medium
                                            shrink-0 ${bg} ${text}`}>
-                            {initials(row.employee_name)}
-                          </div>
-                          <span className="text-[12px] text-slate-700 font-medium
+                              {initials(row.employee_name)}
+                            </div>
+                            <span className="text-[12px] text-slate-700 font-medium
                                            truncate max-w-[110px]">
-                            {row.employee_name}
-                          </span>
-                        </div>
-                      </td>
+                              {row.employee_name}
+                            </span>
+                          </div>
+                        </td>
 
-                      {/* 12 months */}
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const mNum = i + 1;
-                        const cell = row.months[mNum];
-                        const val = cell?.days || "";
-                        const cellDis = cell?.is_posted || isPosted || isViewMode;
-                        const isCurrent = mNum === new Date().getMonth() + 1;
+                        {/* 12 months */}
+                        {Array.from({ length: 12 }, (_, i) => {
+                          const mNum = i + 1;
+                          const cell = row.months[mNum];
+                          const val = cell?.days || "";
+                          const cellDis = cell?.is_posted || isPosted || isViewMode;
+                          const isCurrent = mNum === new Date().getMonth() + 1;
 
-                        return (
-                          <td key={mNum}
-                            className={`px-1 py-1.5 border-r border-slate-100 text-center
+                          return (
+                            <td key={mNum}
+                              className={`px-1 py-1.5 border-r border-slate-100 text-center
                               ${isCurrent ? "bg-blue-50/20" : ""}`}>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              value={val}
-                              disabled={cellDis}
-                              onChange={(e) => handleCellChange(row.employee_id, mNum, e.target.value)}
-                              className={`w-[44px] h-[24px] text-center text-[12px]
+                              <input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                value={val}
+                                disabled={cellDis}
+                                onChange={(e) => handleCellChange(row.employee_id, mNum, e.target.value)}
+                                className={`w-[44px] h-[24px] text-center text-[12px]
                                           rounded border outline-none transition-colors
                                           ${cellDis
-                                  ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                                  : val
-                                    ? "bg-green-50 border-green-300 text-green-800 focus:border-green-400"
-                                    : "bg-white border-slate-200 text-slate-600 focus:border-blue-300"}`}
-                            />
-                          </td>
-                        );
-                      })}
+                                    ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                                    : val
+                                      ? "bg-green-50 border-green-300 text-green-800 focus:border-green-400"
+                                      : "bg-white border-slate-200 text-slate-600 focus:border-blue-300"}`}
+                              />
+                            </td>
+                          );
+                        })}
 
-                      {/* Carry forward */}
-                      <td className="px-1 py-1.5 border-r border-slate-100 text-center bg-purple-50/20">
-                        <input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          value={row.carry_forward}
-                          disabled={isPosted || isViewMode}
-                          onChange={(e) => handleCFChange(row.employee_id, e.target.value)}
-                          className={`w-[52px] h-[24px] text-center text-[12px]
+                        {/* Carry forward */}
+                        <td className="px-1 py-1.5 border-r border-slate-100 text-center bg-purple-50/20">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            value={row.carry_forward}
+                            disabled={isPosted || isViewMode}
+                            onChange={(e) => handleCFChange(row.employee_id, e.target.value)}
+                            className={`w-[52px] h-[24px] text-center text-[12px]
                                       rounded border outline-none
                                       ${isPosted || isViewMode
-                              ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                              : "bg-purple-50 border-purple-300 text-purple-800 focus:border-purple-400"}`}
-                        />
-                      </td>
+                                ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                                : "bg-purple-50 border-purple-300 text-purple-800 focus:border-purple-400"}`}
+                          />
+                        </td>
 
-                      {/* Total */}
-                      <td className="px-2 py-1.5 border-r border-slate-100 text-center bg-green-50/20">
-                        <span className="text-[13px] font-medium text-green-800">{total}</span>
-                      </td>
+                        {/* Total */}
+                        <td className="px-2 py-1.5 border-r border-slate-100 text-center bg-green-50/20">
+                          <span className="text-[13px] font-medium text-green-800">{total}</span>
+                        </td>
 
-                      {/* Status */}
-                      <td className="px-2 py-1.5 text-center">
-                        {isPosted ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium
-                                           bg-green-50 text-green-700 border border-green-200">
-                            Posted
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium
-                                           bg-amber-50 text-amber-700 border border-amber-200">
-                            Draft
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        {/* Status */}
+                        {/* <td className="px-2 py-1.5 text-center">
+                          {isPosted ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium
+                   bg-green-50 text-green-700 border border-green-200">
+                              Posted
+                            </span>
+                          ) : null}
+                        </td> */}
+                      </tr>
+                    );
+                  })}
 
                 {rows.length === 0 && (
                   <tr>

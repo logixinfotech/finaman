@@ -101,7 +101,8 @@ const AttendanceRegister = React.lazy(() => import("./Modules/Payroll/Attendance
 const SalaryStructure = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryStructure/SalaryStructure"))
 const SalaryTransaction = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryTransaction/SalaryTransactions"))
 const SalaryProcessing = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryProcess/SalaryProcess"))
-
+const LeaveAnalytics = React.lazy(() => import("../components/Layout/DashboardComponnt/LeaveAnalytics.jsx"))
+const UpcomingEvents = React.lazy(() => import("../components/Layout/DashboardComponnt/UpcomingEvents.jsx"))
 
 
 const PageRegistry = {
@@ -152,6 +153,8 @@ const PageRegistry = {
     SSE: SalaryStructure,
     Salary_Trans: SalaryTransaction,
     salary_processing: SalaryProcessing,
+    LeaveAnalytics:LeaveAnalytics,
+    UpcomingEvents:UpcomingEvents,
 
     WorkDiaryForm: React.lazy(() => import("../components/WorkDiary/WorkDiary")),
     // TaskManage: React.lazy(() => import("../components/TaskManage/TaskManage")),

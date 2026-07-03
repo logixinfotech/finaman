@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
-import { focusFirstInput, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
+import { focusFirstInput, handleERPBackspaceNavigation, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
 
 const LeaveTypeForm = ({
   mode = "view",
@@ -19,7 +19,10 @@ const LeaveTypeForm = ({
   rights,
   activeTab = "entry",
   onTabChange,
-  initialData = {}
+  initialData = {},
+  onPrevRecord,onNextRecord
+
+
 }) => {
   const [localData, setLocalData] = useState(initialData);
   const [errors, setErrors] = useState({});
@@ -88,6 +91,9 @@ const LeaveTypeForm = ({
   }, [localData, onSave, isViewMode]);
 
   const handleKeyDown = useCallback((e) => {
+    handleERPBackspaceNavigation(   e,
+      formRef,
+      isViewMode,)
     handleERPEnterNavigation(
       e,
       formRef,
@@ -111,6 +117,10 @@ const LeaveTypeForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">
@@ -188,7 +198,7 @@ const LeaveTypeForm = ({
               <label className="text-[15px] w-[130px] shrink-0">Applicable To</label>
               <div className="flex-1 w-full">
                 <ERPAutocomplete
-                  value={localData.applicable || "All"}
+                  value={localData.applicable || ""}
                   options={["All", "Male", "Female"]}
                   onChange={(val) => handleChange("applicable", val)}
                   disabled={isViewMode}

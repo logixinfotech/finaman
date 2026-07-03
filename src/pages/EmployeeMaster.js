@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Table from "../components/Reusable/table/Table";
 import EmployeeMasterForm from "../components/EmployeeMaster/EmpolyeeMasterForm";
-import { getActledList, createEmployee, updateEmployee, deleteEmployee, createLeaveBalance,fetchUserGroupsByType } from "../utils/api";
+import Filter from "../components/EmployeeMaster/Filter"
+import { getActledListAll, createEmployee, updateEmployee, deleteEmployee, createLeaveBalance, fetchUserGroupsByType } from "../utils/api";
 import { transformToBackend } from "../utils/employeeMapper";
+import EmployeeImportModal from "../components/EmployeeMaster/EmployeeImportModal";
 
 import {
   confirmDelete,
@@ -12,6 +14,7 @@ import {
 
 import { setERPHandlers } from "../utils/erpShortcuts";
 import { useERPMode } from "../components/Reusable/form/useFormMode";
+
 
 // ✅ INITIAL STATE KEYS MATCHED WITH FORM FIELDS
 const initialState = {
@@ -66,6 +69,7 @@ const initialState = {
 
 const columns = [
   { key: "employee_name", label: "Employee Name" },
+   { key: "employee_code", label: "Emp Code" },
   { key: "mobile", label: "Mobile" },
   { key: "email", label: "Email" },
   { key: "department", label: "Department" },
@@ -90,6 +94,7 @@ const EmployeeMaster = ({ tab }) => {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showImport, setShowImport] = useState(false);
   const formRef = useRef(null);
   const {
     mode,
@@ -131,10 +136,10 @@ const EmployeeMaster = ({ tab }) => {
 
       backendData.Is_tds = backendData.Is_tds && Number(backendData.Is_tds) > 0 ? 1 : 0;
       backendData.Pay_amt = backendData.Pay_amt ? Number(backendData.Pay_amt) : null;
-      backendData.Gratuity = backendData.Gratuity ? parseFloat(backendData.Gratuity) : null;
-      backendData.Approved = data["Status"] === "Active" ? 1 : 0;
+      // backendData.Gratuity = backendData.Gratuity ? parseFloat(backendData.Gratuity) : null;
+      // backendData.Approved = data["Status"] === "Active" ? 1 : 0;
 
-      const dateFields = ["Dob", "Doj", "Doc", "Doa", "Passport_expiry", "Salary_eff_date"];
+      const dateFields = ["Dob", "Doj", "Doc", "Doa", "Dol", "Passport_expiry", "Salary_eff_date"];
       dateFields.forEach(key => {
         if (!backendData[key] || backendData[key] === "") {
           backendData[key] = null;
@@ -151,6 +156,9 @@ const EmployeeMaster = ({ tab }) => {
           }
         }
       });
+
+      const hasLeavingDate = backendData.Dol && backendData.Dol !== "null";
+      backendData.Approved = hasLeavingDate ? 0 : (data["Status"] === "Active" ? 1 : 0);
       return isEdit
         ? await updateEmployee(data.employee_id, backendData)
         : await createEmployee(backendData);
@@ -158,7 +166,17 @@ const EmployeeMaster = ({ tab }) => {
     () => loadEmployees(),
     tab?.appl_name
   );
+const [filters, setFilters] = useState({});
+const [page, setPage] = useState(1);
+ const [showFilter, setShowFilter] = useState(false);
+   const applyFilter = useCallback(() => {
+    setPage(1);
+  }, []);
 
+  const clearFilter = useCallback(() => {
+    setFilters({});
+    setPage(1);
+  }, []);
 
   const handleTabChange = (targetTab) => {
     if (targetTab === "search") setShowForm(false);
@@ -176,7 +194,7 @@ const EmployeeMaster = ({ tab }) => {
   // const loadEmployees = useCallback(async () => {
   //   try {
   //     setLoading(true)
-  //     const res = await getActledList();
+  //     const res = await getActledListAll();
 
   //     const mappedData = (res || []).map((item) => ({
   //       ...item,
@@ -322,16 +340,19 @@ const EmployeeMaster = ({ tab }) => {
   //     setLoading(false);
   //   }
   // }, []);
-const loadEmployees = useCallback(async () => {
+  const loadEmployees = useCallback(async () => {
     try {
       setLoading(true);
 
       // 🔥 Fetch Employees AND Group Mappings simultaneously
       const [res, deptRes, desgRes] = await Promise.all([
-        getActledList(),
+        getActledListAll(),
         fetchUserGroupsByType("DEP"),
         fetchUserGroupsByType("DESG")
       ]);
+      console.log("Calling getActledListAll...");
+      console.log("getActledListAll response:", res);
+     
 
       const deptList = deptRes?.data || [];
       const desgList = desgRes?.data || [];
@@ -343,7 +364,8 @@ const loadEmployees = useCallback(async () => {
         return found ? found.group_name : id; // Returns Name if found, otherwise falls back to ID
       };
 
-      const mappedData = (res || []).map((item) => ({
+      const mappedData = (res?.data || res || []).map((item) => ({
+
         ...item,
         employee_id: item.Actled_id,
 
@@ -405,6 +427,8 @@ const loadEmployees = useCallback(async () => {
 
         "Joining Date": formatDateOnly(item.Doj),
         "Confirmation Date": formatDateOnly(item.Doc),
+        "Status Leaving Date": formatDateOnly(item.Dol),
+        "Status Reason": item.Led_rsn || "",
 
         "PF Number": item.Epf_no || "",
         "ESI Number": item.Esic_no || "",
@@ -472,6 +496,7 @@ const loadEmployees = useCallback(async () => {
         // 🔥 MAGIC: TABLE LIST DISPLAY FIELDS
         // ----------------------------------------------------
         employee_name: item.Led_name || "",
+        employee_code: item.Led_code || "", 
         mobile: item.Mobile || "",
         email: item.Email || "",
         // 👉 Convert the ID to the actual Name using the helper function
@@ -482,7 +507,7 @@ const loadEmployees = useCallback(async () => {
       }));
 
       setList(mappedData);
-      return mappedData; 
+      return mappedData;
     } catch (err) {
       alertError("Error", "Failed to load employees");
     } finally {
@@ -506,120 +531,138 @@ const loadEmployees = useCallback(async () => {
   }, [currentIndex]);
 
   const handleRowSelect = (row) => {
-  const index = list.findIndex((i) => i.employee_id === row.employee_id);
-  if (index !== -1) {
-    setCurrentIndex(index);
-    const freshRow = { ...list[index] };
-    // Photo URL mein cache bust add karo
-    if (freshRow.photo_url) {
-      freshRow.photo_url = `${freshRow.photo_url}?t=${Date.now()}`;
+    const index = list.findIndex((i) => i.employee_id === row.employee_id);
+    if (index !== -1) {
+      setCurrentIndex(index);
+      const freshRow = { ...list[index] };
+      // Photo URL mein cache bust add karo
+      if (freshRow.photo_url) {
+        freshRow.photo_url = `${freshRow.photo_url}?t=${Date.now()}`;
+      }
+      handleView(freshRow);
+      setFormData(freshRow);
     }
-    handleView(freshRow);
-    setFormData(freshRow);
-  }
-  setShowForm(true);
-};
+    setShowForm(true);
+  };
 
 
   // ✅ FIXED SAVE LOGIC: AUTOMATIC TRANSITION TO VIEW MODE
-const handleSave = async () => {
-  if (!formData["First Name"]) {
-    alertError("Validation", "First Name required");
-    return;
-  }
-
-  const leaveTypeIds = Array.isArray(formData["Leave allow"]) ? formData["Leave allow"] : [];
-
-  // 1. Perform core save
-  await performSave("employee_id");
-
-  try {
-    const latestRes = await getActledList();
-    const allEmployees = latestRes || [];
-
-    // Find the ID we just processed
-    let savedEmployeeId = formData.employee_id;
-    if (!savedEmployeeId) {
-      const maxId = Math.max(...allEmployees.map(e => e.Actled_id || 0));
-      savedEmployeeId = maxId > 0 ? maxId : null;
-    }
-
-    // 2. Save Leave Balances if applicable
-    if (leaveTypeIds.length > 0 && savedEmployeeId) {
-      await createLeaveBalance({
-        employee_id: savedEmployeeId,
-        leave_type_ids: leaveTypeIds,
-        financial_year: new Date().getFullYear(),
-      });
-    }
-
-    // 3. Refresh list
-    const updatedList = await loadEmployees();
-
-    if (savedEmployeeId && updatedList.length > 0) {
-      const matchIdx = updatedList.findIndex(e => e.employee_id === savedEmployeeId);
-      const safeIdx = matchIdx !== -1 ? matchIdx : 0;
-      setCurrentIndex(safeIdx);
-
-      // 4. Photo upload karo — return value lo
-      let photoUrl = null;
-      if (formRef.current?.hasPendingPhoto?.()) {
-        photoUrl = await formRef.current.uploadPendingPhoto(savedEmployeeId);
-      }
-
-      // 5. Photo upload ke baad fresh list lo
-      const freshList = await loadEmployees();
-      const freshRecord = freshList?.find(e => e.employee_id === savedEmployeeId);
-      const recordToShow = freshRecord || updatedList[safeIdx];
-
-      // 6. Agar photo abhi upload hui to URL inject karo
-      if (photoUrl && recordToShow) {
-        recordToShow.photo_url = photoUrl;
-      }
-
-      handleView(recordToShow);
-      setFormData(recordToShow);
-      showToast({ icon: "success", title: "Saved Successfully" });
+  const handleSave = async () => {
+    if (saving) return;
+    if (!formData["First Name"]) {
+      alertError("Validation", "First Name required");
       return;
     }
-  } catch (err) {
-    console.error("Post-save pipeline breakdown:", err);
+
+    const leaveTypeIds = Array.isArray(formData["Leave allow"]) ? formData["Leave allow"] : [];
+
+    // 1. Perform core save
+    await performSave("employee_id");
+
+    try {
+      const latestRes = await getActledListAll();
+      const allEmployees = latestRes || [];
+
+      // Find the ID we just processed
+      let savedEmployeeId = formData.employee_id;
+      if (!savedEmployeeId) {
+        const maxId = Math.max(...allEmployees.map(e => e.Actled_id || 0));
+        savedEmployeeId = maxId > 0 ? maxId : null;
+      }
+
+      // 2. Save Leave Balances if applicable
+      if (leaveTypeIds.length > 0 && savedEmployeeId) {
+        await createLeaveBalance({
+          employee_id: savedEmployeeId,
+          leave_type_ids: leaveTypeIds,
+          financial_year: new Date().getFullYear(),
+        });
+      }
+
+      // 3. Refresh list
+      const updatedList = await loadEmployees();
+
+      if (savedEmployeeId && updatedList.length > 0) {
+        const matchIdx = updatedList.findIndex(e => e.employee_id === savedEmployeeId);
+        const safeIdx = matchIdx !== -1 ? matchIdx : 0;
+        setCurrentIndex(safeIdx);
+
+        // 4. Photo upload karo — return value lo
+        let photoUrl = null;
+        if (formRef.current?.hasPendingPhoto?.()) {
+          photoUrl = await formRef.current.uploadPendingPhoto(savedEmployeeId);
+        }
+
+        // 5. Photo upload ke baad fresh list lo
+        const freshList = await loadEmployees();
+        const freshRecord = freshList?.find(e => e.employee_id === savedEmployeeId);
+        const recordToShow = freshRecord || updatedList[safeIdx];
+
+        // 6. Agar photo abhi upload hui to URL inject karo
+        if (photoUrl && recordToShow) {
+          recordToShow.photo_url = photoUrl;
+        }
+
+        handleView(recordToShow);
+        setFormData(recordToShow);
+        showToast({ icon: "success", title: "Saved Successfully" });
+        return;
+      }
+    } catch (err) {
+      console.error("Post-save pipeline breakdown:", err);
+    }
+
+    // Fallback
+    showToast({ icon: "success", title: "Saved Successfully" });
+    loadEmployees();
+    setShowForm(false);
+  };
+  const handleDelete = async (row) => {
+    const confirm = await confirmDelete({
+      title: `Delete "${row.employee_name}"?`,
+    });
+
+    if (!confirm) return;
+
+    try {
+      const res = await deleteEmployee(row.employee_id);
+
+      if (res?.data?.success) {
+        await loadEmployees();
+
+        showToast({
+          icon: "success",
+          title: "Deleted Successfully",
+        });
+
+        setShowForm(false);
+      }
+    } catch (err) {
+      showToast({
+        icon: "error",
+        title:
+          err?.response?.data?.message ||
+          "Employee cannot be deleted.",
+      });
+    }
+  };
+  const handleMultipleDelete = async (ids) => {
+    const confirmed = await confirmDelete({
+      title: `Delete ${ids.length} employee${ids.length > 1 ? "s" : ""}?`,
+      text: "This action cannot be undone.",
+    });
+    if (!confirmed) return;
+    try {
+      setLoading(true);
+      await Promise.all(ids.map(id => deleteEmployee(id)));
+      showToast({ icon: "success", title: "Deleted successfully" });
+    } catch (err) {
+      alertError("Delete Error", "Some employees could not be deleted");
+    } finally {
+      await loadEmployees();
+    }
   }
 
-  // Fallback
-  showToast({ icon: "success", title: "Saved Successfully" });
-  loadEmployees();
-  setShowForm(false);
-};
-const handleDelete = async (row) => {
-  const confirm = await confirmDelete({
-    title: `Delete "${row.employee_name}"?`,
-  });
-
-  if (!confirm) return;
-
-  try {
-    const res = await deleteEmployee(row.employee_id);
-
-    if (res?.data?.success) {
-      await loadEmployees();
-
-      showToast({
-        icon: "success",
-        title: "Deleted Successfully",
-      });
-
-      setShowForm(false);
-    }
-  } catch (err) {
-  showToast({
-    icon: "error",
-    title:
-      err?.response?.data?.message ||
-      "Employee cannot be deleted.",
-  });
-}
-};
 
   useEffect(() => {
     setERPHandlers({
@@ -630,6 +673,11 @@ const handleDelete = async (row) => {
       onEsc: () => setShowForm(false),
     });
   }, [list, rights, handleAdd]);
+
+  const handleNewEntry = () => {
+    handleAdd();
+    setFormData(prev => ({ ...prev, "Status": "Active" }));
+  };
 
   return (
     <div className="h-full w-full">
@@ -658,32 +706,74 @@ const handleDelete = async (row) => {
       ) : (
         <div className="bg-slate-50 h-full">
           <Table
-             activeTab="search" 
-             onTabChange={handleTabChange}
+            activeTab="search"
+            onTabChange={handleTabChange}
             title="Employee Master"
             data={list}
             columns={columns}
             rowKey="employee_id"
             loading={loading}
             onAdd={rights?.add === 1 ? handleAdd : null}
+            onImport={() => setShowImport(true)}
             onRowDoubleClick={handleRowSelect}
+            onToggleFilter={() => setShowFilter((p) => !p)}
+            showForm={showFilter}
+            formComponent={
+            <Filter
+              filters={filters}
+              setFilters={setFilters}
+              onApply={applyFilter}
+              onClear={clearFilter}
+            />
+          }
+            
             onDeleteMultiple={async (ids) => {
               const confirmed = await confirmDelete({
                 title: `Delete ${ids.length} employee${ids.length > 1 ? "s" : ""}?`,
                 text: "This action cannot be undone.",
               });
               if (!confirmed) return;
+
               try {
                 setLoading(true);
-                await Promise.all(ids.map(id => deleteEmployee(id)));
-                showToast({ icon: "success", title: "Deleted successfully" });
+                const results = await Promise.allSettled(ids.map(id => deleteEmployee(id)));
+
+                const failed = results.filter(r => r.status === "rejected" || !r.value?.data?.success);
+                const succeeded = results.length - failed.length;
+
+                if (failed.length === 0) {
+                  showToast({ icon: "success", title: `${succeeded} employee(s) deleted successfully` });
+                } else {
+                  // ✅ Failed ones ka error message dikhao
+                  const firstError = failed[0]?.reason?.response?.data?.message
+                    || failed[0]?.value?.data?.message
+                    || "Some employees could not be deleted due to existing dependencies.";
+
+                  alertError(
+                    "Partial Delete",
+                    `${succeeded} deleted. ${failed.length} could not be deleted: ${firstError}`
+                  );
+                }
               } catch (err) {
-                alertError("Delete Error", "Some employees could not be deleted");
+                alertError(
+                  "Delete Error",
+                  err?.response?.data?.message || "Some employees could not be deleted."
+                );
               } finally {
                 await loadEmployees();
               }
             }}
           />
+
+          {showImport && (
+            <EmployeeImportModal
+              onClose={() => setShowImport(false)}
+              onSuccess={() => {
+                loadEmployees();
+                showToast({ icon: "success", title: "Import completed" });  // ✅ extra toast
+              }}
+            />
+          )}
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Table from "../../../../components/Reusable/table/Table";
 import AddUserMaster from "../UserMaster/AddUserMaster";
-import { fetchUsers, deleteUser, createUser, updateUser } from "../../../../utils/api";
+import { fetchUsers, deleteUser, createUser, updateUser, toggleUserBlock } from "../../../../utils/api";
 import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
 import ERPPrintPreview from "../../../../components/Reusable/ERPPrintPreview";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
@@ -24,9 +24,12 @@ const initialState = {
     user_type: "",
     user_group: "",
     setting_pass: "",
-    signature: ""
+    signature: "",
+    block: 0
 };
-const columns = [
+// Base columns (module-level, unchanged). The clickable "Status" column that
+// needs the toggle handler is appended inside the component via useMemo.
+const baseColumns = [
     {
         key: "user_name",
         label: "User Name",
@@ -44,7 +47,7 @@ const columns = [
             }
         }
     },
-    { key: "user_id", label: "User ID" }, // ID usually stays non-editable
+    { key: "user_id", label: "User ID" }, 
     {
         key: "user_type",
         label: "User Type",
@@ -55,18 +58,6 @@ const columns = [
         }
     },
     { key: "user_group", label: "Group", editable: true },
-    {
-        key: "block",
-        label: "Status",
-        render: (row) => (
-            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${row.block === 0
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-                }`}>
-                {row.block === 0 ? "Active" : "Blocked"}
-            </span>
-        )
-    }
 ];
 const UserMasterPage = ({ tab, onOpenPage }) => {
     const [list, setList] = useState([]);
@@ -113,11 +104,12 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
         if (index !== -1) setCurrentIndex(index);
         handleView(row);
     };
-    const handleSave = async () => {
-        if (!formData.user_id || !formData.password || !formData.user_type) {
-            alertError("Validation Error", "Please fill all required fields marked with *");
-            return;
-        }
+const handleSave = async () => {
+    const passwordRequired = !isEditMode;
+    if (!formData.user_id || !formData.user_type || (passwordRequired && !formData.password)) {
+        alertError("Validation Error", "Please fill all required fields marked with *");
+        return;
+    }
         console.log("MODE:", mode, "| isEditMode:", isEditMode, "| user_id:", formData.user_id);
 
         const response = await performSave("user_id", formData);
@@ -181,6 +173,47 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
         setPrintData(row || formData);
         setShowPreview(true);
     };
+
+    const handleToggleBlock = useCallback(async (row) => {
+        const res = await toggleUserBlock(row.user_id);
+        if (res.success) {
+            showToast({ icon: "success", title: res.message });
+            // Local state patch — badge updates instantly, no full reload
+            setList(prev =>
+                prev.map(u => u.user_id === row.user_id ? { ...u, block: res.block } : u)
+            );
+        }
+    }, []);
+
+    // Columns + clickable Status badge. Memoized so its identity stays stable
+    // (Table resets column order/visibility whenever the columns prop changes).
+    const columns = useMemo(() => [
+        ...baseColumns,
+        {
+            key: "block",
+            label: "Status",
+            render: (row) => {
+                const blocked = String(row.block) === "1";
+                return (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();   // don't trigger row select / open
+                            handleToggleBlock(row);
+                        }}
+                        title={blocked ? "Click to unblock" : "Click to block"}
+                        className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold cursor-pointer transition-colors ${
+                            blocked
+                                ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                : "bg-green-100 text-green-700 hover:bg-green-200"
+                        }`}
+                    >
+                        {blocked ? "Blocked" : "Active"}
+                    </button>
+                );
+            },
+        },
+    ], [handleToggleBlock]);
 
     // Global ERP Handlers
     useEffect(() => {

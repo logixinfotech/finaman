@@ -49,7 +49,7 @@ const loadShifts = useCallback(async () => {
     const data = await fetchShifts();
     const finalData = Array.isArray(data) ? data : data?.data || [];
     setList(finalData); 
-    console.log("API Response Data:", finalData);
+   
     if (finalData.length > 0) {
       setFormData(finalData[0]);
       setCurrentIndex(0);
@@ -80,7 +80,7 @@ const loadShifts = useCallback(async () => {
   };
 
 const handleSave = async (updatedData) => {
-  console.log("Saving data:", updatedData); // 👈 add this
+
   const response = await performSave("shift_id", updatedData);
   if (response?.success) {
     await loadShifts();

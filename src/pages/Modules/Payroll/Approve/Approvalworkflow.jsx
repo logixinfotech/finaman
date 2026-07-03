@@ -224,6 +224,11 @@ const handleDelete = async (row) => {
 }
   };
 
+    useEffect(() => {
+    if (list.length > 0 && showForm) {
+      handleView(list[currentIndex]);
+    }
+  }, [currentIndex, list, showForm]);
   // ── ERP Shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
     setERPHandlers({

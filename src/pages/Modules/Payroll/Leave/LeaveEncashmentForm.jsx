@@ -291,7 +291,7 @@ export const LeaveEncashmentForm = ({
   currentRecord, totalRecords,
   setFormData, rights,
   activeTab = "entry", onTabChange,
-  initialData = {},
+  initialData = {},onPrevRecord,onNextRecord
 }) => {
   const [localData,  setLocalData]  = useState(initialData);
   const [errors,     setErrors]     = useState({});
@@ -450,7 +450,10 @@ const handleChange = (field, value) => {
     <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden" style={{ fontFamily: FONT }}>
       <ERPHeader title="LEAVE ENCASHMENT ENTRY" isAddMode={isAddMode}
         isEditMode={isEditMode} isViewMode={isViewMode} activeTab={activeTab}
-        onTabChange={onTabChange} rightContent={`${currentRecord || 1} / ${totalRecords || 1}`} />
+        onTabChange={onTabChange} rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}  currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}   />
 
       <div className="flex-1 p-4 overflow-y-auto">
         <div ref={formRef} className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">

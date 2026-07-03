@@ -223,17 +223,10 @@ const UserGroupForm = ({
     //   • value is empty string, OR
     //   • cursor is at position 0 (beginning of text, nothing to delete to the left)
     // BUG-12 FIX: guard selectionStart === null (e.g. certain browser/input combos)
-    if (e.key === "Backspace" && index > 0) {
-      const cursorAtStart =
-        active.selectionStart !== null
-          ? active.selectionStart === 0
-          : false;
-      const isEmpty = !active.value;
-
-      if (isEmpty || cursorAtStart) {
+    if (e.shiftKey&&e.key === "Backspace") {
         e.preventDefault();
         targets[index - 1].focus();
-      }
+      
       // else: let the browser handle normal character deletion
     }
   }, [isViewMode]);
@@ -287,7 +280,6 @@ const UserGroupForm = ({
           applName={title || "USER GROUP MASTER"}
           onCancel={() => onTabChange("entry")}
           onSave={(savedSettings) => {
-            console.log("Settings saved:", savedSettings);
             onTabChange("entry");
           }}
         />
@@ -313,7 +305,7 @@ const UserGroupForm = ({
                   value={formData.group_name || ""}
                   onChange={(e) => {
                     setNameError(false);
-                    setFormData({ ...formData, group_name: e.target.value.toUpperCase() });
+                    setFormData({ ...formData, group_name: e.target.value});
                   }}
                   onKeyDown={handleKeyDown}
                   disabled={isViewMode}

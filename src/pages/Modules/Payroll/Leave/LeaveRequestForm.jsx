@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
-import { getActledList, getLeaveTypes } from "../../../../utils/api";
+import { getActledList, getLeaveTypes, getLeaveTypesByEmployee } from "../../../../utils/api";
 import ERPDateInput from "../../../../components/Reusable/input/Date";
 import { showToast } from "../../../../components/Reusable/alert";
 import { focusFirstInput, handleERPBackspaceNavigation, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
@@ -22,7 +22,7 @@ const LeaveRequestForm = ({
   rights,
   activeTab = "entry",
   onTabChange,
-  initialData = {},
+  initialData = {}, onPrevRecord, onNextRecord
 }) => {
   const [localData, setLocalData] = useState(initialData);
   const [errors, setErrors] = useState({});
@@ -30,6 +30,7 @@ const LeaveRequestForm = ({
   const [employeeNames, setEmployeeNames] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [leaveTypeNames, setLeaveTypeNames] = useState([]);
+  const [allLeaveTypes, setAllLeaveTypes] = useState([]); // backup — sab types
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
@@ -64,6 +65,7 @@ const LeaveRequestForm = ({
       try {
         const res = await getLeaveTypes();
         const data = res?.data || [];
+        setAllLeaveTypes(data);   // sab types backup mein
         setLeaveTypes(data);
         setLeaveTypeNames(data.map((lt) => lt.leave_name));
       } catch (err) {
@@ -76,18 +78,29 @@ const LeaveRequestForm = ({
   // ── Sync initialData → localData ────────────────────────
   useEffect(() => {
     if (!initialData || Object.keys(initialData).length === 0) return;
-
     const formatted = {
       ...initialData,
       from_date: initialData.from_date ? initialData.from_date.split("T")[0] : "",
       to_date: initialData.to_date ? initialData.to_date.split("T")[0] : "",
     };
-
     if (JSON.stringify(localData) !== JSON.stringify(formatted)) {
       setLocalData(formatted);
       setFormData(formatted);
     }
-  }, [initialData, employees, leaveTypes]);
+
+    // Agar employee already selected hai to uske leave types load karo
+    if (initialData.employee_id) {
+      getLeaveTypesByEmployee(initialData.employee_id)
+        .then(res => {
+          const empLTs = res?.data || [];
+          if (empLTs.length > 0) {
+            setLeaveTypes(empLTs);
+            setLeaveTypeNames(empLTs.map(lt => lt.leave_name));
+          }
+        })
+        .catch(() => { });
+    }
+  }, [initialData]);
 
   // ── Auto-calculate total_days ────────────────────────────
   useEffect(() => {
@@ -124,13 +137,40 @@ const LeaveRequestForm = ({
   );
 
   // ── Field change handler ─────────────────────────────────
-  const handleChange = (field, value) => {
+  const handleChange = async (field, value) => {
     let updated = { ...localData };
 
     if (field === "employee_name") {
       const emp = employees.find((e) => e.Led_name?.trim() === value?.trim());
       updated.employee_name = value;
       updated.employee_id = emp ? Number(emp.Actled_id) : "";
+      // Leave type bhi clear karo jab employee change ho
+      updated.leave_name = "";
+      updated.leave_type_id = "";
+
+      // Is employee ke accrued leave types fetch karo
+      if (emp) {
+        try {
+          const res = await getLeaveTypesByEmployee(emp.Actled_id);
+          const empLTs = res?.data || [];
+          if (empLTs.length > 0) {
+            setLeaveTypes(empLTs);
+            setLeaveTypeNames(empLTs.map(lt => lt.leave_name));
+          } else {
+            // Agar accrual nahi hai to sab types dikhao
+            setLeaveTypes(allLeaveTypes);
+            setLeaveTypeNames(allLeaveTypes.map(lt => lt.leave_name));
+          }
+        } catch (e) {
+          // Error pe bhi sab types dikhao
+          setLeaveTypes(allLeaveTypes);
+          setLeaveTypeNames(allLeaveTypes.map(lt => lt.leave_name));
+        }
+      } else {
+        // Employee clear kiya — sab types restore karo
+        setLeaveTypes(allLeaveTypes);
+        setLeaveTypeNames(allLeaveTypes.map(lt => lt.leave_name));
+      }
     } else if (field === "leave_name") {
       const lt = leaveTypes.find((l) => l.leave_name === value);
       updated.leave_name = value;
@@ -161,10 +201,7 @@ const LeaveRequestForm = ({
     }`;
 
   // ── Status badge ─────────────────────────────────────────
-  const statusColor =
-    localData.status === "APPROVED" ? "bg-green-100 text-green-700 border-green-300" :
-      localData.status === "REJECTED" ? "bg-red-100 text-red-600 border-red-300" :
-        "bg-yellow-100 text-yellow-700 border-yellow-300";
+ 
 
   // ── Validate and save ────────────────────────────────────
   const handleValidateAndSave = useCallback(() => {
@@ -184,9 +221,7 @@ const LeaveRequestForm = ({
     if (onSave) onSave(localData);
   }, [localData, onSave, isViewMode]);
 
-  const isPending = localData.status === "PENDING";
-  const isApproved = localData.status === "APPROVED";
-  const isRejected = localData.status === "REJECTED";
+
 
   return (
     <div
@@ -201,6 +236,10 @@ const LeaveRequestForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+        currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}
       />
 
       <div className="flex-1 p-4 overflow-y-auto">

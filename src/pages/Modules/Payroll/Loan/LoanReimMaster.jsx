@@ -201,6 +201,11 @@ const LoanReimMaster = ({ tab }) => {
       }
     };
 
+      useEffect(() => {
+    if (list.length > 0 && showForm) {
+      handleView(list[currentIndex]);
+    }
+  }, [currentIndex, list, showForm]);
   useEffect(() => {
     setERPHandlers({
       onNextRecord: () =>

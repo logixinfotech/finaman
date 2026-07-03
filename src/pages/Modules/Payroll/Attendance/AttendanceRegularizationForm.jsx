@@ -281,7 +281,7 @@ const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 const AttendanceRegularizationForm = ({
     mode = "view", onSave, onCancel, onDelete, onEditCancel, saving,
     onModify, onNewEntry, currentRecord, totalRecords, rights,
-    activeTab = "entry", onTabChange, initialData = {}, setParentFormData
+    activeTab = "entry", onTabChange, initialData = {}, setParentFormData,onPrevRecord,onNextRecord
 }) => {
     const [formData, setFormData]           = useState(initialData);
     const [errors, setErrors]               = useState({});
@@ -468,6 +468,10 @@ const AttendanceRegularizationForm = ({
                 activeTab={activeTab}
                 onTabChange={onTabChange}
                 rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+                  currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
             />
 
             <div className="flex-1 p-4 overflow-y-auto flex justify-center">

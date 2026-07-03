@@ -742,7 +742,7 @@ const TDSMasterForm = ({
   onCancel, onDelete, onEditCancel, saving,
   onModify, onNewEntry, currentRecord, totalRecords,
   rights, activeTab = "entry", onTabChange = () => {},
-  initialData = {},
+  initialData = {},onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
   const slabRefs = useRef({});
@@ -910,7 +910,7 @@ const TDSMasterForm = ({
       else  saveBtnRef?.current?.focus();;
       return;
     }
-    if (e.key === "Backspace") {
+    if (e.shiftKey&&e.key === "Backspace") {
       e.preventDefault();
       focusTop(4); // go to stdRef (index 4)
     }
@@ -952,9 +952,8 @@ const TDSMasterForm = ({
       return;
     }
 
-    if (e.key === "Backspace") {
-      const val = String(e.target.value ?? "");
-      if (val !== "") return; // has value — normal backspace
+    if (e.shiftKey&&e.key === "Backspace") {
+     // has value — normal backspace
 
       e.preventDefault();
       if (fi > 0) {
@@ -988,6 +987,10 @@ const TDSMasterForm = ({
         isAddMode={isAddMode} isEditMode={isEditMode} isViewMode={isViewMode}
         activeTab={activeTab} onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -1016,7 +1019,7 @@ const TDSMasterForm = ({
                       placeholder="e.g. New Regime 2025-26"
                       className={ic("name")}
                     />
-                    {errors.name && <span className="text-[11px] text-red-500">{errors.name}</span>}
+                 
                   </div>
 
                   {/* Financial Year — idx 1 — wrap div so we can find input inside */}
@@ -1033,7 +1036,7 @@ const TDSMasterForm = ({
                         className={ic("financial_year")}
                       />
                     </div>
-                    {errors.financial_year && <span className="text-[11px] text-red-500">{errors.financial_year}</span>}
+                 
                   </div>
                 </div>
 
@@ -1059,7 +1062,6 @@ const TDSMasterForm = ({
                         📋 Old
                       </button>
                     </div>
-                    {errors.tax_regime && <span className="text-[11px] text-red-500">{errors.tax_regime}</span>}
                   </div>
 
                   {/* Calc Method — idx 2 */}

@@ -262,7 +262,7 @@ const DeductionHeadForm = ({
   formData,
   setFormData,
   onTabChange = () => {},
-  initialData = {},
+  initialData = {},onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
   const saveBtnRef=useRef(null)
@@ -366,18 +366,14 @@ const DeductionHeadForm = ({
       }
     }
     
-    if (e.key === "Backspace") {
-      let shouldGoBack = false;
-      if (e.target.tagName === "INPUT") {
-        const isEmpty = e.target.value === "";
-        const atStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
-        if (isEmpty || atStart) shouldGoBack = true;
-      }
+    if (e.shiftKey&&e.key === "Backspace") {
+  
+    
       
-      if (shouldGoBack && index > 0) {
+      
         e.preventDefault();
         elements[index - 1].focus();
-      }
+      
     }
   }, [formData, isViewMode, handleValidateAndSave]);
 
@@ -391,6 +387,10 @@ const DeductionHeadForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-2 md:p-4 overflow-y-auto">

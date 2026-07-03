@@ -169,7 +169,7 @@ const SalaryStructureForm = ({
   deductionHeads = [],
   structuresList = [],
   isEmbedded,
-  onSidebarViewPick,
+  onSidebarViewPick,onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
   const [activeHeadIds, setActiveHeadIds] = useState({});
@@ -527,6 +527,11 @@ useEffect(() => {
       if (index < elements.length - 1) elements[index + 1].focus();
       else (document.querySelector("#save") || document.querySelector("#update"))?.focus();
     }
+    if(e.shiftKey&&e.key==="Backspace"){
+       e.preventDefault();
+       elements[index -1].focus();
+
+    }
   }, [isViewMode]);
 const onSidebarPick = async (emp) => {
   if (isViewMode) {
@@ -534,7 +539,6 @@ const onSidebarPick = async (emp) => {
     setMobileView("detail");
     return;
   }
-
   if (isAddMode || isEditMode) {
     if (formData.employee_id && formData.employee_id !== emp.Actled_id) {
       const confirmed = await confirmDelete({
@@ -904,6 +908,10 @@ const onSidebarPick = async (emp) => {
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />)}
 
       <div className="flex-1 overflow-hidden">

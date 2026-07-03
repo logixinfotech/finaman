@@ -42,38 +42,13 @@ const OvertimeFilter = ({ filters, setFilters, onApply, onClear }) => {
   };
 
   const { options, loading } = useGroupOptions();
- 
-  //  useEffect(()=>{
-  //   const loadDep=async()=>{
-  //     try{
-  //       const dept=await fetchUserGroupsByType("Dep");
-  //       setDPARTMENTS(dept.data);
-  //       console.log(dept)
-  //     }
-  //     catch(error){
-  //       console.log("DropDown Error", error);
-  //     }
-  //   }
-  //   loadDep()
-  //  },[])
-  //  const department=  DEPARTMENTS?.map((item) => (
-  //     <option
-  //       key={item.group_name}
-  //       value={item.group_name}
-  //     >
-  //       {item.group_name}
-  //     </option>
-  //   ))
-  // console.log(department);
+  
   const init = parseDate(filters.from_date);
 
   const [selectedMonth, setSelectedMonth] = useState(init.month);
   const [selectedYear, setSelectedYear] = useState(init.year);
-
-  // NEW: filter type
-  const [filterType, setFilterType] = useState("month");
-
-  // Auto sync dates when month/year changes
+ 
+  const [filterType, setFilterType] = useState("month"); 
   useEffect(() => {
     if (filterType !== "month") return;
 
@@ -92,9 +67,7 @@ const OvertimeFilter = ({ filters, setFilters, onApply, onClear }) => {
 
   const handleClear = () => {
     const now = new Date();
-
     const from = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
-
     const to = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
       getLastDay(now.getFullYear(), now.getMonth() + 1),
     )}`;
@@ -116,8 +89,7 @@ const OvertimeFilter = ({ filters, setFilters, onApply, onClear }) => {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm">
-      <div className="flex flex-wrap items-end gap-3">
-        {/* Filter Type */}
+      <div className="flex flex-wrap items-end gap-3"> 
         <div className="flex flex-col gap-1 min-w-[160px]">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
             Filter Type

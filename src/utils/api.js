@@ -52,9 +52,7 @@ export const authenticateUser = async ({
       user_id,
       user_pass,
       forceLogin,
-    });
-    // Returns the raw payload. If the server says alreadyLoggedIn,
-    // LoginPage shows its in-card force-login button.
+    }); 
     return response.data;
   } catch (error) {
     console.error("Auth Error:", error.response?.data || error.message);
@@ -84,8 +82,7 @@ export const fetchUserProfile = async () => {
     );
     throw error;
   }
-};
-// ADD this — uses api instance so baseURL is correct
+}; 
 export const selectCompany = async (body) => {
   try {
     const response = await api.post("/api/authenticate/select-company", body);
@@ -124,6 +121,9 @@ export const createUser = (data) =>
 
 export const updateUser = (id, data) =>
   handleApi(() => api.put(`/api/user/update-user/${id}`, data));
+
+export const toggleUserBlock = (user_id) =>
+  handleApi(() => api.patch(`/api/user/toggle-block/${user_id}`));
 
 export const deleteUser = (id) =>
   handleApi(() => api.delete(`/api/user/delete-user/${id}`));
@@ -229,9 +229,7 @@ export const createCompany = async (companyData) => {
       message: "Server error"
     };
   }
-};
-
-
+}; 
 export const updateCompany = async (companyId, companyData) => {
   try {
 
@@ -316,9 +314,7 @@ export const fetchStates = async () => {
   return response.data;
 };
 
-//------------------------------------ PAYROLL ATTENDANCE--------------------------------------------------------
-
-
+//------------------------------------ PAYROLL ATTENDANCE-------------------------------------------------------- 
 export const getAttendanceList = (params) =>
   handleApi(() =>
     api.get("/api/payroll/attendance-log", {
@@ -340,8 +336,13 @@ export const updateAttendance = (id, data) =>
   handleApi(() => api.put(`/api/payroll/attendance-log/${id}`, data));
 
 export const deleteAttendance = (id) =>
-  handleApi(() => api.delete(`/api/payroll/attendance-log/${id}`));
+  handleApi(() => api.delete(`/api/payroll/attendance-log/${id}`)); 
 
+export const getEmployeeByCode = (code) =>
+  handleApi(() => api.get(`/api/employee/actled/by-code/${code}`));
+
+export const resolveEmployeeCodes = (codes) =>
+  handleApi(() => api.post("/api/payroll/actled/resolve-codes", { codes }));
 
 //------------------------------------Employee Master --------------------------------------------------------
 
@@ -350,6 +351,9 @@ export const saveEmployee = (data) =>
 
 export const getActledList = () =>
   handleApi(() => api.get("/api/employee/actled"));
+
+export const getActledListAll = () =>
+  handleApi(() => api.get("/api/employee/actled/all"));
 
 export const createEmployee = async (data) => {
   try {
@@ -372,8 +376,7 @@ export const updateEmployee = async (id, data) => {
   try {
     const res = await api.put(`/api/employee/actled/${id}`, {
       employeeData: JSON.stringify(data),
-    });
-
+    }); 
     return res.data;
   } catch (err) {
     return {
@@ -388,6 +391,11 @@ export const updateEmployee = async (id, data) => {
 export const deleteEmployee = (id) => {
   return api.delete(`/api/employee/actled/${id}`);
 };
+
+export const importEmployees = (formData) =>
+  handleApi(() => api.post("/api/employee/actled/import", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  }));
 
 // ── Employee Documents ───────────────────────────────────────
 export const getEmployeeDocuments = (empId) =>
@@ -414,7 +422,7 @@ export const uploadEmployeePhoto = (empId, formData) =>
 export const getEmployeePhotoUrl = (empId) =>
   `${api.defaults.baseURL}/api/employee/actled/${empId}/photo`;
 
-// ──────────────────────────────────────────────────HIFT MASTER ENDPOINTS ─────────────────────────────────── 
+// ──────────────────────────────────────────────────SHIFT MASTER ENDPOINTS ─────────────────────────────────── 
 
  export const fetchShifts = () =>
   handleApi(() => api.get("/api/shiftmaster"));  
@@ -488,10 +496,15 @@ export const deleteAttendRegular = (id) =>
   handleApi(() => api.delete(`/api/attendregular/${id}`));
 
 
-// ────────────────────────────────────── EAVE TYPES ──────────────────────────────────────────────────
+// ────────────────────────────────────── LEAVE TYPES ──────────────────────────────────────────────────
  
 export const getLeaveTypes = () => 
   handleApi(() => api.get("/api/leavetypes"));
+
+export const getLeaveTypesByEmployee = (employeeId, year) =>
+  handleApi(() => api.get(
+    `/api/leavetypes/employee/${employeeId}?financial_year=${year || new Date().getFullYear()}`
+  ));
 
  export const createLeaveType = (data) => 
   handleApi(() => api.post("/api/leavetypes", data));
@@ -875,12 +888,6 @@ export const fetchPendingDiaries = () =>
   handleApi(() => api.get("/api/work-diary/review"));
 export const fetchWorkDiaryCategories = () =>
 handleApi(() => api.get('/api/work-diary/categories'));
-export const approveDiary = (id, data) =>
-  handleApi(() => api.post(`/api/work-diary/${id}/approve`, data));
-
-export const rejectDiary = (id, data) =>
-  handleApi(() => api.post(`/api/work-diary/${id}/reject`, data));
-
 export const fetchMyTasks = () =>
   handleApi(() => api.get("/api/work-diary/my-tasks"));
 
@@ -903,7 +910,8 @@ export const addSubtask = (data) =>
 
 export const toggleSubtask = (subtask_id, is_done) =>
   handleApi(() => api.patch(`/api/work-diary/subtasks/${subtask_id}`, { is_done }));
-
+export const updateSubtask = (subtask_id, data) =>
+  handleApi(() => api.patch(`/api/work-diary/subtasks/${subtask_id}`, data));
 export const deleteSubtask = (subtask_id) =>
   handleApi(() => api.delete(`/api/work-diary/subtasks/${subtask_id}`));
 export const fetchWorkDiaryById = (id) =>
@@ -946,3 +954,7 @@ export const bulkUpdatePayrollStatus = (data) =>
 
 // export const deletePayroll = (id) =>
 //   handleApi(() => api.delete(`/api/payroll-monthly/${id}`));
+
+// Dashboard
+export const fetchDashboardSummary = async () =>
+  handleApi(() => api.get("/api/dashboard/summary"));

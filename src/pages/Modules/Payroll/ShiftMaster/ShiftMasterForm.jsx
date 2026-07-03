@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect,useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 
@@ -19,6 +19,7 @@ const ShiftMasterForm = ({
   formData,
   setFormData,
   initialData = {}
+  ,onPrevRecord,onNextRecord
 }) => {
  
   const [errors, setErrors] = useState({});
@@ -41,6 +42,7 @@ const ShiftMasterForm = ({
       }, 150);
     }
   }, [isAddMode, isEditMode]);
+  const saveBtnRef=useRef(null)
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -105,20 +107,15 @@ const ShiftMasterForm = ({
           if (index < focusableElements.length - 1) {
             focusableElements[index + 1].focus();
           } else {
-            const allButtons = Array.from(document.querySelectorAll("button"));
-            const saveBtn = allButtons.find((btn) =>
-              btn.textContent.toLowerCase().includes("save") && !btn.disabled
-            );
-            if (saveBtn) saveBtn.focus();
-            else handleValidateAndSave();
+           saveBtnRef?.current?.focus();
           }
         }
       }
 
-      if (e.key === "Backspace") {
+      if (e.shiftKey&&e.key === "Backspace") {
         const target = e.target;
         const targetType = target.type;
-        let shouldJumpBack = false;
+        let shouldJumpBack =true;
 
         if (targetType === "time") {
           if (target.value === "" && !target.validity.badInput) {
@@ -134,7 +131,7 @@ const ShiftMasterForm = ({
           }
         }
 
-        if (shouldJumpBack && index > 0) {
+        if (shouldJumpBack ) {
           e.preventDefault();
           const prevField = focusableElements[index - 1];
           prevField.focus();
@@ -162,6 +159,10 @@ const ShiftMasterForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">
@@ -222,6 +223,7 @@ const ShiftMasterForm = ({
                 <div className="flex-1 w-full">
                   <input
                     type="number"
+                    placeholder="In Minutes"
                     name="grace_in_minutes"
                     value={formData.grace_in_minutes || ""}
                     disabled={isViewMode}
@@ -237,6 +239,7 @@ const ShiftMasterForm = ({
                   <input
                     type="number"
                     name="grace_out_minutes"
+                     placeholder="In Minutes"
                     value={formData.grace_out_minutes || ""}
                     disabled={isViewMode}
                     onChange={(e) => handleChange("grace_out_minutes", e.target.value)}
@@ -302,6 +305,7 @@ const ShiftMasterForm = ({
       <ERPFooter
         isAddMode={isAddMode}
         isEditMode={isEditMode}
+        saveBtnRef={saveBtnRef}
         isViewMode={isViewMode}
         saving={saving}
         handleSubmit={handleValidateAndSave}

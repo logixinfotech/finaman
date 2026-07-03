@@ -495,4 +495,7 @@
   .layout-sidebar {
     flex-shrink: 0;
   }
-}
+} 
+.dashboard-shell { height: 100%; display: flex; flex-direction: column; }
+.dashboard-content { flex: 1; display: flex; overflow: hidden; }
+.layout-content { height: 100%; }

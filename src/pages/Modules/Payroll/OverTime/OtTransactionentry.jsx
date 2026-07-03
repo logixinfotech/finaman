@@ -85,7 +85,7 @@ const OTTransactionForm = ({
   onSave, onCancel, onDelete, onModify, onNewEntry, onEditCancel,
   saving, canPrint, rights,
   activeTab = "entry", onTabChange,
-  currentRecord, totalRecords,
+  currentRecord, totalRecords,onPrevRecord,onNextRecord
 }) => {
   const isView = mode === "view";
   const isEdit = mode === "edit";
@@ -181,6 +181,10 @@ const OTTransactionForm = ({
           isAddMode={isAdd} isEditMode={isEdit} isViewMode={isView}
           activeTab={activeTab} onTabChange={onTabChange}
           rightContent={`${currentRecord||1} / ${totalRecords||1}`}
+            currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
         />
 
         <div style={{ flex:1, overflow:"auto", padding:"14px 18px", display:"flex", flexDirection:"column", gap:12 }}>

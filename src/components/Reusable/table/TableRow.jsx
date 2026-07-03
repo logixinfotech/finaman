@@ -38,8 +38,7 @@ const TableRow = memo(
         rowHeight, // Received dynamic height from parent
       },
       ref
-    ) => {
-      /* ── background tokens ── */
+    ) => { 
       const baseBg =
         index % 2 === 0
           ? "bg-white"
@@ -66,16 +65,10 @@ const TableRow = memo(
 
       const handleDoubleClick = useCallback(() => {
         onRowDoubleClick?.(row);
-      }, [onRowDoubleClick, row]);
-
-      /* ── ordered visible columns ── */
+      }, [onRowDoubleClick, row]); 
       const visibleCols = columns.filter((c) => visibleColumns[c.key]);
-      const firstKey = visibleCols[0]?.key;
-
-      /* ── row-level frozen left offset ── */
-      let leftOffset = 0;
-
-      /* ── row class ── */
+      const firstKey = visibleCols[0]?.key; 
+      let leftOffset = 0; 
       const rowClass = [
         "group relative border-b cursor-default transition-colors duration-[60ms]",
         "text-[11.5px]",
@@ -154,8 +147,7 @@ const TableRow = memo(
                   ...stickyStyle 
                 }}
                 className={tdClass}
-              >
-                {/* selection indicator bar – first col only */}
+              > 
                 {isFirst && (
                   <span
                     aria-hidden="true"
@@ -173,8 +165,7 @@ const TableRow = memo(
                 <div 
                   className="truncate flex items-center gap-0"
                   style={{ height: rowHeight }} // Maintains cell height
-                >
-                  {/* checkbox indicator on selected first col */}
+                > 
                   {isSelected && isFirst && (
                     <span
                       aria-hidden="true"

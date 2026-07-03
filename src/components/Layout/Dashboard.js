@@ -141,18 +141,14 @@ function Dashboard({
       n = Math.floor(n / 26) - 1;
     }
     return result;
-  }
-
-  // Convert a typed string like "A", "B", "AA" back to its zero-based index
+  } 
   function alphabetToIndex(str) {
     let n = 0;
     for (let i = 0; i < str.length; i++) {
       n = n * 26 + (str.charCodeAt(i) - 64); // 'A' = 65 -> 1
     }
     return n - 1;
-  }
-
-  // BUG FIX #4: normalise IDs to strings so includes() always works correctly
+  } 
   const toggleFavourite = useCallback((id) => {
     const sid = String(id);
     setFavourites((prev) => {
@@ -195,14 +191,11 @@ function Dashboard({
     () => [...reports].sort((a, b) => isFav(b.masmnu_id) - isFav(a.masmnu_id)),
     [reports, isFav]
   );
-
-  // Combined ordered list — index here matches the visible alphabet label
+ 
   const shortcutMenus = useMemo(
     () => [...sortedEntries, ...sortedReports],
     [sortedEntries, sortedReports]
-  );
-
-  // ── Keyboard shortcuts (A, B, C ... AA, AB) open the matching menu ──────
+  ); 
   useEffect(() => {
     const isModuleView = activeTab?.type === "module";
     if (!isModuleView) return;
@@ -449,6 +442,7 @@ useEffect(() => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                style={{ height: "100%" }} 
               >
                 <FinamanDashboard />
               </motion.div>

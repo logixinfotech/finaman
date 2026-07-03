@@ -237,6 +237,11 @@ const AssetMaster = ({ tab }) => {
         alertError("Delete Error", "Failed to delete some ");
       }
     };
+      useEffect(() => {
+    if (list.length > 0 && showForm) {
+      handleView(list[currentIndex]);
+    }
+  }, [currentIndex, list, showForm]);
 
   useEffect(() => {
     setERPHandlers({

@@ -37,7 +37,7 @@ const LoanReimMasterForm = ({
   rights,
   activeTab = "entry",
   onTabChange,
-  initialData = {},
+  initialData = {},onPrevRecord,onNextRecord
 }) => {
   const [localData, setLocalData] = useState(initialData);
   const [errors, setErrors]       = useState({});
@@ -166,6 +166,10 @@ const LoanReimMasterForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">

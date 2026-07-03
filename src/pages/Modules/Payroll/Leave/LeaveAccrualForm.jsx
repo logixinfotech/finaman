@@ -30,9 +30,7 @@ export const LeaveAccrualForm = ({
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode  = mode === "add";
-    const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
-
-
+  const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
   const requiredFields = ["employee_id", "leave_type_id", "financial_year", "accrual_type", "accrual_days"];
 
   useEffect(() => {
@@ -60,7 +58,6 @@ export const LeaveAccrualForm = ({
     }
   }, [initialData]);
 
-  // Auto-calculate total_accrued
   useEffect(() => {
     const accrual = parseFloat(localData.accrual_days)  || 0;
     const cf      = parseFloat(localData.carry_forward) || 0;

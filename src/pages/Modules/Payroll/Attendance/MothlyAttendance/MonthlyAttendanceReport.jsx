@@ -25,39 +25,7 @@ const columns = [
   { key: "leave_days", label: "Leave Days" },     // ADD
   { key: "total_days", label: "Total Days" }
 ];
-
-// --- DUMMY DATA ---
-const dummyAttendanceData = [
-  {
-    employee_code: "EMP001", employee_name: "Rahul Sharma", department: "IT",
-    total_days: 31,
-    present_days: 19,
-    absent_days: 2,
-    absent_dates: [8, 20],
-    leave_breakdown: {
-      casual_leave: { label: "CASUAL LEAVE", count: 1, dates: [12] },
-      leave: { label: "LEAVE", count: 1, dates: [5] },
-      weekly_off: { label: "WEEKLY OFF", count: 5, dates: [3, 10, 17, 24, 31] },
-      holidays: { label: "HOLIDAYS", count: 1, dates: [1] },
-      unpaid: { label: "UNPAID", count: 2, dates: [28, 29] }
-    }
-  },
-  {
-    employee_code: "EMP002", employee_name: "Amit Verma", department: "HR",
-    total_days: 31,
-    present_days: 22,
-    absent_days: 1,
-    absent_dates: [11],
-    leave_breakdown: {
-      casual_leave: { label: "CASUAL LEAVE", count: 2, dates: [18, 19] },
-      leave: { label: "LEAVE", count: 0, dates: [] },
-      weekly_off: { label: "WEEKLY OFF", count: 5, dates: [3, 10, 17, 24, 31] },
-      holidays: { label: "HOLIDAYS", count: 1, dates: [1] },
-      unpaid: { label: "UNPAID", count: 0, dates: [] }
-    }
-  }
-];
-
+ 
 // --- Detail View Dashboard ---
 const EmployeeAttendanceDetail = ({ employee, employeeList, setSelectedEmployee, filters, setFilters, onBack }) => {
   const [activeFilter, setActiveFilter] = useState(null);

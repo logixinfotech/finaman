@@ -524,7 +524,7 @@ const inpClass = (f) =>
 const SalaryTransactionForm = ({
   formData, setFormData, mode, saving,
   onSave, onDelete, onModify, onNewEntry, onEditCancel, onCancel,
-  currentRecord, totalRecords, rights, activeTab, onTabChange,
+  currentRecord, totalRecords, rights, activeTab, onTabChange,onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors]       = useState({});
   const [employees, setEmployees] = useState([]);
@@ -572,6 +572,10 @@ const SalaryTransactionForm = ({
         isAddMode={isAdd} isEditMode={isEdit} isViewMode={isView}
         activeTab={activeTab} onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       {/* Body — left form + right detail, side by side, fixed height */}

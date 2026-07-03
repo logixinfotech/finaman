@@ -6,8 +6,7 @@ import {
   MonitorX, Building2, CalendarDays, Hash
 } from "lucide-react";
 import { authenticateUser, selectCompany } from "../../utils/api";
-
-// ── Animation variants ────────────────────────────────────────────────────────
+ 
 const cardVariants = {
   hidden:  { opacity: 0, y: 20, scale: 0.98 },
   visible: { opacity: 1, y: 0,  scale: 1,
@@ -30,11 +29,8 @@ const errorVariant = {
   exit:    { opacity: 0, height: 0, marginBottom: 0,
              transition: { duration: 0.18 } },
 };
-
-// Default accounting year shown until DB column is added
-const DEFAULT_ACC_YEAR = "2024-2025";
-
-// ── Main LoginPage ────────────────────────────────────────────────────────────
+ 
+const DEFAULT_ACC_YEAR = "2024-2025"; 
 function LoginPage({ onLoginSuccess }) {
   const [step,           setStep]           = useState("credentials");
   const [userId,         setUserId]         = useState("");
@@ -48,8 +44,7 @@ function LoginPage({ onLoginSuccess }) {
   const [preToken,   setPreToken]   = useState("");
   const [selecting,  setSelecting]  = useState(null);
   const [search,     setSearch]     = useState("");
-
-  // ── Keyboard-nav state / refs ──────────────────────────────────────────────
+ 
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const passwordRef = useRef(null);
   const searchRef   = useRef(null);
@@ -59,15 +54,13 @@ function LoginPage({ onLoginSuccess }) {
     c.company?.toLowerCase().includes(search.toLowerCase()) ||
     c.com_code?.toLowerCase().includes(search.toLowerCase())
   );
-
-  // Clamp highlight when the filtered list shrinks (e.g. while typing in search)
+ 
   useEffect(() => {
     if (highlightedIndex >= filteredCompanies.length) {
       setHighlightedIndex(filteredCompanies.length - 1);
     }
   }, [filteredCompanies.length, highlightedIndex]);
-
-  // Keep the highlighted row visible inside the scroll area
+ 
   useEffect(() => {
     if (highlightedIndex >= 0 && rowRefs.current[highlightedIndex]) {
       rowRefs.current[highlightedIndex].scrollIntoView({
@@ -75,9 +68,7 @@ function LoginPage({ onLoginSuccess }) {
         behavior: "smooth",
       });
     }
-  }, [highlightedIndex]);
-
-  // ── Step 1: login ─────────────────────────────────────────────────────────
+  }, [highlightedIndex]); 
   const handleLogin = async (e, force = false) => {
     if (e) e.preventDefault();
     setLoading(true);
@@ -121,19 +112,13 @@ function LoginPage({ onLoginSuccess }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Enter on User ID → jump to Password instead of submitting early
+  }; 
   const handleUserIdKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       passwordRef.current?.focus();
     }
-  };
-
-  // Enter on Password → submit the login directly.
-  // (motion.button as the submit button can swallow the implicit form submit,
-  //  so we trigger it explicitly here instead of relying on native behavior.)
+  }; 
   const handlePasswordKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -165,11 +150,7 @@ function LoginPage({ onLoginSuccess }) {
       setError(err.response?.data?.message || "Failed to select company. Please try again.");
       setSelecting(null);
     }
-  };
-
-  // Keyboard navigation for the company picker.
-  // Attached to the picker card so arrows work whether focus is in
-  // the search box or anywhere else inside the card.
+  }; 
   const handlePickerKeyDown = (e) => {
     if (selecting) return;                       // ignore while a selection is in flight
     const count = filteredCompanies.length;
@@ -213,9 +194,7 @@ function LoginPage({ onLoginSuccess }) {
       }}
     >
       <div className="w-full max-w-[420px]">
-        <AnimatePresence mode="wait">
-
-          {/* ══ STEP 1: Login card ══ */}
+        <AnimatePresence mode="wait"> 
           {step === "credentials" && (
             <motion.div
               key="credentials"
@@ -224,12 +203,10 @@ function LoginPage({ onLoginSuccess }) {
               className="w-full bg-white/85 backdrop-blur-xl rounded-2xl
                          shadow-[0_20px_40px_rgba(0,0,0,0.15)]
                          border border-white/80 overflow-hidden"
-            >
-              {/* Top accent bar */}
+            > 
               <div className="h-1 w-full bg-gradient-to-r from-blue-400 via-blue-600 to-indigo-500" />
 
-              <div className="px-8 py-8">
-                {/* Header */}
+              <div className="px-8 py-8"> 
                 <div className="flex flex-col items-center mb-7">
                   <img
                     src="/finaman-logo.png"
@@ -243,9 +220,7 @@ function LoginPage({ onLoginSuccess }) {
                   <p className="text-[12.5px] text-slate-500 mt-1">
                     Secure enterprise resource platform
                   </p>
-                </div>
-
-                {/* Error */}
+                </div> 
                 <AnimatePresence>
                   {error && (
                     <motion.div
@@ -259,9 +234,7 @@ function LoginPage({ onLoginSuccess }) {
                       <span>{error}</span>
                     </motion.div>
                   )}
-                </AnimatePresence>
-
-                {/* Form */}
+                </AnimatePresence> 
                 <form onSubmit={e => handleLogin(e, false)} className="flex flex-col gap-3.5">
                   {/* User ID */}
                   <div className="flex items-center gap-2.5 px-3.5 h-[46px] rounded-xl
@@ -281,9 +254,7 @@ function LoginPage({ onLoginSuccess }) {
                       className="flex-1 text-[13.5px] text-slate-800 bg-transparent
                                  outline-none placeholder:text-slate-300"
                     />
-                  </div>
-
-                  {/* Password */}
+                  </div> 
                   <div className="flex items-center gap-2.5 px-3.5 h-[46px] rounded-xl
                                   border border-slate-200 bg-white
                                   focus-within:border-blue-500
@@ -310,9 +281,7 @@ function LoginPage({ onLoginSuccess }) {
                     >
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
-                  </div>
-
-                  {/* Normal login button */}
+                  </div> 
                   {!showForceLogin && (
                     <motion.button
                       whileHover={{ y: -1, boxShadow: "0 8px 24px rgba(37,99,235,0.32)" }}
@@ -548,7 +517,7 @@ function LoginPage({ onLoginSuccess }) {
                 </div>
 
                 <p className="text-center text-[11px] text-slate-400 mt-4">
-                  © {new Date().getFullYear()} Finaman ERP · Compu-Soft Technology
+                  © {new Date().getFullYear()} Finaman ERP 
                 </p>
               </div>
             </motion.div>

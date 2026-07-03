@@ -117,6 +117,11 @@ const LeaveTypes = ({ tab }) => {
         alertError("Delete Error", "Failed to delete some leave records");
       }
     };
+      useEffect(() => {
+    if (list.length > 0 && showForm) {
+      handleView(list[currentIndex]);
+    }
+  }, [currentIndex, list, showForm]);
   
   useEffect(() => {
     setERPHandlers({

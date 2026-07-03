@@ -325,6 +325,7 @@ const ESIMasterForm = ({
   setFormData,
   onTabChange = () => {},
   initialData = {},
+  onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
 
@@ -411,12 +412,12 @@ const ESIMasterForm = ({
     }
 
     // ✅ FIX 1: Backspace on status toggle → seedha pichle element pe jao
-    if (e.key === "Backspace") {
+    if (e.shiftKey&&e.key === "Backspace") {
       const el = e.target;
       const isText = el.tagName === "INPUT" && ["text", "number", "search"].includes(el.type);
       const isToggle = el.dataset?.toggle === "status"; // ✅ status div check
 
-      let shouldGoBack = false;
+      let shouldGoBack = true;
 
       if (isToggle) {
         shouldGoBack = true; // ✅ status pe Backspace → hamesha back
@@ -425,7 +426,7 @@ const ESIMasterForm = ({
         if (el.value === "" || atStart) shouldGoBack = true;
       }
 
-      if (shouldGoBack && index > 0) {
+      if (shouldGoBack ) {
         e.preventDefault();
         let prev = index - 1;
         while (prev >= 0) {
@@ -462,6 +463,10 @@ const ESIMasterForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center items-start">

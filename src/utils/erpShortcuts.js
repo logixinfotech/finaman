@@ -106,22 +106,36 @@ const handleKeyDown = (e) => {
   
 
   // 1. Prevent Default for Boss's Shortcut Keys
- if (e.altKey || e.ctrlKey) {
-    const erpKeyCodes = ["KeyA", "KeyM", "KeyD", "KeyV", "KeyP", "KeyE", "KeyS", "KeyF", "KeyR", "KeyG"];
+//  if (e.altKey || e.ctrlKey) {
+//     const erpKeyCodes = ["KeyA", "KeyM", "KeyD", "KeyV", "KeyP", "KeyE", "KeyS", "KeyF", "KeyR", "KeyG"];
     
-    // Check if it's an ERP shortcut
-    if (erpKeyCodes.includes(code)) {
+//     // Check if it's an ERP shortcut
+//     if (erpKeyCodes.includes(code)) {
       
-      /* 🟢 FIX: If user is pressing Ctrl+A, do NOT preventDefault. 
-         This allows the browser's "Select All" to work. */
-      if (e.ctrlKey && code === "KeyA") {
-        return; // Exit and let the browser handle it
-      }
+//       /* 🟢 FIX: If user is pressing Ctrl+A, do NOT preventDefault. 
+//          This allows the browser's "Select All" to work. */
+//       if (e.ctrlKey && code === "KeyA") {
+//         return; // Exit and let the browser handle it
+//       }
 
+//       e.preventDefault();
+//       e.stopPropagation();
+//     }
+//   }
+if (e.altKey || e.ctrlKey) {
+    const erpKeyCodes = ["KeyA", "KeyM", "KeyD", "KeyV", "KeyP", "KeyE", "KeyS", "KeyF", "KeyR", "KeyG"];
+
+    // NAYA: Ctrl+A/C/V/X/Z/Y (jab Alt na ho) ko exception diya
+    const nativeClipboardCodes = ["KeyA", "KeyC", "KeyV", "KeyX", "KeyZ", "KeyY"];
+    if (e.ctrlKey && !e.altKey && nativeClipboardCodes.includes(code)) {
+      return;
+    }
+
+    if (erpKeyCodes.includes(code)) {
       e.preventDefault();
       e.stopPropagation();
     }
-  }
+}
   if (e.altKey && code === "KeyA") {
     currentHandlers.onAdd && currentHandlers.onAdd();
     return;
@@ -354,6 +368,7 @@ export const handleERPBackspaceNavigation = (e, formRef, isViewMode) => {
       e.target.setSelectionRange(0, 2);
     }
   }
+  
 };
 // NAYA
 export const focusSaveOrUpdateButton = (saveBtnRef) => {

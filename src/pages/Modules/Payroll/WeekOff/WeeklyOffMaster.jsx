@@ -128,7 +128,11 @@ const handleSave = async (updatedData  = formData) => {
       }
     };
   
-
+  useEffect(() => {
+    if (list.length > 0 && showForm) {
+      handleView(list[currentIndex]);
+    }
+  }, [currentIndex, list, showForm]);
   useEffect(() => {
     setERPHandlers({
       onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),

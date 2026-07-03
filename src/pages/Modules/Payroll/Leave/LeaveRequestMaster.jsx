@@ -210,6 +210,11 @@ const LeaveRequestMaster = ({ tab }) => {
     }
   };
 
+    useEffect(() => {
+    if (list.length > 0 && showForm) {
+      handleView(list[currentIndex]);
+    }
+  }, [currentIndex, list, showForm]);
     // ── ERP keyboard shortcuts ────────────────────────────────
     useEffect(() => {
         setERPHandlers({

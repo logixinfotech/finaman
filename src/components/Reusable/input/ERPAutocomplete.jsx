@@ -65,12 +65,12 @@ const ERPAutocomplete = ({
   };
  
   const handleKey = (e) => { 
-  if (e.key === "Backspace") {
-    const value = e.target.value; 
-    if (!value || value.length === 0) {
+  if (e.shiftKey&&e.key === "Backspace") {
+   
+   
       if (onKeyDown) {
         onKeyDown(e); // 🔥 delegate to parent navigation
-      }
+      
       return;
     }
   } 

@@ -1,5 +1,5 @@
-// WorkDiaryForm.jsx — Atoms, hooks, reusable components
-import { useState, useEffect, useCallback, useRef, useMemo , memo} from "react";
+ 
+import { useState, useEffect, useCallback, useRef, useMemo, memo , Fragment} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ERPAutocomplete from "../Reusable/input/ERPAutocomplete";
 import ERPDateInput from "../Reusable/input/Date";
@@ -14,8 +14,7 @@ import {
   CheckCircle2, RefreshCw, CornerDownLeft, Ticket, User,
   Play, Pause, Square, TrendingUp,
 } from "lucide-react";
-
-// ─── Tokens ──────────────────────────────────────────────────────
+ 
 export const F = "'DM Sans',system-ui,sans-serif";
 export const FD = "'Sora',system-ui,sans-serif";
 export const FM = "'DM Mono',monospace";
@@ -240,12 +239,496 @@ const CtxMenu = ({ x, y, onClose, items }) => {
     </div>
   );
 };
-
-// ─── Status dropdown options ──────────────────────────────────────
+ 
 const taskStatusOpts = ["Pending", "In Progress", "Completed", "Hold"];
-const ticketStatusOpts = ["Open", "In Progress", "Resolved", "Closed"];
+const ticketStatusOpts = ["Open", "In Progress", "Resolved", "Closed"]; 
+const PRIO_BADGE = {
+  High:   { bg: "#fff1f1", color: "#c0392b", dot: "#e74c3c", border: "#fecaca" },
+  Medium: { bg: "#fffbeb", color: "#b45309", dot: "#f59e0b", border: "#fde68a" },
+  Low:    { bg: "#f0fdf4", color: "#15803d", dot: "#22c55e", border: "#bbf7d0" },
+};
+const STAT_COLORS = {
+  Pending:       { bg: "#f5f3ff", color: "#6d28d9", border: "#ddd6fe" },
+  "In Progress": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
+  Completed:     { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  Hold:          { bg: "#fff1f1", color: "#b91c1c", border: "#fecaca" },
+};
+const DEFAULT_STAT = { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" };
+const DEFAULT_PRIO = PRIO_BADGE.Medium;
 
- const TaskCardMemo = ({ task, onOpen, onDelete, onStatusChange, isAssignedToMe = false, isSelected = false }) => {
+// Sticky header cell
+const Th = ({ children, w, align = "left" }) => (
+  <th style={{
+    textAlign: align, padding: "9px 14px", fontSize: 10, fontWeight: 700,
+    color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".7px",
+    fontFamily: "'Segoe UI', system-ui, sans-serif",
+    borderBottom: "1.5px solid #e2e8f0",
+    background: "linear-gradient(to bottom, #f8fafc, #f1f5f9)",
+    position: "sticky", top: 0, zIndex: 2,
+    whiteSpace: "nowrap", width: w,
+    boxShadow: "0 1px 0 #e2e8f0",
+  }}>{children}</th>
+);
+ 
+const TaskRows = memo(({ t, isExpanded, isLoading, subs, onToggle, onOpen, onDelete }) => {
+  const hasSubs = !!subs;
+  const subCount = subs?.length ?? 0;
+
+  return (
+    <tr
+      style={{
+        background: isExpanded
+          ? "linear-gradient(to right, #eff6ff, #f8fafc)"
+          : "#ffffff",
+        borderBottom: isExpanded ? "none" : "1px solid #f1f5f9",
+        transition: "background .15s",
+      }}> 
+      <td style={{ padding: "0 0 0 14px", width: 32 }}>
+        <button
+          onClick={() => onToggle(t)}
+          title={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+          style={{
+            width: 22, height: 22, borderRadius: 6,
+            border: `1.5px solid ${isExpanded ? "#185FA5" : "#cbd5e1"}`,
+            background: isExpanded
+              ? "linear-gradient(135deg, #185FA5, #1d4ed8)"
+              : "#f8fafc",
+            cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: isExpanded ? "#fff" : "#64748b",
+            transition: "all .16s cubic-bezier(.4,0,.2,1)",
+            flexShrink: 0,
+            boxShadow: isExpanded ? "0 2px 6px rgba(24,95,165,.3)" : "none",
+          }}>
+          {isLoading ? (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="3"
+              style={{ animation: "tte-spin .7s linear infinite" }}>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          ) : (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+              style={{
+                transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                transition: "transform .18s cubic-bezier(.4,0,.2,1)",
+              }}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          )}
+        </button>
+      </td> 
+      <td style={{ padding: "11px 14px" }}>
+        <div
+          onClick={() => onOpen(t._key || t.line_id)}
+          style={{
+            fontSize: 13, fontWeight: 700,
+            color: "#0f172a", cursor: "pointer",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            display: "flex", alignItems: "center", gap: 7,
+            maxWidth: 320,
+            transition: "color .12s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = "#185FA5"}
+          onMouseLeave={e => e.currentTarget.style.color = "#0f172a"}>
+          <span style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: "linear-gradient(135deg, #185FA5, #1d4ed8)",
+            flexShrink: 0, boxShadow: "0 1px 3px rgba(24,95,165,.4)",
+          }} />
+          {t.work_plan || "Untitled task"}
+        </div>
+        {t.target && (
+          <div style={{
+            fontSize: 11, color: "#94a3b8", marginTop: 3,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            maxWidth: 320, paddingLeft: 14,
+          }}>
+            {t.target}
+          </div>
+        )}
+      </td> 
+      <td style={{ padding: "11px 14px" }}>
+        {t.category ? (
+          <span style={{
+            padding: "3px 9px", borderRadius: 5, fontSize: 11, fontWeight: 600,
+            fontFamily: "'Consolas', monospace",
+            background: "#f1f5f9", color: "#475569",
+            border: "1px solid #e2e8f0", letterSpacing: ".2px",
+          }}>{t.category}</span>
+        ) : (
+          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
+        )}
+      </td>
+
+      {/* Assignee */}
+      <td style={{ padding: "11px 14px" }}>
+        {t.assigned_to_name ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <div style={{
+              width: 22, height: 22, borderRadius: "50%",
+              background: "linear-gradient(135deg, #185FA5, #8b5cf6)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 9, fontWeight: 800, color: "#fff", flexShrink: 0,
+              boxShadow: "0 1px 3px rgba(24,95,165,.25)",
+            }}>
+              {(t.assigned_to_name || "").slice(0, 2).toUpperCase()}
+            </div>
+            <span style={{
+              fontSize: 12, fontWeight: 600, color: "#334155",
+              overflow: "hidden", textOverflow: "ellipsis",
+              whiteSpace: "nowrap", maxWidth: 90,
+            }}>
+              {t.assigned_to_name}
+            </span>
+          </div>
+        ) : (
+          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
+        )}
+      </td>
+
+      {/* colspan 4 — Priority/Status/Due/Hrs in subtask */}
+      <td colSpan={4} style={{ padding: "11px 14px" }}>
+        {!isExpanded && (
+          hasSubs ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+                background: "#eff6ff", color: "#185FA5", border: "1px solid #bfdbfe",
+                fontFamily: "'Consolas', monospace",
+              }}>
+                {subCount} subtask{subCount !== 1 ? "s" : ""}
+              </span>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>· click ▶ to expand</span>
+            </div>
+          ) : (
+            <span style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>
+              click ▶ to load subtasks
+            </span>
+          )
+        )}
+      </td>
+
+      {/* Delete */}
+      <td style={{ padding: "11px 10px", textAlign: "center" }}>
+        {!t.assigned_by && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(t._key || t.line_id); }}
+            title="Delete task"
+            style={{
+              width: 26, height: 26, borderRadius: 6,
+              border: "1.5px solid #e2e8f0", background: "#f8fafc",
+              cursor: "pointer", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              color: "#94a3b8", transition: "all .14s",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "#fee2e2";
+              e.currentTarget.style.color = "#b91c1c";
+              e.currentTarget.style.borderColor = "#fca5a5";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "#f8fafc";
+              e.currentTarget.style.color = "#94a3b8";
+              e.currentTarget.style.borderColor = "#e2e8f0";
+            }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14H6L5 6" />
+              <path d="M10 11v6M14 11v6M9 6V4h6v2" />
+            </svg>
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+});
+ 
+const SubtaskRow = memo(({ s, isLast, tod }) => {
+  const pb = PRIO_BADGE[s.priority] || DEFAULT_PRIO;
+  const sc = STAT_COLORS[s.status] || DEFAULT_STAT;
+  const over = s.due_date && s.due_date < tod;
+  const isDone = s.status === "Completed" || !!s.is_done;
+
+  return (
+    <tr style={{
+      background: isDone
+        ? "linear-gradient(to right, #f0fdf4, #f8fafc)"
+        : "linear-gradient(to right, #eff6ff, #f8faff)",
+      borderBottom: isLast ? "2px solid #e2e8f0" : "1px solid #e8f0fb",
+      opacity: isDone ? 0.7 : 1,
+      transition: "opacity .12s",
+    }}>
+
+      {/* Connector visual */}
+      <td style={{ padding: "0", width: 32, position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+          <div style={{
+            width: 12, height: 12,
+            borderLeft: "2px solid #bfdbfe",
+            borderBottom: "2px solid #bfdbfe",
+            borderRadius: "0 0 0 5px",
+            marginTop: -4,
+          }} />
+        </div>
+      </td>
+ 
+      <td style={{ padding: "8px 14px" }}>
+        <div style={{
+          fontSize: 12.5, fontWeight: 600,
+          color: isDone ? "#94a3b8" : "#1e293b",
+          textDecoration: isDone ? "line-through" : "none",
+          display: "flex", alignItems: "center", gap: 7,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          maxWidth: 300,
+        }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke="#185FA5" strokeWidth="2" strokeLinecap="round"
+            style={{ opacity: .55, flexShrink: 0 }}>
+            <polyline points="9 11 12 14 22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          {s.subtask_text}
+        </div>
+      </td> 
+      <td style={{ padding: "8px 14px" }} /> 
+      <td style={{ padding: "8px 14px" }} />
+
+      {/* Priority */}
+      <td style={{ padding: "8px 14px" }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "3px 8px", borderRadius: 5, fontSize: 10.5, fontWeight: 700,
+          fontFamily: "'Consolas', monospace",
+          background: pb.bg, color: pb.color,
+          border: `1px solid ${pb.border}`,
+        }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: pb.dot, flexShrink: 0 }} />
+          {s.priority || "Medium"}
+        </span>
+      </td>
+
+      {/* Status */}
+      <td style={{ padding: "8px 14px" }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "3px 8px", borderRadius: 5, fontSize: 10.5, fontWeight: 700,
+          fontFamily: "'Consolas', monospace",
+          background: sc.bg, color: sc.color,
+          border: `1px solid ${sc.border}`,
+        }}>
+          {isDone && (
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
+          {s.status || "Pending"}
+        </span>
+      </td> 
+      <td style={{ padding: "8px 14px" }}>
+        {s.due_date ? (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            fontFamily: "'Consolas', monospace", fontSize: 11.5,
+            color: over ? "#b91c1c" : "#64748b",
+            fontWeight: over ? 700 : 500,
+            background: over ? "#fff1f1" : "transparent",
+            padding: over ? "2px 7px" : "0",
+            borderRadius: over ? 4 : 0,
+            border: over ? "1px solid #fecaca" : "none",
+          }}>
+            {over && (
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
+                stroke="#b91c1c" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            )}
+            {s.due_date}
+          </span>
+        ) : (
+          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
+        )}
+      </td> 
+      <td style={{ padding: "8px 14px" }}>
+        {parseFloat(s.expected_time) > 0 ? (
+          <span style={{
+            fontFamily: "'Consolas', monospace", fontSize: 11.5,
+            color: "#334155", fontWeight: 600,
+          }}>
+            {parseFloat(s.expected_time).toFixed(1)}h
+          </span>
+        ) : (
+          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
+        )}
+      </td> 
+      <td style={{ padding: "8px 10px" }} />
+    </tr>
+  );
+});
+
+export const TaskTable = ({ tasks, onOpen, onDelete, onStatusChange }) => {
+  const tod = todayStr();
+  const [expanded, setExpanded] = useState({});
+  const [subtaskData, setSubtaskData] = useState({});
+  const [loadingId, setLoadingId] = useState(null); 
+  const toggleExpand = useCallback(async (task) => {
+    const id = task.line_id;
+    if (!id) return;
+
+    let needsFetch = false;
+    setExpanded(prev => {
+      const nowOpen = !prev[id];
+      if (nowOpen) needsFetch = true;
+      return { ...prev, [id]: nowOpen };
+    });
+
+    setSubtaskData(prev => {
+      if (!needsFetch || prev[id] !== undefined) return prev;  
+      return prev; 
+    }); 
+    setSubtaskData(prev => {
+      if (prev[id] !== undefined) return prev; 
+      return prev;
+    });
+
+    setSubtaskData(prev => {
+      if (prev[id] !== undefined) { needsFetch = false; } // already have it
+      return prev;
+    });
+
+    if (!needsFetch) return;
+
+    setLoadingId(id);
+    try {
+      const r = await fetchSubtasks(id);
+      const subs = Array.isArray(r) ? r : (r?.data || []);
+      setSubtaskData(prev => ({ ...prev, [id]: subs }));
+    } catch {
+      setSubtaskData(prev => ({ ...prev, [id]: [] }));
+    } finally {
+      setLoadingId(null);
+    }
+  }, []); 
+
+  return (
+    <div style={{
+      border: "1.5px solid #e2e8f0", borderRadius: 12,
+      overflow: "auto", background: "#ffffff",
+      boxShadow: "0 1px 4px rgba(15,23,42,.05), 0 4px 16px rgba(15,23,42,.04)",
+    }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+        <thead>
+          <tr>
+            <Th w="32px" />
+            <Th w="30%">Task</Th>
+            <Th w="12%">Category</Th>
+            <Th w="14%">Assignee</Th>
+            <Th w="10%">Priority</Th>
+            <Th w="12%">Status</Th>
+            <Th w="10%">Due Date</Th>
+            <Th w="8%">Exp. Hrs</Th>
+            <Th w="40px" />
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.length === 0 ? (
+            <tr>
+              <td colSpan={9}>
+                <div style={{
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  padding: "48px 24px", gap: 10,
+                }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: "#eff6ff", display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      stroke="#185FA5" strokeWidth="1.5" strokeLinecap="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <line x1="3" y1="9" x2="21" y2="9" />
+                      <line x1="9" y1="21" x2="9" y2="9" />
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#334155" }}>No tasks found</div>
+                  <div style={{ fontSize: 12, color: "#94a3b8" }}>Try adjusting your filters</div>
+                </div>
+              </td>
+            </tr>
+          ) : tasks.map(t => {
+            const id = t.line_id;
+            const isExpanded = !!expanded[id];
+            const subs = subtaskData[id];
+            const isLoading = loadingId === id;
+
+            return (
+              <Fragment key={t._key || id}>
+                <TaskRows
+                  t={t}
+                  isExpanded={isExpanded}
+                  isLoading={isLoading}
+                  subs={subs}
+                  onToggle={toggleExpand}
+                  onOpen={onOpen}
+                  onDelete={onDelete}
+                />
+
+                {isExpanded && (
+                  <>
+                    {isLoading && (
+                      <tr style={{ background: "#f8fafc" }}>
+                        <td colSpan={9} style={{ padding: "12px 14px 12px 46px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#94a3b8", fontSize: 12 }}>
+                            <div style={{
+                              width: 12, height: 12, border: "2px solid #bfdbfe",
+                              borderTop: "2px solid #185FA5", borderRadius: "50%",
+                              animation: "tte-spin .7s linear infinite",
+                            }} />
+                            Loading subtasks…
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {!isLoading && subs?.length === 0 && (
+                      <tr style={{ background: "#f8fafc" }}>
+                        <td colSpan={9} style={{
+                          padding: "10px 14px 10px 46px",
+                          fontSize: 12, color: "#94a3b8",
+                          borderBottom: "2px solid #e2e8f0",
+                          fontStyle: "italic",
+                        }}>
+                          No subtasks for this task
+                        </td>
+                      </tr>
+                    )}
+                    {!isLoading && subs?.map((s, si) => (
+                      <SubtaskRow
+                        key={s.subtask_id}
+                        s={s}
+                        isLast={si === subs.length - 1}
+                        tod={tod}
+                      />
+                    ))}
+                  </>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <style>{`
+        @keyframes tte-spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
+};
+
+const TaskCardMemo = ({ task, onOpen, onDelete, onStatusChange, isAssignedToMe = false, isSelected = false }) => {
   const [ctx, setCtx] = useState(null);
   const [showStatus, setShowStatus] = useState(false);
   const statusRef = useRef(null);
@@ -255,8 +738,6 @@ const ticketStatusOpts = ["Open", "In Progress", "Resolved", "Closed"];
   const done = isTicket ? task.status === "Resolved" || task.status === "Closed" : task.status === "Completed";
   const stCfg = STAT_BADGE[task.status] || { bg: "#f1f5f9", color: "#475569" };
   const statusOpts = isTicket ? ticketStatusOpts : taskStatusOpts;
-
-  // Close dropdown on outside click
   useEffect(() => {
     if (!showStatus) return;
     const h = (e) => { if (!statusRef.current?.contains(e.target)) setShowStatus(false); };
@@ -264,7 +745,7 @@ const ticketStatusOpts = ["Open", "In Progress", "Resolved", "Closed"];
     return () => document.removeEventListener("mousedown", h);
   }, [showStatus]);
 
-const handleDelete = () => onDelete(task._key);
+  const handleDelete = () => onDelete(task._key);
 
   return (
     <div
@@ -289,7 +770,6 @@ const handleDelete = () => onDelete(task._key);
       {/* ── Body ── */}
       <div style={{ padding: "11px 14px 10px" }}>
 
-        {/* Row 1: type badge + title + action buttons */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 7 }}>
           <div style={{
             flex: 1, minWidth: 0,
@@ -336,10 +816,7 @@ const handleDelete = () => onDelete(task._key);
           </div>
         )}
 
-        {/* Badges row: priority + status (outside card flow) + category */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-
-          {/* Priority badge */}
           <span style={{
             display: "inline-flex", alignItems: "center", gap: 4,
             padding: "3px 8px", borderRadius: 4,
@@ -473,7 +950,7 @@ const handleDelete = () => onDelete(task._key);
         <CtxMenu x={ctx.x} y={ctx.y} onClose={() => setCtx(null)} items={[
           { label: "Open detail", Icon: Pencil, fn: () => { onOpen(task._key); setCtx(null); } },
           "sep",
-        ...(task.assigned_by ? [] : [{ label: "Delete task", Icon: Trash2, red: true, fn: handleDelete }]),
+          ...(task.assigned_by ? [] : [{ label: "Delete task", Icon: Trash2, red: true, fn: handleDelete }]),
         ]} />
       )}
     </div>
@@ -1073,7 +1550,7 @@ const ModalShell = ({ onClose, children, isMobile }) => {
     </div>
   );
 };
- 
+
 function Lbl({ children }) {
   return (
     <div style={{
@@ -1092,15 +1569,15 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
   const [subInp, setSubInp] = useState("");
   const [touched, setTouched] = useState(false);
 
-  const titleRef   = useRef(null);
-  const descRef    = useRef(null);
-  const prioRefs   = [useRef(null), useRef(null), useRef(null)];
-  const statRefs   = [useRef(null), useRef(null), useRef(null), useRef(null)];
+  const titleRef = useRef(null);
+  const descRef = useRef(null);
+  const prioRefs = [useRef(null), useRef(null), useRef(null)];
+  const statRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const dueDateRef = useRef(null);
-  const targetRef  = useRef(null);
-  const subInpRef  = useRef(null);
-  const remarkRef  = useRef(null);
-  const saveRef    = useRef(null);
+  const targetRef = useRef(null);
+  const subInpRef = useRef(null);
+  const remarkRef = useRef(null);
+  const saveRef = useRef(null);
   const modalBodyRef = useRef(null);
 
   // ── Focus first editable field on open ──
@@ -1121,9 +1598,9 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
     if (f.assign_type === "self") {
       setF(p => ({
         ...p,
-        assigned_to_id:   currentUser?.userma_id || null,
-        assigned_to_name: currentUser?.user_id   || null,
-        assigned_by:      null,
+        assigned_to_id: currentUser?.userma_id || null,
+        assigned_to_name: currentUser?.user_id || null,
+        assigned_by: null,
       }));
     } else {
       setTimeout(() => {
@@ -1156,7 +1633,7 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
 
 
-  const PRIO_VALS  = ["High", "Medium", "Low"];
+  const PRIO_VALS = ["High", "Medium", "Low"];
   const STATUS_VALS = ["Pending", "In Progress", "Completed", "Hold"];
 
   const onTitleKey = useCallback(e => {
@@ -1176,15 +1653,15 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
   const onPrioKey = useCallback((e, idx) => {
     if (isAssignedByOther) return;
-    if (e.key === "ArrowRight") { e.preventDefault(); prioRefs[Math.min(idx+1,2)].current?.focus(); }
-    if (e.key === "ArrowLeft")  { e.preventDefault(); prioRefs[Math.max(idx-1,0)].current?.focus(); }
+    if (e.key === "ArrowRight") { e.preventDefault(); prioRefs[Math.min(idx + 1, 2)].current?.focus(); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); prioRefs[Math.max(idx - 1, 0)].current?.focus(); }
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set("priority", PRIO_VALS[idx]); }
     if (e.key === "Tab") { e.preventDefault(); statRefs[0].current?.focus(); }
   }, [isAssignedByOther, set]);
 
   const onStatKey = useCallback((e, idx) => {
-    if (e.key === "ArrowRight") { e.preventDefault(); statRefs[Math.min(idx+1,3)].current?.focus(); }
-    if (e.key === "ArrowLeft")  { e.preventDefault(); statRefs[Math.max(idx-1,0)].current?.focus(); }
+    if (e.key === "ArrowRight") { e.preventDefault(); statRefs[Math.min(idx + 1, 3)].current?.focus(); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); statRefs[Math.max(idx - 1, 0)].current?.focus(); }
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set("status", STATUS_VALS[idx]); }
     if (e.key === "Tab") {
       e.preventDefault();
@@ -1198,7 +1675,7 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
   const onSubKey = useCallback(e => {
     if (e.key === "Enter" || e.key === ",") { e.preventDefault(); subInp.trim() ? addSub() : remarkRef.current?.focus(); }
-    if (e.key === "Backspace" && !subInp && subtasks.length) setSubs(p => p.slice(0,-1));
+    if (e.key === "Backspace" && !subInp && subtasks.length) setSubs(p => p.slice(0, -1));
   }, [subInp, subtasks, addSub]);
 
   const onRemarkKey = useCallback(e => {
@@ -1206,21 +1683,21 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
   }, [handleSave]);
 
   const PRIO_OPTS = useMemo(() => [
-    { v:"High",   dot:"#ef4444", bg:"#fee2e2", color:"#b91c1c" },
-    { v:"Medium", dot:"#f59e0b", bg:"#fef3c7", color:"#b45309" },
-    { v:"Low",    dot:"#22c55e", bg:"#dcfce7", color:"#15803d" },
+    { v: "High", dot: "#ef4444", bg: "#fee2e2", color: "#b91c1c" },
+    { v: "Medium", dot: "#f59e0b", bg: "#fef3c7", color: "#b45309" },
+    { v: "Low", dot: "#22c55e", bg: "#dcfce7", color: "#15803d" },
   ], []);
 
   const STATUS_OPTS = useMemo(() => [
-    { v:"Pending",     bg:"#ede9fe", color:"#6d28d9" },
-    { v:"In Progress", bg:"#e0f2fe", color:"#0369a1" },
-    { v:"Completed",   bg:"#dcfce7", color:"#15803d" },
-    { v:"Hold",        bg:"#fee2e2", color:"#b91c1c" },
+    { v: "Pending", bg: "#ede9fe", color: "#6d28d9" },
+    { v: "In Progress", bg: "#e0f2fe", color: "#0369a1" },
+    { v: "Completed", bg: "#dcfce7", color: "#15803d" },
+    { v: "Hold", bg: "#fee2e2", color: "#b91c1c" },
   ], []);
 
-  const inp = useMemo(() => ({ ...winp, padding:"8px 12px", fontSize:13 }), []);
-  const inpFocus = useCallback(e => { e.target.style.borderColor=C.blue; e.target.style.boxShadow="0 0 0 3px rgba(24,95,165,.1)"; }, []);
-  const inpBlur  = useCallback(e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }, []);
+  const inp = useMemo(() => ({ ...winp, padding: "8px 12px", fontSize: 13 }), []);
+  const inpFocus = useCallback(e => { e.target.style.borderColor = C.blue; e.target.style.boxShadow = "0 0 0 3px rgba(24,95,165,.1)"; }, []);
+  const inpBlur = useCallback(e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = "none"; }, []);
 
   // ── Locked field style ──
   const lockedStyle = useMemo(() => ({
@@ -1235,32 +1712,36 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
       {/* ── Header ── */}
       <div style={{
-        display:"flex", alignItems:"center", gap:10, padding:"14px 16px 13px",
-        borderBottom:`1.5px solid ${C.border}`, flexShrink:0,
-        background:`linear-gradient(135deg, ${C.blueLight} 0%, ${C.surface} 60%)`,
+        display: "flex", alignItems: "center", gap: 10, padding: "14px 16px 13px",
+        borderBottom: `1.5px solid ${C.border}`, flexShrink: 0,
+        background: `linear-gradient(135deg, ${C.blueLight} 0%, ${C.surface} 60%)`,
       }}>
-        <div style={{ width:34, height:34, borderRadius:10, background:C.blue,
-          display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
-          boxShadow:`0 4px 12px ${C.blue}44` }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 10, background: C.blue,
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          boxShadow: `0 4px 12px ${C.blue}44`
+        }}>
           {isEdit ? <Pencil size={15} color="#fff" /> : <Zap size={15} color="#fff" />}
         </div>
         <div>
-          <div style={{ fontFamily:FD, fontSize:15, fontWeight:800, color:C.t1, lineHeight:1.1 }}>
+          <div style={{ fontFamily: FD, fontSize: 15, fontWeight: 800, color: C.t1, lineHeight: 1.1 }}>
             {isEdit ? "Edit Task" : "New Task"}
           </div>
-          <div style={{ fontSize:10, color:C.t3, marginTop:2 }}>
+          <div style={{ fontSize: 10, color: C.t3, marginTop: 2 }}>
             {isAssignedByOther
               ? `Assigned by ${task.assigned_by} · status, hours & remarks editable`
               : isEdit ? "Update task details below" : "Enter key jumps between fields"}
           </div>
         </div>
         <button onClick={onClose}
-          style={{ marginLeft:"auto", width:30, height:30, borderRadius:8,
-            background:C.bg, border:`1.5px solid ${C.border}`,
-            cursor:"pointer", color:C.t3, display:"flex",
-            alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .13s" }}
-          onMouseEnter={e=>{ e.currentTarget.style.background="#fee2e2"; e.currentTarget.style.color="#b91c1c"; e.currentTarget.style.borderColor="#fca5a5"; }}
-          onMouseLeave={e=>{ e.currentTarget.style.background=C.bg; e.currentTarget.style.color=C.t3; e.currentTarget.style.borderColor=C.border; }}>
+          style={{
+            marginLeft: "auto", width: 30, height: 30, borderRadius: 8,
+            background: C.bg, border: `1.5px solid ${C.border}`,
+            cursor: "pointer", color: C.t3, display: "flex",
+            alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .13s"
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#b91c1c"; e.currentTarget.style.borderColor = "#fca5a5"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.bg; e.currentTarget.style.color = C.t3; e.currentTarget.style.borderColor = C.border; }}>
           <X size={15} />
         </button>
       </div>
@@ -1268,38 +1749,46 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
       {/* ── Assigned-by banner ── */}
       {isAssignedByOther && (
         <div style={{
-          display:"flex", alignItems:"center", gap:8, padding:"8px 16px",
-          background:"#fef9ec", borderBottom:`1px solid #f59e0b44`, flexShrink:0,
+          display: "flex", alignItems: "center", gap: 8, padding: "8px 16px",
+          background: "#fef9ec", borderBottom: `1px solid #f59e0b44`, flexShrink: 0,
         }}>
           <CornerDownLeft size={13} color="#b45309" />
-          <span style={{ fontSize:12, fontWeight:600, color:"#92400e", fontFamily:F }}>
-            Task assigned by <strong>{task.assigned_by}</strong> 
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#92400e", fontFamily: F }}>
+            Task assigned by <strong>{task.assigned_by}</strong>
           </span>
-          <span style={{ marginLeft:"auto", fontFamily:FM, fontSize:10, fontWeight:700,
-            background:"#fef3c7", color:"#b45309", padding:"2px 8px", borderRadius:4 }}>
+          <span style={{
+            marginLeft: "auto", fontFamily: FM, fontSize: 10, fontWeight: 700,
+            background: "#fef3c7", color: "#b45309", padding: "2px 8px", borderRadius: 4
+          }}>
             RESTRICTED
           </span>
         </div>
       )}
 
       {/* ── Body ── */}
-      <div ref={modalBodyRef} style={{ flex:1, overflowY:"auto", padding:"14px 16px 10px",
-        display:"flex", flexDirection:"column", gap:12 }}>
+      <div ref={modalBodyRef} style={{
+        flex: 1, overflowY: "auto", padding: "14px 16px 10px",
+        display: "flex", flexDirection: "column", gap: 12
+      }}>
 
         {/* ── Assign toggle — hidden if assigned by other ── */}
         {!isAssignedByOther && (
-          <div style={{ display:"flex", gap:6, background:C.bg, borderRadius:10,
-            padding:3, border:`1.5px solid ${C.border}` }}>
-            {[{ v:"self", l:"Myself", Icon:UserCheck },
-              { v:"assign", l:"Assign to someone", Icon:UserPlus }].map(({ v,l,Icon:Ic }) => (
+          <div style={{
+            display: "flex", gap: 6, background: C.bg, borderRadius: 10,
+            padding: 3, border: `1.5px solid ${C.border}`
+          }}>
+            {[{ v: "self", l: "Myself", Icon: UserCheck },
+            { v: "assign", l: "Assign to someone", Icon: UserPlus }].map(({ v, l, Icon: Ic }) => (
               <button key={v} type="button" onClick={() => set("assign_type", v)}
-                style={{ flex:1, padding:"7px 10px", borderRadius:8, border:"none",
-                  fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:F,
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:6,
-                  background: f.assign_type===v ? C.surface : "transparent",
-                  color: f.assign_type===v ? C.blue : C.t3,
-                  boxShadow: f.assign_type===v ? "0 1px 4px rgba(12,25,52,.1)" : "none",
-                  transition:"all .14s" }}>
+                style={{
+                  flex: 1, padding: "7px 10px", borderRadius: 8, border: "none",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  background: f.assign_type === v ? C.surface : "transparent",
+                  color: f.assign_type === v ? C.blue : C.t3,
+                  boxShadow: f.assign_type === v ? "0 1px 4px rgba(12,25,52,.1)" : "none",
+                  transition: "all .14s"
+                }}>
                 <Ic size={13} strokeWidth={2} />{l}
               </button>
             ))}
@@ -1310,12 +1799,14 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
           <div data-assignee="1">
             <ERPAutocomplete
               value={f.assigned_to_name || ""}
-              options={employees.map(e => e.user_name||e.user_id||e.Led_name).filter(Boolean)}
+              options={employees.map(e => e.user_name || e.user_id || e.Led_name).filter(Boolean)}
               onChange={val => {
-                const emp = employees.find(e => (e.user_name||e.user_id||e.Led_name)===val);
-                setF(p => ({ ...p, assigned_to_name:val,
-                  assigned_to_id: emp?.userma_id||emp?.user_id||null,
-                  assigned_by: currentUser?.user_id||null }));
+                const emp = employees.find(e => (e.user_name || e.user_id || e.Led_name) === val);
+                setF(p => ({
+                  ...p, assigned_to_name: val,
+                  assigned_to_id: emp?.userma_id || emp?.user_id || null,
+                  assigned_by: currentUser?.user_id || null
+                }));
               }}
               placeholder="Search employee to delegate…"
               className="erpac-inp" />
@@ -1324,7 +1815,7 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
         {/* ── Task title ── */}
         <div>
-          <Lbl>Task title <span style={{ color:"#ef4444" }}>*</span></Lbl>
+          <Lbl>Task title <span style={{ color: "#ef4444" }}>*</span></Lbl>
           <input ref={titleRef} value={f.work_plan}
             onChange={e => !isAssignedByOther && set("work_plan", e.target.value)}
             onKeyDown={onTitleKey}
@@ -1332,11 +1823,13 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
             onBlur={e => { if (!isAssignedByOther) { inpBlur(e); setTouched(true); } }}
             placeholder="What needs to be done?"
             disabled={isAssignedByOther}
-            style={{ ...inp, fontWeight:600, width:"100%",
+            style={{
+              ...inp, fontWeight: 600, width: "100%",
               ...(isAssignedByOther ? lockedStyle : {}),
-              borderColor: touched && !f.work_plan?.trim() ? "#ef4444" : C.border }} />
+              borderColor: touched && !f.work_plan?.trim() ? "#ef4444" : C.border
+            }} />
           {touched && !f.work_plan?.trim() && (
-            <div style={{ fontSize:10, color:"#ef4444", marginTop:3, display:"flex", alignItems:"center", gap:4 }}>
+            <div style={{ fontSize: 10, color: "#ef4444", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
               <AlertTriangle size={10} /> Title is required
             </div>
           )}
@@ -1352,37 +1845,45 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
             onBlur={isAssignedByOther ? undefined : inpBlur}
             disabled={isAssignedByOther}
             placeholder="Context, links, acceptance criteria…"
-            rows={2} style={{ ...inp, resize:"none", lineHeight:1.55, width:"100%",
-              ...(isAssignedByOther ? lockedStyle : {}) }} />
+            rows={2} style={{
+              ...inp, resize: "none", lineHeight: 1.55, width: "100%",
+              ...(isAssignedByOther ? lockedStyle : {})
+            }} />
         </div>
 
         {/* ── Priority + Status ── */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
 
           {/* Priority — locked if assigned by other */}
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
               <Lbl>Priority</Lbl>
               {isAssignedByOther && (
-                <span style={{ fontSize:9, fontWeight:700, color:"#b45309",
-                  background:"#fef3c7", padding:"1px 6px", borderRadius:4 }}>LOCKED</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, color: "#b45309",
+                  background: "#fef3c7", padding: "1px 6px", borderRadius: 4
+                }}>LOCKED</span>
               )}
             </div>
-            <div style={{ display:"flex", gap:4,
-              ...(isAssignedByOther ? { pointerEvents:"none", opacity:0.55 } : {}) }}>
-              {PRIO_OPTS.map(({ v,dot,bg,color }, idx) => (
+            <div style={{
+              display: "flex", gap: 4,
+              ...(isAssignedByOther ? { pointerEvents: "none", opacity: 0.55 } : {})
+            }}>
+              {PRIO_OPTS.map(({ v, dot, bg, color }, idx) => (
                 <button key={v} ref={prioRefs[idx]} type="button"
                   onClick={() => !isAssignedByOther && set("priority", v)}
                   onKeyDown={e => onPrioKey(e, idx)}
                   disabled={isAssignedByOther}
-                  style={{ flex:1, display:"inline-flex", alignItems:"center", justifyContent:"center",
-                    gap:4, padding:"7px 4px", borderRadius:8, border:"1.5px solid",
-                    fontSize:11, fontWeight:700, fontFamily:F, transition:"all .13s",
-                    background: f.priority===v ? bg : C.bg,
-                    borderColor: f.priority===v ? color : C.border,
-                    color: f.priority===v ? color : C.t4, outline:"none",
-                    cursor: isAssignedByOther ? "not-allowed" : "pointer" }}>
-                  <PDot color={f.priority===v?dot:C.t4} size={5} />{v}
+                  style={{
+                    flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    gap: 4, padding: "7px 4px", borderRadius: 8, border: "1.5px solid",
+                    fontSize: 11, fontWeight: 700, fontFamily: F, transition: "all .13s",
+                    background: f.priority === v ? bg : C.bg,
+                    borderColor: f.priority === v ? color : C.border,
+                    color: f.priority === v ? color : C.t4, outline: "none",
+                    cursor: isAssignedByOther ? "not-allowed" : "pointer"
+                  }}>
+                  <PDot color={f.priority === v ? dot : C.t4} size={5} />{v}
                 </button>
               ))}
             </div>
@@ -1390,24 +1891,28 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
           {/* Status — always editable */}
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
               <Lbl>Status</Lbl>
               {isAssignedByOther && (
-                <span style={{ fontSize:9, fontWeight:700, color:"#15803d",
-                  background:"#dcfce7", padding:"1px 6px", borderRadius:4 }}>EDITABLE</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, color: "#15803d",
+                  background: "#dcfce7", padding: "1px 6px", borderRadius: 4
+                }}>EDITABLE</span>
               )}
             </div>
-            <div style={{ display:"flex", gap:4 }}>
-              {STATUS_OPTS.map(({ v,bg,color }, idx) => (
+            <div style={{ display: "flex", gap: 4 }}>
+              {STATUS_OPTS.map(({ v, bg, color }, idx) => (
                 <button key={v} ref={statRefs[idx]} type="button"
                   onClick={() => set("status", v)}
                   onKeyDown={e => onStatKey(e, idx)}
-                  style={{ flex:1, padding:"7px 2px", borderRadius:8, border:"1.5px solid",
-                    fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:F,
-                    whiteSpace:"nowrap", textAlign:"center", transition:"all .13s",
-                    background: f.status===v ? bg : C.bg,
-                    borderColor: f.status===v ? color : C.border,
-                    color: f.status===v ? color : C.t4, outline:"none" }}>
+                  style={{
+                    flex: 1, padding: "7px 2px", borderRadius: 8, border: "1.5px solid",
+                    fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: F,
+                    whiteSpace: "nowrap", textAlign: "center", transition: "all .13s",
+                    background: f.status === v ? bg : C.bg,
+                    borderColor: f.status === v ? color : C.border,
+                    color: f.status === v ? color : C.t4, outline: "none"
+                  }}>
                   {v === "In Progress" ? "Active" : v}
                 </button>
               ))}
@@ -1416,57 +1921,65 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
         </div>
 
         {/* ── Category + Due date + Target hrs ── */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
 
           {/* Category — locked */}
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
               <Lbl>Category</Lbl>
               {isAssignedByOther && (
-                <span style={{ fontSize:9, fontWeight:700, color:"#b45309",
-                  background:"#fef3c7", padding:"1px 6px", borderRadius:4 }}>LOCKED</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, color: "#b45309",
+                  background: "#fef3c7", padding: "1px 6px", borderRadius: 4
+                }}>LOCKED</span>
               )}
             </div>
-            <div data-cat="1" style={isAssignedByOther ? { pointerEvents:"none", opacity:0.55 } : {}}>
-              <ERPAutocomplete value={f.category||""} options={categoryOptions}
-                onChange={v => { set("category",v); setTimeout(()=>dueDateRef.current?.focus(),50); }}
-                onKeyDown={e => { if(e.key==="Tab"||e.key==="Enter"){ e.preventDefault(); dueDateRef.current?.focus(); } }}
+            <div data-cat="1" style={isAssignedByOther ? { pointerEvents: "none", opacity: 0.55 } : {}}>
+              <ERPAutocomplete value={f.category || ""} options={categoryOptions}
+                onChange={v => { set("category", v); setTimeout(() => dueDateRef.current?.focus(), 50); }}
+                onKeyDown={e => { if (e.key === "Tab" || e.key === "Enter") { e.preventDefault(); dueDateRef.current?.focus(); } }}
                 placeholder="Type or select…" className="erpac-inp" />
             </div>
           </div>
 
           {/* Due date — locked */}
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
               <Lbl>Due date</Lbl>
               {isAssignedByOther && (
-                <span style={{ fontSize:9, fontWeight:700, color:"#b45309",
-                  background:"#fef3c7", padding:"1px 6px", borderRadius:4 }}>LOCKED</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, color: "#b45309",
+                  background: "#fef3c7", padding: "1px 6px", borderRadius: 4
+                }}>LOCKED</span>
               )}
             </div>
-            <div style={isAssignedByOther ? { pointerEvents:"none", opacity:0.55 } : {}}>
+            <div style={isAssignedByOther ? { pointerEvents: "none", opacity: 0.55 } : {}}>
               <ERPDateInput ref={dueDateRef} value={f.due_date}
-                onChange={v => { set("due_date",v); setTimeout(()=>targetRef.current?.focus(),50); }}
-                onKeyDown={e => { if(e.key==="Tab"||e.key==="Enter"){ e.preventDefault(); targetRef.current?.focus(); } }}
+                onChange={v => { set("due_date", v); setTimeout(() => targetRef.current?.focus(), 50); }}
+                onKeyDown={e => { if (e.key === "Tab" || e.key === "Enter") { e.preventDefault(); targetRef.current?.focus(); } }}
                 className="erpac-inp" />
             </div>
           </div>
 
           {/* Target hrs — locked */}
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
               <Lbl>Target hrs</Lbl>
               {isAssignedByOther && (
-                <span style={{ fontSize:9, fontWeight:700, color:"#b45309",
-                  background:"#fef3c7", padding:"1px 6px", borderRadius:4 }}>LOCKED</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, color: "#b45309",
+                  background: "#fef3c7", padding: "1px 6px", borderRadius: 4
+                }}>LOCKED</span>
               )}
             </div>
             <input ref={targetRef} type="text" inputMode="decimal" value={f.expected_time}
-              onChange={e => !isAssignedByOther && set("expected_time", e.target.value.replace(/[^0-9.]/g,""))}
-              onKeyDown={e => { if(e.key==="Tab"||e.key==="Enter"){ e.preventDefault(); subInpRef.current?.focus(); } }}
+              onChange={e => !isAssignedByOther && set("expected_time", e.target.value.replace(/[^0-9.]/g, ""))}
+              onKeyDown={e => { if (e.key === "Tab" || e.key === "Enter") { e.preventDefault(); subInpRef.current?.focus(); } }}
               disabled={isAssignedByOther}
-              placeholder="e.g. 2.5" style={{ ...inp,
-                ...(isAssignedByOther ? lockedStyle : {}) }}
+              placeholder="e.g. 2.5" style={{
+                ...inp,
+                ...(isAssignedByOther ? lockedStyle : {})
+              }}
               onFocus={isAssignedByOther ? undefined : inpFocus}
               onBlur={isAssignedByOther ? undefined : inpBlur} />
           </div>
@@ -1475,26 +1988,28 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
         {/* ── Actual hrs — always editable in edit mode ── */}
         {isEdit && (
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
               <Lbl>Actual hrs logged</Lbl>
-              <span style={{ fontSize:9, fontWeight:700, color:"#0369a1",
-                background:"#e0f2fe", padding:"1px 7px", borderRadius:4 }}>
+              <span style={{
+                fontSize: 9, fontWeight: 700, color: "#0369a1",
+                background: "#e0f2fe", padding: "1px 7px", borderRadius: 4
+              }}>
                 {isAssignedByOther ? "YOU CAN EDIT" : "edit only"}
               </span>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="text" inputMode="decimal" value={f.actual_time}
-                onChange={e => set("actual_time", e.target.value.replace(/[^0-9.]/g,""))}
-                onKeyDown={e => { if(e.key==="Tab"||e.key==="Enter"){ e.preventDefault(); subInpRef.current?.focus(); } }}
+                onChange={e => set("actual_time", e.target.value.replace(/[^0-9.]/g, ""))}
+                onKeyDown={e => { if (e.key === "Tab" || e.key === "Enter") { e.preventDefault(); subInpRef.current?.focus(); } }}
                 placeholder="Hours actually spent…"
-                style={{ ...inp, flex:1 }} onFocus={inpFocus} onBlur={inpBlur} />
-              {parseFloat(f.expected_time)>0 && parseFloat(f.actual_time)>0 && (() => {
-                const pct = Math.round((parseFloat(f.actual_time)/parseFloat(f.expected_time))*100);
-                const col = pct>100?"#b91c1c":pct>=80?"#b45309":"#15803d";
+                style={{ ...inp, flex: 1 }} onFocus={inpFocus} onBlur={inpBlur} />
+              {parseFloat(f.expected_time) > 0 && parseFloat(f.actual_time) > 0 && (() => {
+                const pct = Math.round((parseFloat(f.actual_time) / parseFloat(f.expected_time)) * 100);
+                const col = pct > 100 ? "#b91c1c" : pct >= 80 ? "#b45309" : "#15803d";
                 return (
-                  <div style={{ flexShrink:0, textAlign:"center" }}>
-                    <div style={{ fontSize:13, fontWeight:800, fontFamily:FM, color:col }}>{pct}%</div>
-                    <div style={{ fontSize:9, color:C.t4 }}>used</div>
+                  <div style={{ flexShrink: 0, textAlign: "center" }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, fontFamily: FM, color: col }}>{pct}%</div>
+                    <div style={{ fontSize: 9, color: C.t4 }}>used</div>
                   </div>
                 );
               })()}
@@ -1504,53 +2019,65 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
         {/* ── Sub-tasks — always editable ── */}
         <div>
-          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
             <Lbl>Sub-tasks</Lbl>
             {isAssignedByOther && (
-              <span style={{ fontSize:9, fontWeight:700, color:"#15803d",
-                background:"#dcfce7", padding:"1px 6px", borderRadius:4 }}>EDITABLE</span>
+              <span style={{
+                fontSize: 9, fontWeight: 700, color: "#15803d",
+                background: "#dcfce7", padding: "1px 6px", borderRadius: 4
+              }}>EDITABLE</span>
             )}
             {subtasks.length > 0 && (
-              <span style={{ fontFamily:FM, fontSize:10, background:C.blueLight,
-                color:C.blueDark, padding:"1px 7px", borderRadius:999, fontWeight:700 }}>
+              <span style={{
+                fontFamily: FM, fontSize: 10, background: C.blueLight,
+                color: C.blueDark, padding: "1px 7px", borderRadius: 999, fontWeight: 700
+              }}>
                 {subtasks.length}
               </span>
             )}
           </div>
           {subtasks.length > 0 && (
-            <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:7 }}>
-              {subtasks.map((s,i) => (
-                <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4,
-                  background:C.blueLight, border:`1px solid ${C.blueBorder}`,
-                  color:C.blueDark, padding:"3px 9px", borderRadius:6,
-                  fontSize:11, fontWeight:600 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 7 }}>
+              {subtasks.map((s, i) => (
+                <span key={i} style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  background: C.blueLight, border: `1px solid ${C.blueBorder}`,
+                  color: C.blueDark, padding: "3px 9px", borderRadius: 6,
+                  fontSize: 11, fontWeight: 600
+                }}>
                   {s}
-                  <span onClick={() => setSubs(p => p.filter((_,j)=>j!==i))}
-                    style={{ cursor:"pointer", opacity:.5, display:"flex" }}
-                    onMouseEnter={e=>e.currentTarget.style.opacity="1"}
-                    onMouseLeave={e=>e.currentTarget.style.opacity=".5"}>
+                  <span onClick={() => setSubs(p => p.filter((_, j) => j !== i))}
+                    style={{ cursor: "pointer", opacity: .5, display: "flex" }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = "1"}
+                    onMouseLeave={e => e.currentTarget.style.opacity = ".5"}>
                     <X size={10} />
                   </span>
                 </span>
               ))}
             </div>
           )}
-          <div style={{ display:"flex", alignItems:"center", gap:8, background:C.bg,
-            border:`1.5px solid ${C.border}`, borderRadius:9, padding:"7px 12px",
-            transition:"border-color .14s" }}
-            onFocusCapture={e => e.currentTarget.style.borderColor=C.blue}
-            onBlurCapture={e => e.currentTarget.style.borderColor=C.border}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, background: C.bg,
+            border: `1.5px solid ${C.border}`, borderRadius: 9, padding: "7px 12px",
+            transition: "border-color .14s"
+          }}
+            onFocusCapture={e => e.currentTarget.style.borderColor = C.blue}
+            onBlurCapture={e => e.currentTarget.style.borderColor = C.border}>
             <ListChecks size={12} color={C.t4} />
             <input ref={subInpRef} value={subInp}
               onChange={e => setSubInp(e.target.value)}
               onKeyDown={onSubKey}
               placeholder={subtasks.length ? "Add more…" : "Type sub-task, comma or Enter to add…"}
-              style={{ border:"none", background:"none", outline:"none",
-                fontSize:12, color:C.t1, flex:1, fontFamily:F }} />
+              style={{
+                border: "none", background: "none", outline: "none",
+                fontSize: 12, color: C.t1, flex: 1, fontFamily: F
+              }} />
             {subInp && (
               <button onClick={addSub}
-                style={{ background:C.blue, border:"none", borderRadius:6, padding:"3px 8px",
-                  cursor:"pointer", display:"flex", alignItems:"center" }}>
+                style={{
+                  background: C.blue, border: "none", borderRadius: 6, padding: "3px 8px",
+                  cursor: "pointer", display: "flex", alignItems: "center"
+                }}>
                 <Check size={10} color="#fff" strokeWidth={3} />
               </button>
             )}
@@ -1559,47 +2086,57 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
 
         {/* ── Remarks — always editable ── */}
         <div>
-          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
             <Lbl>Remarks</Lbl>
             {isAssignedByOther && (
-              <span style={{ fontSize:9, fontWeight:700, color:"#15803d",
-                background:"#dcfce7", padding:"1px 6px", borderRadius:4 }}>EDITABLE</span>
+              <span style={{
+                fontSize: 9, fontWeight: 700, color: "#15803d",
+                background: "#dcfce7", padding: "1px 6px", borderRadius: 4
+              }}>EDITABLE</span>
             )}
           </div>
           <input ref={remarkRef} value={f.remarks}
             onChange={e => set("remarks", e.target.value)}
             onKeyDown={onRemarkKey}
             placeholder="Any additional notes… (Enter = save)"
-            style={{ ...inp, width:"100%" }}
+            style={{ ...inp, width: "100%" }}
             onFocus={inpFocus} onBlur={inpBlur} />
         </div>
       </div>
 
       {/* ── Footer ── */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"11px 16px", borderTop:`1.5px solid ${C.border}`,
-        flexShrink:0, background:C.bg }}>
-        <div style={{ fontSize:11, color:C.t4, fontFamily:FM, overflow:"hidden",
-          textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:200 }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "11px 16px", borderTop: `1.5px solid ${C.border}`,
+        flexShrink: 0, background: C.bg
+      }}>
+        <div style={{
+          fontSize: 11, color: C.t4, fontFamily: FM, overflow: "hidden",
+          textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200
+        }}>
           {isAssignedByOther
             ? `From ${task.assigned_by}${f.due_date ? ` · due ${f.due_date}` : ""}`
-            : `${f.assign_type==="assign"&&f.assigned_to_name?`→ ${f.assigned_to_name}`:"Self task"}${f.due_date?` · ${f.due_date}`:""}${f.expected_time?` · ${f.expected_time}h`:""}`
+            : `${f.assign_type === "assign" && f.assigned_to_name ? `→ ${f.assigned_to_name}` : "Self task"}${f.due_date ? ` · ${f.due_date}` : ""}${f.expected_time ? ` · ${f.expected_time}h` : ""}`
           }
         </div>
-        <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <button onClick={onClose}
-            style={{ padding:"8px 16px", borderRadius:9, border:`1.5px solid ${C.border}`,
-              background:C.surface, color:C.t3, cursor:"pointer", fontSize:12,
-              fontWeight:600, fontFamily:F, transition:"all .13s" }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor=C.borderS; e.currentTarget.style.color=C.t2; }}
-            onMouseLeave={e=>{ e.currentTarget.style.borderColor=C.border; e.currentTarget.style.color=C.t3; }}>
+            style={{
+              padding: "8px 16px", borderRadius: 9, border: `1.5px solid ${C.border}`,
+              background: C.surface, color: C.t3, cursor: "pointer", fontSize: 12,
+              fontWeight: 600, fontFamily: F, transition: "all .13s"
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderS; e.currentTarget.style.color = C.t2; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.t3; }}>
             Cancel
           </button>
           <button ref={saveRef} onClick={handleSave}
-            style={{ ...btnPrimary, padding:"8px 20px", fontSize:13,
+            style={{
+              ...btnPrimary, padding: "8px 20px", fontSize: 13,
               opacity: f.work_plan?.trim() ? 1 : .4,
               cursor: f.work_plan?.trim() ? "pointer" : "not-allowed",
-              transition:"opacity .15s" }}
+              transition: "opacity .15s"
+            }}
             disabled={!f.work_plan?.trim()}>
             <Save size={13} color="#fff" />
             {isEdit ? "Update Task" : "Save Task"}
@@ -1610,4 +2147,4 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
     </ModalShell>
   );
 };
- 
+

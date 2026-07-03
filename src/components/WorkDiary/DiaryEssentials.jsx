@@ -3,18 +3,19 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchMyTasks, fetchAssignedByMeTasks, updateTaskLineStatus, deleteTaskLine } from "../../utils/api";
 import { alertError } from "../Reusable/alert";
+import TaskTableEntry from "./TaskTableEntry";
 import {
   F, FD, FM, C, STAT_BADGE, PRIO_CFG,
   Avtar, PDot, ProgressRing, useToast,
   TaskCard, TaskRow, DetailPanel, TaskModal, QuickAddBar,
   todayStr, fmtHrs, fmtDate, newTask, getTimeAlert,
-  btnPrimary, btnSecondary, useIsMobile,
+  btnPrimary, btnSecondary, useIsMobile, TaskTable,
 } from "./WorkDiaryForm";
 import { generateId } from "../../utils/helpers";
 import {
   ClipboardList, RefreshCw, CheckCircle2, AlertTriangle, Clock,
   LayoutGrid, List, Search, X, RotateCcw, Plus,
-  Circle, Flag, BookOpen, Layers, ChevronRight, UserCheck, CornerDownLeft,
+  Circle, Flag, BookOpen, Layers, ChevronRight, UserCheck, CornerDownLeft, Table2
 } from "lucide-react";
 
 // ─── getCurrentUser ───────────────────────────────────────────────
@@ -30,7 +31,7 @@ const SectionGroup = ({ label, count, accentColor, badgeBg, badgeColor, lineBg, 
   const [open, setOpen] = useState(true);
 
   return (
-    <div> 
+    <div>
       <div
         onClick={() => setOpen(p => !p)}
         style={{
@@ -219,8 +220,8 @@ export const SidebarContent = ({
 // ─── MyTasksScreen ────────────────────────────────────────────────
 export const MyTasksScreen = ({
   currentUser, employees = [],
-  onSaveAndSubmit, categoryList = [], activeCategory, setActiveCategory,
-  isSaving = false,
+  onSaveAndSubmit, categoryList = [], activeCategory, setActiveCategory, setActiveNav,
+  isSaving = false, onEditTask,
 }) => {
   const [activeTab, setActiveTab] = useState("to_me");
   const [myTasks, setMyTasks] = useState([]);
@@ -228,15 +229,18 @@ export const MyTasksScreen = ({
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("pending");
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState("grid"); // existing
+  const [filterEmployee, setFilterEmployee] = useState("");
+  const [filterDept, setFilterDept] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
   const [detailKey, setDetailKey] = useState(null);
   const [modal, setModal] = useState(null);
- 
-  const [byMeLoaded, setByMeLoaded] = useState(false); 
+
+  const [byMeLoaded, setByMeLoaded] = useState(false);
   const isMobile = useIsMobile();
   const { show: toast, ToastUI } = useToast();
   const tod = todayStr();
- 
+
   const loadMyTasks = useCallback(async () => {
     setLoading(true);
     try {
@@ -256,7 +260,7 @@ export const MyTasksScreen = ({
       setByMeTasks(normalize(rBy));
     } catch { /* non-fatal — by_me tab can retry on next manual refresh */ }
   }, []);
- 
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -265,12 +269,12 @@ export const MyTasksScreen = ({
     } catch { alertError("Error", "Failed to load tasks"); }
     finally { setLoading(false); }
   }, [loadMyTasks, loadByMeTasks]);
- 
+
   useEffect(() => {
     loadMyTasks();
     setByMeLoaded(false);
   }, []);
- 
+
   useEffect(() => {
     if (activeTab === "by_me" && !byMeLoaded) {
       setByMeLoaded(true);
@@ -281,14 +285,11 @@ export const MyTasksScreen = ({
   useEffect(() => { setFilter("all"); setSearch(""); setDetailKey(null); }, [activeTab]);
 
   const tabTasks = activeTab === "to_me" ? myTasks : byMeTasks;
-
-  // Stats
   const inProgress = tabTasks.filter(t => t.status === "In Progress").length;
   const completed = tabTasks.filter(t => t.status === "Completed" || t.status === "Resolved" || t.status === "Closed").length;
   const overdue = tabTasks.filter(t => t.due_date && t.due_date < tod && t.status !== "Completed" && t.status !== "Cancelled").length;
   const todayDue = tabTasks.filter(t => t.due_date === tod && t.status !== "Completed").length;
-
-  // Assignee breakdown (by_me)
+ 
   const assigneeBreakdown = useMemo(() => {
     if (activeTab !== "by_me") return [];
     const map = {};
@@ -307,6 +308,9 @@ export const MyTasksScreen = ({
   const filtered = useMemo(() => {
     let l = [...tabTasks];
     if (activeCategory) l = l.filter(t => t.category === activeCategory);
+    if (filterEmployee) l = l.filter(t => t.assigned_to_name === filterEmployee);
+    if (filterDept) l = l.filter(t => t.department === filterDept);
+    if (filterCategory) l = l.filter(t => t.category === filterCategory);
     if (search) {
       const q = search.toLowerCase();
       l = l.filter(t =>
@@ -317,8 +321,8 @@ export const MyTasksScreen = ({
       );
     }
     switch (filter) {
-      case "own": return l.filter(t => !t.assigned_by || t.assign_type === "self");   // ← new
-      case "delegated": return l.filter(t => t.assigned_by && t.assign_type === "assign");  // ← new
+      case "own": return l.filter(t => !t.assigned_by || t.assign_type === "self");
+      case "delegated": return l.filter(t => t.assigned_by && t.assign_type === "assign");
       case "inprogress": return l.filter(t => t.status === "In Progress");
       case "completed": return l.filter(t => t.status === "Completed" || t.status === "Resolved" || t.status === "Closed");
       case "overdue": return l.filter(t => t.due_date && t.due_date < tod && t.status !== "Completed" && t.status !== "Cancelled");
@@ -327,7 +331,7 @@ export const MyTasksScreen = ({
       case "pending": return l.filter(t => t.status === "Pending" || t.status === "Open");
       default: return l;
     }
-  }, [tabTasks, filter, search, tod, activeCategory]);
+  }, [tabTasks, filter, search, tod, activeCategory, filterEmployee, filterDept, filterCategory]);
 
   const detailTask = tabTasks.find(t => t._key === detailKey || String(t.line_id) === String(detailKey)) || null;
   const detailOpen = !!detailTask;
@@ -351,19 +355,26 @@ export const MyTasksScreen = ({
       }
     }
   }, [myTasks, byMeTasks, toast]);
-
   useEffect(() => {
     const handler = e => {
-      // Alt+N → open new task modal
       if (e.altKey && e.key === "n") {
         e.preventDefault();
-        setModal(newTask(currentUser));
+        setActiveNav?.("diaryentry");
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [currentUser]);
+  }, [setActiveNav]);
 
+  const employeeOptions = useMemo(() => {
+    const set = new Set(tabTasks.map(t => t.assigned_to_name).filter(Boolean));
+    return [...set].sort();
+  }, [tabTasks]);
+
+  const deptOptions = useMemo(() => {
+    const set = new Set(tabTasks.map(t => t.department).filter(Boolean));
+    return [...set].sort();
+  }, [tabTasks]);
   const handleStatusChange = useCallback(async (key, newStatus) => {
     const upd = p => p.map(t => (t._key === key || String(t.line_id) === String(key)) ? { ...t, status: newStatus } : t);
     setMyTasks(upd); setByMeTasks(upd);
@@ -377,13 +388,13 @@ export const MyTasksScreen = ({
         toast("Status update failed", "error");
       }
     }
-  }, [myTasks, byMeTasks, toast]); 
+  }, [myTasks, byMeTasks, toast]);
   const delTask = useCallback(async key => {
     const allT = [...myTasks, ...byMeTasks];
     const task = allT.find(t => t._key === key || String(t.line_id) === String(key));
-
-    // ── Block deletion if assigned by someone else ──
-    if (task?.assigned_by && task.assigned_by !== currentUser?.user_id) {
+if (task?.assigned_by && 
+    task.assigned_by !== currentUser?.user_id &&
+    task.assigned_by !== currentUser?.employee_name) {
       toast(`Cannot delete — assigned by ${task.assigned_by}`, "error");
       return;
     }
@@ -413,7 +424,7 @@ export const MyTasksScreen = ({
 
   // ── perf: stable callback so React.memo on TaskCard / TaskRow actually works ──
   const openDetail = useCallback(k => setDetailKey(k), []);
-  const noopDelete = useCallback(() => {}, []);
+  const noopDelete = useCallback(() => { }, []);
 
   const saveModal = useCallback(f => {
     const subtaskMap = {};
@@ -438,16 +449,16 @@ export const MyTasksScreen = ({
     toast(f.work_plan ? "Task saved!" : "Task updated!");
   }, [myTasks, byMeTasks, setMyTasks, setByMeTasks, onSaveAndSubmit, loadAll, toast]);
 
- 
- 
+
+
   const categoryOptions = useMemo(() => categoryList.map(c => c.category), [categoryList]);
 
   const STATS = useMemo(() => [
-    { l: "Total", v: tabTasks.length, pct: 100, color: C.blue, trackColor: C.blueLight, iconBg: C.blueLight, iconColor: C.blue, bottomColor: C.blue, Icon: ClipboardList,  k: "all" },
-    { l: "In Progress", v: inProgress, pct: tabTasks.length ? Math.round(inProgress / tabTasks.length * 100) : 0, color: "#0369a1", trackColor: "#e0f2fe", iconBg: "#e0f2fe", iconColor: "#0369a1", bottomColor: "#0369a1", Icon: RefreshCw,  k: "inprogress" },
-    { l: "Completed", v: completed, pct: tabTasks.length ? Math.round(completed / tabTasks.length * 100) : 0, color: "#15803d", trackColor: "#dcfce7", iconBg: "#dcfce7", iconColor: "#15803d", bottomColor: "#22c55e", Icon: CheckCircle2,  k: "completed" },
-    { l: "Overdue", v: overdue, pct: tabTasks.length ? Math.round(overdue / tabTasks.length * 100) : 0, color: "#b91c1c", trackColor: "#fee2e2", iconBg: "#fee2e2", iconColor: "#b91c1c", bottomColor: "#ef4444", Icon: AlertTriangle,  k: "overdue" },
-    { l: "Due Today", v: todayDue, pct: tabTasks.length ? Math.round(todayDue / tabTasks.length * 100) : 0, color: "#b45309", trackColor: "#fef3c7", iconBg: "#fef3c7", iconColor: "#b45309", bottomColor: "#f59e0b", Icon: Clock,  k: "today" },
+    { l: "Total", v: tabTasks.length, pct: 100, color: C.blue, trackColor: C.blueLight, iconBg: C.blueLight, iconColor: C.blue, bottomColor: C.blue, Icon: ClipboardList, k: "all" },
+    { l: "In Progress", v: inProgress, pct: tabTasks.length ? Math.round(inProgress / tabTasks.length * 100) : 0, color: "#0369a1", trackColor: "#e0f2fe", iconBg: "#e0f2fe", iconColor: "#0369a1", bottomColor: "#0369a1", Icon: RefreshCw, k: "inprogress" },
+    { l: "Completed", v: completed, pct: tabTasks.length ? Math.round(completed / tabTasks.length * 100) : 0, color: "#15803d", trackColor: "#dcfce7", iconBg: "#dcfce7", iconColor: "#15803d", bottomColor: "#22c55e", Icon: CheckCircle2, k: "completed" },
+    { l: "Overdue", v: overdue, pct: tabTasks.length ? Math.round(overdue / tabTasks.length * 100) : 0, color: "#b91c1c", trackColor: "#fee2e2", iconBg: "#fee2e2", iconColor: "#b91c1c", bottomColor: "#ef4444", Icon: AlertTriangle, k: "overdue" },
+    { l: "Due Today", v: todayDue, pct: tabTasks.length ? Math.round(todayDue / tabTasks.length * 100) : 0, color: "#b45309", trackColor: "#fef3c7", iconBg: "#fef3c7", iconColor: "#b45309", bottomColor: "#f59e0b", Icon: Clock, k: "today" },
 
   ], [tabTasks, inProgress, completed, overdue, todayDue, tod, filter]);
   const FPILLS = [
@@ -496,9 +507,9 @@ export const MyTasksScreen = ({
                 }}>{count}</span>
               </button>
             ))}
-          </div> 
+          </div>
           {/* New Task */}
-          <button onClick={() => setModal(newTask(currentUser))} style={{ ...btnPrimary, flexShrink: 0, fontSize: 12 }}>
+          <button onClick={() => setActiveNav?.("diaryentry")} style={{ ...btnPrimary, flexShrink: 0, fontSize: 12 }}>
             <Plus size={14} color="#fff" />
             {!isMobile && "New Task"}
           </button>
@@ -511,109 +522,106 @@ export const MyTasksScreen = ({
         </div>
       </div>
 
-<div style={{
-  padding: isMobile ? "6px 10px 4px" : (detailOpen ? "6px 16px 4px" : "12px 16px 8px"),
-  display: "grid",
-  gridTemplateColumns: isMobile ? "repeat(5,1fr)" : "repeat(5,1fr)",
-  gap: isMobile ? 3 : (detailOpen ? 6 : 8),
-  flexShrink: 0,
-  position: "relative",
-  zIndex: 50,
-}}>
-  {STATS.map(({ l, v, pct, color, trackColor, iconBg, iconColor, bottomColor, Icon: StatIcon, tasks: ttTasks, ttLabel, k }) => {
-    const size = isMobile ? 28 : (detailOpen ? 34 : 44), stroke = 3;
-    const r = (size - stroke * 2) / 2;
-    const circ = 2 * Math.PI * r;
-    const offset = circ - (pct / 100) * circ; 
-    const stColors = {
-      "In Progress": { bg: "#e0f2fe", color: "#0369a1" },
-      "Pending": { bg: "#ede9fe", color: "#6d28d9" },
-      "Completed": { bg: "#dcfce7", color: "#15803d" },
-      "Open": { bg: "#fef3c7", color: "#b45309" },
-    };
-    const prioColors = { High: "#ef4444", Medium: "#f59e0b", Low: "#22c55e" };
+      <div style={{
+        padding: isMobile ? "6px 10px 4px" : (detailOpen ? "6px 16px 4px" : "12px 16px 8px"),
+        display: "grid",
+        gridTemplateColumns: isMobile ? "repeat(5,1fr)" : "repeat(5,1fr)",
+        gap: isMobile ? 3 : (detailOpen ? 6 : 8),
+        flexShrink: 0,
+        position: "relative",
+        zIndex: 50,
+      }}>
+        {STATS.map(({ l, v, pct, color, trackColor, iconBg, iconColor, bottomColor, Icon: StatIcon, tasks: ttTasks, ttLabel, k }) => {
+          const size = isMobile ? 28 : (detailOpen ? 34 : 44), stroke = 3;
+          const r = (size - stroke * 2) / 2;
+          const circ = 2 * Math.PI * r;
+          const offset = circ - (pct / 100) * circ;
+          const stColors = {
+            "In Progress": { bg: "#e0f2fe", color: "#0369a1" },
+            "Pending": { bg: "#ede9fe", color: "#6d28d9" },
+            "Completed": { bg: "#dcfce7", color: "#15803d" },
+            "Open": { bg: "#fef3c7", color: "#b45309" },
+          };
+          const prioColors = { High: "#ef4444", Medium: "#f59e0b", Low: "#22c55e" };
 
-    return (
-      <div key={l} data-statcard="1"
-      onClick={() => setFilter(k)}
-        style={{
-          padding: isMobile ? "6px 4px" : (detailOpen ? "8px 10px" : "13px 14px 12px"),
-          borderRadius: isMobile ? 10 : 14,
-          border: "1.5px solid",
-          cursor: "pointer",
-          textAlign: "left",
-          fontFamily: F,
-          transition: "all .15s",
-          position: "relative",
-          overflow: "visible",
-          background: filter === k ? iconBg : C.surface,
-          borderColor: filter === k ? color + "55" : C.border,
-          boxShadow: filter === k ? `0 2px 10px ${color}22` : "0 1px 3px rgba(12,25,52,.04)",
-        }}
-        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = ""; }}> 
-        {isMobile ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8, background: iconBg,
-              display: "flex", alignItems: "center", justifyContent: "center"
-            }}>
-              <StatIcon size={13} color={iconColor} strokeWidth={2} />
-            </div>
-            <div style={{
-              fontFamily: FD, fontSize: 16, fontWeight: 800, lineHeight: 1,
-              color: filter === k ? color : C.t1
-            }}>{v}</div>
-            <div style={{ fontSize: 9, fontWeight: 600, color: C.t4, lineHeight: 1, textAlign: "center" }}>{l}</div>
-          </div>
-        ) : (
-          /* Desktop — full card */
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-                <div style={{
-                  width: detailOpen ? 22 : 28, height: detailOpen ? 22 : 28,
-                  borderRadius: 8, background: iconBg,
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                }}>
-                  <StatIcon size={14} color={iconColor} strokeWidth={2} />
+          return (
+            <div key={l} data-statcard="1"
+              onClick={() => setFilter(k)}
+              style={{
+                padding: isMobile ? "6px 4px" : (detailOpen ? "8px 10px" : "13px 14px 12px"),
+                borderRadius: isMobile ? 10 : 14,
+                border: "1.5px solid",
+                cursor: "pointer",
+                textAlign: "left",
+                fontFamily: F,
+                transition: "all .15s",
+                position: "relative",
+                overflow: "visible",
+                background: filter === k ? iconBg : C.surface,
+                borderColor: filter === k ? color + "55" : C.border,
+                boxShadow: filter === k ? `0 2px 10px ${color}22` : "0 1px 3px rgba(12,25,52,.04)",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ""; }}>
+              {isMobile ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8, background: iconBg,
+                    display: "flex", alignItems: "center", justifyContent: "center"
+                  }}>
+                    <StatIcon size={13} color={iconColor} strokeWidth={2} />
+                  </div>
+                  <div style={{
+                    fontFamily: FD, fontSize: 16, fontWeight: 800, lineHeight: 1,
+                    color: filter === k ? color : C.t1
+                  }}>{v}</div>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: C.t4, lineHeight: 1, textAlign: "center" }}>{l}</div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: C.t3, lineHeight: 1.2 }}>{l}</div>
-              </div>
-              <div style={{
-                fontFamily: FD, fontSize: detailOpen ? 20 : 26, fontWeight: 800, lineHeight: 1,
-                color: filter === k ? color : C.t1, paddingLeft: 2
-              }}>{v}</div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                      <div style={{
+                        width: detailOpen ? 22 : 28, height: detailOpen ? 22 : 28,
+                        borderRadius: 8, background: iconBg,
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+                      }}>
+                        <StatIcon size={14} color={iconColor} strokeWidth={2} />
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.t3, lineHeight: 1.2 }}>{l}</div>
+                    </div>
+                    <div style={{
+                      fontFamily: FD, fontSize: detailOpen ? 20 : 26, fontWeight: 800, lineHeight: 1,
+                      color: filter === k ? color : C.t1, paddingLeft: 2
+                    }}>{v}</div>
+                  </div>
+                  <div style={{ position: "relative", flexShrink: 0 }}>
+                    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke} />
+                      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+                        strokeDasharray={circ} strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        style={{ transition: "stroke-dashoffset .7s cubic-bezier(.4,0,.2,1)" }} />
+                    </svg>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: FM, color, lineHeight: 1 }}>{pct}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div style={{ position: "relative", flexShrink: 0 }}>
-              <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke} />
-                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-                  strokeDasharray={circ} strokeDashoffset={offset}
-                  strokeLinecap="round"
-                  style={{ transition: "stroke-dashoffset .7s cubic-bezier(.4,0,.2,1)" }} />
-              </svg>
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 9, fontWeight: 700, fontFamily: FM, color, lineHeight: 1 }}>{pct}%</span>
-              </div>
-            </div>
-          </div>
-        )} 
+          );
+        })}
       </div>
-    );
-  })}
-</div>
- 
- 
-    <div style={{
-  padding: detailOpen ? "0 16px 4px" : "0 16px 10px", display: "flex", alignItems: "center", gap: 8,
+      <div style={{
+        padding: detailOpen ? "0 16px 4px" : "0 16px 10px", display: "flex", alignItems: "center", gap: 8,
         flexShrink: 0, flexWrap: "wrap"
       }}>
         <div style={{ display: "flex", gap: 5, flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
           {FPILLS.filter(fp => !fp.show || fp.show === activeTab).map(fp => (
             <button key={fp.k} onClick={() => setFilter(fp.k)}
               style={{
-                display: "inline-flex", alignItems: "center", gap: 4,padding: detailOpen ? "3px 9px" : "5px 12px",
+                display: "inline-flex", alignItems: "center", gap: 4, padding: detailOpen ? "3px 9px" : "5px 12px",
                 borderRadius: 999, border: "1.5px solid", fontSize: detailOpen ? 11 : 12, fontWeight: 600,
                 cursor: "pointer", whiteSpace: "nowrap", fontFamily: F, transition: "all .14s",
                 // ── special colors for own/delegated pills ──
@@ -630,7 +638,7 @@ export const MyTasksScreen = ({
             </button>
           ))}
         </div>
- 
+
         <div style={{
           display: "flex", alignItems: "center", gap: 8, background: C.bg,
           border: `1.5px solid ${C.border}`, borderRadius: 999, padding: detailOpen ? "3px 10px" : "5px 12px", flexShrink: 0
@@ -647,15 +655,14 @@ export const MyTasksScreen = ({
           </button>}
         </div>
 
-        {/* View toggle */}
         <div style={{
           display: "flex", background: C.bg, border: `1.5px solid ${C.border}`,
           borderRadius: 9, padding: 3, gap: 2, flexShrink: 0
         }}>
-          {[{ v: "grid", Icon: LayoutGrid }, { v: "list", Icon: List }].map(({ v, Icon: Ic }) => (
+          {[{ v: "grid", Icon: LayoutGrid }, { v: "list", Icon: List }, { v: "table", Icon: Table2 }].map(({ v, Icon: Ic }) => (
             <button key={v} onClick={() => setViewMode(v)}
               style={{
-               padding: detailOpen ? "3px 7px" : "5px 9px" ,borderRadius: 6, cursor: "pointer", border: "none",
+                padding: detailOpen ? "3px 7px" : "5px 9px", borderRadius: 6, cursor: "pointer", border: "none",
                 display: "flex", alignItems: "center", fontFamily: F,
                 background: viewMode === v ? C.surface : "none",
                 color: viewMode === v ? C.blue : C.t4,
@@ -666,7 +673,49 @@ export const MyTasksScreen = ({
           ))}
         </div>
       </div>
+  {viewMode === "table" && (
+        <div style={{
+          padding: "0 16px 10px", display: "flex", gap: 8, flexWrap: "wrap", flexShrink: 0,
+        }}>
+          <select value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}
+            style={{
+              padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`,
+              fontSize: 12, fontFamily: F, color: C.t2, background: C.surface, cursor: "pointer",
+            }}>
+            <option value="">All Employees</option>
+            {employeeOptions.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
 
+          <select value={filterDept} onChange={e => setFilterDept(e.target.value)}
+            style={{
+              padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`,
+              fontSize: 12, fontFamily: F, color: C.t2, background: C.surface, cursor: "pointer",
+            }}>
+            <option value="">All Departments</option>
+            {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+
+          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+            style={{
+              padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`,
+              fontSize: 12, fontFamily: F, color: C.t2, background: C.surface, cursor: "pointer",
+            }}>
+            <option value="">All Categories</option>
+            {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          {(filterEmployee || filterDept || filterCategory) && (
+            <button onClick={() => { setFilterEmployee(""); setFilterDept(""); setFilterCategory(""); }}
+              style={{
+                padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${C.border}`,
+                fontSize: 12, fontFamily: F, color: C.t3, background: C.bg, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 4,
+              }}>
+              <X size={12} /> Clear filters
+            </button>
+          )}
+        </div>
+      )}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 24px" }}>
 
@@ -699,7 +748,7 @@ export const MyTasksScreen = ({
             </div>
           ) : viewMode === "grid" ? (
             <AnimatePresence mode="popLayout">
-              {activeTab === "to_me" ? ( 
+              {activeTab === "to_me" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   {(() => {
                     const selfTasks = filtered.filter(t => !t.assigned_by || t.assign_type === "self");
@@ -717,7 +766,6 @@ export const MyTasksScreen = ({
 
                     return (
                       <>
-                        {/* ── My Own Tasks ── */}
                         {selfTasks.length > 0 && (
                           <SectionGroup
                             label="My own tasks"
@@ -731,8 +779,6 @@ export const MyTasksScreen = ({
                             </div>
                           </SectionGroup>
                         )}
-
-                        {/* ── Assigned to me by others ── */}
                         {delegatedTasks.length > 0 && (
                           <SectionGroup
                             label="Assigned to me by others"
@@ -777,6 +823,13 @@ export const MyTasksScreen = ({
                 </div>
               )}
             </AnimatePresence>
+    ) : viewMode === "table" ? (
+            <TaskTable
+              tasks={filtered}
+              onOpen={openDetail}
+              onDelete={activeTab === "to_me" ? delTask : noopDelete}
+              onStatusChange={handleStatusChange}
+            />
           ) : (
             <AnimatePresence mode="popLayout">
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -795,34 +848,22 @@ export const MyTasksScreen = ({
         {/* Detail panel */}
         <AnimatePresence>
           {detailTask && (
-            <DetailPanel
-              key={detailTask._key}
-              task={detailTask}
-              onClose={() => setDetailKey(null)}
-              onEdit={() => { setModal(detailTask); setDetailKey(null); }}
-              onDelete={activeTab === "to_me" ? delTask : noopDelete}
-              onToggle={toggle}
-              readOnly={false}
-              isMobile={isMobile}
-
-            />
+           <DetailPanel
+  key={detailTask._key}
+  task={detailTask}
+  onClose={() => setDetailKey(null)}
+  onEdit={() => { onEditTask?.(detailTask); setDetailKey(null); }}
+  onDelete={activeTab === "to_me" ? delTask : noopDelete}
+  onToggle={toggle}
+  readOnly={false}
+  isMobile={isMobile}
+  employees={employees}  // ← YEH ADD KARO
+/>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Task modal */}
-      <AnimatePresence>
-        {modal !== null && (
-          <TaskModal
-            task={modal}
-            onClose={() => setModal(null)}
-            onSave={saveModal}
-            currentUser={currentUser}
-            employees={employees}
-            categoryOptions={categoryList.map(c => c.category)}
-          />
-        )}
-      </AnimatePresence>
+
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>

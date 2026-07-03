@@ -1001,7 +1001,7 @@ const FBPConfigForm = ({
   activeTab = "entry",
   formData,
   setFormData,
-  onTabChange = () => {},
+  onTabChange = () => {},onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
 
@@ -1188,6 +1188,10 @@ const FBPConfigForm = ({
         rightContent={`${currentRecord || 1} / ${
           totalRecords || 1
         }`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       {/* Wapas original 'flex justify-center' laya gaya hai, bas mobile ke liye 'max-md:justify-start' hai */}

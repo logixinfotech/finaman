@@ -376,6 +376,7 @@ const PFMasterForm = ({
   onTabChange = () => {},
   formData,
   setFormData
+  ,onPrevRecord,onNextRecord
 }) => {
 
   const [errors, setErrors] = useState({});
@@ -471,12 +472,12 @@ const PFMasterForm = ({
     }
 
     // ✅ FIX 1: Backspace — status toggle (data-toggle="status") pe prev element pe jao
-    if (e.key === "Backspace") {
+    if (e.shiftKey&&e.key === "Backspace") {
       const el = e.target;
       const isText = el.tagName === "INPUT" && ["text", "number", "search"].includes(el.type);
       const isToggle = el.dataset?.toggle === "status"; // ✅ status div pe seedha back jao
 
-      let shouldGoBack = false;
+      let shouldGoBack = true;
 
       if (isToggle) {
         // Status div pe Backspace → seedha pichle element pe jao
@@ -486,7 +487,7 @@ const PFMasterForm = ({
         if (el.value === "" || atStart) shouldGoBack = true;
       }
 
-      if (shouldGoBack && index > 0) {
+      if (shouldGoBack) {
         e.preventDefault();
         let prev = index - 1;
         while (prev >= 0) {
@@ -523,6 +524,10 @@ const PFMasterForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center items-start">

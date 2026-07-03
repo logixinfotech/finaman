@@ -352,7 +352,7 @@ const PTMasterForm = ({
   rights,
   activeTab = "entry",
   onTabChange = () => {},
-  initialData = {},
+  initialData = {},onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
   const formRef = useRef(null);
@@ -452,9 +452,9 @@ const PTMasterForm = ({
       }
     }
 
-    if (e.key === "Backspace") {
+    if (e.shiftKey&&e.key === "Backspace") {
       const el = e.target;
-      let shouldGoBack = false;
+      let shouldGoBack = true;
       const isText = el.tagName === "INPUT" && ["text", "number", "search"].includes(el.type);
       
       if (isText) {
@@ -472,7 +472,7 @@ const PTMasterForm = ({
         shouldGoBack = true;
       }
 
-      if (shouldGoBack && index > 0) {
+      if (shouldGoBack ) {
         e.preventDefault();
         let prev = index - 1;
         while (prev >= 0) {
@@ -505,6 +505,10 @@ const PTMasterForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center items-start">

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { initERPShortcuts } from "./utils/erpShortcuts";
+import { initERPShortcuts } from "./utils/erpShortcuts"; 
 import Header from "./components/Layout/Header";
 import Sidebar from "./components/Layout/Sidebar";
 import Dashboard from "./components/Layout/Dashboard";
+import PublicQuotationRate from "./components/Publiccomponents/PublicQuotationRate";
 import Footer from "./components/Layout/Footer";
 import LoginPage from "./pages/Login/Login";
 import { fetchMasmnuData, logoutUser } from "./utils/api";
@@ -11,6 +12,7 @@ import "./App.css";
 import Swal from "sweetalert2";
 import { useNotifications } from "./theme/NotificationContext";
 import NotificationToast from "./components/Layout/Notification/NotificationToast";
+import { startGlobalAutocompleteGuard } from "./utils/disableGlobalAutocomplete";
 
 import 'primeicons/primeicons.css';
 function AppShell({
@@ -44,8 +46,7 @@ function AppShell({
     }
   };
 
-  return (
-    // Tailwind classes add karein:
+  return ( 
     <div className={`app-layout flex flex-col h-screen overflow-hidden ${theme}`}>
 
       <Header
@@ -97,20 +98,15 @@ function AppShell({
             />
           </div>
         </div>
-      </div>
-
-
+      </div> 
       <Footer activeModule={activeModule} />
       <NotificationToast onOpenPage={handleOpenPageFromMenu} />
     </div>
 
   );
-}
-
-// ─── App ─────────────────────────────────────────────────────────────────────
+} 
 function App() {
-  const navigate = useNavigate();
-
+  const navigate = useNavigate(); 
   const [isAuthenticated, setIsAuthenticated] = useState(() =>
     !!sessionStorage.getItem("token")
   );
@@ -124,8 +120,7 @@ function App() {
   const [menusFromBackend, setMenusFromBackend] = useState([]);
   const { setMenusFromBackend: syncMenusToContext } = useNotifications();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  // ── Theme sync ──────────────────────────────────────────────────────────
+ 
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove("theme-light", "theme-dark", "theme-blue", "theme-green");
@@ -145,6 +140,11 @@ function App() {
     });
     return cleanup;
   }, []);
+    useEffect(() => {
+    const stop = startGlobalAutocompleteGuard();
+    return stop;
+  }, []);
+
 
   // ── Disable autocomplete globally ──────────────────────────────────────
   useEffect(() => {
@@ -153,10 +153,14 @@ function App() {
   }, []);
 
   // ── Auth guard ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isAuthenticated) navigate("/login", { replace: true });
-  }, [isAuthenticated, navigate]);
+useEffect(() => {
+  const publicPaths = ["/quotation-rate"]; // yahan future public routes bhi add kar sakti ho
+  const isPublicPath = publicPaths.some((p) => window.location.pathname.startsWith(p));
 
+  if (!isAuthenticated && !isPublicPath) {
+    navigate("/login", { replace: true });
+  }
+}, [isAuthenticated, navigate]);
   // ── Load menus ──────────────────────────────────────────────────────────
   useEffect(() => {
     const loadMenus = async () => {
@@ -176,14 +180,11 @@ function App() {
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
-      if (w < 768) {
-        // Mobile: always reset collapsed so overlay shows full sidebar
+      if (w < 768) { 
         setSidebarCollapsed(false);
-      } else if (w < 1024) {
-        // Tablet: icon-only in the persistent sidebar
+      } else if (w < 1024) { 
         setSidebarCollapsed(true);
-      } else {
-        // Desktop: full sidebar
+      } else { 
         setSidebarCollapsed(false);
       }
     };
@@ -193,8 +194,7 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-const handleModuleClick = (module) => {
-  // ── Direct-open override for Work Diary (masmod_id: 2) ──
+const handleModuleClick = (module) => { 
 if (module.masmod_id === 20) {
     const workDiaryMenu = {
       masmnu_id: 642,
@@ -206,9 +206,7 @@ if (module.masmod_id === 20) {
     setActiveModule(module); // module context set karo
     handleOpenPageFromMenu(workDiaryMenu);
     return; // module dashboard mat dikhao
-  }
-
-  // ── Default behavior (baaki sab modules) ──
+  } 
   const moduleTabId = `mod-${module.masmod_id}`;
   setActiveModule(module);
   setTabs((prev) => {
@@ -353,7 +351,7 @@ if (module.masmod_id === 20) {
           )
         }
       />
-
+  <Route path="/quotation-rate" element={<PublicQuotationRate />} />
       <Route path="*" element={<Navigate to="/app" replace />} />
     </Routes>
   );

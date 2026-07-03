@@ -22,6 +22,7 @@ const WeeklyOffMasterForm = ({
   activeTab = "entry",
   onTabChange,
   initialData = {}
+  ,onPrevRecord,onNextRecord
 }) => {
   const [localData, setLocalData] = useState(initialData);
   const [errors, setErrors] = useState({});
@@ -66,8 +67,9 @@ const WeeklyOffMasterForm = ({
     };
     fetchEmployees();
   }, []);
-
+ console.log(currentRecord)
   useEffect(() => {
+   
     if (!initialData || Object.keys(initialData).length === 0) return;
 
     // 1. Calculate the formatted data FIRST
@@ -186,6 +188,10 @@ const handleValidateAndSave = useCallback(() => {
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+        currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />
 
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">

@@ -124,13 +124,13 @@ const IncomeHeadForm = ({
           saveBtnRef?.current?.focus();
       }
     }
-    if (e.key === "Backspace") {
-      let shouldGoBack = false;
+    if (e.shiftKey&&e.key === "Backspace") {
+      let shouldGoBack = true;
       if (e.target.tagName === "INPUT") {
         if (e.target.value === "" || (e.target.selectionStart === 0 && e.target.selectionEnd === 0)) shouldGoBack = true;
       }
       if (e.target.dataset.auto || e.target.dataset.toggle === "status") shouldGoBack = true;
-      if (shouldGoBack && index > 0) { e.preventDefault(); elements[index - 1].focus(); }
+      if (shouldGoBack ) { e.preventDefault(); elements[index - 1].focus(); }
     }
     if (e.key === " " && e.target.dataset.toggle === "status") {
       e.preventDefault();

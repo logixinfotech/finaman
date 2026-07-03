@@ -25,15 +25,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
   const [uploading, setUploading] = useState({});
 
   const baseDocumentCategories = useMemo(() => {
-    if (!documents.length) {
-      // Fallback — hardcoded categories
-      return {
-        "Identity Documents": ["Aadhaar Card", "PAN Card", "Voter ID", "Passport"],
-        "Educational Documents": ["10th / 12th Marksheets", "Degree Certificates"],
-        "Employment Documents": ["Previous Relieving Letter", "Experience Certificate"],
-        "Financial / Other": ["PF/ESI Number", "Bank Passbook"],
-      };
-    }
+    
 
     // Dynamic — USRGRP data se build karo
     const grouped = {};

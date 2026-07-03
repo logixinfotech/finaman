@@ -25,7 +25,8 @@ const SalaryTemplateForm = ({
   setFormData,
   incomeHeads = [],
   deductionHeads = [],
-  isEmbedded,
+  isEmbedded
+  ,onPrevRecord,onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
 
@@ -183,12 +184,12 @@ const SalaryTemplateForm = ({
           }
         }
       }
-      if (e.key === "Backspace") {
+      if (e.shiftKey&&e.key === "Backspace") {
         const el = e.target;
         const tag = el.tagName;
         const type = el.type;
 
-        let shouldGoBack = false;
+        let shouldGoBack = true;
 
         if (tag === "INPUT" || tag === "TEXTAREA") {
           if (type === "checkbox" || type === "radio") {
@@ -202,7 +203,7 @@ const SalaryTemplateForm = ({
           shouldGoBack = true;
         }
 
-        if (shouldGoBack && index > 0) {
+        if (shouldGoBack ) {
           e.preventDefault(); 
 
           let prevIndex = index - 1;
@@ -237,7 +238,7 @@ const SalaryTemplateForm = ({
     },
     [isViewMode],
   );
-  console.log(isEmbedded);
+ 
 
   const selectedIncomeIds = new Set(
     (formData.incomeHeads || []).map((h) => h.income_head_id),
@@ -260,6 +261,10 @@ const SalaryTemplateForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
+          currentIndex={currentRecord}      // 👈
+        totalRecords={totalRecords}        // 👈
+        onPrevRecord={onPrevRecord}        // 👈
+        onNextRecord={onNextRecord}  
       />)}
 
       <div className="flex-1  overflow-y-auto flex justify-start lg:justify-center items-start w-full">

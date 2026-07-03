@@ -1,4 +1,4 @@
- 
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
@@ -10,7 +10,7 @@ import { showToast } from "../../../../components/Reusable/alert";
 import { useGroupOptions } from "../../../../Hooks/useUserGroupOption";
 
 const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
- 
+
 
 const AddUserMaster = ({
   formData,
@@ -18,7 +18,7 @@ const AddUserMaster = ({
   mode = "view",
   onSave,
   onCancel,
-   onPrevRecord,
+  onPrevRecord,
   onNextRecord,
   onDelete,
   onEditCancel,
@@ -47,9 +47,10 @@ const AddUserMaster = ({
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode = mode === "add";
+  const requiredFields = isEditMode
+    ? ["user_type", "user_name", "user_id"]
+    : ["user_type", "user_name", "user_id", "password"];
 
-  const requiredFields = ["user_type", "user_name", "user_id", "password"];
-  
 
   // LOAD GROUPS
   const loadGroups = useCallback(async () => {
@@ -66,7 +67,7 @@ const AddUserMaster = ({
   useEffect(() => {
     loadGroups();
   }, [loadGroups]);
-
+  const saveBtnRef = useRef(null)
   useEffect(() => {
     if (!showGroupModal) return;
 
@@ -80,8 +81,8 @@ const AddUserMaster = ({
     return () => document.removeEventListener("keydown", handleEsc);
   }, [showGroupModal]);
 
-const{ options , loading}=useGroupOptions();
-console.log(options.grade.label);
+  const { options, loading } = useGroupOptions();
+  console.log(options.grade.label);
 
   // AUTO FOCUS
   useEffect(() => {
@@ -199,13 +200,13 @@ console.log(options.grade.label);
         "input:not([disabled]), button[data-auto]:not([disabled]), [tabindex='0']"
       )
     )
-    .filter(el => !el.disabled && el.offsetParent !== null)
-    .sort((a, b) => {
-      const aRect = a.getBoundingClientRect();
-      const bRect = b.getBoundingClientRect();
-      if (Math.abs(aRect.top - bRect.top) > 18) return aRect.top - bRect.top;
-      return aRect.left - bRect.left;
-    });
+      .filter(el => !el.disabled && el.offsetParent !== null)
+      .sort((a, b) => {
+        const aRect = a.getBoundingClientRect();
+        const bRect = b.getBoundingClientRect();
+        if (Math.abs(aRect.top - bRect.top) > 18) return aRect.top - bRect.top;
+        return aRect.left - bRect.left;
+      });
 
     const index = elements.indexOf(e.target);
     if (index === -1) return;
@@ -217,13 +218,7 @@ console.log(options.grade.label);
       if (index < elements.length - 1) {
         elements[index + 1].focus();
       } else {
-         const buttons = Array.from(document.querySelectorAll("button"));
-              const saveBtn = buttons.find((btn) =>
-                btn.textContent.toLowerCase().includes("save")||btn.textContent.toLowerCase().includes("update")
-              );
-              if (saveBtn) {
-                saveBtn.focus();
-              } 
+        saveBtnRef?.current?.focus();
       }
     }
 
@@ -234,8 +229,8 @@ console.log(options.grade.label);
     }
 
     // 🟡 BACKSPACE → GO BACK ONLY IF EMPTY
-    if (e.key === "Backspace") {
-      let shouldGoBack = false;
+    if (e.shiftKey && e.key === "Backspace") {
+      let shouldGoBack = true;
 
       if (e.target.tagName === "INPUT") {
         const isEmpty = e.target.value === "";
@@ -252,10 +247,10 @@ console.log(options.grade.label);
         prevEl.focus();
 
         // Cursor set to end if text input
-        if (prevEl.tagName === "INPUT" && prevEl.type === "text") {
-          const len = prevEl.value?.length || 0;
-          try { prevEl.setSelectionRange(len, len); } catch {}
-        }
+
+        const len = prevEl.value?.length || 0;
+        try { prevEl.setSelectionRange(len, len); } catch { }
+
       }
     }
   }, [isViewMode]);
@@ -286,14 +281,14 @@ console.log(options.grade.label);
       if (index < buttons.length - 1) {
         buttons[index + 1].focus();
       }
-    } 
+    }
     // 3. LEFT ARROW -> Pichla button
     else if (e.key === "ArrowLeft") {
       e.preventDefault();
       if (index > 0) {
         buttons[index - 1].focus();
       }
-    } 
+    }
     // 4. ENTER ya SPACE -> Button par Click kar do
     else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -329,15 +324,15 @@ console.log(options.grade.label);
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
-         currentIndex={currentRecord}      // 👈
+        currentIndex={currentRecord}      // 👈
         totalRecords={totalRecords}        // 👈
         onPrevRecord={onPrevRecord}        // 👈
-        onNextRecord={onNextRecord}  
+        onNextRecord={onNextRecord}
       />
 
       <div className="flex-1 p-4 overflow-x-auto flex justify-start sm:justify-center items-start w-full">
-        <div 
-          id="user-master-container" 
+        <div
+          id="user-master-container"
           className="w-full max-w-[800px] bg-white border rounded-md p-4"
         >
 
@@ -352,7 +347,7 @@ console.log(options.grade.label);
               disabled={isViewMode}
               onChange={(e) => handleChange("user_name", e.target.value)}
               onKeyDown={handleKeyDown}
-             className={`${getInputClass(isViewMode, "user_name")} w-full sm:flex-1`}
+              className={`${getInputClass(isViewMode, "user_name")} w-full sm:flex-1`}
             />
           </div>
 
@@ -372,7 +367,7 @@ console.log(options.grade.label);
                 className={`${getInputClass(isViewMode, "user_id")} w-full sm:w-auto`}
               />
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-1 sm:gap-0">
               <label className="w-full sm:w-[110px]">
                 User Type <span className="text-red-500">*</span>
@@ -393,7 +388,7 @@ console.log(options.grade.label);
               <ERPAutocomplete
                 data-auto
                 value={formData.user_group || ""}
-                 options={(options.department || []).map((g) => g.label)} 
+                options={(options.department || []).map((g) => g.label)}
                 onChange={(val) => handleChange("user_group", val)}
                 disabled={isViewMode}
                 onKeyDown={handleKeyDown}
@@ -408,13 +403,14 @@ console.log(options.grade.label);
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
               <label className="w-full sm:w-[102px]">
-                Password <span className="text-red-500">*</span>
+                Password {!isEditMode && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="password"
                 name="password"
                 value={formData.password || ""}
                 disabled={isViewMode}
+                placeholder={isEditMode ? "Leave blank to keep current" : ""}
                 onChange={(e) => handleChange("password", e.target.value)}
                 onKeyDown={handleKeyDown}
                 className={`${getInputClass(isViewMode, "password")} w-full sm:w-auto`}
@@ -433,6 +429,23 @@ console.log(options.grade.label);
                 className={`${getInputClass(isViewMode, "setting_pass")} w-full sm:w-auto`}
               />
             </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+  <label className="w-full sm:w-[102px]">Block</label>
+  <label className="flex items-center gap-2 h-[38px] sm:h-[30px]">
+<input
+  type="checkbox"
+  name="block"
+  checked={String(formData.block) === "1"}
+  disabled={isViewMode}
+  onChange={(e) => handleChange("block", e.target.checked ? 1 : 0)}
+  onKeyDown={handleKeyDown}
+  className="w-4 h-4 accent-blue-600"
+/>
+    <span className="text-[13px] text-gray-600">
+      {String(formData.block) === "1" ? "Blocked" : "Active"}
+    </span>
+  </label>
+</div>
           </div>
 
           {/* SIGNATURE */}
@@ -497,6 +510,7 @@ console.log(options.grade.label);
       <ERPFooter
         isAddMode={isAddMode}
         isEditMode={isEditMode}
+        saveBtnRef={saveBtnRef}
         isViewMode={isViewMode}
         saving={saving}
         handleSubmit={handleValidateAndSave}
@@ -511,7 +525,7 @@ console.log(options.grade.label);
       {/* SIGN PAD */}
       {showSignPad && (
         <div
-          id="sign-pad-modal" 
+          id="sign-pad-modal"
           className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
           onClick={() => {
             setShowSignPad(false);
@@ -520,7 +534,7 @@ console.log(options.grade.label);
         >
           <div
             className="bg-white rounded-xl shadow-xl w-[380px] p-4"
-            onClick={(e) => e.stopPropagation()} 
+            onClick={(e) => e.stopPropagation()}
           >
             {/* HEADER */}
             <div className="flex justify-between items-center mb-2">
@@ -556,8 +570,8 @@ console.log(options.grade.label);
                 type="button"
                 ref={clearRef}
                 onClick={() => sigPadRef.current.clear()}
-                onKeyDown={handleSignPadKeyDown} 
-                className="px-3 py-1 text-xs border rounded-md hover:bg-gray-100 focus:ring-2 focus:ring-blue-500" 
+                onKeyDown={handleSignPadKeyDown}
+                className="px-3 py-1 text-xs border rounded-md hover:bg-gray-100 focus:ring-2 focus:ring-blue-500"
               >
                 Clear
               </button>
@@ -569,7 +583,7 @@ console.log(options.grade.label);
                     setShowSignPad(false);
                     setTimeout(() => signatureBtnRef.current?.focus(), 100);
                   }}
-                  onKeyDown={handleSignPadKeyDown} 
+                  onKeyDown={handleSignPadKeyDown}
                   className="px-3 py-1 text-xs border rounded-md hover:bg-gray-100 focus:ring-2 focus:ring-blue-500"
                 >
                   Cancel
@@ -588,7 +602,7 @@ console.log(options.grade.label);
 
                     setTimeout(() => signatureBtnRef.current?.focus(), 100);
                   }}
-                  onKeyDown={handleSignPadKeyDown} 
+                  onKeyDown={handleSignPadKeyDown}
                   className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-offset-1 focus:ring-blue-600"
                 >
                   Save
@@ -606,12 +620,8 @@ console.log(options.grade.label);
           onClick={() => setShowGroupModal(false)}
         >
           <UserGroupForm
-           title="Department Master"
-           nameLabel="Department Name"
-         
-
-
-
+            title="Department Master"
+            nameLabel="Department Name"
             formData={newGroupData}
             setFormData={setNewGroupData}
             onSave={handleQuickAddGroup}

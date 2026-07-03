@@ -1,100 +1,100 @@
 import { getPayslipData } from "./api";
 
 const numberToWords = (num) => {
-    if (!num || num === 0) return "Zero";
-    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
-        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-    const convert = (n) => {
-        if (n < 20) return ones[n];
-        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
-        if (n < 1000) return ones[Math.floor(n / 100)] + " Hundred" + (n % 100 ? " " + convert(n % 100) : "");
-        if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 ? " " + convert(n % 1000) : "");
-        if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 ? " " + convert(n % 100000) : "");
-        return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 ? " " + convert(n % 10000000) : "");
-    };
-    return "Rupees " + convert(Math.round(num));
+  if (!num || num === 0) return "Zero";
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const convert = (n) => {
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+    if (n < 1000) return ones[Math.floor(n / 100)] + " Hundred" + (n % 100 ? " " + convert(n % 100) : "");
+    if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 ? " " + convert(n % 1000) : "");
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 ? " " + convert(n % 100000) : "");
+    return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 ? " " + convert(n % 10000000) : "");
+  };
+  return "Rupees " + convert(Math.round(num));
 };
 
 const inrFmt = (n) => Math.round(n || 0).toLocaleString("en-IN");
 
 const fetchPhotoBase64 = async (photoPath) => {
-    if (!photoPath) return "";
-    try {
-        const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:63554";
-        const r = await fetch(`${baseUrl}${photoPath}`);
-        const blob = await r.blob();
-        return await new Promise((res) => {
-            const reader = new FileReader();
-            reader.onload = () => res(reader.result);
-            reader.readAsDataURL(blob);
-        });
-    } catch { return ""; }
+  if (!photoPath) return "";
+  try {
+    const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:63554";
+    const r = await fetch(`${baseUrl}${photoPath}`);
+    const blob = await r.blob();
+    return await new Promise((res) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return ""; }
 };
 
 const cleanMonthYear = (my) => {
-    if (!my) return "unknown";
-    const m = String(my).match(/^(\d{4})-(\d{2})/);
-    return m ? `${m[1]}-${m[2]}` : String(my).substring(0, 7);
+  if (!my) return "unknown";
+  const m = String(my).match(/^(\d{4})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}` : String(my).substring(0, 7);
 };
 
 const loadScript = (src) => new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s = document.createElement("script");
-    s.src = src; s.onload = resolve; s.onerror = reject;
-    document.head.appendChild(s);
+  if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+  const s = document.createElement("script");
+  s.src = src; s.onload = resolve; s.onerror = reject;
+  document.head.appendChild(s);
 });
 
 const buildPayslipHtml = (d, photoBase64) => {
-    const rawMonth = d.month_year || "";
-    const dateStr = rawMonth.includes("T") ? rawMonth.split("T")[0] : rawMonth;
-    const monthLabel = (() => {
-        try {
-            return new Date((dateStr.length === 7 ? dateStr + "-01" : dateStr))
-                .toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-        } catch { return rawMonth; }
-    })();
+  const rawMonth = d.month_year || "";
+  const dateStr = rawMonth.includes("T") ? rawMonth.split("T")[0] : rawMonth;
+  const monthLabel = (() => {
+    try {
+      return new Date((dateStr.length === 7 ? dateStr + "-01" : dateStr))
+        .toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    } catch { return rawMonth; }
+  })();
 
-    const statusBg = d.status === "Paid" ? "#d1fae5" : d.status === "Approved" ? "#dbeafe" : "#f3f4f6";
-    const statusColor = d.status === "Paid" ? "#065f46" : d.status === "Approved" ? "#1e40af" : "#374151";
+  const statusBg = d.status === "Paid" ? "#d1fae5" : d.status === "Approved" ? "#dbeafe" : "#f3f4f6";
+  const statusColor = d.status === "Paid" ? "#065f46" : d.status === "Approved" ? "#1e40af" : "#374151";
 
-    const initials = (d.employee_name || "?").substring(0, 2).toUpperCase();
-    const photoHtml = photoBase64
-        ? `<img src="${photoBase64}" width="64" height="64" style="border-radius:32px;object-fit:cover;border:2px solid #e2e8f0;display:block;" />`
-        : `<div style="width:64px;height:64px;border-radius:32px;background:#1e3a5f;color:#fff;font-size:18px;font-weight:700;text-align:center;line-height:60px;border:2px solid #e2e8f0;">${initials}</div>`;
+  const initials = (d.employee_name || "?").substring(0, 2).toUpperCase();
+  const photoHtml = photoBase64
+    ? `<img src="${photoBase64}" width="64" height="64" style="border-radius:32px;object-fit:cover;border:2px solid #e2e8f0;display:block;" />`
+    : `<div style="width:64px;height:64px;border-radius:32px;background:#1e3a5f;color:#fff;font-size:18px;font-weight:700;text-align:center;line-height:60px;border:2px solid #e2e8f0;">${initials}</div>`;
 
-    const incomeRows = (d.income_lines?.length > 0
-        ? d.income_lines.map(l =>
-            `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">${l.head_name}</td>` +
-            `<td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#0f1f3d;">${inrFmt(l.amount)}</td></tr>`)
-        : [`<tr><td style="padding:3px 0;font-size:10px;color:#374151;">Gross Salary</td>` +
-            `<td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#0f1f3d;">${inrFmt(d.gross_monthly)}</td></tr>`]
-    ).join("");
+  const incomeRows = (d.income_lines?.length > 0
+    ? d.income_lines.map(l =>
+      `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">${l.head_name}</td>` +
+      `<td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#0f1f3d;">${inrFmt(l.amount)}</td></tr>`)
+    : [`<tr><td style="padding:3px 0;font-size:10px;color:#374151;">Gross Salary</td>` +
+      `<td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#0f1f3d;">${inrFmt(d.gross_monthly)}</td></tr>`]
+  ).join("");
 
-    const otRow = d.ot_addition > 0
-        ? `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">OT Addition</td><td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#059669;">${inrFmt(d.ot_addition)}</td></tr>` : "";
-    const bonusRow = d.bonus_amount > 0
-        ? `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">Bonus</td><td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#2563eb;">${inrFmt(d.bonus_amount)}</td></tr>` : "";
+  const otRow = d.ot_addition > 0
+    ? `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">OT Addition</td><td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#059669;">${inrFmt(d.ot_addition)}</td></tr>` : "";
+  const bonusRow = d.bonus_amount > 0
+    ? `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">Bonus</td><td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#2563eb;">${inrFmt(d.bonus_amount)}</td></tr>` : "";
 
-    const dedRows = (d.deduction_lines || []).map(l =>
-        `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">${l.head_name}</td>` +
-        `<td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#dc2626;">-${inrFmt(l.amount)}</td></tr>`
-    ).join("");
+  const dedRows = (d.deduction_lines || []).map(l =>
+    `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">${l.head_name}</td>` +
+    `<td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#dc2626;">-${inrFmt(l.amount)}</td></tr>`
+  ).join("");
 
-    const lopRow = d.lop_deduction > 0
-        ? `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">LOP Deduction</td><td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#dc2626;">-${inrFmt(d.lop_deduction)}</td></tr>` : "";
+  const lopRow = d.lop_deduction > 0
+    ? `<tr><td style="padding:3px 0;font-size:10px;color:#374151;">LOP Deduction</td><td style="padding:3px 0;text-align:right;font-size:10px;font-weight:600;color:#dc2626;">-${inrFmt(d.lop_deduction)}</td></tr>` : "";
 
-    const attCell = (val, lbl, color) =>
-        `<td style="text-align:center;padding:0 2px;">` +
-        `<div style="font-size:13px;font-weight:700;color:${color};">${val}</div>` +
-        `<div style="font-size:8px;color:#9ca3af;margin-top:1px;">${lbl}</div></td>`;
+  const attCell = (val, lbl, color) =>
+    `<td style="text-align:center;padding:0 2px;">` +
+    `<div style="font-size:13px;font-weight:700;color:${color};">${val}</div>` +
+    `<div style="font-size:8px;color:#9ca3af;margin-top:1px;">${lbl}</div></td>`;
 
-    const infoItem = (lbl, val) =>
-        `<div style="margin-bottom:5px;">` +
-        `<div style="font-size:8px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.3px;">${lbl}</div>` +
-        `<div style="font-size:10px;font-weight:600;color:#0f1f3d;margin-top:1px;">${val}</div></div>`;
+  const infoItem = (lbl, val) =>
+    `<div style="margin-bottom:5px;">` +
+    `<div style="font-size:8px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.3px;">${lbl}</div>` +
+    `<div style="font-size:10px;font-weight:600;color:#0f1f3d;margin-top:1px;">${val}</div></div>`;
 
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111827;width:680px;margin:0;padding:0;}
@@ -291,74 +291,73 @@ ${attCell(d.holiday_days || 0, "Holiday", "#ca8a04")}
 };
 
 export const downloadPayslip = async (row, showToast) => {
-    if (!row.payroll_id) {
-        showToast("Payslip ke liye pehle payroll approve karo", "err");
-        return;
+  if (!row.payroll_id) {
+    showToast("Please approve the payroll before generating the payslip.", "err");
+    return;
+  }
+  showToast(`Generating payslip for ${row.name}...`);
+
+  try {
+    const res = await getPayslipData(row.payroll_id);
+    if (!res?.success || !res?.data) { showToast("Payslip data fetch failed", "err"); return; }
+
+    const d = res.data;
+    const photoBase64 = await fetchPhotoBase64(d.photo_path);
+    const html = buildPayslipHtml(d, photoBase64);
+
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = "position:absolute;left:-9999px;top:0;width:680px;background:#fff;z-index:-1;";
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
+
+    await Promise.all(
+      Array.from(wrapper.querySelectorAll("img")).map(img =>
+        img.complete ? Promise.resolve() :
+          new Promise(r => { img.onload = r; img.onerror = r; })
+      )
+    );
+    await new Promise(r => setTimeout(r, 500));
+
+    const canvas = await window.html2canvas(wrapper, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      width: 680,
+      windowWidth: 680,
+      logging: false,
+    });
+
+    document.body.removeChild(wrapper);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * pageW) / canvas.width;
+    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+    if (imgH <= pageH) {
+      pdf.addImage(imgData, "JPEG", 0, 0, imgW, imgH);
+    } else {
+      let yOff = 0;
+      while (yOff < imgH) {
+        if (yOff > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, -yOff, imgW, imgH);
+        yOff += pageH;
+      }
     }
-    showToast(`${row.name} ka payslip generate ho raha hai...`);
 
-    try {
-        const res = await getPayslipData(row.payroll_id);
-        if (!res?.success || !res?.data) { showToast("Payslip data fetch failed", "err"); return; }
+    const cleanMonth = cleanMonthYear(d.month_year);
+    const empName = (row.name || "Employee").replace(/ /g, "_");
+    pdf.save(`Payslip_${empName}_${cleanMonth}.pdf`);
 
-        const d = res.data;
-        const photoBase64 = await fetchPhotoBase64(d.photo_path);
-        const html = buildPayslipHtml(d, photoBase64);
-
-        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
-
-        const wrapper = document.createElement("div");
-        wrapper.style.cssText = "position:absolute;left:-9999px;top:0;width:680px;background:#fff;z-index:-1;";
-        wrapper.innerHTML = html;
-        document.body.appendChild(wrapper);
- 
-        await Promise.all(
-            Array.from(wrapper.querySelectorAll("img")).map(img =>
-                img.complete ? Promise.resolve() :
-                    new Promise(r => { img.onload = r; img.onerror = r; })
-            )
-        );
-        await new Promise(r => setTimeout(r, 500));
-
-        const canvas = await window.html2canvas(wrapper, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: "#ffffff",
-            width: 680,
-            windowWidth: 680,
-            logging: false,
-        });
-
-        document.body.removeChild(wrapper);
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const imgW = pageW;
-        const imgH = (canvas.height * pageW) / canvas.width;
-        const imgData = canvas.toDataURL("image/jpeg", 0.98);
-
-        if (imgH <= pageH) {
-            pdf.addImage(imgData, "JPEG", 0, 0, imgW, imgH);
-        } else {
-            let yOff = 0;
-            while (yOff < imgH) {
-                if (yOff > 0) pdf.addPage();
-                pdf.addImage(imgData, "JPEG", 0, -yOff, imgW, imgH);
-                yOff += pageH;
-            }
-        }
-
-        const cleanMonth = cleanMonthYear(d.month_year);
-        const empName = (row.name || "Employee").replace(/ /g, "_");
-        pdf.save(`Payslip_${empName}_${cleanMonth}.pdf`);
-
-        showToast(`${row.name} ka payslip PDF download ho gaya!`);
-    } catch (err) {
-        console.error("Payslip error:", err);
-        showToast("Payslip generate karne mein error aaya", "err");
-    }
+    showToast(`Payslip for ${row.name} has been downloaded successfully!`);
+  } catch (err) {
+    console.error("Payslip error:", err);
+    showToast("An error occurred while generating the payslip.", "err");
+  }
 };

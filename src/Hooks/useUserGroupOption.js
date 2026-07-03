@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
-import { fetchUserGroupsByType, getActledList } from "../utils/api"; 
+import { fetchPFList, fetchPTList, fetchUserGroupsByType, getActledList } from "../utils/api"; 
 
 export const useGroupOptions = () => {
   const [rawData, setRawData] = useState({
@@ -9,7 +9,8 @@ export const useGroupOptions = () => {
     designation: [], 
     grade: [], 
     reporting: [],
-    employees: [] 
+    employees: [] ,
+    pt:[]
   });
   const [loading, setLoading] = useState(true);
 
@@ -17,13 +18,15 @@ export const useGroupOptions = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [div, dept, desg, grade, reporting, empRes] = await Promise.all([
+        const [div, dept, desg, grade, reporting, empRes,pt] = await Promise.all([
           fetchUserGroupsByType("DIV"),
           fetchUserGroupsByType("DEP"),
           fetchUserGroupsByType("DESG"),
           fetchUserGroupsByType("GRADE"),
           fetchUserGroupsByType("RME"),
-          getActledList() 
+         
+          getActledList() ,
+           fetchPTList(),
         ]);
 
         setRawData({
@@ -32,29 +35,30 @@ export const useGroupOptions = () => {
           designation: desg?.data || [],
           grade: grade?.data || [],
           reporting: reporting?.data || [],
-          employees: empRes?.data || empRes || [] 
+          employees: empRes?.data || empRes || [] ,
+          pt:pt?.data||[]
         });
-        console.log("EMPLOYEE RAW DATA:", empRes);
+      
       } catch (err) {
-        console.error("API Error in useGroupOptions:", err);
+      
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, []);
-
+  console.log(rawData.pt)
   const options = useMemo(() => {
       const normalizeGroup = (arr) => (Array.isArray(arr) ? arr.map(item => ({
-      value: item.group_id,
-      label: item.group_name
+      value: item.group_id||item.statutory_id,
+      label: item.group_name||item.name
     })) : []);
     const normalizeEmp = (arr) => {
       const employeeArray = arr || []; 
 
       return Array.isArray(employeeArray) ? employeeArray.map(item => ({
-        value: item.Actledkey || item.Led_code, 
-        label: item.Led_name || item.emp_name || item.Led_code 
+        value: item.Actledkey || item.Led_code ||item.statutory_id,
+        label: item.Led_name || item.emp_name || item.Led_code ||item.name
       })) : [];
     };
 
@@ -64,7 +68,8 @@ export const useGroupOptions = () => {
       designation: normalizeGroup(rawData.designation),
       grade: normalizeGroup(rawData.grade),
       reporting: normalizeGroup(rawData.reporting),
-      employees: normalizeEmp(rawData.employees) 
+      employees: normalizeEmp(rawData.employees), 
+      pt:normalizeEmp(rawData.pt)
     };
   }, [rawData]);
 

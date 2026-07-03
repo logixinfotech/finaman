@@ -5,6 +5,7 @@ import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import { getActledList, fetchShifts } from "../../../../utils/api";
 import Date from "../../../../components/Reusable/input/Date";
+import { useGroupOptions } from "../../../../Hooks/useUserGroupOption";
 
 const ShiftAllocationForm = ({
   mode = "view",
@@ -71,6 +72,9 @@ const ShiftAllocationForm = ({
     };
     loadDropdowns();
   }, []); 
+  const{options}=useGroupOptions();
+  console.log(options.pt);
+  console.log(options)
 useEffect(() => {
     if (!initialData?.allocation_id && !initialData?.employee_id) return; // empty object skip
     
@@ -130,8 +134,7 @@ useEffect(() => {
     } ${
       isDisabled ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed" : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`;
-  const [fromDate, setFromDate] = useState("");   // db format e.g. "2026-04-01"
-const [toDate, setToDate] = useState("");
+
 
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
@@ -198,12 +201,12 @@ const [toDate, setToDate] = useState("");
     }
 
     // Backspace Issue
-    if (e.key === "Backspace") {
-      const target = e.target;
-      if (target.value === "" && index > 0) {
+    if (e.shiftKey&&e.key === "Backspace") {
+   
+    
         e.preventDefault();
         focusableElements[index - 1].focus();
-      }
+      
     }
   }, [isViewMode]);
 
