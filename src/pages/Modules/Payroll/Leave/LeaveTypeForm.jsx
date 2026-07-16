@@ -105,12 +105,12 @@ const LeaveTypeForm = ({
   return (
     <div
       id="leave-type-form-container"
-      className="w-full max-w-[750px] mx-auto h-[calc(100vh-140px)]
+      className="w-full  h-[calc(100vh-100px)]
                  bg-[#eef1f6] flex flex-col overflow-hidden"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="LEAVE TYPE"
+        title="Leave Type"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -123,7 +123,7 @@ const LeaveTypeForm = ({
         onNextRecord={onNextRecord}  
       />
 
-      <div className="flex-1 p-4 overflow-y-auto flex justify-center">
+      <div className="flex-1 p-4 overflow-y-auto max-w-[750px] mx-auto flex justify-center">
         <div
           ref={formRef}
           className="w-full max-w-[850px] h-fit bg-white border border-slate-200
@@ -165,6 +165,7 @@ const LeaveTypeForm = ({
                   onChange={(e) => handleChange("max_days", e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={isViewMode}
+                   placeholder="yearly"
                 />
                 {errors.max_days && (
                   <p className="text-[11px] text-red-500 mt-0.5">{errors.max_days}</p>

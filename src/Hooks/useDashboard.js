@@ -12,12 +12,9 @@ export const useDashboard = () => {
     setLoading(true);
     setError(null);
 
-    try {
-      console.log("[useDashboard] Calling fetchDashboardSummary...");
+    try { 
       const res = await fetchDashboardSummary();
-
-      console.log("[useDashboard] Raw API response:", res);
-
+ 
       if (!res) {
         console.error("[useDashboard] ❌ Response is null/undefined");
         setError("No response from server");
@@ -34,14 +31,7 @@ export const useDashboard = () => {
         console.error("[useDashboard] ❌ res.success=true but res.data is missing:", res);
         setError("Data missing in response");
         return;
-      }
-
-      console.log("[useDashboard] ✅ KPI data:", res.data.kpi);
-      console.log("[useDashboard] ✅ Work diary stats:", res.data.work_diary?.stats);
-      console.log("[useDashboard] ✅ Payroll gross:", res.data.payroll?.gross_total);
-      console.log("[useDashboard] ✅ Trend months:", res.data.payroll?.trend?.map(t => t.month_year));
-      console.log("[useDashboard] ✅ Grade mix:", res.data.payroll?.grade_mix);
-      console.log("[useDashboard] ✅ Team members:", res.data.work_diary?.by_member);
+      } 
 
       setData(res.data);
       setLastFetched(new Date());
@@ -57,15 +47,13 @@ export const useDashboard = () => {
     }
   }, []);
 
-  useEffect(() => {
-    console.log("[useDashboard] useEffect mount — calling fetchSummary");
+  useEffect(() => { 
     fetchSummary();
     const interval = setInterval(() => {
       console.log("[useDashboard] Auto-refresh triggered (5 min)");
       fetchSummary();
     }, 5 * 60 * 1000);
-    return () => {
-      console.log("[useDashboard] Cleanup — clearing interval");
+    return () => { 
       clearInterval(interval);
     };
   }, [fetchSummary]);

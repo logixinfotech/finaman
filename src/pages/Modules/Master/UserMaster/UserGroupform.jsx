@@ -253,7 +253,7 @@ const UserGroupForm = ({
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div
-      className="w-full max-w-[700px] mx-auto bg-white rounded-xl shadow-lg border flex flex-col min-h-[calc(100vh-160px)] overflow-hidden font-sans"
+      className="w-full mx-auto bg-[#eef1f6] rounded-xl shadow-lg border flex flex-col min-h-[calc(100vh-100px)] overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       {/* Header — tabs live here, always visible */}
@@ -288,11 +288,13 @@ const UserGroupForm = ({
 
         // ── ENTRY FORM ────────────────────────────────────────────────────
         <>
-          <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
+        
+      <div className="flex-1 p-4 overflow-y-auto min-w-[750px] mx-auto flex justify-center">
             <div
               id="usergroup-form-container"
               ref={containerRef}
-              className="w-full max-w-[800px] h-fit bg-white p-6 rounded-md border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 gap-4"
+              className="w-full max-w-[850px] h-fit bg-white border border-slate-200
+                     shadow-sm rounded-md p-5 grid grid-cols-1 gap-y-4"
             >
               {/* Group Name */}
               <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">

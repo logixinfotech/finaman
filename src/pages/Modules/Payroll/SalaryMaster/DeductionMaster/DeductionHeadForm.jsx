@@ -378,9 +378,9 @@ const DeductionHeadForm = ({
   }, [formData, isViewMode, handleValidateAndSave]);
 
   return (
-    <div className="w-full max-w-[700px] mx-auto h-full md:h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col" style={{ fontFamily: FONT }}>
+    <div className="w-full  h-full md:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col" style={{ fontFamily: FONT }}>
       <ERPHeader
-        title="DEDUCTION HEAD ENTRY"
+        title="Deduction Head Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -394,7 +394,7 @@ const DeductionHeadForm = ({
       />
 
       <div className="flex-1 p-2 md:p-4 overflow-y-auto">
-        <div id="deduction-form-container" className="w-full bg-white border rounded-md p-4">
+        <div id="deduction-form-container" className="w-full bg-white border rounded-md p-4 mx-auto max-w-[750px]">
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="md:col-span-2 flex flex-col md:flex-row md:items-center gap-1 md:gap-2">

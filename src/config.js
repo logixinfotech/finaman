@@ -14,8 +14,13 @@ const getApiUrl = () => {
     return "http://192.168.1.42:63554";
   }
 
-  return "http://finamanerp.com:63554";
+  return "http://122.160.143.110:63554";
 };
+// http://finamanerp.com:63554
+
+
+
+
 
 const config = {
   apiUrl: getApiUrl(),

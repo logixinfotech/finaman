@@ -140,11 +140,11 @@ const IncomeHeadForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-full md:h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col"
+      className="w-full  h-full md:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="INCOME HEAD ENTRY"
+        title="Income Head Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -160,7 +160,7 @@ const IncomeHeadForm = ({
       <div className="flex-1 p-2 md:p-4 overflow-y-auto">
         <div
           id="income-form-container"
-          className="w-full bg-white border rounded-md p-4 md:p-6"
+          className="w-full bg-white max-w-[750px] mx-auto border rounded-md p-4 md:p-6"
         > 
           {/* Row 1: Name and Code */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

@@ -183,7 +183,7 @@ const TDSMaster = ({ tab }) => {
           onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className=" bg-slate-50 h-full">
           <Table
            activeTab={"search"}
                     onTabChange={handleTabChange}

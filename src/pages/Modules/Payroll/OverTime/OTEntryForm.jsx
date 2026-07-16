@@ -446,7 +446,7 @@ const OTEntryForm = ({
   }, [isViewMode]);
 
   return (
-    <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
+    <div className="w-full  h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
       <ERPHeader
         title="OT MASTER"
         isAddMode={isAddMode}
@@ -462,7 +462,7 @@ const OTEntryForm = ({
       />
 
       <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center">
-        <div ref={formRef} id="ot-form-container" className="w-full max-w-[800px] h-fit bg-white shadow-sm rounded-md border border-slate-200 overflow-visible relative">
+        <div ref={formRef} id="ot-form-container" className="w-full max-w-[750px] h-fit bg-white shadow-sm rounded-md border border-slate-200 overflow-visible relative">
           <div className="p-6">
             
             {/* DOM Div Structural Alignment Fix: Left-to-Right Row grid architecture */}

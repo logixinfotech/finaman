@@ -89,13 +89,10 @@ const showNav = (onPrevRecord || onNextRecord) && !isSettingsTab && isViewMode;
   };
 
   return (
-    <div
-      className="flex items-center gap-3.5 h-[50px] px-3.5 bg-white border-b border-slate-200 rounded-t-xl flex-shrink-0"
-      style={{
-        boxShadow:
-          "0 1px 0 0 rgba(15,23,42,0.04), inset 0 1px 0 0 rgba(255,255,255,0.9)",
-      }}
-    >
+   <div
+  className="relative flex items-center gap-3.5 h-[50px] px-3.5 bg-white border-b border-slate-200 rounded-t-xl flex-shrink-0"
+  style={{ height:48 }}
+>
      {!isHidden && (
           <div className="flex items-center gap-0.5 bg-slate-100 rounded-[10px] p-[3px]">
             {TAB_CONFIG.map(({ id, Icon, label }) => {
@@ -145,7 +142,7 @@ const showNav = (onPrevRecord || onNextRecord) && !isSettingsTab && isViewMode;
             })}
           </div>
         )}
-              {!isHidden && (<div className="flex items-center gap-3.5 px-4 py-2 self-stretch bg-slate-50/60 rounded-tl-xl mx-auto"> 
+          {!isHidden && (<div className="absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3.5 py-2 self-stretch bg-slate-50/60 rounded-tl-xl">
   <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
     <TitleIcon
       size={12}
@@ -155,7 +152,8 @@ const showNav = (onPrevRecord || onNextRecord) && !isSettingsTab && isViewMode;
   </div>
  
  <div className="flex flex-col min-w-0">
-    <span className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap" title={title}>
+    <span className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap" 
+    style={{ fontFamily: "'Inter', 'Roboto', 'Segoe UI', system-ui, sans-serif" }} title={title}>
       {title}
     </span>
   </div>

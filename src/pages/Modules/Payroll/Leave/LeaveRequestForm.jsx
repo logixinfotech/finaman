@@ -51,7 +51,7 @@ const LeaveRequestForm = ({
       try {
         const data = await getActledList();
         setEmployees(data || []);
-        setEmployeeNames((data || []).map((e) => e.Led_name?.trim()));
+        setEmployeeNames((data || []).map((e) => (e.full_name || e.Led_name)?.trim()));
       } catch (err) {
         console.error("Employee fetch error:", err);
       }
@@ -141,7 +141,9 @@ const LeaveRequestForm = ({
     let updated = { ...localData };
 
     if (field === "employee_name") {
-      const emp = employees.find((e) => e.Led_name?.trim() === value?.trim());
+      const emp = employees.find((e) =>
+        (e.full_name || e.Led_name)?.trim() === value?.trim()
+      );
       updated.employee_name = value;
       updated.employee_id = emp ? Number(emp.Actled_id) : "";
       // Leave type bhi clear karo jab employee change ho
@@ -201,7 +203,7 @@ const LeaveRequestForm = ({
     }`;
 
   // ── Status badge ─────────────────────────────────────────
- 
+
 
   // ── Validate and save ────────────────────────────────────
   const handleValidateAndSave = useCallback(() => {
@@ -225,11 +227,11 @@ const LeaveRequestForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="LEAVE REQUEST"
+        title="Leave Request"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -243,7 +245,7 @@ const LeaveRequestForm = ({
       />
 
       <div className="flex-1 p-4 overflow-y-auto">
-        <div ref={formRef} className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-visible relative">
+        <div ref={formRef} className="w-full bg-white border max-w-[750px] mx-auto border-slate-200 shadow-sm rounded-md overflow-visible relative">
           <div className="p-5 grid grid-cols-1 gap-y-5">
 
 

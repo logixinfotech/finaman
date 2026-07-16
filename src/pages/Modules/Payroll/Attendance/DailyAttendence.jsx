@@ -4,19 +4,19 @@
 // No attendance logic here — all logic is in DailyAttendanceEntry.js
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState, useCallback } from "react";
-import * as XLSX from "xlsx";
 import Table from "../../../../components/Reusable/table/Table";
 import DailyAttendanceForm from "./DailyAttendanceEntry";
-import DailyAttendanceFilter from "./DailyAttendanceFilter";
+import UniversalFilter from "../../../../components/Reusable/Filter/UnivarsalFilter";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import ERPPrintPreview from "../../../../components/Reusable/ERPPrintPreview";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 
 import {
-  getAttendanceList, saveAttendanceLog, updateAttendance,
+  getAttendanceList, saveAttendanceLog, updateAttendance, getActledList, fetchUserGroupsByType,
   deleteAttendance, getAttendanceById
 } from "../../../../utils/api";
 import { alertError, confirmDelete, showToast } from "../../../../components/Reusable/alert";
+import { useGroupOptions } from "../../../../Hooks/useUserGroupOption";
 
 const initialState = {
   attdayid: null,
@@ -53,15 +53,27 @@ const formatDateTime = (value) => {
 };
 
 const columns = [
-  { key: "employee_name", label: "Employee Name" },
+  {
+    key: "employee_name",
+    label: "Employee Name",
+    render: (row) => {
+      const parts = [
+        row.Led_name || row.employee_name || "",
+        row.Middle_name || "",
+        row.Led_alias || "",
+      ].filter(Boolean);
+      return parts.join(" ");
+    }
+  },
   { key: "employee_code", label: "Emp Code" },
   { key: "department", label: "Department" },
-  { key: "attendance_date", label: "Date", render: (row) => row.in_time ? formatDateTime(row.in_time).split(" ")[0] : "" },
-  { key:"in_time",  label:"In Time",  render:(row)=> row.in_time  ? formatDateTime(row.in_time).split(" ")[1]  : "—" },
-{ key:"out_time", label:"Out Time", render:(row)=> row.out_time ? formatDateTime(row.out_time).split(" ")[1] : "—" },
+  { key: "date", label: "Date" },         // ✅ mapped field "2026-07-03"
+  { key: "in_time_fmt", label: "In Time" },      // ✅ mapped field "10:00"
+  { key: "out_time_fmt", label: "Out Time" },     // ✅ mapped field "18:00"
   {
-    key: "attendance_status", label: "Status", render: (row) => (
-      <span className={`px-2 py-0.5 text-[11px] font-semibold rounded-full ${row.attendance_status === "PRESENT" ? "bg-green-100 text-green-700" :
+    key: "attendance_status", label: "Status",
+    render: (row) => (
+      <span className={`px-2 py-1 text-xs rounded ${row.attendance_status === "PRESENT" ? "bg-green-100 text-green-700" :
           row.attendance_status === "ABSENT" ? "bg-red-100 text-red-700" :
             row.attendance_status === "WEEK OFF" ? "bg-purple-100 text-purple-700" :
               row.attendance_status === "HOLIDAYS" ? "bg-yellow-100 text-yellow-700" :
@@ -73,18 +85,27 @@ const columns = [
 
 const DailyAttendancePage = ({ tab }) => {
   const [list, setList] = useState([]);
-  const todayStr = new Date().toISOString().split("T")[0]; // "2026-07-03"
-  const [filters, setFilters] = useState({ date: todayStr });
+  const today = new Date().toISOString().split("T")[0];
+  const [filters, setFilters] = useState({
+    date: today,
+    from_date: today,
+    to_date: today,
+    employee_id: "",
+    employee_name: "",
+    department_id: "",
+    department_name: ""
+  });
   const [showFilter, setShowFilter] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [printData, setPrintData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [totalRecords, setTotalRecords] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [data, setData]               = useState([]);
-const [selectedRows, setSelectedRows] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
 
   const {
     mode,
@@ -109,82 +130,93 @@ const [selectedRows, setSelectedRows] = useState([]);
 
   const handlePrint = (data) => { setPrintData(data); setShowPreview(true); };
 
-  const handleFilterApply = async (newFilters) => {
-  setFilters(newFilters);
-  setSelectedRows([]);
-  const res = await getAttendanceList({ filters: newFilters });  // ✅ res declare
-  const mapped = (res?.data || []).map(item => {
-    const inRaw  = item.in_time?.toString().replace("T"," ").split(".")[0] || "";
-    const outRaw = item.out_time?.toString().replace("T"," ").split(".")[0] || "";
-    return {
-      ...item,
-      department:   item.department || "—",
-      date:         inRaw ? inRaw.split(" ")[0] : "",
-      in_time_fmt:  inRaw  ? inRaw.split(" ")[1]?.slice(0,5) : "--:--",
-      out_time_fmt: outRaw ? outRaw.split(" ")[1]?.slice(0,5) : "--:--",
-    };
-  });
-  setData(mapped);
-};
-
-const handleDownload = () => {
-  const toExport = selectedRows.length > 0
-  ? list.filter(r => selectedRows.includes(r.log_id))  // ← data → list
-  : list;        
-
-  const ws = XLSX.utils.json_to_sheet(toExport.map(r => ({
-    "Employee Name": r.employee_name,
-    "Emp Code":      r.employee_code,
-    "Department":    r.department || "—",   // ✅ ADD
-    "Date":          r.date,                // "2026-07-03"
-    "In Time":       r.in_time_fmt,         // ✅ sirf "10:00" — NO date
-    "Out Time":      r.out_time_fmt,        // ✅ sirf "18:00" — NO date
-    "Status":        r.attendance_status,
-  })));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-  XLSX.writeFile(wb, `Attendance_${filters.date || "all"}.xlsx`);
-};
+  const handleFilterChange = async (newFilters) => {
+    setFilters(newFilters);
+    await loadData(newFilters, 1, pageSize);
+  };
 
   // ── Load list ────────────────────────────────────────────────────────────────
-const loadData = useCallback(async (
-  currentFilters = filters,
-  currentPage = page,
-  currentPageSize = pageSize
-) => {
-  try {
-    setLoading(true);
-    const res = await getAttendanceList({
-      page: currentPage,
-      pageSize: currentPageSize,
-      filters: currentFilters
-    });
+  const loadData = useCallback(async (
+    currentFilters = filters,
+    currentPage = page,
+    currentPageSize = pageSize
+  ) => {
+    // `loadData` function ke start mein, try { ... } ke andar yeh line add karein:
+    try {
+      setLoading(true);
 
-    // ✅ YAHAN ADD KARO — raw data ko map karo
-    const mapped = (res?.data || []).map(item => {
-      const inRaw  = item.in_time?.toString().replace("T"," ").split(".")[0] || "";
-      const outRaw = item.out_time?.toString().replace("T"," ").split(".")[0] || "";
-      return {
-        ...item,
-        department:   item.department || "—",
-        date:         inRaw ? inRaw.split(" ")[0] : "",
-        in_time_fmt:  inRaw  ? inRaw.split(" ")[1]?.slice(0,5) : "--:--",
-        out_time_fmt: outRaw ? outRaw.split(" ")[1]?.slice(0,5) : "--:--",
-      };
-    });
+      // 1. Copy original filters
+      const apiFilters = { ...currentFilters };
+  
+      if (currentFilters.from_date && currentFilters.to_date) {
+        if (currentFilters.from_date === currentFilters.to_date) {
+          apiFilters.date = currentFilters.from_date;
+        } else {
+          apiFilters.from_date = currentFilters.from_date;
+          apiFilters.to_date = currentFilters.to_date;
+          delete apiFilters.date;
+        }
+      } else if (currentFilters.date) {
+        apiFilters.date = currentFilters.date;
+      } else if (!currentFilters.employee_id && !currentFilters.employee_name &&
+        !currentFilters.department_id && !currentFilters.department_name) {
+        // only fall back to "today" when there's no employee/department filter at all
+        apiFilters.date = today;
+      } 
+      if (currentFilters.employee_id) {
+        apiFilters.emp_id = currentFilters.employee_id;
+        apiFilters.employee_id = currentFilters.employee_id;
+      }
 
-    setList(mapped);                                        // ← res.data ki jagah mapped
-    setTotalRecords(res?.total || mapped.length || 0);
-  } catch (err) {
-    console.error("Attendance load error", err);
-  } finally {
-    setLoading(false);
-  }
-}, [filters, page, pageSize]);
+      if (currentFilters.employee_name) { 
+        apiFilters.employee_name = currentFilters.employee_name;
+        apiFilters.emp_name = currentFilters.employee_name;
+      } 
+      if (currentFilters.department_id) {
+        apiFilters.dept_id = currentFilters.department_id;
+        apiFilters.department_id = currentFilters.department_id;
+      }
+      if (currentFilters.department_name) {
+        apiFilters.department = currentFilters.department_name;
+      } 
+
+      const res = await getAttendanceList({
+        page: currentPage,
+        pageSize: currentPageSize,
+        filters: apiFilters
+      }); 
+      const mapped = (res?.data || []).map(item => {
+        const inRaw = item.in_time?.toString().replace("T", " ").split(".")[0] || "";
+        const outRaw = item.out_time?.toString().replace("T", " ").split(".")[0] || "";
+        return {
+          ...item,
+          department: item.department || "—",
+          date: inRaw ? inRaw.split(" ")[0] : "",
+          in_time_fmt: inRaw ? inRaw.split(" ")[1]?.slice(0, 5) : "--:--",
+          out_time_fmt: outRaw ? outRaw.split(" ")[1]?.slice(0, 5) : "--:--",
+        };
+      });
+
+      setList(mapped);   
+      setTotalRecords(res?.total || mapped.length || 0);
+    } catch (err) {
+      console.error("Attendance load error", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters, page, pageSize]);
 
   useEffect(() => { loadData(filters, page, pageSize); }, [page, pageSize, loadData]);
 
-  // ── Keyboard shortcuts ───────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const empRes = await getActledList();
+      setEmployees(Array.isArray(empRes) ? empRes : empRes?.data || []);
+      const deptRes = await fetchUserGroupsByType("DEP");
+      setDepartments(deptRes?.data || []);
+    })();
+  }, []);
+ 
   useEffect(() => {
     setERPHandlers({
       onNew: () => { setShowForm(true); handleAdd(); },
@@ -206,40 +238,6 @@ const loadData = useCallback(async (
     setShowForm(false);
     loadData(filters, page, pageSize);
   };
-
-  const handleExport = (selectedRows) => {
-  // Agar rows select hain to selected export karo, warna current list
-  const dataToExport = (selectedRows && selectedRows.length > 0) ? selectedRows : list;
-  
-  if (!dataToExport.length) { alertError("Export", "No data to export"); return; }
-
-  const headers = ["Employee Name", "Emp Code", "Department", "Date", "In Time", "Out Time", "Status"];
-  
-  const rows = dataToExport.map(row => [
-    row.employee_name || "",
-    row.employee_code || "",
-    row.department || "",
-    row.in_time ? formatDateTime(row.in_time).split(" ")[0] : "",
-    row.in_time ? formatDateTime(row.in_time) : "",
-    row.out_time ? formatDateTime(row.out_time) : "",
-    row.attendance_status || "",
-  ]);
-
-  const csvContent = [headers, ...rows]
-    .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  
-  // Filename mein date range info daalo
-  const dateLabel = filters.date || "all";
-  a.download = `Attendance_${dateLabel}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
 
   const handleDeleteMultiple = async (selected) => {
     // Normalize: Table may pass an array of row objects OR an array of keys
@@ -281,9 +279,7 @@ const loadData = useCallback(async (
       setShowForm(true);
       if (!formData?.log_id) handleAdd();
     }
-  };
-
-  // ── View mode ────────────────────────────────────────────────────────────────
+  }; 
   const handleViewMode = async (row) => {
     try {
       const index = list.findIndex(item => item.log_id === row.log_id);
@@ -310,8 +306,8 @@ const loadData = useCallback(async (
       setShowForm(true);
     } catch (err) { console.error(err); }
   };
-
-  // ── Edit (Modify) mode ───────────────────────────────────────────────────────
+  const { options } = useGroupOptions();
+ 
   const handleModify = async (row) => {
     try {
       const index = list.findIndex(item => item.log_id === row.log_id);
@@ -337,9 +333,7 @@ const loadData = useCallback(async (
       });
       setShowForm(true);
     } catch (err) { console.error("handleModify error:", err); }
-  };
-
-  // ── Print sections ───────────────────────────────────────────────────────────
+  }; 
   const attendancePrintSections = [
     {
       type: "custom",
@@ -370,9 +364,7 @@ const loadData = useCallback(async (
         </div>
       )
     }
-  ];
-
-  // ── Render ───────────────────────────────────────────────────────────────────
+  ]; 
   return (
     <div className="h-full">
       {showPreview ? (
@@ -388,6 +380,7 @@ const loadData = useCallback(async (
           formData={formData}
           setFormData={setFormData}
           setShowForm={setShowForm}
+          initialData={formData}
           onSave={() => { handleView(formData); }}
           onCancel={() => setShowForm(false)}
           mode={mode}
@@ -420,14 +413,64 @@ const loadData = useCallback(async (
           serverPagination={true}
           totalRecords={totalRecords}
           onPageChange={handlePageChange}
-          defaultPageSize={pageSize}
-           onExport={handleExport}
+          defaultPageSize={pageSize} 
           formComponent={
-            <DailyAttendanceFilter
+            <UniversalFilter
               filters={filters}
+              visibleFields={["filterType", "employee", "department"]}
+              options={options}
               setFilters={setFilters}
-              onApply={() => loadData(filters)}
-              onClear={() => { setFilters({}); loadData({}); }}
+              employees={employees}
+              departments={departments}
+              onApply={(f) => {
+                const hasEmpOrDept = f.employee_id || f.employee_name || f.department_id || f.department_name; 
+                const normalizedFilters = {
+                  ...f,
+                  emp_id: f.employee_id || "",
+                  employee_id: f.employee_id || "",
+                  employee_name: f.employee_name || "",
+                  department_id: f.department_id || "",
+                  department_name: f.department_name || ""
+                };
+
+                if (hasEmpOrDept && f.from_date === today && f.to_date === today) { 
+                  delete normalizedFilters.date;
+                  delete normalizedFilters.from_date;
+                  delete normalizedFilters.to_date;
+                } else {
+                  normalizedFilters.date = f.from_date || f.date || today;
+                }
+
+                setFilters(normalizedFilters);
+                loadData(normalizedFilters, 1, pageSize);
+              }} onClear={() => {
+                const reset = {
+                  date: today,
+                  from_date: today,
+                  to_date: today,
+                  employee_id: "",
+                  employee_name: "",
+                  emp_id: "",
+                  department_id: "",
+                  department_name: ""
+                };
+                setFilters(reset);
+                loadData(reset, 1, pageSize);
+              }}
+              onReset={() => {
+                const reset = {
+                  date: today,
+                  from_date: today,
+                  to_date: today,
+                  employee_id: "",
+                  employee_name: "",
+                  emp_id: "",
+                  department_id: "",
+                  department_name: ""
+                };
+                setFilters(reset);
+                loadData(reset, 1, pageSize);
+              }}
             />
           }
           onAdd={() => { handleAdd(); setShowForm(true); }}

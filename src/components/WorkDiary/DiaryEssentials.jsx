@@ -15,7 +15,8 @@ import { generateId } from "../../utils/helpers";
 import {
   ClipboardList, RefreshCw, CheckCircle2, AlertTriangle, Clock,
   LayoutGrid, List, Search, X, RotateCcw, Plus,
-  Circle, Flag, BookOpen, Layers, ChevronRight, UserCheck, CornerDownLeft, Table2
+  Circle, Flag, BookOpen, Layers, ChevronRight, UserCheck, CornerDownLeft, Table2, ChevronDown,
+  Filter,
 } from "lucide-react";
 
 // ─── getCurrentUser ───────────────────────────────────────────────
@@ -29,7 +30,6 @@ export const getCurrentUser = () => {
 // ─── SectionGroup ─────────────────────────────────────────────────
 const SectionGroup = ({ label, count, accentColor, badgeBg, badgeColor, lineBg, children }) => {
   const [open, setOpen] = useState(true);
-
   return (
     <div>
       <div
@@ -59,8 +59,6 @@ const SectionGroup = ({ label, count, accentColor, badgeBg, badgeColor, lineBg, 
           style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .18s", flexShrink: 0 }}
         />
       </div>
-
-      {/* Collapsible content */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -131,8 +129,6 @@ export const SidebarContent = ({
     </div>
 
     <div style={{ margin: "4px 12px", borderTop: `1px solid ${C.border}` }} />
-
-    {/* Categories */}
     <div style={{ padding: "6px 8px 4px", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 6px 6px" }}>
         <Layers size={11} color={C.t4} />
@@ -144,7 +140,6 @@ export const SidebarContent = ({
     </div>
 
     <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 16px", minHeight: 0 }}>
-      {/* "All" option */}
       {(() => {
         const isAll = !activeCategory;
         return (
@@ -216,40 +211,36 @@ export const SidebarContent = ({
     </div>
   </div>
 );
-
 // ─── MyTasksScreen ────────────────────────────────────────────────
 export const MyTasksScreen = ({
   currentUser, employees = [],
   onSaveAndSubmit, categoryList = [], activeCategory, setActiveCategory, setActiveNav,
   isSaving = false, onEditTask,
 }) => {
-  const [activeTab, setActiveTab] = useState("to_me");
+  const [scope, setScope] = useState("all");           // "all" | "self" | "others"
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [myTasks, setMyTasks] = useState([]);
   const [byMeTasks, setByMeTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("pending");
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState("grid"); // existing
+  const [viewMode, setViewMode] = useState("table");   // "table" | "grid"
   const [filterEmployee, setFilterEmployee] = useState("");
-  const [filterDept, setFilterDept] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [detailKey, setDetailKey] = useState(null);
-  const [modal, setModal] = useState(null);
 
-  const [byMeLoaded, setByMeLoaded] = useState(false);
   const isMobile = useIsMobile();
   const { show: toast, ToastUI } = useToast();
   const tod = todayStr();
 
   const loadMyTasks = useCallback(async () => {
-    setLoading(true);
     try {
       const rMe = await fetchMyTasks();
       const normalize = arr =>
         (Array.isArray(arr) ? arr : arr?.data || []).map(t => ({ ...t, _key: t._key || String(t.line_id) }));
       setMyTasks(normalize(rMe));
     } catch { alertError("Error", "Failed to load tasks"); }
-    finally { setLoading(false); }
   }, []);
 
   const loadByMeTasks = useCallback(async () => {
@@ -258,58 +249,32 @@ export const MyTasksScreen = ({
       const normalize = arr =>
         (Array.isArray(arr) ? arr : arr?.data || []).map(t => ({ ...t, _key: t._key || String(t.line_id) }));
       setByMeTasks(normalize(rBy));
-    } catch { /* non-fatal — by_me tab can retry on next manual refresh */ }
+    } catch { /* non-fatal */ }
   }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
       await Promise.allSettled([loadMyTasks(), loadByMeTasks()]);
-      setByMeLoaded(true);
     } catch { alertError("Error", "Failed to load tasks"); }
     finally { setLoading(false); }
   }, [loadMyTasks, loadByMeTasks]);
 
-  useEffect(() => {
-    loadMyTasks();
-    setByMeLoaded(false);
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
-  useEffect(() => {
-    if (activeTab === "by_me" && !byMeLoaded) {
-      setByMeLoaded(true);
-      loadByMeTasks();
-    }
-  }, [activeTab, byMeLoaded, loadByMeTasks]);
+  useEffect(() => { setFilter("all"); setSearch(""); setDetailKey(null); }, [scope]);
 
-  useEffect(() => { setFilter("all"); setSearch(""); setDetailKey(null); }, [activeTab]);
+  const scopedTasks = useMemo(() => {
+    if (scope === "self") return myTasks;
+    if (scope === "others") return byMeTasks;
+    return [...myTasks, ...byMeTasks];
+  }, [scope, myTasks, byMeTasks]);
 
-  const tabTasks = activeTab === "to_me" ? myTasks : byMeTasks;
-  const inProgress = tabTasks.filter(t => t.status === "In Progress").length;
-  const completed = tabTasks.filter(t => t.status === "Completed" || t.status === "Resolved" || t.status === "Closed").length;
-  const overdue = tabTasks.filter(t => t.due_date && t.due_date < tod && t.status !== "Completed" && t.status !== "Cancelled").length;
-  const todayDue = tabTasks.filter(t => t.due_date === tod && t.status !== "Completed").length;
- 
-  const assigneeBreakdown = useMemo(() => {
-    if (activeTab !== "by_me") return [];
-    const map = {};
-    byMeTasks.forEach(t => {
-      const name = t.assigned_to_name || "Unknown";
-      if (!map[name]) map[name] = { name, total: 0, done: 0, inprog: 0, overdue: 0 };
-      map[name].total++;
-      if (t.status === "Completed" || t.status === "Resolved" || t.status === "Closed") map[name].done++;
-      if (t.status === "In Progress") map[name].inprog++;
-      if (t.due_date && t.due_date < tod && t.status !== "Completed" && t.status !== "Cancelled") map[name].overdue++;
-    });
-    return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [byMeTasks, activeTab, tod]);
-
-  // Filtered list
   const filtered = useMemo(() => {
-    let l = [...tabTasks];
+    let l = [...scopedTasks];
     if (activeCategory) l = l.filter(t => t.category === activeCategory);
     if (filterEmployee) l = l.filter(t => t.assigned_to_name === filterEmployee);
-    if (filterDept) l = l.filter(t => t.department === filterDept);
+
     if (filterCategory) l = l.filter(t => t.category === filterCategory);
     if (search) {
       const q = search.toLowerCase();
@@ -321,40 +286,43 @@ export const MyTasksScreen = ({
       );
     }
     switch (filter) {
-      case "own": return l.filter(t => !t.assigned_by || t.assign_type === "self");
-      case "delegated": return l.filter(t => t.assigned_by && t.assign_type === "assign");
       case "inprogress": return l.filter(t => t.status === "In Progress");
       case "completed": return l.filter(t => t.status === "Completed" || t.status === "Resolved" || t.status === "Closed");
       case "overdue": return l.filter(t => t.due_date && t.due_date < tod && t.status !== "Completed" && t.status !== "Cancelled");
-      case "today": return l.filter(t => t.due_date === tod && t.status !== "Completed");
+      case "today": return l.filter(t => t.due_date && t.due_date.slice(0, 10) === tod && t.status !== "Completed");
       case "high": return l.filter(t => t.priority === "High");
       case "pending": return l.filter(t => t.status === "Pending" || t.status === "Open");
       default: return l;
     }
-  }, [tabTasks, filter, search, tod, activeCategory, filterEmployee, filterDept, filterCategory]);
+  }, [scopedTasks, filter, search, tod, activeCategory, filterEmployee, filterCategory]);
 
-  const detailTask = tabTasks.find(t => t._key === detailKey || String(t.line_id) === String(detailKey)) || null;
-  const detailOpen = !!detailTask;
+  const detailTask = scopedTasks.find(t => t._key === detailKey || String(t.line_id) === String(detailKey)) || null;
 
-  // Handlers
+  const isMine = useCallback(id =>
+    id === currentUser?.user_id || id === currentUser?.employee_name,
+    [currentUser]);
+
+  const isAssignedToMe = useCallback(t =>
+    t.assign_type === "assign" && t.assigned_by && !isMine(t.assigned_by),
+    [isMine]);
+
   const toggle = useCallback(async key => {
     const allT = [...myTasks, ...byMeTasks];
     const task = allT.find(t => t._key === key || String(t.line_id) === String(key));
     if (!task) return;
     const newStatus = task.status === "Completed" ? "Pending" : "Completed";
-    const upd = p => p.map(t => (t._key === key || String(t.line_id) === String(key))
-      ? { ...t, status: newStatus } : t);
+    const upd = p => p.map(t => (t._key === key || String(t.line_id) === String(key)) ? { ...t, status: newStatus } : t);
     setMyTasks(upd); setByMeTasks(upd);
     if (task.line_id) {
       try { await updateTaskLineStatus(task.line_id, newStatus); }
       catch {
-        const revert = p => p.map(t => (t._key === key || String(t.line_id) === String(key))
-          ? { ...t, status: task.status } : t);
+        const revert = p => p.map(t => (t._key === key || String(t.line_id) === String(key)) ? { ...t, status: task.status } : t);
         setMyTasks(revert); setByMeTasks(revert);
         toast("Could not update status", "error");
       }
     }
   }, [myTasks, byMeTasks, toast]);
+
   useEffect(() => {
     const handler = e => {
       if (e.altKey && e.key === "n") {
@@ -367,14 +335,12 @@ export const MyTasksScreen = ({
   }, [setActiveNav]);
 
   const employeeOptions = useMemo(() => {
-    const set = new Set(tabTasks.map(t => t.assigned_to_name).filter(Boolean));
+    const set = new Set(scopedTasks.map(t => t.assigned_to_name).filter(Boolean));
     return [...set].sort();
-  }, [tabTasks]);
+  }, [scopedTasks]);
 
-  const deptOptions = useMemo(() => {
-    const set = new Set(tabTasks.map(t => t.department).filter(Boolean));
-    return [...set].sort();
-  }, [tabTasks]);
+
+
   const handleStatusChange = useCallback(async (key, newStatus) => {
     const upd = p => p.map(t => (t._key === key || String(t.line_id) === String(key)) ? { ...t, status: newStatus } : t);
     setMyTasks(upd); setByMeTasks(upd);
@@ -389,22 +355,18 @@ export const MyTasksScreen = ({
       }
     }
   }, [myTasks, byMeTasks, toast]);
+
   const delTask = useCallback(async key => {
     const allT = [...myTasks, ...byMeTasks];
     const task = allT.find(t => t._key === key || String(t.line_id) === String(key));
-if (task?.assigned_by && 
-    task.assigned_by !== currentUser?.user_id &&
-    task.assigned_by !== currentUser?.employee_name) {
+    if (task?.assigned_by && !isMine(task.assigned_by)) {
       toast(`Cannot delete — assigned by ${task.assigned_by}`, "error");
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete "${task?.work_plan || "this task"}"?\n\nThis cannot be undone.`
-    );
+    const confirmed = window.confirm(`Delete "${task?.work_plan || "this task"}"?\n\nThis cannot be undone.`);
     if (!confirmed) return;
 
-    // Optimistic update
     setMyTasks(p => p.filter(t => t._key !== key && String(t.line_id) !== String(key)));
     setByMeTasks(p => p.filter(t => t._key !== key && String(t.line_id) !== String(key)));
     setDetailKey(k => k === key ? null : k);
@@ -420,98 +382,210 @@ if (task?.assigned_by &&
     } else {
       toast("Task deleted");
     }
-  }, [myTasks, byMeTasks, toast, currentUser]);
+  }, [myTasks, byMeTasks, toast, isMine]);
 
-  // ── perf: stable callback so React.memo on TaskCard / TaskRow actually works ──
   const openDetail = useCallback(k => setDetailKey(k), []);
-  const noopDelete = useCallback(() => { }, []);
-
-  const saveModal = useCallback(f => {
-    const subtaskMap = {};
-    if (f._pendingSubtasks?.length) subtaskMap[f._key] = f._pendingSubtasks;
-    const matchFn = t => (f._key && t._key === f._key) || (f.line_id && String(t.line_id) === String(f.line_id));
-
-    if (f.assign_type === "assign") {
-      setByMeTasks(p => { const ex = p.find(matchFn); return ex ? p.map(t => matchFn(t) ? { ...f, _key: t._key } : t) : [f, ...p]; });
-    } else {
-      setMyTasks(p => { const ex = p.find(matchFn); return ex ? p.map(t => matchFn(t) ? { ...f, _key: t._key } : t) : [f, ...p]; });
-    }
-
-    // ── perf: removed unused `currentTasks` variable — allCurrent below already does this work ──
-    const allCurrent = [...myTasks, ...byMeTasks];
-    const ex = allCurrent.find(matchFn);
-    const toSave = ex
-      ? allCurrent.map(t => matchFn(t) ? { ...f, _key: t._key } : t)
-      : [f, ...allCurrent];
-    onSaveAndSubmit?.(toSave, subtaskMap);
-    setModal(null);
-    setTimeout(() => loadAll(), 1000);
-    toast(f.work_plan ? "Task saved!" : "Task updated!");
-  }, [myTasks, byMeTasks, setMyTasks, setByMeTasks, onSaveAndSubmit, loadAll, toast]);
-
-
 
   const categoryOptions = useMemo(() => categoryList.map(c => c.category), [categoryList]);
 
-  const STATS = useMemo(() => [
-    { l: "Total", v: tabTasks.length, pct: 100, color: C.blue, trackColor: C.blueLight, iconBg: C.blueLight, iconColor: C.blue, bottomColor: C.blue, Icon: ClipboardList, k: "all" },
-    { l: "In Progress", v: inProgress, pct: tabTasks.length ? Math.round(inProgress / tabTasks.length * 100) : 0, color: "#0369a1", trackColor: "#e0f2fe", iconBg: "#e0f2fe", iconColor: "#0369a1", bottomColor: "#0369a1", Icon: RefreshCw, k: "inprogress" },
-    { l: "Completed", v: completed, pct: tabTasks.length ? Math.round(completed / tabTasks.length * 100) : 0, color: "#15803d", trackColor: "#dcfce7", iconBg: "#dcfce7", iconColor: "#15803d", bottomColor: "#22c55e", Icon: CheckCircle2, k: "completed" },
-    { l: "Overdue", v: overdue, pct: tabTasks.length ? Math.round(overdue / tabTasks.length * 100) : 0, color: "#b91c1c", trackColor: "#fee2e2", iconBg: "#fee2e2", iconColor: "#b91c1c", bottomColor: "#ef4444", Icon: AlertTriangle, k: "overdue" },
-    { l: "Due Today", v: todayDue, pct: tabTasks.length ? Math.round(todayDue / tabTasks.length * 100) : 0, color: "#b45309", trackColor: "#fef3c7", iconBg: "#fef3c7", iconColor: "#b45309", bottomColor: "#f59e0b", Icon: Clock, k: "today" },
-
-  ], [tabTasks, inProgress, completed, overdue, todayDue, tod, filter]);
+  // Visible quick pills — the rest live inside "More filters"
   const FPILLS = [
-    { k: "all", l: "All", Icon: ClipboardList },
-    { k: "own", l: "My Own", Icon: UserCheck, show: "to_me" },  // ← new
-    { k: "delegated", l: "From Others", Icon: CornerDownLeft, show: "to_me" }, // ← new
-    { k: "pending", l: "Pending", Icon: Circle },
-    { k: "inprogress", l: "In Progress", Icon: RefreshCw },
-    { k: "completed", l: "Completed", Icon: CheckCircle2 },
-    { k: "overdue", l: "Overdue", Icon: AlertTriangle },
-    { k: "today", l: "Today", Icon: Clock },
-    { k: "high", l: "High Prio", Icon: Flag },
+    { k: "all", l: "All" },
+    { k: "pending", l: "Pending" },
+    { k: "inprogress", l: "In Progress" },
+    { k: "completed", l: "Completed" },
   ];
+  const MORE_FPILLS = [
+    { k: "overdue", l: "Overdue" },
+    { k: "today", l: "Due today" },
+    { k: "high", l: "High priority" },
+  ];
+
+  const SCOPE_OPTIONS = [
+    { v: "all", label: "All tasks", Icon: ClipboardList, count: myTasks.length + byMeTasks.length },
+    { v: "self", label: "My tasks", Icon: UserCheck, count: myTasks.length },
+    { v: "others", label: "Assigned by me", Icon: CornerDownLeft, count: byMeTasks.length },
+  ];
+  const activeScope = SCOPE_OPTIONS.find(s => s.v === scope);
+
+  const gridSections = useMemo(() => {
+    const own = filtered.filter(t => !isAssignedToMe(t) && !(t.assigned_by && isMine(t.assigned_by) && t.assign_type === "assign"));
+    const toMe = filtered.filter(t => isAssignedToMe(t));
+    const byMe = filtered.filter(t => t.assign_type === "assign" && t.assigned_by && isMine(t.assigned_by));
+    return { own, toMe, byMe };
+  }, [filtered, isAssignedToMe, isMine]);
+
+  const hasMoreFiltersActive = filterEmployee || filterCategory || ["overdue", "today", "high"].includes(filter);
+  const moreFilterCount = [filterEmployee, filterCategory, ["overdue", "today", "high"].includes(filter) ? filter : null].filter(Boolean).length;
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: C.bg }}>
       <ToastUI />
 
-      {/* Header bar */}
-      <div style={{
-        background: C.surface, borderBottom: `1.5px solid ${C.border}`, padding: "10px 16px",
-        flexShrink: 0, boxShadow: "0 1px 4px rgba(12,25,52,.05)"
+  <div className="wd-toolbar" style={{
+        padding: "10px 20px", display: "flex", alignItems: "center", gap: 8,
+        flexShrink: 0, flexWrap: "wrap", borderBottom: `1px solid ${C.border}`, background: C.surface,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {/* Tabs */}
-          <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 10, padding: 3, gap: 2, flex: 1, minWidth: 200 }}>
-            {[
-              { v: "to_me", label: "My Task", count: myTasks.length },
-              { v: "by_me", label: "Assign Task", count: byMeTasks.length },
-            ].map(({ v, label, count }) => (
-              <button key={v} onClick={() => setActiveTab(v)}
-                style={{
-                  flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer",
-                  fontFamily: F, fontSize: 12, fontWeight: activeTab === v ? 700 : 500,
-                  background: activeTab === v ? C.surface : "transparent",
-                  color: activeTab === v ? C.t1 : C.t3,
-                  boxShadow: activeTab === v ? "0 1px 4px rgba(12,25,52,.1)" : "none",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                  transition: "all .16s"
+
+        {/* ── Left group: scope + pills + more filters ── */}
+        <div className="wd-left-group" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button onClick={() => setScopeOpen(o => !o)}
+              style={{
+                display: "flex", alignItems: "center", gap: 7, padding: "7px 11px",
+                borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface,
+                cursor: "pointer", fontFamily: F,
+              }}>
+              <activeScope.Icon size={13} color={C.blue} />
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.t1 }}>{activeScope.label}</span>
+              <span style={{
+                fontFamily: FM, fontSize: 10, fontWeight: 700, padding: "1px 6px",
+                borderRadius: 999, background: C.blueLight, color: C.blueDark,
+              }}>{activeScope.count}</span>
+              <ChevronDown size={13} color={C.t4} style={{ transform: scopeOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+            </button>
+
+            {scopeOpen && (
+              <>
+                <div onClick={() => setScopeOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 60 }} />
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", left: 0, minWidth: 190, zIndex: 61,
+                  background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9,
+                  boxShadow: "0 8px 24px rgba(12,25,52,.14)", overflow: "hidden",
                 }}>
-                {label}
-                <span style={{
-                  fontFamily: FM, fontSize: 10, fontWeight: 700, padding: "1px 7px",
-                  borderRadius: 999, background: activeTab === v ? C.blueLight : "#e2e8f0",
-                  color: activeTab === v ? C.blueDark : C.t4
-                }}>{count}</span>
-              </button>
-            ))}
+                  {SCOPE_OPTIONS.map(opt => (
+                    <button key={opt.v} onClick={() => { setScope(opt.v); setScopeOpen(false); }}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                        gap: 8, padding: "9px 12px", border: "none", cursor: "pointer", textAlign: "left",
+                        background: scope === opt.v ? C.blueLight : "transparent", fontFamily: F,
+                      }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <opt.Icon size={13} color={scope === opt.v ? C.blue : C.t3} />
+                        <span style={{ fontSize: 12.5, fontWeight: scope === opt.v ? 700 : 500, color: C.t1 }}>{opt.label}</span>
+                      </span>
+                      <span style={{ fontFamily: FM, fontSize: 10.5, fontWeight: 700, color: C.t4 }}>{opt.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-          {/* New Task */}
-          <button onClick={() => setActiveNav?.("diaryentry")} style={{ ...btnPrimary, flexShrink: 0, fontSize: 12 }}>
+
+          {/* Status quick pills — mobile pe sirf "Pending" bahar, baaki More filters me chale jaate hain */}
+          <div className="wd-pills" style={{ display: "flex", gap: 5, flexShrink: 0, overflowX: "auto", scrollbarWidth: "none" }}>
+            {(isMobile ? FPILLS.filter(fp => fp.k === "pending") : FPILLS).map(fp => {  {/* ▼ CHANGED */}
+              const active = filter === fp.k;
+              return (
+                <button key={fp.k} onClick={() => setFilter(fp.k)}
+                  style={{
+                    padding: "6px 11px", borderRadius: 999, border: `1px solid ${active ? C.blue : C.border}`,
+                    fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: F,
+                    background: active ? C.blueLight : "transparent",
+                    color: active ? C.blueDark : C.t3, transition: "all .14s", flexShrink: 0,
+                  }}>
+                  {fp.l}
+                </button>
+              );
+            })}
+          </div> 
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button onClick={() => setMoreFiltersOpen(o => !o)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "6px 11px",
+                borderRadius: 999, cursor: "pointer", fontFamily: F, fontSize: 12, fontWeight: 600,
+                border: `1px solid ${hasMoreFiltersActive ? C.blue : C.border}`,
+                background: hasMoreFiltersActive ? C.blueLight : "transparent",
+                color: hasMoreFiltersActive ? C.blueDark : C.t3, whiteSpace: "nowrap",
+              }}>
+              <Filter size={12} />
+              More filters
+              {moreFilterCount > 0 && (
+                <span style={{
+                  fontFamily: FM, fontSize: 10, fontWeight: 700, padding: "1px 6px",
+                  borderRadius: 999, background: C.blue, color: "#fff",
+                }}>{moreFilterCount}</span>
+              )}
+            </button>
+
+            {moreFiltersOpen && (
+              <>
+                <div onClick={() => setMoreFiltersOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 60 }} />
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", left: 0, minWidth: 240, maxWidth: "calc(100vw - 40px)", zIndex: 61,
+                  background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10,
+                  boxShadow: "0 8px 24px rgba(12,25,52,.14)", padding: 12,
+                  display: "flex", flexDirection: "column", gap: 10,
+                }}>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    {(isMobile ? [...FPILLS.filter(fp => fp.k !== "pending"), ...MORE_FPILLS] : MORE_FPILLS).map(fp => {  {/* ▼ CHANGED */}
+                      const active = filter === fp.k;
+                      return (
+                        <button key={fp.k} onClick={() => setFilter(active ? "all" : fp.k)}
+                          style={{
+                            padding: "5px 10px", borderRadius: 999, border: `1px solid ${active ? C.blue : C.border}`,
+                            fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: F,
+                            background: active ? C.blueLight : "transparent",
+                            color: active ? C.blueDark : C.t3,
+                          }}>
+                          {fp.l}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <select value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}
+                    style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12.5, fontFamily: F, color: C.t2, background: C.bg, cursor: "pointer" }}>
+                    <option value="">All employees</option>
+                    {employeeOptions.map(e => <option key={e} value={e}>{e}</option>)}
+                  </select>
+ 
+                  <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+                    style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12.5, fontFamily: F, color: C.t2, background: C.bg, cursor: "pointer" }}>
+                    <option value="">All categories</option>
+                    {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+
+                  {hasMoreFiltersActive && (
+                    <button onClick={() => { setFilterEmployee("");  setFilterCategory(""); if (["overdue", "today", "high"].includes(filter)) setFilter("all"); }}
+                      style={{
+                        padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`,
+                        fontSize: 12, fontFamily: F, color: C.t3, background: C.bg, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                      }}>
+                      <X size={12} /> Clear filters
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="wd-spacer" style={{ flex: 1 }} />
+
+        {/* ── Right group: search + actions ── */}
+        <div className="wd-right-group" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+
+          <div className="wd-search-wrap" style={{
+            display: "flex", alignItems: "center", gap: 7, background: C.bg,
+            border: `1px solid ${C.border}`, borderRadius: 999, padding: "6px 11px", flexShrink: 0, minWidth: 150,
+          }}>
+            <Search size={13} color={C.t4} style={{ flexShrink: 0 }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+              style={{ background: "none", border: "none", outline: "none", fontSize: 12.5, color: C.t1, width: 110, fontFamily: F }} />
+            {search && <button onClick={() => setSearch("")}
+              style={{ background: "none", border: "none", cursor: "pointer", color: C.t4, display: "flex", padding: 0, flexShrink: 0 }}>
+              <X size={13} />
+            </button>}
+          </div>
+
+          {/* New task */}
+          <button onClick={() => setActiveNav?.("diaryentry")} style={{ ...btnPrimary, fontSize: 12.5, flexShrink: 0 }}>
             <Plus size={14} color="#fff" />
-            {!isMobile && "New Task"}
+            <span className="wd-new-task-label">{!isMobile && "New task"}</span>
           </button>
 
           {/* Refresh */}
@@ -519,353 +593,125 @@ if (task?.assigned_by &&
             style={{ ...btnSecondary, padding: "8px 10px", flexShrink: 0, opacity: loading ? .6 : 1 }}>
             <RefreshCw size={14} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
           </button>
+
+          {/* View toggle */}
+          <div style={{ display: "flex", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: 3, gap: 2, flexShrink: 0 }}>
+            {[{ v: "table", Icon: Table2 }, { v: "grid", Icon: LayoutGrid }].map(({ v, Icon: Ic }) => (
+              <button key={v} onClick={() => setViewMode(v)}
+                style={{
+                  padding: "5px 9px", borderRadius: 6, cursor: "pointer", border: "none",
+                  display: "flex", alignItems: "center", fontFamily: F,
+                  background: viewMode === v ? C.surface : "none",
+                  color: viewMode === v ? C.blue : C.t4,
+                  boxShadow: viewMode === v ? "0 1px 3px rgba(12,25,52,.09)" : "none"
+                }}>
+                <Ic size={13} />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div style={{
-        padding: isMobile ? "6px 10px 4px" : (detailOpen ? "6px 16px 4px" : "12px 16px 8px"),
-        display: "grid",
-        gridTemplateColumns: isMobile ? "repeat(5,1fr)" : "repeat(5,1fr)",
-        gap: isMobile ? 3 : (detailOpen ? 6 : 8),
-        flexShrink: 0,
-        position: "relative",
-        zIndex: 50,
-      }}>
-        {STATS.map(({ l, v, pct, color, trackColor, iconBg, iconColor, bottomColor, Icon: StatIcon, tasks: ttTasks, ttLabel, k }) => {
-          const size = isMobile ? 28 : (detailOpen ? 34 : 44), stroke = 3;
-          const r = (size - stroke * 2) / 2;
-          const circ = 2 * Math.PI * r;
-          const offset = circ - (pct / 100) * circ;
-          const stColors = {
-            "In Progress": { bg: "#e0f2fe", color: "#0369a1" },
-            "Pending": { bg: "#ede9fe", color: "#6d28d9" },
-            "Completed": { bg: "#dcfce7", color: "#15803d" },
-            "Open": { bg: "#fef3c7", color: "#b45309" },
-          };
-          const prioColors = { High: "#ef4444", Medium: "#f59e0b", Low: "#22c55e" };
-
-          return (
-            <div key={l} data-statcard="1"
-              onClick={() => setFilter(k)}
-              style={{
-                padding: isMobile ? "6px 4px" : (detailOpen ? "8px 10px" : "13px 14px 12px"),
-                borderRadius: isMobile ? 10 : 14,
-                border: "1.5px solid",
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: F,
-                transition: "all .15s",
-                position: "relative",
-                overflow: "visible",
-                background: filter === k ? iconBg : C.surface,
-                borderColor: filter === k ? color + "55" : C.border,
-                boxShadow: filter === k ? `0 2px 10px ${color}22` : "0 1px 3px rgba(12,25,52,.04)",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = ""; }}>
-              {isMobile ? (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8, background: iconBg,
-                    display: "flex", alignItems: "center", justifyContent: "center"
-                  }}>
-                    <StatIcon size={13} color={iconColor} strokeWidth={2} />
-                  </div>
-                  <div style={{
-                    fontFamily: FD, fontSize: 16, fontWeight: 800, lineHeight: 1,
-                    color: filter === k ? color : C.t1
-                  }}>{v}</div>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: C.t4, lineHeight: 1, textAlign: "center" }}>{l}</div>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-                      <div style={{
-                        width: detailOpen ? 22 : 28, height: detailOpen ? 22 : 28,
-                        borderRadius: 8, background: iconBg,
-                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                      }}>
-                        <StatIcon size={14} color={iconColor} strokeWidth={2} />
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.t3, lineHeight: 1.2 }}>{l}</div>
-                    </div>
-                    <div style={{
-                      fontFamily: FD, fontSize: detailOpen ? 20 : 26, fontWeight: 800, lineHeight: 1,
-                      color: filter === k ? color : C.t1, paddingLeft: 2
-                    }}>{v}</div>
-                  </div>
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-                      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke} />
-                      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-                        strokeDasharray={circ} strokeDashoffset={offset}
-                        strokeLinecap="round"
-                        style={{ transition: "stroke-dashoffset .7s cubic-bezier(.4,0,.2,1)" }} />
-                    </svg>
-                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: FM, color, lineHeight: 1 }}>{pct}%</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div style={{
-        padding: detailOpen ? "0 16px 4px" : "0 16px 10px", display: "flex", alignItems: "center", gap: 8,
-        flexShrink: 0, flexWrap: "wrap"
-      }}>
-        <div style={{ display: "flex", gap: 5, flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
-          {FPILLS.filter(fp => !fp.show || fp.show === activeTab).map(fp => (
-            <button key={fp.k} onClick={() => setFilter(fp.k)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4, padding: detailOpen ? "3px 9px" : "5px 12px",
-                borderRadius: 999, border: "1.5px solid", fontSize: detailOpen ? 11 : 12, fontWeight: 600,
-                cursor: "pointer", whiteSpace: "nowrap", fontFamily: F, transition: "all .14s",
-                // ── special colors for own/delegated pills ──
-                background: filter === fp.k
-                  ? (fp.k === "own" ? "#185FA5" : fp.k === "delegated" ? "#8b5cf6" : C.blue)
-                  : C.surface,
-                borderColor: filter === fp.k
-                  ? (fp.k === "own" ? "#185FA5" : fp.k === "delegated" ? "#8b5cf6" : C.blue)
-                  : C.border,
-                color: filter === fp.k ? "#fff" : C.t3,
-              }}>
-              <fp.Icon size={11} color={filter === fp.k ? "#fff" : fp.k === "own" ? "#185FA5" : fp.k === "delegated" ? "#8b5cf6" : C.t3} />
-              {fp.l}
-            </button>
-          ))}
-        </div>
-
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8, background: C.bg,
-          border: `1.5px solid ${C.border}`, borderRadius: 999, padding: detailOpen ? "3px 10px" : "5px 12px", flexShrink: 0
-        }}>
-          <Search size={13} color={C.t4} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-            style={{
-              background: "none", border: "none", outline: "none", fontSize: 12,
-              color: C.t1, width: 120, fontFamily: F
-            }} />
-          {search && <button onClick={() => setSearch("")}
-            style={{ background: "none", border: "none", cursor: "pointer", color: C.t4, display: "flex", padding: 0 }}>
-            <X size={13} />
-          </button>}
-        </div>
-
-        <div style={{
-          display: "flex", background: C.bg, border: `1.5px solid ${C.border}`,
-          borderRadius: 9, padding: 3, gap: 2, flexShrink: 0
-        }}>
-          {[{ v: "grid", Icon: LayoutGrid }, { v: "list", Icon: List }, { v: "table", Icon: Table2 }].map(({ v, Icon: Ic }) => (
-            <button key={v} onClick={() => setViewMode(v)}
-              style={{
-                padding: detailOpen ? "3px 7px" : "5px 9px", borderRadius: 6, cursor: "pointer", border: "none",
-                display: "flex", alignItems: "center", fontFamily: F,
-                background: viewMode === v ? C.surface : "none",
-                color: viewMode === v ? C.blue : C.t4,
-                boxShadow: viewMode === v ? "0 1px 3px rgba(12,25,52,.09)" : "none"
-              }}>
-              <Ic size={13} />
-            </button>
-          ))}
-        </div>
-      </div>
-  {viewMode === "table" && (
-        <div style={{
-          padding: "0 16px 10px", display: "flex", gap: 8, flexWrap: "wrap", flexShrink: 0,
-        }}>
-          <select value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}
-            style={{
-              padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`,
-              fontSize: 12, fontFamily: F, color: C.t2, background: C.surface, cursor: "pointer",
-            }}>
-            <option value="">All Employees</option>
-            {employeeOptions.map(e => <option key={e} value={e}>{e}</option>)}
-          </select>
-
-          <select value={filterDept} onChange={e => setFilterDept(e.target.value)}
-            style={{
-              padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`,
-              fontSize: 12, fontFamily: F, color: C.t2, background: C.surface, cursor: "pointer",
-            }}>
-            <option value="">All Departments</option>
-            {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-            style={{
-              padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`,
-              fontSize: 12, fontFamily: F, color: C.t2, background: C.surface, cursor: "pointer",
-            }}>
-            <option value="">All Categories</option>
-            {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-
-          {(filterEmployee || filterDept || filterCategory) && (
-            <button onClick={() => { setFilterEmployee(""); setFilterDept(""); setFilterCategory(""); }}
-              style={{
-                padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${C.border}`,
-                fontSize: 12, fontFamily: F, color: C.t3, background: C.bg, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 4,
-              }}>
-              <X size={12} /> Clear filters
-            </button>
-          )}
-        </div>
-      )}
+      {/* Body */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 24px" }}>
-
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 24px" }}>
 
           {loading ? (
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 0",
-              color: C.t4, fontSize: 13, fontFamily: F
-            }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 0", color: C.t4, fontSize: 13, fontFamily: F }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 32, height: 32, border: `3px solid ${C.blueLight}`,
-                  borderTop: `3px solid ${C.blue}`, borderRadius: "50%", animation: "spin .8s linear infinite"
-                }} />
+                <div style={{ width: 30, height: 30, border: `3px solid ${C.blueLight}`, borderTop: `3px solid ${C.blue}`, borderRadius: "50%", animation: "spin .8s linear infinite" }} />
                 <span>Loading tasks…</span>
               </div>
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{
-              display: "flex", flexDirection: "column", alignItems: "center",
-              padding: "48px 24px", color: C.t4, textAlign: "center", gap: 8
-            }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 24px", color: C.t4, textAlign: "center", gap: 8 }}>
               <div style={{ opacity: .18 }}><CheckCircle2 size={48} color={C.blue} strokeWidth={1.5} /></div>
               <div style={{ fontFamily: FD, fontSize: 14, fontWeight: 800, color: C.t3 }}>
-                {activeTab === "by_me" ? "No tasks delegated yet" : "No tasks here"}
+                {scope === "others" ? "No tasks delegated yet" : "No tasks here"}
               </div>
               <div style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 220 }}>
                 {filter === "all" ? "Add a task using the box above" : "Try a different filter"}
               </div>
             </div>
           ) : viewMode === "grid" ? (
-            <AnimatePresence mode="popLayout">
-              {activeTab === "to_me" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                  {(() => {
-                    const selfTasks = filtered.filter(t => !t.assigned_by || t.assign_type === "self");
-                    const delegatedTasks = filtered.filter(t => t.assigned_by && t.assign_type === "assign");
-
-                    const renderCard = t => (
-                      <TaskCard key={t._key || t.line_id} task={t}
-                        onOpen={openDetail}
-                        onToggle={toggle}
-                        onDelete={delTask}
-                        onStatusChange={handleStatusChange}
-                        isAssignedToMe={false}
-                        isSelected={detailKey !== null && (t._key === detailKey || String(t.line_id) === String(detailKey))} />
-                    );
-
-                    return (
-                      <>
-                        {selfTasks.length > 0 && (
-                          <SectionGroup
-                            label="My own tasks"
-                            count={selfTasks.length}
-                            accentColor="#185FA5"
-                            badgeBg="#E6F1FB"
-                            badgeColor="#0C447C"
-                            lineBg="#E6F1FB">
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
-                              {selfTasks.map(renderCard)}
-                            </div>
-                          </SectionGroup>
-                        )}
-                        {delegatedTasks.length > 0 && (
-                          <SectionGroup
-                            label="Assigned to me by others"
-                            count={delegatedTasks.length}
-                            accentColor="#8b5cf6"
-                            badgeBg="#ede9fe"
-                            badgeColor="#6d28d9"
-                            lineBg="#ede9fe">
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
-                              {delegatedTasks.map(renderCard)}
-                            </div>
-                          </SectionGroup>
-                        )}
-
-                        {/* ── Both empty after filter ── */}
-                        {selfTasks.length === 0 && delegatedTasks.length === 0 && (
-                          <div style={{
-                            display: "flex", flexDirection: "column", alignItems: "center",
-                            padding: "48px 24px", color: C.t4, textAlign: "center", gap: 8
-                          }}>
-                            <div style={{ opacity: .18 }}><CheckCircle2 size={48} color={C.blue} strokeWidth={1.5} /></div>
-                            <div style={{ fontFamily: FD, fontSize: 14, fontWeight: 800, color: C.t3 }}>No tasks here</div>
-                            <div style={{ fontSize: 12 }}>Try a different filter</div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              ) : (
-                // ── Assigned by me tab — flat grid, no sections ─────────
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
-                  {filtered.map(t => (
-                    <TaskCard key={t._key || t.line_id} task={t}
-                      onOpen={openDetail}
-                      onToggle={toggle}
-                      onDelete={noopDelete}
-                      onStatusChange={handleStatusChange}
-                      isAssignedToMe={false}
-                      isSelected={detailKey !== null && (t._key === detailKey || String(t.line_id) === String(detailKey))} />
-                  ))}
-                </div>
-              )}
-            </AnimatePresence>
-    ) : viewMode === "table" ? (
-            <TaskTable
-              tasks={filtered}
-              onOpen={openDetail}
-              onDelete={activeTab === "to_me" ? delTask : noopDelete}
-              onStatusChange={handleStatusChange}
-            />
-          ) : (
-            <AnimatePresence mode="popLayout">
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {filtered.map(t => (
-                  <TaskRow key={t._key || t.line_id} task={t}
-                    onOpen={openDetail}
-                    onToggle={toggle}
-                    onDelete={activeTab === "to_me" ? delTask : noopDelete}
-                    isAssignedToMe={activeTab === "to_me" && t.assign_type === "assign"} />
-                ))}
+            <AnimatePresence mode="popLayout"> 
+              <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 16 }}>
+                {gridSections.own.length > 0 && (
+                  <SectionGroup label="My own tasks" count={gridSections.own.length} accentColor="#185FA5" badgeBg="#E6F1FB" badgeColor="#0C447C" lineBg="#E6F1FB">
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
+                      {gridSections.own.map(t => (
+                        <TaskCard key={t._key || t.line_id} task={t} onOpen={openDetail} onToggle={toggle} onDelete={delTask}
+                          onStatusChange={handleStatusChange} isAssignedToMe={false}
+                          isSelected={detailKey !== null && (t._key === detailKey || String(t.line_id) === String(detailKey))} />
+                      ))}
+                    </div>
+                  </SectionGroup>
+                )}
+                {gridSections.toMe.length > 0 && (
+                  <SectionGroup label="Assigned to me by others" count={gridSections.toMe.length} accentColor="#8b5cf6" badgeBg="#ede9fe" badgeColor="#6d28d9" lineBg="#ede9fe">
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
+                      {gridSections.toMe.map(t => (
+                        <TaskCard key={t._key || t.line_id} task={t} onOpen={openDetail} onToggle={toggle} onDelete={delTask}
+                          onStatusChange={handleStatusChange} isAssignedToMe={true}
+                          isSelected={detailKey !== null && (t._key === detailKey || String(t.line_id) === String(detailKey))} />
+                      ))}
+                    </div>
+                  </SectionGroup>
+                )}
+                {gridSections.byMe.length > 0 && (
+                  <SectionGroup label="Assigned by me to others" count={gridSections.byMe.length} accentColor="#0f766e" badgeBg="#ccfbf1" badgeColor="#0f766e" lineBg="#ccfbf1">
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
+                      {gridSections.byMe.map(t => (
+                        <TaskCard key={t._key || t.line_id} task={t} onOpen={openDetail} onToggle={toggle} onDelete={delTask}
+                          onStatusChange={handleStatusChange} isAssignedToMe={false}
+                          isSelected={detailKey !== null && (t._key === detailKey || String(t.line_id) === String(detailKey))} />
+                      ))}
+                    </div>
+                  </SectionGroup>
+                )}
               </div>
             </AnimatePresence>
+          ) : (
+            <div style={{ paddingTop: 16 }}>
+              <TaskTable tasks={filtered} onOpen={openDetail} onDelete={delTask} onStatusChange={handleStatusChange} selectedKey={detailKey}
+                isEditable={t => !t.assigned_by || isMine(t.assigned_by)} />
+            </div>
           )}
         </div>
 
-        {/* Detail panel */}
         <AnimatePresence>
           {detailTask && (
-           <DetailPanel
-  key={detailTask._key}
-  task={detailTask}
-  onClose={() => setDetailKey(null)}
-  onEdit={() => { onEditTask?.(detailTask); setDetailKey(null); }}
-  onDelete={activeTab === "to_me" ? delTask : noopDelete}
-  onToggle={toggle}
-  readOnly={false}
-  isMobile={isMobile}
-  employees={employees}  // ← YEH ADD KARO
-/>
+            <DetailPanel
+              key={detailTask._key}
+              task={detailTask}
+              onClose={() => setDetailKey(null)}
+              onEdit={() => { onEditTask?.(detailTask); setDetailKey(null); }}
+              onDelete={delTask}
+              onToggle={toggle}
+              readOnly={!(!detailTask.assigned_by || isMine(detailTask.assigned_by))}
+              isMobile={isMobile}
+              employees={employees}
+            />
           )}
         </AnimatePresence>
       </div>
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}} 
+        /* ── Tablet ── */
+        @media (max-width: 1024px) {
+          .wd-search-wrap { min-width: 130px; }
+          .wd-search-wrap input { width: 90px; }
+        }
 
-
-
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        /* ── Mobile: force left group and right group onto their own lines ── */
+        @media (max-width: 640px) {
+          .wd-left-group { flex-basis: 100%; }
+          .wd-spacer { display: none; }
+          .wd-right-group { flex-basis: 100%; }
+          .wd-search-wrap { flex: 1; min-width: 0; }
+          .wd-search-wrap input { width: 100%; }
+        }
+      `}</style>
     </div>
   );
-}; 
+};

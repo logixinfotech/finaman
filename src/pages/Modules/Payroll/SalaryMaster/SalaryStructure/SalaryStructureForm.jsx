@@ -174,11 +174,7 @@ const SalaryStructureForm = ({
   const [errors, setErrors] = useState({});
   const [activeHeadIds, setActiveHeadIds] = useState({});
   const [currentTemplate, setCurrentTemplate] = useState(null);
-  const [calculatedValues, setCalculatedValues] = useState({
-    income: {}, deduction: {},
-    totalIncome: 0, totalDeduction: 0, netSalary: 0,
-  });
-
+ 
   const [manualIncome, setManualIncome] = useState({});
   const [manualDeduction, setManualDeduction] = useState({});
   const [sidebarTab, setSidebarTab] = useState("Pending");
@@ -206,6 +202,76 @@ const SalaryStructureForm = ({
     if (sidebarTab === "All") return employeesWithStatus;
     return employeesWithStatus.filter(e => e._status === sidebarTab);
   }, [employeesWithStatus, sidebarTab]);
+   const calculatedValues = useMemo(() => {
+  if (!isManualMode && currentTemplate) {
+    const ctcYearly = parseFloat(formData.ctc) || 0;
+    const ctcMonthly = ctcYearly / 12;
+    const calcInc = {}, calcDed = {};
+    let preBal = 0;
+    let basicAmount = 0;
+
+    incomeHeads.forEach(head => {
+      const f = currentTemplate.incomeFormulas[head.income_head_id];
+      if (!f || !(activeHeadIds[head.income_head_id] ?? true) || f.formula_type === "Balancing") return;
+      let val = 0;
+      if (f.formula_type === "% of CTC") val = (ctcMonthly * f.percentage) / 100;
+      if (f.formula_type === "Fixed") val = f.percentage;
+      if (head.name?.toLowerCase().includes("basic")) basicAmount = val;
+      calcInc[head.income_head_id] = val;
+    });
+
+    incomeHeads.forEach(head => {
+      const f = currentTemplate.incomeFormulas[head.income_head_id];
+      if (!f || !(activeHeadIds[head.income_head_id] ?? true)) return;
+      if (f.formula_type === "% of Basic") {
+        calcInc[head.income_head_id] = (basicAmount * f.percentage) / 100;
+      }
+    });
+
+    Object.values(calcInc).forEach(v => { preBal += v; });
+    let totalIncome = preBal;
+    incomeHeads.forEach(head => {
+      const f = currentTemplate.incomeFormulas[head.income_head_id];
+      if (!f || !(activeHeadIds[head.income_head_id] ?? true)) return;
+      if (f.formula_type === "Balancing") {
+        const val = Math.max(0, ctcMonthly - preBal);
+        calcInc[head.income_head_id] = val;
+        totalIncome = preBal + val;
+      }
+    });
+
+    let totalDeduction = 0;
+    deductionHeads.forEach(head => {
+      const f = currentTemplate.deductionFormulas[head.deduction_head_id];
+      if (!f || !(activeHeadIds[head.deduction_head_id] ?? true)) return;
+      let val = 0;
+      if (f.formula_type === "% of Basic") val = (basicAmount * f.percentage) / 100;
+      if (f.formula_type === "Fixed") val = f.percentage;
+      if (f.formula_type === "% of Gross") val = (totalIncome * f.percentage) / 100;
+      calcDed[head.deduction_head_id] = val;
+      totalDeduction += val;
+    });
+
+    return {
+      income: calcInc, deduction: calcDed,
+      totalIncome, totalDeduction, netSalary: totalIncome - totalDeduction,
+    };
+  }
+
+  // Manual mode
+  let totalInc = 0, totalDed = 0;
+  incomeHeads.forEach(h => {
+    if (activeHeadIds[h.income_head_id] ?? true) totalInc += parseFloat(manualIncome[h.income_head_id] || 0);
+  });
+  deductionHeads.forEach(h => {
+    if (activeHeadIds[h.deduction_head_id] ?? true) totalDed += parseFloat(manualDeduction[h.deduction_head_id] || 0);
+  });
+
+  return {
+    income: manualIncome, deduction: manualDeduction,
+    totalIncome: totalInc, totalDeduction: totalDed, netSalary: totalInc - totalDed,
+  };
+}, [isManualMode, currentTemplate, formData.ctc, activeHeadIds, incomeHeads, deductionHeads, manualIncome, manualDeduction]);
 
 
   useEffect(() => {
@@ -280,130 +346,19 @@ const SalaryStructureForm = ({
     }
   }, [handleChange, calculatedValues]);
 
-  useEffect(() => {
-    if (!formData.grade) { setCurrentTemplate(null); return; }
-    const tpl = templates.find(t => String(t.grade) === String(formData.grade) && t.status === "Active");
-    if (tpl) {
-      const incomeFormulas = {};
-      (tpl.incomeHeads || []).forEach(c => {
-        const id = c.income_head_id || c.head_id;
-        incomeFormulas[id] = { formula_type: c.formula_type, percentage: parseFloat(c.percentage) || 0 };
-      });
-      const deductionFormulas = {};
-      (tpl.deductionHeads || []).forEach(c => {
-        const id = c.deduction_head_id || c.head_id;
-        deductionFormulas[id] = { formula_type: c.formula_type, percentage: parseFloat(c.percentage) || 0 };
-      });
-      setCurrentTemplate({
-        salary_template_id: tpl.salary_template_id,
-        grade: tpl.grade,
-        incomeFormulas, deductionFormulas,
-      });
-      handleChange("salary_template_id", tpl.salary_template_id);
-    } else {
-      setCurrentTemplate(null);
-    }
-  }, [formData.grade, templates, handleChange]);
-
-  useEffect(() => {
-    
-    if (isManualMode || !currentTemplate) return;
-
-    const ctcYearly = parseFloat(formData.ctc) || 0;
-    const ctcMonthly = ctcYearly / 12;
-    const calcInc = {}, calcDed = {};
-    let preBal = 0;
-    let basicAmount = 0;
-
-    // Pass 1: % of CTC and Fixed
-    incomeHeads.forEach(head => {
-      const f = currentTemplate.incomeFormulas[head.income_head_id];
-      if (!f || !activeHeadIds[head.income_head_id] || f.formula_type === "Balancing") return;
-      let val = 0;
-      if (f.formula_type === "% of CTC") val = (ctcMonthly * f.percentage) / 100;
-      if (f.formula_type === "Fixed") val = f.percentage;
-      if (head.name?.toLowerCase().includes("basic")) basicAmount = val;
-      calcInc[head.income_head_id] = val;
-    });
-
-    // Pass 2: % of Basic
-    incomeHeads.forEach(head => {
-      const f = currentTemplate.incomeFormulas[head.income_head_id];
-      if (!f || !activeHeadIds[head.income_head_id]) return;
-      if (f.formula_type === "% of Basic") {
-        calcInc[head.income_head_id] = (basicAmount * f.percentage) / 100;
-      }
-    });
- 
-    Object.values(calcInc).forEach(v => { preBal += v; }); 
-    let totalIncome = preBal;
-    incomeHeads.forEach(head => {
-      const f = currentTemplate.incomeFormulas[head.income_head_id];
-      if (!f || !activeHeadIds[head.income_head_id]) return;
-      if (f.formula_type === "Balancing") {
-        const val = Math.max(0, ctcMonthly - preBal);
-        calcInc[head.income_head_id] = val;
-        totalIncome = preBal + val;   // exact, no double-count
-      }
-    });
-
-    let totalDeduction = 0;
-    deductionHeads.forEach(head => {
-      const f = currentTemplate.deductionFormulas[head.deduction_head_id];
-      if (!f || !activeHeadIds[head.deduction_head_id]) return;
-      let val = 0;
-      if (f.formula_type === "% of Basic") val = (basicAmount * f.percentage) / 100;
-      if (f.formula_type === "Fixed") val = f.percentage;
-      if (f.formula_type === "% of Gross") val = (totalIncome * f.percentage) / 100;
-      calcDed[head.deduction_head_id] = val;
-      totalDeduction += val;
-    });
-
-    setCalculatedValues({
-      income: calcInc, deduction: calcDed,
-      totalIncome, totalDeduction, netSalary: totalIncome - totalDeduction,
-    });
-
-    const grossNum = parseFloat(totalIncome.toFixed(2));
-    setFormData(prev => {
-      const prevGross = parseFloat(prev.gross_monthly) || 0;
-      return prevGross === grossNum ? prev : { ...prev, gross_monthly: String(grossNum) };
-    });
-  }, [formData.ctc, currentTemplate, activeHeadIds, isManualMode, incomeHeads, deductionHeads, setFormData]);
-
-  useEffect(() => {
-    if (!isManualMode) return;
-
-    let totalInc = 0, totalDed = 0;
-    incomeHeads.forEach(h => {
-      if (activeHeadIds[h.income_head_id]) totalInc += parseFloat(manualIncome[h.income_head_id] || 0);
-    });
-    deductionHeads.forEach(h => {
-      if (activeHeadIds[h.deduction_head_id]) totalDed += parseFloat(manualDeduction[h.deduction_head_id] || 0);
-    });
-
-    setCalculatedValues({
-      income: manualIncome, deduction: manualDeduction,
-      totalIncome: totalInc, totalDeduction: totalDed, netSalary: totalInc - totalDed,
-    });
-
-    const grossNum = parseFloat(totalInc.toFixed(2));
-    const ctcNum = parseFloat((totalInc * 12).toFixed(2));
-
-    setFormData(prev => {
-      const prevGross = parseFloat(prev.gross_monthly) || 0;
-      const prevCtc = parseFloat(prev.ctc) || 0;
-      if (prevGross === grossNum && prevCtc === ctcNum) return prev;
-      return {
-        ...prev,
-        ...(prevGross !== grossNum ? { gross_monthly: String(grossNum) } : {}),
-        ...(prevCtc !== ctcNum ? { ctc: String(ctcNum) } : {}),
-      };
-    });
-  }, [manualIncome, manualDeduction, activeHeadIds, isManualMode, incomeHeads, deductionHeads, setFormData]);
-
 useEffect(() => {
-  if (!formData.incomeLines && !formData.deductionLines) return;
+  if (!formData.incomeLines && !formData.deductionLines) {
+    setManualIncome({});
+    setManualDeduction({});
+
+    // 👇 khali object nahi — sab heads ko default true seed karo
+    const freshActive = {};
+    incomeHeads.forEach(h => { freshActive[h.income_head_id] = true; });
+    deductionHeads.forEach(h => { freshActive[h.deduction_head_id] = true; });
+    setActiveHeadIds(freshActive);
+
+    return;
+  }
 
   const activeSeed = {};
 
@@ -414,6 +369,8 @@ useEffect(() => {
       activeSeed[l.head_id] = l.is_active === 1 || l.is_active === true;
     });
     setManualIncome(incomeSeed);
+  } else {
+    setManualIncome({});
   }
 
   if (formData.deductionLines) {
@@ -423,13 +380,112 @@ useEffect(() => {
       activeSeed[l.head_id] = l.is_active === 1 || l.is_active === true;
     });
     setManualDeduction(deductionSeed);
+  } else {
+    setManualDeduction({});
   }
 
-  if (Object.keys(activeSeed).length > 0) {
-    setActiveHeadIds(activeSeed);
-  }
+  setActiveHeadIds(activeSeed);
 
-}, [formData.salary_structure_id, formData.employee_id]);
+}, [formData.salary_structure_id, formData.employee_id, incomeHeads, deductionHeads]);
+
+  // useEffect(() => {
+    
+  //   if (isManualMode || !currentTemplate) return;
+
+  //   const ctcYearly = parseFloat(formData.ctc) || 0;
+  //   const ctcMonthly = ctcYearly / 12;
+  //   const calcInc = {}, calcDed = {};
+  //   let preBal = 0;
+  //   let basicAmount = 0;
+
+  //   // Pass 1: % of CTC and Fixed
+  //   incomeHeads.forEach(head => {
+  //     const f = currentTemplate.incomeFormulas[head.income_head_id];
+  //     if (!f || !activeHeadIds[head.income_head_id] || f.formula_type === "Balancing") return;
+  //     let val = 0;
+  //     if (f.formula_type === "% of CTC") val = (ctcMonthly * f.percentage) / 100;
+  //     if (f.formula_type === "Fixed") val = f.percentage;
+  //     if (head.name?.toLowerCase().includes("basic")) basicAmount = val;
+  //     calcInc[head.income_head_id] = val;
+  //   });
+
+  //   // Pass 2: % of Basic
+  //   incomeHeads.forEach(head => {
+  //     const f = currentTemplate.incomeFormulas[head.income_head_id];
+  //     if (!f || !activeHeadIds[head.income_head_id]) return;
+  //     if (f.formula_type === "% of Basic") {
+  //       calcInc[head.income_head_id] = (basicAmount * f.percentage) / 100;
+  //     }
+  //   });
+ 
+  //   Object.values(calcInc).forEach(v => { preBal += v; }); 
+  //   let totalIncome = preBal;
+  //   incomeHeads.forEach(head => {
+  //     const f = currentTemplate.incomeFormulas[head.income_head_id];
+  //     if (!f || !activeHeadIds[head.income_head_id]) return;
+  //     if (f.formula_type === "Balancing") {
+  //       const val = Math.max(0, ctcMonthly - preBal);
+  //       calcInc[head.income_head_id] = val;
+  //       totalIncome = preBal + val;   // exact, no double-count
+  //     }
+  //   });
+
+  //   let totalDeduction = 0;
+  //   deductionHeads.forEach(head => {
+  //     const f = currentTemplate.deductionFormulas[head.deduction_head_id];
+  //     if (!f || !activeHeadIds[head.deduction_head_id]) return;
+  //     let val = 0;
+  //     if (f.formula_type === "% of Basic") val = (basicAmount * f.percentage) / 100;
+  //     if (f.formula_type === "Fixed") val = f.percentage;
+  //     if (f.formula_type === "% of Gross") val = (totalIncome * f.percentage) / 100;
+  //     calcDed[head.deduction_head_id] = val;
+  //     totalDeduction += val;
+  //   });
+
+  //   setCalculatedValues({
+  //     income: calcInc, deduction: calcDed,
+  //     totalIncome, totalDeduction, netSalary: totalIncome - totalDeduction,
+  //   });
+
+  //   const grossNum = parseFloat(totalIncome.toFixed(2));
+  //   setFormData(prev => {
+  //     const prevGross = parseFloat(prev.gross_monthly) || 0;
+  //     return prevGross === grossNum ? prev : { ...prev, gross_monthly: String(grossNum) };
+  //   });
+  // }, [formData.ctc, currentTemplate, activeHeadIds, isManualMode, incomeHeads, deductionHeads, setFormData]);
+
+  // useEffect(() => {
+  //   if (!isManualMode) return;
+
+
+  //   let totalInc = 0, totalDed = 0;
+  // incomeHeads.forEach(h => {
+  //   if (activeHeadIds[h.income_head_id] ?? true) totalInc += parseFloat(manualIncome[h.income_head_id] || 0);
+  // });
+  // deductionHeads.forEach(h => {
+  //   if (activeHeadIds[h.deduction_head_id] ?? true) totalDed += parseFloat(manualDeduction[h.deduction_head_id] || 0);
+  // });
+  //   setCalculatedValues({
+  //     income: manualIncome, deduction: manualDeduction,
+  //     totalIncome: totalInc, totalDeduction: totalDed, netSalary: totalInc - totalDed,
+  //   });
+
+  //   const grossNum = parseFloat(totalInc.toFixed(2));
+  //   const ctcNum = parseFloat((totalInc * 12).toFixed(2));
+
+  //   setFormData(prev => {
+  //     const prevGross = parseFloat(prev.gross_monthly) || 0;
+  //     const prevCtc = parseFloat(prev.ctc) || 0;
+  //     if (prevGross === grossNum && prevCtc === ctcNum) return prev;
+  //     return {
+  //       ...prev,
+  //       ...(prevGross !== grossNum ? { gross_monthly: String(grossNum) } : {}),
+  //       ...(prevCtc !== ctcNum ? { ctc: String(ctcNum) } : {}),
+  //     };
+  //   });
+  // },  [formData.incomeLines, formData.deductionLines, incomeHeads, deductionHeads]);
+ 
+
 
   const handleManualChange = (type, id, value) => {
     if (type === "income") setManualIncome(prev => ({ ...prev, [id]: value }));
@@ -533,25 +589,78 @@ useEffect(() => {
 
     }
   }, [isViewMode]);
-const onSidebarPick = async (emp) => {
+  const onSidebarPick = async (emp) => {
   if (isViewMode) {
     onSidebarViewPick && onSidebarViewPick(emp);
     setMobileView("detail");
     return;
   }
+
   if (isAddMode || isEditMode) {
+    const alreadyHasStructure = structuresList.some(
+      s => String(s.employee_id) === String(emp.Actled_id)
+    );
+
+    // 👇 Ab warning ki jagah — seedha existing structure view mode mein khol do
+    if (isAddMode && alreadyHasStructure) {
+      const confirmed = await confirmDelete({
+        title: "Switch to existing structure",
+        message: `${emp.Led_name} already has a salary structure. Do you want to open it? Any unsaved changes here will be lost.`,
+      });
+      if (!confirmed) return;
+
+      onSidebarViewPick && onSidebarViewPick(emp);   // ← ye mode ko "view" kar dega + poora data fetch karega
+      setMobileView("detail");
+      return;
+    }
+
     if (formData.employee_id && formData.employee_id !== emp.Actled_id) {
       const confirmed = await confirmDelete({
         title: "Change Employee",
         message: "Changing the employee will clear the current form data. Are you sure?",
       });
       if (!confirmed) return;
+
+      setManualIncome({});
+      setManualDeduction({});
+
+      const freshActive = {};
+      incomeHeads.forEach(h => { freshActive[h.income_head_id] = true; });
+      deductionHeads.forEach(h => { freshActive[h.deduction_head_id] = true; });
+      setActiveHeadIds(freshActive);
+
+      setFormData(prev => ({
+        ...prev,
+        ctc: "",
+        gross_monthly: "",
+        incomeLines: undefined,
+        deductionLines: undefined,
+      }));
     }
   }
 
   handleEmployeeChange(emp.Led_name);
   setMobileView("detail");
 };
+// const onSidebarPick = async (emp) => {
+//   if (isViewMode) {
+//     onSidebarViewPick && onSidebarViewPick(emp);
+//     setMobileView("detail");
+//     return;
+//   }
+//   if (isAddMode || isEditMode) {
+//     if (formData.employee_id && formData.employee_id !== emp.Actled_id) {
+//       const confirmed = await confirmDelete({
+//         title: "Change Employee",
+//         message: "Changing the employee will clear the current form data. Are you sure?",
+//       });
+//       if (!confirmed) return;
+//     }
+//   }
+
+//   handleEmployeeChange(emp.Led_name);
+//   setMobileView("detail");
+// };
   const formulaHint = (headId, type) => {
     const map = type === "income"
       ? currentTemplate?.incomeFormulas
@@ -721,7 +830,7 @@ const onSidebarPick = async (emp) => {
 
           <Field label={isManualMode ? "CTC (auto) ₹" : "CTC (yearly) ₹"} className="w-[160px]">
             <AmountInput
-              value={formData.ctc}
+              value={isManualMode ? calculatedValues.totalIncome * 12 : formData.ctc}
               onChange={(v) => handleChange("ctc", v)}
               disabled={isViewMode || isManualMode}
               onKeyDown={handleKeyDown}
@@ -735,7 +844,7 @@ const onSidebarPick = async (emp) => {
           <Field label="Gross monthly ₹" className="w-[160px]">
             <input
               type="text"
-              value={`₹ ${fmt(formData.gross_monthly)}`}
+               value={`₹ ${fmt(calculatedValues.totalIncome)}`} 
               disabled
               className="h-9 px-2.5 text-[13px] text-right border border-slate-200 rounded-lg bg-slate-50 text-slate-700 w-full tabular-nums font-medium"
             />
@@ -899,7 +1008,7 @@ const onSidebarPick = async (emp) => {
   );
 
   return (
-    <div className="w-full mx-auto h-[calc(100vh-120px)] bg-slate-100 flex flex-col" style={{ fontFamily: FONT }}>
+    <div className="w-full mx-auto h-[calc(100vh-100px)] bg-slate-100 flex flex-col" style={{ fontFamily: FONT }}>
       {!isEmbedded && (<ERPHeader
         title="SALARY STRUCTURE ENTRY"
         isAddMode={isAddMode}

@@ -43,8 +43,7 @@ const IncomeHead = ({ tab }) => {
     () => loadList(),
     tab.appl_name
   );
-
-// ✅ loadList - return finalData so handleSave can use it
+ 
 const loadList = useCallback(async () => {
   try {
     setLoading(true);
@@ -85,6 +84,7 @@ const loadList = useCallback(async () => {
 
 // ✅ handleSave - fresh list se saved record dhundho
 const handleSave = async (updatedData) => {
+  
   const response = await performSave("income_head_id", updatedData);
   if (response?.success) {
     const freshList = await loadList(); // ✅ return value lo

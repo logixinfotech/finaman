@@ -1341,9 +1341,9 @@ const EmployeeMasterForm = forwardRef(
     };
 
     return (
-      <div className="w-full h-full sm:h-[calc(100vh-120px)] bg-[#eef1f8] flex flex-col overflow-hidden font-['Segoe_UI',system-ui,Arial,sans-serif] text-[13px] text-[#0f172a] leading-[1.4]">
+      <div className="w-full h-full sm:h-[calc(100vh-100px)] bg-[#eef1f8] flex flex-col overflow-hidden font-['Segoe_UI',system-ui,Arial,sans-serif] text-[13px] text-[#0f172a] leading-[1.4]">
         <ERPHeader
-          title="EMPLOYEE MASTER"
+          title="Employee Master"
           isAddMode={isAddMode}
           isEditMode={isEditMode}
           isViewMode={isViewMode}
@@ -1508,45 +1508,47 @@ const EmployeeMasterForm = forwardRef(
 
           <div className="flex-1 flex flex-col min-h-0 bg-[#eef1f8] w-full">
             <div className="flex flex-wrap items-end gap-0 px-[6px] bg-white border-b-2 border-[#e1e7f2] shrink-0 w-full">
-              {tabs.map((tab) => {
-                const isActive = activeTab === tab;
-                const isCompleted = isTabComplete(tab);
+  {tabs.map((tab) => {
+    const isActive = activeTab === tab;
+    const isCompleted = isTabComplete(tab);
+    const tabNameMap = {
+      personal_and_contact: "Personal & Contact",
+      organization: "Organization",
+      bank_and_payroll: "Bank & Payroll",
+      documents: "Documents",
+    };
+    const displayName = tabNameMap[tab] || tab;
+    return (
+      <button
+        key={tab}
+        onClick={() => setActiveTab(tab)}
+        className={`flex items-center gap-[6px] px-[12px] sm:px-[16px] pt-[10px] pb-[9px] text-[12px] font-semibold cursor-pointer border-b-2 mb-[-2px] transition-all duration-150 whitespace-nowrap outline-none ${
+          isActive
+            ? "text-[#1a56db] border-[#1a56db]"
+            : "text-[#64748b] border-transparent hover:text-[#334155] hover:border-[#c4cfe4]"
+        }`}
+      >
+        <div
+          className={`w-[20px] h-[20px] rounded-[5px] flex items-center justify-center ${
+            isActive ? "bg-[#eef3fd]" : "bg-transparent"
+          }`}
+        >
+          <TabIcon tab={tab} />
+        </div>
+        <span className="hidden sm:inline">{displayName}</span>
 
-                const tabNameMap = {
-                  personal_and_contact: "Personal & Contact",
-                  organization: "Organization",
-                  bank_and_payroll: "Bank & Payroll",
-                  documents: "Documents",
-                };
-                const displayName = tabNameMap[tab] || tab;
-
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`flex items-center gap-[6px] px-[12px] sm:px-[16px] pt-[10px] pb-[9px] text-[12px] font-semibold cursor-pointer border-b-2 mb-[-2px] transition-all duration-150 whitespace-nowrap outline-none ${isActive
-                      ? "text-[#1a56db] border-[#1a56db]"
-                      : "text-[#64748b] border-transparent hover:text-[#334155] hover:border-[#c4cfe4]"
-                      }`}
-                  >
-                    <div
-                      className={`w-[20px] h-[20px] rounded-[5px] flex items-center justify-center ${isActive ? "bg-[#eef3fd]" : "bg-transparent"
-                        }`}
-                    >
-                      <TabIcon tab={tab} />
-                    </div>
-
-                    <span className="hidden sm:inline">{displayName}</span>
-
-                    {isCompleted && (
-                      <div className="hidden sm:flex w-[16px] h-[16px] rounded-[8px] bg-[#059669] text-white text-[9px] font-bold items-center justify-center ml-1">
-                        ✓
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+        {/* Yaha change kiya hai: hamesha render hoga, bas visibility toggle hogi */}
+        <div
+          className={`hidden sm:flex w-[16px] h-[16px] rounded-[8px] bg-[#059669] text-white text-[9px] font-bold items-center justify-center ml-1 ${
+            isCompleted ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          ✓
+        </div>
+      </button>
+    );
+  })}
+</div>
 
             <div
               id={`tab-content-${activeTab}`}

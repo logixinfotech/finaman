@@ -13,6 +13,7 @@ import {
   FaTimesCircle,
   FaHistory,
   FaChevronRight,
+  FaChevronDown,
   FaChartBar,
   FaInbox,
 } from "react-icons/fa";
@@ -51,8 +52,14 @@ function Dashboard({
       return [];
     }
   });
-
-  // track viewport so the activity panel can render as a bottom sheet on mobile
+ const [collapsedGroups, setCollapsedGroups] = useState(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("collapsedMenuGroups") || "[]");
+      return new Set(Array.isArray(raw) ? raw : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 768
   );
@@ -60,11 +67,21 @@ function Dashboard({
   const searchInputRef = useRef(null);
   const constraintsRef = useRef(null);
 
+   const toggleGroup = useCallback((key) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      localStorage.setItem("collapsedMenuGroups", JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
 
   useEffect(() => {
     setSearchQuery("");
@@ -100,9 +117,7 @@ function Dashboard({
       prev.includes(activeTab.id) ? prev : [...prev, activeTab.id]
     );
   }, [activeTab]);
-
-  // BUG FIX #3: clean up loadedTabs when a tab is closed so components are
-  // fully unmounted and don't accumulate in memory.
+ 
   const handleCloseTab = useCallback(
     (tabId) => {
       setLoadedTabs((prev) => prev.filter((id) => id !== tabId));
@@ -192,10 +207,29 @@ function Dashboard({
     [reports, isFav]
   );
  
+// Group by grp_name — order-preserving
+  const groupBy = (arr) => {
+    const map = new Map();
+    arr.forEach((m) => {
+      const g = (m.grp_name || "").trim() || "General";
+      if (!map.has(g)) map.set(g, []);
+      map.get(g).push(m);
+    });
+    return Array.from(map, ([group, items]) => ({ group, items }));
+  };
+
+  const entryGroups  = useMemo(() => groupBy(sortedEntries), [sortedEntries]);
+  const reportGroups = useMemo(() => groupBy(sortedReports), [sortedReports]);
+
+  // A/B/C shortcut order = rendered order
   const shortcutMenus = useMemo(
-    () => [...sortedEntries, ...sortedReports],
-    [sortedEntries, sortedReports]
-  ); 
+    () => [
+      ...entryGroups.flatMap((g) => g.items),
+      ...reportGroups.flatMap((g) => g.items),
+    ],
+    [entryGroups, reportGroups]
+  );
+
   useEffect(() => {
     const isModuleView = activeTab?.type === "module";
     if (!isModuleView) return;
@@ -280,6 +314,55 @@ function Dashboard({
     </motion.div>
   );
 
+const renderGroupedSection = (groups, baseOffset, sectionKey) => {
+    let running = baseOffset;
+    return groups.map(({ group, items }) => {
+      const start = running;
+      running += items.length;                      // 👈 collapsed ho tab bhi
+      const key = `${sectionKey}::${group}`;         //    shortcut letters shift na ho
+      const isCollapsed = collapsedGroups.has(key);
+
+      return (
+        <div key={key} className="menu-group-block">
+          <button
+            type="button"
+            className={`menu-group-title ${isCollapsed ? "is-collapsed" : ""}`}
+            onClick={() => toggleGroup(key)}
+            aria-expanded={!isCollapsed}
+          >
+            <span className="menu-group-chevron">
+              {isCollapsed ? <FaChevronRight /> : <FaChevronDown />}
+            </span>
+            <span className="menu-group-name">{group}</span>
+            <span className="menu-group-count">{items.length}</span>
+          </button>
+
+          <AnimatePresence initial={false}>
+            {!isCollapsed && (
+              <motion.div
+                key="body"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                style={{ overflow: "hidden" }}
+              >
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="dashboard-card-grid"
+                >
+                  {items.map((m, i) => renderCard(m, i, start))}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    });
+  };
+
   const renderModuleDashboard = () => (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
@@ -342,17 +425,10 @@ function Dashboard({
                 <span>Entries</span>
                 <span className="section-count">{sortedEntries.length}</span>
               </div>
-              {sortedEntries.length === 0 ? (
+             {sortedEntries.length === 0 ? (
                 <EmptyState title="No entries" subtitle="No entry menus in this module." />
               ) : (
-                <motion.div
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="dashboard-card-grid"
-                >
-                  {sortedEntries.map((m, i) => renderCard(m, i, 0))}
-                </motion.div>
+                   renderGroupedSection(entryGroups, 0, "E")       // 👈 replace
               )}
             </section>
 
@@ -362,19 +438,10 @@ function Dashboard({
                 <span>Reports</span>
                 <span className="section-count">{sortedReports.length}</span>
               </div>
-              {sortedReports.length === 0 ? (
+             {sortedReports.length === 0 ? (
                 <EmptyState title="No reports" subtitle="No report menus in this module." />
               ) : (
-                <motion.div
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="dashboard-card-grid"
-                >
-                  {sortedReports.map((m, i) =>
-                    renderCard(m, i, sortedEntries.length)
-                  )}
-                </motion.div>
+                 renderGroupedSection(reportGroups, sortedEntries.length, "R")  // 👈 replace
               )}
             </section>
           </div>

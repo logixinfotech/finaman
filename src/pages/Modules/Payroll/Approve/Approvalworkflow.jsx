@@ -143,9 +143,7 @@ const handleSave = async (updatedData = formData) => {
     
     const freshRes = await getApprovalWorkflow();
     const freshList = freshRes?.data || [];
-    setList(freshList);  // ✅ list bhi update karo
-
-    // ✅ workflow_id — edit mode mein updatedData se, add mein last record
+    setList(freshList);  
     const savedId = updatedData.workflow_id;
     
     let freshRecord;
@@ -160,9 +158,7 @@ const handleSave = async (updatedData = formData) => {
       handleView(freshRecord);
     }
   }
-};
-
-  // ── Delete ─────────────────────────────────────────────────────────────
+}; 
 const handleDelete = async (row) => {
   const confirmed = await confirmDelete({
     title: `Delete workflow rule for "${row.approver_role}" — Level ${row.level_no}?`,
@@ -265,7 +261,7 @@ const handleDelete = async (row) => {
           onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className="bg-slate-50 h-full">
           <Table
            activeTab="search"
           onTabChange={handleTabChange}

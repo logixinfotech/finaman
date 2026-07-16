@@ -1,12 +1,10 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// FILE 1: ApprovalTransactionForm.jsx
-// ─────────────────────────────────────────────────────────────────────────────
+ 
 import React, { useState, useCallback, useEffect } from "react";
 import ERPHeader       from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter       from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import ERPDateInput    from "../../../../components/Reusable/input/Date";
-import { getActledList, getLeaveRequests, getApprovalWorkflow } from "../../../../utils/api";
+import { getLeaveRequests, getApprovalWorkflow, fetchUsers } from "../../../../utils/api";
 
 const ACTION_OPTIONS = ["Pending", "Approved", "Rejected"];
 
@@ -34,18 +32,18 @@ export const ApprovalTransactionForm = ({
   const requiredFields = ["request_id", "workflow_id", "approver_id", "action"];
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [empData, reqData, wfData] = await Promise.all([
-          getActledList(),
-          getLeaveRequests(),
-          getApprovalWorkflow(),
-        ]);
-        setEmployees(empData || []);
-        setRequests(reqData?.data  || []);
-        setWorkflows(wfData?.data  || []);
-      } catch (err) { console.error(err); }
-    };
+const load = async () => {
+  try {
+    const [empData, reqData, wfData] = await Promise.all([
+      fetchUsers(),
+      getLeaveRequests(),
+      getApprovalWorkflow(),
+    ]);
+    setEmployees(Array.isArray(empData) ? empData : empData?.data || []);
+    setRequests(reqData?.data || []);
+    setWorkflows(wfData?.data || []);
+  } catch (err) { console.error(err); }
+};
     load();
   }, []);
 
@@ -64,7 +62,7 @@ export const ApprovalTransactionForm = ({
     if (field === "approver_name") {
       const emp = employees.find(e => e.Led_name?.trim() === value?.trim());
       updated.approver_name = value;
-      updated.approver_id   = emp ? Number(emp.Actled_id) : null;
+     updated.approver_id   = emp ? emp.user_id : null; 
     } else if (field === "request_label") {
       const req = requests.find(r =>
         `${r.employee_name} — ${r.leave_name} (${r.from_date?.split("T")[0]} to ${r.to_date?.split("T")[0]})` === value
@@ -116,7 +114,7 @@ export const ApprovalTransactionForm = ({
     `${r.employee_name} — ${r.leave_name} (${r.from_date?.split("T")[0]} to ${r.to_date?.split("T")[0]})`
   );
   const workflowOptions = workflows.map(w => `Level ${w.level_no} — ${w.approver_role}`);
-  const employeeNames   = employees.map(e => e.Led_name?.trim()).filter(Boolean);
+ const employeeNames = employees.map(e => e.user_name?.trim()).filter(Boolean);
 
   return (
     <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>

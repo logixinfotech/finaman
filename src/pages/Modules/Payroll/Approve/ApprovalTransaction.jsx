@@ -390,7 +390,7 @@ const RequestDetail = ({
           Approval chain
         </p>
         <ApprovalChain
-          currentLevel={req.level_no}
+        currentLevel={req.actual_current_level || req.level_no}  
           levelActions={req.levelActions || {}}
           totalLevels={req.total_levels || 2}
           roles={req.workflow_roles || []}
@@ -422,54 +422,53 @@ const RequestDetail = ({
       </div>
 
       {/* ── Action panel (pending only) ── */}
-      {isPending ? (
-        <div className="bg-white border-t border-slate-200 px-5 py-3 shrink-0">
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <span className="text-[13px] text-slate-500">Your action</span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-800 border border-purple-300">
-              Level {req.level_no} · {req.approver_role || "Approver"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={remark}
-              onChange={(e) => onRemarkChange(e.target.value)}
-              placeholder="Add remarks (optional)..."
-              className="flex-1 h-[38px] px-3 text-[12px] rounded-lg border border-slate-300 bg-slate-50 text-slate-800 outline-none focus:border-blue-300 focus:bg-white transition-colors placeholder-slate-400"
-            />
-            <button
-              disabled={!!acting}
-              onClick={() => onAction("Approved")}
-              className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#EAF3DE] text-[#27500A] border border-[#b0d47a] hover:bg-[#C0DD97] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="#166534" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {acting === "Approved" ? "Approving..." : "Approve"}
-            </button>
-            {Number(req.level_no) < Number(req.total_levels || 99) && (
-              <button
-                disabled={!!acting}
-                onClick={() => onAction("Forwarded")}
-                className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#EDE9FE] text-[#4C1D95] border border-[#c4b5fd] hover:bg-[#DDD6FE] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                  <path d="M2 5.5h6.5M6 2.5l3 3-3 3" stroke="#6d28d9" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Forward
-              </button>
-            )}
-            <button
-              disabled={!!acting}
-              onClick={() => onAction("Rejected")}
-              className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#FCEBEB] text-[#791F1F] border border-[#f5a0a0] hover:bg-[#F7C1C1] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                <path d="M2.5 2.5l6 6M8.5 2.5l-6 6" stroke="#dc2626" strokeWidth="1.3" strokeLinecap="round" />
-              </svg>
-              {acting === "Rejected" ? "Rejecting..." : "Reject"}
-            </button>
-          </div>
-        </div>
-      ) : (
+{isPending ? (
+  <div className="bg-white border-t border-slate-200 px-5 py-3 shrink-0">
+    <div className="flex items-center gap-1.5 mb-2.5">
+      <span className="text-[13px] text-slate-500">Your action</span>
+      <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-800 border border-purple-300">
+        Level {req.level_no} · {req.approver_role || "Approver"}
+      </span>
+    </div>
+
+    {!req.can_act && (
+      <div className="mb-2.5 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-700">
+        Waiting for level {req.actual_current_level} approval before you can act.
+      </div>
+    )}
+
+    <div className="flex items-center gap-2">
+      <input
+        type="text"
+        value={remark}
+        onChange={(e) => onRemarkChange(e.target.value)}
+        placeholder="Add remarks (optional)..."
+        disabled={!req.can_act}
+        className="flex-1 h-[38px] px-3 text-[12px] rounded-lg border border-slate-300 bg-slate-50 text-slate-800 outline-none focus:border-blue-300 focus:bg-white transition-colors placeholder-slate-400 disabled:opacity-50"
+      />
+      <button
+        disabled={!!acting || !req.can_act}
+        onClick={() => onAction("Approved")}
+        className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#EAF3DE] text-[#27500A] border border-[#b0d47a] hover:bg-[#C0DD97] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
+        {acting === "Approved" ? "Approving..." : "Approve"}
+      </button>
+      {Number(req.level_no) < Number(req.total_levels || 99) && (
+        <button
+          disabled={!!acting || !req.can_act}
+          onClick={() => onAction("Forwarded")}
+          className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#EDE9FE] text-[#4C1D95] border border-[#c4b5fd] hover:bg-[#DDD6FE] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
+          Forward
+        </button>
+      )}
+      <button
+        disabled={!!acting || !req.can_act}
+        onClick={() => onAction("Rejected")}
+        className="h-[36px] px-5 rounded-lg text-[13px] font-medium bg-[#FCEBEB] text-[#791F1F] border border-[#f5a0a0] hover:bg-[#F7C1C1] disabled:opacity-50 transition-colors flex items-center gap-1 shrink-0">
+        {acting === "Rejected" ? "Rejecting..." : "Reject"}
+      </button>
+    </div>
+  </div>
+)  : (
         <div className="bg-white border-t border-slate-200 px-5 py-3 shrink-0">
           <div className="flex items-center justify-center gap-2 text-[13px] text-slate-500">
             <StatusPill action={req.action} />
@@ -501,8 +500,8 @@ const ApprovalTransaction = ({ tab }) => {
   const [activeTab, setActiveTab] = useState("Pending");
   const [remark, setRemark] = useState("");
   const [acting, setActing] = useState(null);
-
-  const approverId = 1; // TODO: replace with auth context
+const currentUser = JSON.parse(sessionStorage.getItem("user") || "{}");
+const approverId = currentUser.user_id;   
   const filteredList = getTabFiltered(allRequests, activeTab);
 
 
@@ -525,23 +524,24 @@ const ApprovalTransaction = ({ tab }) => {
       const historyList = allRes?.data || [];
 
       // ✅ Pending requests — ye woh hain jo abhi current approver ke liye action chahiye
-      const pendingMapped = pendingList.map(r => {
-        const levelActions = {};
-        if (r.completed_levels_str) {
-          r.completed_levels_str.split("|").forEach(pair => {
-            const [lvl, act] = pair.split(":");
-            levelActions[Number(lvl)] = act;
-          });
-        }
-        return {
-          ...r,
-          action: "Pending",
-          _source: "pending",
-          _display: "pending",
-          workflow_roles: r.workflow_roles_str ? r.workflow_roles_str.split(",") : [],
-          levelActions,
-        };
-      });
+const pendingMapped = pendingList.map(r => {
+  const levelActions = {};
+  if (r.completed_levels_str) {
+    r.completed_levels_str.split("|").forEach(pair => {
+      const [lvl, act] = pair.split(":");
+      levelActions[Number(lvl)] = act;
+    });
+  }
+  return {
+    ...r,
+    action: "Pending",
+    _source: "pending",
+    _display: "pending",
+    workflow_roles: r.workflow_roles_str ? r.workflow_roles_str.split(",") : [],
+    levelActions,
+    can_act: !!r.can_act,   // 👈 add
+  };
+});
 
       const pendingRequestIds = new Set(pendingList.map(r => r.request_id));
 
@@ -639,7 +639,9 @@ const ApprovalTransaction = ({ tab }) => {
     }
   }, [approverId, activeTab]);
 
-  useEffect(() => { loadAll(); }, []);
+useEffect(() => {
+  if (approverId) loadAll();
+}, [approverId]);
 
   const handleSelect = (req) => {
     setSelected(req);

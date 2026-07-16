@@ -23,6 +23,7 @@ import {
 } from "./Attendancehelpers";
 
 import AttendanceImports from "./Attendanceimports";
+import HorizontalAttendanceEntry from "./Horizontalattendanceentry";
 
 const TH = { background: "#f1f5f9", color: "#475569", borderBottom: "2px solid #cbd5e1" };
 
@@ -31,7 +32,7 @@ const AttendancePage = ({
   activeTab = "entry", onTabChange,
   currentRecord, totalRecords,
   mode = "view",
-  onModify, onDelete, onPrint, onNewEntry, onEditCancel,
+  onModify, onDelete, onPrint, onNewEntry, onEditCancel,initialData={},
   saving, canPrint, rights
 }) => {
   // ── Mode refs ───────────────────────────────────────────────────────────────
@@ -283,34 +284,34 @@ const AttendancePage = ({
   }, [attendanceType, listEntryDate, fetchListEntryData]);
 
   // ── List row change handler ───────────────────────────────────────────────────
- const handleListRowChange = (idx, field, value) => {
-  setListEntryData(prev => {
-    const u = [...prev];
-    const updated = { ...u[idx], [field]: value };
+  const handleListRowChange = (idx, field, value) => {
+    setListEntryData(prev => {
+      const u = [...prev];
+      const updated = { ...u[idx], [field]: value };
 
-    if (field === "status" && value === "ABSENT") {
-      updated.in = "";
-      updated.out = "";
-    }
-
-    // ✅ IN ya OUT time dalne par auto PRESENT set karo
-    if (field === "in" || field === "out") {
-      const hasTime = (updated.in && updated.in !== "") || (updated.out && updated.out !== "");
-      if (hasTime && !updated.status && !updated.is_holiday && !updated.is_weekoff && !updated.is_leave) {
-        updated.status = "PRESENT";  // ✅ AUTO PRESENT
+      if (field === "status" && value === "ABSENT") {
+        updated.in = "";
+        updated.out = "";
       }
-      // Holiday/Weekoff OT logic same rahega
-      if (updated.is_holiday) {
-        updated.status = hasTime ? "HOLIDAY OT" : "HOLIDAYS";
-      } else if (updated.is_weekoff) {
-        updated.status = hasTime ? "WEEK OFF OT" : "WEEK OFF";
-      }
-    }
 
-    u[idx] = updated;
-    return u;
-  });
-};
+      // ✅ IN ya OUT time dalne par auto PRESENT set karo
+      if (field === "in" || field === "out") {
+        const hasTime = (updated.in && updated.in !== "") || (updated.out && updated.out !== "");
+        if (hasTime && !updated.status && !updated.is_holiday && !updated.is_weekoff && !updated.is_leave) {
+          updated.status = "PRESENT";  // ✅ AUTO PRESENT
+        }
+        // Holiday/Weekoff OT logic same rahega
+        if (updated.is_holiday) {
+          updated.status = hasTime ? "HOLIDAY OT" : "HOLIDAYS";
+        } else if (updated.is_weekoff) {
+          updated.status = hasTime ? "WEEK OFF OT" : "WEEK OFF";
+        }
+      }
+
+      u[idx] = updated;
+      return u;
+    });
+  };
 
   // ── Bulk delete ───────────────────────────────────────────────────────────────
   const handleBulkDelete = async () => {
@@ -489,7 +490,7 @@ const AttendancePage = ({
         style={{ fontFamily: FONT }}>
 
         <ERPHeader
-          title="DAILY ATTENDANCE MANAGEMENT"
+          title="Daily Attendance"
           isAddMode={isAddMode} isEditMode={isEditMode} isViewMode={isViewMode}
           activeTab={activeTab} onTabChange={onTabChange}
           rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
@@ -501,9 +502,10 @@ const AttendancePage = ({
             {/* ══ LEFT SIDEBAR (Manual only) ══ */}
             {attendanceType === "Manual" && (
               <div className="w-[164px] bg-white rounded-xl border shadow-sm flex flex-col overflow-hidden shrink-0">
-                <div className="bg-slate-800 h-14 w-full relative mb-9 shrink-0">
-                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
-                    <div className="w-[66px] h-[66px] bg-white rounded-xl p-0.5 shadow-lg border">
+                <div className="bg-slate-800 h-24 w-full relative mb-16 shrink-0">
+                  <div className="absolute -bottom-14 left-1/2 -translate-x-1/2">
+                    <div className="w-[120px] h-[120px] bg-white rounded-xl p-0.5 shadow-lg border">
+                      {/*               ↑ 66px→100px  ↑ 66px→100px */}
                       {formData.employee_photo ? (
                         <img src={`${baseUrl}${formData.employee_photo}`} alt="emp"
                           className="w-full h-full rounded-[10px] object-cover"
@@ -511,11 +513,12 @@ const AttendancePage = ({
                       ) : (
                         <div className="w-full h-full rounded-[10px] flex items-center justify-center border border-dashed border-slate-300"
                           style={{ background: getAvatarColor(formData.employee_id)?.[0] || "#f1f5f9" }}>
-                          <span className="text-[15px] font-semibold"
+                          <span className="text-[22px] font-semibold"
+
                             style={{ color: getAvatarColor(formData.employee_id)?.[1] || "#475569" }}>
                             {formData.employee_name
                               ? getInitials(formData.employee_name)
-                              : <span className="text-[9px] text-slate-400">PHOTO</span>}
+                              : <span className="text-[11px] text-slate-400">PHOTO</span>}
                           </span>
                         </div>
                       )}
@@ -561,392 +564,460 @@ const AttendancePage = ({
 
             {/* ══ RIGHT CONTENT ══ */}
             {/* Biometric / Excel — delegate to AttendanceImports */}
-            {(attendanceType === "Biometric" || attendanceType === "Excel") ? (
-              <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
-                <AttendanceImports
-                  employees={employees}
-                  isViewMode={isViewMode}
-                  attendanceType={attendanceType}
-                  onModeChange={(newType) => {
-                    setAttendanceType(newType);
-                    setTimeout(() => {
-                      if (newType === "Biometric") bioPeriodRef.current?.focusFirst();
-                    }, 250);
-                  }}
-                  modeRef={modeRef}
-                  bioTableData={bioTableData} setBioTableData={setBioTableData}
-                  excelRows={excelRows} setExcelRows={setExcelRows}
-                  bioDay={bioDay} setBioDay={setBioDay}
-                  bioMonth={bioMonth} setBioMonth={setBioMonth}
-                  bioYear={bioYear} setBioYear={setBioYear}
-                  bioSelectedDate={bioSelectedDate}
-                  bioPeriodRef={bioPeriodRef}
-                  onSave={onSave} onNewEntry={onNewEntry}
-                />
-              </div>
-            ) : (
-              /* Manual + List */
-              <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
-
-                {/* ── Controls bar ── */}
-                <div className="bg-white rounded-xl border shadow-sm shrink-0 px-3 py-2">
-                  <div className="flex items-center gap-3 flex-wrap">
-
-                    {/* Mode dropdown */}
-                    <div className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
-                      <span className={labelCls}>Mode:</span>
-                      <select ref={modeRef} value={attendanceType} disabled={isViewMode}
-                        onChange={e => {
-                          const newType = e.target.value;
-                          setAttendanceType(newType);
-                          setTimeout(() => {
-                            if (newType === "List") listPeriodRef.current?.focusFirst();
-                            else if (newType === "Manual") manualPeriodRef.current?.focusFirst();
-                            else if (newType === "Biometric") bioPeriodRef.current?.focusFirst();
-                          }, 250);
-                        }}
-                        className={selectCls} style={{ minWidth: 180, height: 36 }}>
-                        {attendanceTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
-                    </div>
-
-                    {/* Period */}
-                    <div className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
-                      {attendanceType === "List" && (
-                        <PeriodDropdowns
-                          ref={listPeriodRef}
-                          day={listDay} setDay={setListDay}
-                          month={listMonth} setMonth={setListMonth}
-                          year={listYear} setYear={setListYear}
-                          showDay={true}
-                          months={months} years={years}
-                          dayOpts={listDayOptions}
-                          disabled={false}
-                          selectCls={selectCls} labelCls={labelCls}
-                          onDayEnter={() => { }}
-                          onMonthEnter={() => { }}
-                          onYearEnter={() => { setTimeout(() => listInRefs.current[0]?.focus(), 80); }}
-                        />
-                      )}
-                      {attendanceType === "Manual" && (
-                        <PeriodDropdowns
-                          ref={manualPeriodRef}
-                          showDay={false}
-                          month={selectedMonth} setMonth={setSelectedMonth}
-                          year={selectedYear} setYear={setSelectedYear}
-                          months={months} years={years}
-                          dayOpts={[]}
-                          disabled={isViewMode}
-                          selectCls={selectCls} labelCls={labelCls}
-                          onYearEnter={() => {
-                            setTimeout(() => {
-                              const c = document.querySelector("[data-employee-autocomplete]");
-                              c?.querySelector("input")?.focus();
-                            }, 80);
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    {/* Employee — Manual only */}
-                    {attendanceType === "Manual" && (
-                      <div data-employee-autocomplete className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
-                        <span className={labelCls}>Employee:</span>
-                        <ERPAutocomplete
-                          disabled={isViewMode}
-                          options={employeeOptions.map(o => o.label)}
-                          value={employeeOptions.find(e => String(e.id) === String(formData.employee_id))?.label || ""}
-                          onChange={handleEmployeeSelect}
-                          className={selectCls}
-                        />
-                      </div>
-                    )}
-                  </div>
+            {attendanceType === "Horizontal" ? (
+              <HorizontalAttendanceEntry
+                mode={mode}
+                onTabChange={onTabChange}
+                activeTab={activeTab}
+                currentRecord={currentRecord}
+                totalRecords={totalRecords}
+                onNewEntry={onNewEntry}
+                onModify={onModify}
+                onEditCancel={onEditCancel}
+                onDelete={onDelete}
+                setShowForm={setShowForm}
+                rights={rights}
+                canPrint={canPrint}
+                saving={saving}
+              />
+            ) :
+              (attendanceType === "Biometric" || attendanceType === "Excel") ? (
+                <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
+                  <AttendanceImports
+                    employees={employees}
+                    isViewMode={isViewMode}
+                    attendanceType={attendanceType}
+                    onModeChange={(newType) => {
+                      setAttendanceType(newType);
+                      setTimeout(() => {
+                        if (newType === "Biometric") bioPeriodRef.current?.focusFirst();
+                      }, 250);
+                    }}
+                    modeRef={modeRef}
+                    bioTableData={bioTableData} setBioTableData={setBioTableData}
+                    excelRows={excelRows} setExcelRows={setExcelRows}
+                    bioDay={bioDay} setBioDay={setBioDay}
+                    bioMonth={bioMonth} setBioMonth={setBioMonth}
+                    bioYear={bioYear} setBioYear={setBioYear}
+                    bioSelectedDate={bioSelectedDate}
+                    bioPeriodRef={bioPeriodRef}
+                    onSave={onSave} onNewEntry={onNewEntry}
+                  />
                 </div>
+              ) : (
+                /* Manual + List */
+                <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
 
-                {/* ── Main content area ── */}
-                <div className="flex-1 bg-white rounded-xl border shadow-sm flex flex-col overflow-hidden min-h-0">
+                  {/* ── Controls bar ── */}
+                  <div className="bg-white rounded-xl border shadow-sm shrink-0 px-3 py-2">
+                    <div className="flex items-center gap-3 flex-wrap">
 
-                  {/* ════ MANUAL — Calendar ════ */}
-                  {attendanceType === "Manual" && (
-                    <>
-                      <div className="grid grid-cols-7 shrink-0"
-                        style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                        {["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"].map((d, i) => (
-                          <div key={d} className="py-2.5 text-center text-[13px] font-semibold tracking-wide border-r last:border-r-0"
-                            style={{ color: i === 0 ? "#ef4444" : "#64748b", borderColor: "#e2e8f0" }}>
-                            {d}
-                          </div>
-                        ))}
+                      {/* Mode dropdown */}
+                      <div className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
+                        <span className={labelCls}>Mode:</span>
+                        <select ref={modeRef} value={attendanceType} disabled={isViewMode}
+                          onChange={e => {
+                            const newType = e.target.value;
+                            setAttendanceType(newType);
+                            setTimeout(() => {
+                              if (newType === "List") listPeriodRef.current?.focusFirst();
+                              else if (newType === "Manual") manualPeriodRef.current?.focusFirst();
+                              else if (newType === "Biometric") bioPeriodRef.current?.focusFirst();
+                            }, 250);
+                          }}
+                          className={selectCls} style={{ minWidth: 180, height: 36 }}>
+                          {attendanceTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
                       </div>
 
-                      <div className="flex-1 grid grid-cols-7 divide-x divide-y overflow-y-auto"
-                        style={{ borderColor: "#e2e8f0" }}>
-                        {calendarGrid.map((_, index) => {
-                          const dayNum = index - firstDayOfMonth + 1;
-                          const isValid = dayNum > 0 && dayNum <= daysInMonth;
-                          const isSun = index % 7 === 0;
-                          const data = attendanceData?.[dayNum] ?? { in: "--:--", out: "--:--", status: "" };
-                          // Holiday/Weekoff pe in/out editable — sirf is_leave disable karo
-                          const dis = isViewMode || !formData.employee_id || data?.is_leave;
-                          const statusDis = dis || data?.is_holiday || data?.is_weekoff;
+                      {/* Period */}
+                      <div className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
+                        {attendanceType === "List" && (
+                          <PeriodDropdowns
+                            ref={listPeriodRef}
+                            day={listDay} setDay={setListDay}
+                            month={listMonth} setMonth={setListMonth}
+                            year={listYear} setYear={setListYear}
+                            showDay={true}
+                            months={months} years={years}
+                            dayOpts={listDayOptions}
+                            disabled={false}
+                            selectCls={selectCls} labelCls={labelCls}
+                            onDayEnter={() => { }}
+                            onMonthEnter={() => { }}
+                            onYearEnter={() => { setTimeout(() => listInRefs.current[0]?.focus(), 80); }}
+                          />
+                        )}
+                        {attendanceType === "Manual" && (
+                          <PeriodDropdowns
+                            ref={manualPeriodRef}
+                            showDay={false}
+                            month={selectedMonth} setMonth={setSelectedMonth}
+                            year={selectedYear} setYear={setSelectedYear}
+                            months={months} years={years}
+                            dayOpts={[]}
+                            disabled={isViewMode}
+                            selectCls={selectCls} labelCls={labelCls}
+                            onYearEnter={() => {
+                              setTimeout(() => {
+                                const c = document.querySelector("[data-employee-autocomplete]");
+                                c?.querySelector("input")?.focus();
+                              }, 80);
+                            }}
+                          />
+                        )}
+                      </div>
 
-                          return (
-                            <div key={index} data-day={isValid ? dayNum : undefined}
-                              className="relative p-1.5 flex flex-col justify-between"
-                              style={{
-                                minHeight: 82,
-                                background: !isValid ? "#f8fafc"
-                                  : data.is_holiday ? "#fefce8"
-                                    : data.is_weekoff ? "#f5f4ff"
-                                      : data.is_leave ? "#eff6ff"
-                                        : isSun ? "#fff5f5"
-                                          : "#fff"
-                              }}>
-                              {isValid && (
-                                <>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-[11px] font-semibold"
-                                      style={{ color: isSun ? "#ef4444" : "#475569" }}>
-                                      {String(dayNum).padStart(2, "0")}
-                                    </span>
-                                    {deleteMode && data?.log_id && (
-                                      <input type="checkbox"
-                                        checked={selectedDeleteIds.includes(data.log_id)}
-                                        onChange={e => {
-                                          if (e.target.checked) setSelectedDeleteIds(prev => [...prev, data.log_id]);
-                                          else setSelectedDeleteIds(prev => prev.filter(id => id !== data.log_id));
-                                        }} />
-                                    )}
-                                    <select
-                                      tabIndex={0}
-                                      disabled={statusDis}
-                                      value={data.status}
-                                      onChange={e => handleDataChange(dayNum, "status", e.target.value)}
-                                      onKeyDown={e => {
-                                        if (e.key === "Enter" || e.key === "Tab") {
-                                          e.preventDefault();
-                                          const allDays = Object.entries(attendanceData);
-                                          const nextValid = allDays.find(([d, dd]) => parseInt(d) > dayNum && !dd.is_holiday && !dd.is_weekoff && !dd.is_leave);
-                                          if (nextValid) {
-                                            document.querySelector(`[data-day="${nextValid[0]}"] select`)?.focus();
-                                          }
-                                        }
-                                      }}
-                                      className={`text-[11px] font-semibold border rounded px-0.5 h-[20px] cursor-pointer appearance-none text-center focus:outline-none focus:ring-1 focus:ring-blue-400 ${getStatusStyle(data.status)} disabled:opacity-50 disabled:cursor-not-allowed`}
-                                      style={{ width: 80 }}>
-                                      <option value="">SELECT</option>
-                                      {statusOptions.map(o => (
-                                        <option key={o.value} value={o.value} className="bg-white text-slate-800">{o.label}</option>
-                                      ))}
-                                    </select>
-                                  </div>
+                      {/* Employee — Manual only */}
+                      {attendanceType === "Manual" && (
+                        <div data-employee-autocomplete className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
+                          <span className={labelCls}>Employee:</span>
+                          <ERPAutocomplete
+                            disabled={isViewMode}
+                            options={employeeOptions.map(o => o.label)}
+                            value={employeeOptions.find(e => String(e.id) === String(formData.employee_id))?.label || ""}
+                            onChange={handleEmployeeSelect}
+                            className={selectCls}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                                  <div className="flex gap-1">
-                                    {/* IN */}
-                                    <div className="flex-1">
-                                      <span className="text-[12px] text-slate-600 font-semibold uppercase block">In</span>
-                                      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                        <input type="time"
-                                          disabled={data.status === "ABSENT" || dis}
-                                          value={data.in === "--:--" ? "" : data.in}
-                                          onChange={e => handleDataChange(dayNum, "in", e.target.value || "--:--")}
-                                          className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden" />
-                                        <button
-                                          ref={el => { calInAmPmRefs.current[dayNum] = el; }}
-                                          tabIndex={!dis && data.status !== "ABSENT" ? 0 : -1}
-                                          onClick={() => { if (!data.in || data.in === "--:--" || dis || data.status === "ABSENT") return; handleDataChange(dayNum, "in", toggleAmPm(data.in)); }}
-                                          onKeyDown={e => {
-                                            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-                                              e.preventDefault();
-                                              if (!data.in || data.in === "--:--" || dis || data.status === "ABSENT") return;
-                                              handleDataChange(dayNum, "in", toggleAmPm(data.in));
-                                              setTimeout(() => calInAmPmRefs.current[dayNum]?.focus(), 30);
-                                            }
-                                          }}
-                                          style={{
-                                            fontSize: 9, fontWeight: 700, padding: "0 3px", borderRadius: 3,
-                                            border: "1px solid #e2e8f0", whiteSpace: "nowrap", height: 18,
-                                            display: "flex", alignItems: "center",
-                                            cursor: data.in && data.in !== "--:--" && !dis ? "pointer" : "default",
-                                            background: data.in && data.in !== "--:--" && parseInt(data.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
-                                            color: data.in && data.in !== "--:--" && parseInt(data.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
-                                          }}>
-                                          {data.in && data.in !== "--:--" ? (parseInt(data.in.split(":")[0]) >= 12 ? "PM" : "AM") : "--"}
-                                        </button>
-                                      </div>
-                                    </div>
-                                    {/* OUT */}
-                                    <div className="flex-1">
-                                      <span className="text-[12px] text-slate-600 font-semibold uppercase block">Out</span>
-                                      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                        <input type="time"
-                                          disabled={data.status === "ABSENT" || dis}
-                                          value={data.out === "--:--" ? "" : data.out}
-                                          onChange={e => handleDataChange(dayNum, "out", e.target.value || "--:--")}
-                                          className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden" />
-                                        <button
-                                          ref={el => { calOutAmPmRefs.current[dayNum] = el; }}
-                                          tabIndex={!dis && data.status !== "ABSENT" ? 0 : -1}
-                                          onClick={() => { if (!data.out || data.out === "--:--" || dis || data.status === "ABSENT") return; handleDataChange(dayNum, "out", toggleAmPm(data.out)); }}
-                                          onKeyDown={e => {
-                                            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-                                              e.preventDefault();
-                                              if (!data.out || data.out === "--:--" || dis || data.status === "ABSENT") return;
-                                              handleDataChange(dayNum, "out", toggleAmPm(data.out));
-                                              setTimeout(() => calOutAmPmRefs.current[dayNum]?.focus(), 30);
-                                            }
-                                          }}
-                                          style={{
-                                            fontSize: 9, fontWeight: 700, padding: "0 3px", borderRadius: 3,
-                                            border: "1px solid #e2e8f0", whiteSpace: "nowrap", height: 18,
-                                            display: "flex", alignItems: "center",
-                                            cursor: data.out && data.out !== "--:--" && !dis ? "pointer" : "default",
-                                            background: data.out && data.out !== "--:--" && parseInt(data.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
-                                            color: data.out && data.out !== "--:--" && parseInt(data.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
-                                          }}>
-                                          {data.out && data.out !== "--:--" ? (parseInt(data.out.split(":")[0]) >= 12 ? "PM" : "AM") : "--"}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </>
-                              )}
+                  {/* ── Main content area ── */}
+                  <div className="flex-1 bg-white rounded-xl border shadow-sm flex flex-col overflow-hidden min-h-0">
+
+                    {/* ════ MANUAL — Calendar ════ */}
+                    {attendanceType === "Manual" && (
+                      <>
+                        <div className="grid grid-cols-7 shrink-0"
+                          style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                          {["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"].map((d, i) => (
+                            <div key={d} className="py-2.5 text-center text-[13px] font-semibold tracking-wide border-r last:border-r-0"
+                              style={{ color: i === 0 ? "#ef4444" : "#64748b", borderColor: "#e2e8f0" }}>
+                              {d}
                             </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+                          ))}
+                        </div>
 
-                  {/* ════ LIST ENTRY ════ */}
-                  {attendanceType === "List" && (
-                    <>
-                      <TableHeader TH={TH}
-                        cols={[deleteMode ? "✓" : "#", "Employee", "Code", "Department", "Date", "In Time", "Out Time", "Status"]}
-                        template="40px 1fr 195px 190px 110px 110px 110px 150px"
-                      />
-                      <div className="flex-1 overflow-y-auto">
-                        {listLoading ? <LoadingState msg="Loading employees…" />
-                          : listEntryData.length === 0 ? <EmptyState msg="No employees found." />
-                            : listEntryData.map((row, idx) => {
-                              const [y, m, d] = listEntryDate.split("-");
-                              return (
-                                <TableRow key={row.employee_id} idx={idx}
-                                  template="40px 1fr 220px 150px 110px 110px 110px 150px"
-                                  bgOverride={row.is_holiday ? "#fefce8" : row.is_weekoff ? "#fff7ed" : row.is_leave ? "#eff6ff" : null}>
-                                  {/* # / checkbox */}
-                                  <div className="px-3 py-2 text-center">
-                                    {deleteMode ? (
-                                      <input type="checkbox"
-                                        checked={selectedDeleteIds.includes(row.log_id)}
-                                        onChange={e => {
-                                          if (e.target.checked) setSelectedDeleteIds(prev => [...prev, row.log_id]);
-                                          else setSelectedDeleteIds(prev => prev.filter(id => id !== row.log_id));
-                                        }} />
-                                    ) : <span className="text-[11px] text-slate-400">{idx + 1}</span>}
-                                  </div>
-                                  <AvatarCell name={row.employee_name} empId={row.employee_id} photo={row.employee_photo} />
-                                  <div className="px-3 py-2 text-[12px] font-mono text-indigo-700">{row.employee_code}</div>
-                                  <div className="px-3 py-2 text-[12px] text-slate-500 truncate">{row.department || "—"}</div>
-                                  <div className="px-3 py-2 text-[14px] font-mono text-slate-700">{d}-{m}-{y}</div>
+                        <div className="flex-1 grid grid-cols-7 divide-x divide-y overflow-y-auto"
+                          style={{ borderColor: "#e2e8f0" }}>
+                          {calendarGrid.map((_, index) => {
+                            const dayNum = index - firstDayOfMonth + 1;
+                            const isValid = dayNum > 0 && dayNum <= daysInMonth;
+                            const isSun = index % 7 === 0;
+                            const data = attendanceData?.[dayNum] ?? { in: "--:--", out: "--:--", status: "" };
+                            // Holiday/Weekoff pe in/out editable — sirf is_leave disable karo
+                            const dis = isViewMode || !formData.employee_id || data?.is_leave;
+                            const statusDis = dis || data?.is_holiday || data?.is_weekoff;
 
-                                  {/* IN */}
-                                  <div className="px-2 py-2 flex items-center gap-1">
-                                    <input type="time"
-                                      disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
-                                      ref={el => { listInRefs.current[idx] = el; }}
-                                      value={row.in || ""}
-                                      onChange={e => { handleListRowChange(idx, "in", e.target.value); setTimeout(() => listInAmPmRefs.current[idx]?.focus(), 50); }}
-                                      className={inputCls} />
-                                    <button
-                                      ref={el => { listInAmPmRefs.current[idx] = el; }}
-                                      tabIndex={!isViewMode && row.status !== "ABSENT" ? 0 : -1}
-                                      disabled={!row.in || isViewMode || row.status === "ABSENT"}
-                                      onClick={() => { if (!row.in || row.status === "ABSENT" || isViewMode) return; handleListRowChange(idx, "in", toggleAmPm(row.in)); }}
-                                      onKeyDown={e => {
-                                        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-                                          e.preventDefault();
-                                          if (!row.in || row.status === "ABSENT" || isViewMode) return;
-                                          handleListRowChange(idx, "in", toggleAmPm(row.in));
-                                          setTimeout(() => listInAmPmRefs.current[idx]?.focus(), 30);
-                                        }
-                                        if (e.key === "Enter") { e.preventDefault(); setTimeout(() => listOutRefs.current[idx]?.focus(), 50); }
-                                      }}
-                                      style={{
-                                        background: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
-                                        color: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
-                                        borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
-                                        display: "flex", alignItems: "center",
-                                        cursor: row.in && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
-                                        fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0"
-                                      }}>
-                                      {row.in && parseInt(row.in.split(":")[0]) >= 12 ? "PM" : "AM"}
-                                    </button>
-                                  </div>
+                            return (
+                              <div key={index} data-day={isValid ? dayNum : undefined}
+                                className="relative p-1.5 flex flex-col justify-between"
+                                style={{
+                                  minHeight: 82,
+                                  background: !isValid ? "#f8fafc"
+                                    : data.is_holiday ? "#fefce8"
+                                      : data.is_weekoff ? "#f5f4ff"
+                                        : data.is_leave ? "#eff6ff"
+                                          : isSun ? "#fff5f5"
+                                            : "#fff"
+                                }}>
+                                {isValid && (
+                                  <>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-[11px] font-semibold"
+                                        style={{ color: isSun ? "#ef4444" : "#475569" }}>
+                                        {String(dayNum).padStart(2, "0")}
+                                      </span>
+                                      {deleteMode && data?.log_id && (
+                                        <input type="checkbox"
+                                          checked={selectedDeleteIds.includes(data.log_id)}
+                                          onChange={e => {
+                                            if (e.target.checked) setSelectedDeleteIds(prev => [...prev, data.log_id]);
+                                            else setSelectedDeleteIds(prev => prev.filter(id => id !== data.log_id));
+                                          }} />
+                                      )}
+                                      <select
+                                        tabIndex={0}
+                                        disabled={statusDis}
+                                        value={data.status}
+                                        onChange={e => handleDataChange(dayNum, "status", e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === "Enter" || e.key === "Tab") {
+                                            e.preventDefault();
+                                            const allDays = Object.entries(attendanceData);
+                                            const nextValid = allDays.find(([d, dd]) => parseInt(d) > dayNum && !dd.is_holiday && !dd.is_weekoff && !dd.is_leave);
+                                            if (nextValid) {
+                                              document.querySelector(`[data-day="${nextValid[0]}"] select`)?.focus();
+                                            }
+                                          }
+                                        }}
+                                        className={`text-[11px] font-semibold border rounded px-0.5 h-[20px] cursor-pointer appearance-none text-center focus:outline-none focus:ring-1 focus:ring-blue-400 ${getStatusStyle(data.status)} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        style={{ width: 80 }}>
+                                        <option value="">SELECT</option>
+                                        {statusOptions.map(o => (
+                                          <option key={o.value} value={o.value} className="bg-white text-slate-800">{o.label}</option>
+                                        ))}
+                                      </select>
+                                    </div>
 
-                                  {/* OUT */}
-                                  <div className="px-2 py-2 flex items-center gap-1">
-                                    <input type="time"
-                                      disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
-                                      ref={el => { listOutRefs.current[idx] = el; }}
-                                      value={row.out || ""}
-                                      onChange={e => { handleListRowChange(idx, "out", e.target.value); setTimeout(() => listOutAmPmRefs.current[idx]?.focus(), 50); }}
-                                      className={inputCls} />
-                                    <button
-                                      ref={el => { listOutAmPmRefs.current[idx] = el; }}
-                                      tabIndex={!isViewMode && row.status !== "ABSENT" ? 0 : -1}
-                                      disabled={!row.out || isViewMode || row.status === "ABSENT"}
-                                      onClick={() => { if (!row.out || row.status === "ABSENT" || isViewMode) return; handleListRowChange(idx, "out", toggleAmPm(row.out)); }}
-                                      onKeyDown={e => {
-                                        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-                                          e.preventDefault();
-                                          if (!row.out || row.status === "ABSENT" || isViewMode) return;
-                                          handleListRowChange(idx, "out", toggleAmPm(row.out));
-                                          setTimeout(() => listOutAmPmRefs.current[idx]?.focus(), 30);
-                                        }
-                                        if (e.key === "Enter") { e.preventDefault(); setTimeout(() => listStatusRefs.current[idx]?.focus(), 50); }
-                                      }}
-                                      style={{
-                                        background: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
-                                        color: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
-                                        borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
-                                        display: "flex", alignItems: "center",
-                                        cursor: row.out && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
-                                        fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0"
-                                      }}>
-                                      {row.out && parseInt(row.out.split(":")[0]) >= 12 ? "PM" : "AM"}
-                                    </button>
-                                  </div>
+                                    <div className="flex gap-1">
+                                      {/* IN */}
+                                      <div className="flex-1">
+                                        <span className="text-[12px] text-slate-600 font-semibold uppercase block">In</span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                          <input type="time"
+                                            disabled={data.status === "ABSENT" || dis}
+                                            value={data.in === "--:--" ? "" : data.in}
+                                            onChange={e => handleDataChange(dayNum, "in", e.target.value || "--:--")}
+                                            className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden" />
+                                          <button
+                                            ref={el => { calInAmPmRefs.current[dayNum] = el; }}
+                                            tabIndex={!dis && data.status !== "ABSENT" ? 0 : -1}
+                                            onClick={() => { if (!data.in || data.in === "--:--" || dis || data.status === "ABSENT") return; handleDataChange(dayNum, "in", toggleAmPm(data.in)); }}
+                                            onKeyDown={e => {
+                                              if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                                e.preventDefault();
+                                                if (!data.in || data.in === "--:--" || dis || data.status === "ABSENT") return;
+                                                handleDataChange(dayNum, "in", toggleAmPm(data.in));
+                                                setTimeout(() => calInAmPmRefs.current[dayNum]?.focus(), 30);
+                                              }
+                                            }}
+                                            style={{
+                                              fontSize: 9, fontWeight: 700, padding: "0 3px", borderRadius: 3,
+                                              border: "1px solid #e2e8f0", whiteSpace: "nowrap", height: 18,
+                                              display: "flex", alignItems: "center",
+                                              cursor: data.in && data.in !== "--:--" && !dis ? "pointer" : "default",
+                                              background: data.in && data.in !== "--:--" && parseInt(data.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                              color: data.in && data.in !== "--:--" && parseInt(data.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+                                            }}>
+                                            {data.in && data.in !== "--:--" ? (parseInt(data.in.split(":")[0]) >= 12 ? "PM" : "AM") : "--"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                      {/* OUT */}
+                                      <div className="flex-1">
+                                        <span className="text-[12px] text-slate-600 font-semibold uppercase block">Out</span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                          <input type="time"
+                                            disabled={data.status === "ABSENT" || dis}
+                                            value={data.out === "--:--" ? "" : data.out}
+                                            onChange={e => handleDataChange(dayNum, "out", e.target.value || "--:--")}
+                                            className="text-[12px] font-mono w-full h-5 border rounded px-0.5 border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-slate-50 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden" />
+                                          <button
+                                            ref={el => { calOutAmPmRefs.current[dayNum] = el; }}
+                                            tabIndex={!dis && data.status !== "ABSENT" ? 0 : -1}
+                                            onClick={() => { if (!data.out || data.out === "--:--" || dis || data.status === "ABSENT") return; handleDataChange(dayNum, "out", toggleAmPm(data.out)); }}
+                                            onKeyDown={e => {
+                                              if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                                e.preventDefault();
+                                                if (!data.out || data.out === "--:--" || dis || data.status === "ABSENT") return;
+                                                handleDataChange(dayNum, "out", toggleAmPm(data.out));
+                                                setTimeout(() => calOutAmPmRefs.current[dayNum]?.focus(), 30);
+                                              }
+                                            }}
+                                            style={{
+                                              fontSize: 9, fontWeight: 700, padding: "0 3px", borderRadius: 3,
+                                              border: "1px solid #e2e8f0", whiteSpace: "nowrap", height: 18,
+                                              display: "flex", alignItems: "center",
+                                              cursor: data.out && data.out !== "--:--" && !dis ? "pointer" : "default",
+                                              background: data.out && data.out !== "--:--" && parseInt(data.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                              color: data.out && data.out !== "--:--" && parseInt(data.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+                                            }}>
+                                            {data.out && data.out !== "--:--" ? (parseInt(data.out.split(":")[0]) >= 12 ? "PM" : "AM") : "--"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
 
-                                  {/* STATUS */}
-                                  <div className="px-4 py-3">
-                                    <select
-                                      disabled={isViewMode || row.is_holiday || row.is_weekoff || row.is_leave}
-                                      tabIndex={row.is_holiday || row.is_weekoff || row.is_leave ? -1 : 0}
-                                      ref={el => { listStatusRefs.current[idx] = el; }}
-                                      value={row.status}
-                                      onChange={e => {
-                                        handleListRowChange(idx, "status", e.target.value);
-                                        setTimeout(() => { listInRefs.current[idx + 1]?.focus(); }, 0);
-                                      }}
-                                      className={`h-7 w-full text-[12px] text-center font-semibold border rounded-md px-2 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed ${row.status ? getStatusBadge(row.status) : "border-slate-200 text-slate-400 bg-white"}`}>
-                                      <option value="">— Select —</option>
-                                      {statusOptions.map(o => (
-                                        <option key={o.value} value={o.value} className="bg-white text-slate-800 font-normal">{o.label}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </TableRow>
-                              );
-                            })}
-                      </div>
-                    </>
-                  )}
+                    {/* ════ LIST ENTRY ════ */}
+                    {attendanceType === "List" && (
+                      <>
+                        <TableHeader TH={TH}
+                          cols={[deleteMode ? "✓" : "#", "Employee", "Code", "Department", "Date", "In Time", "Out Time", "Status"]}
+                          template="40px 1fr 195px 190px 110px 110px 110px 150px"
+                        />
+                        <div className="flex-1 overflow-y-auto">
+                          {listLoading ? <LoadingState msg="Loading employees…" />
+                            : listEntryData.length === 0 ? <EmptyState msg="No employees found." />
+                              : listEntryData.map((row, idx) => {
+                                const [y, m, d] = listEntryDate.split("-");
+                                return (
+                                  <TableRow key={row.employee_id} idx={idx}
+                                    template="40px 1fr 220px 150px 110px 110px 110px 150px"
+                                    bgOverride={row.is_holiday ? "#fefce8" : row.is_weekoff ? "#fff7ed" : row.is_leave ? "#eff6ff" : null}>
+                                    {/* # / checkbox */}
+                                    <div className="px-3 py-2 text-center">
+                                      {deleteMode ? (
+                                        <input type="checkbox"
+                                          checked={selectedDeleteIds.includes(row.log_id)}
+                                          onChange={e => {
+                                            if (e.target.checked) setSelectedDeleteIds(prev => [...prev, row.log_id]);
+                                            else setSelectedDeleteIds(prev => prev.filter(id => id !== row.log_id));
+                                          }} />
+                                      ) : <span className="text-[11px] text-slate-400">{idx + 1}</span>}
+                                    </div>
+                                    <AvatarCell name={row.employee_name} empId={row.employee_id} photo={row.employee_photo} />
+                                    <div className="px-3 py-2 text-[12px] font-mono text-indigo-700">{row.employee_code}</div>
+                                    <div className="px-3 py-2 text-[12px] text-slate-500 truncate">{row.department || "—"}</div>
+                                    <div className="px-3 py-2 text-[14px] font-mono text-slate-700">{d}-{m}-{y}</div>
+ 
+                                
+                                     {/* IN */}
+<div className="px-2 py-2 flex items-center gap-1">
+  <input type="time"
+    disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
+    ref={el => { listInRefs.current[idx] = el; }}
+    value={row.in || ""}
+    onChange={e => handleListRowChange(idx, "in", e.target.value)}
+    onKeyDown={e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setTimeout(() => listInAmPmRefs.current[idx]?.focus(), 0);
+      }
+      if (e.key === "Backspace" && e.shiftKey) {
+        e.preventDefault();
+        listStatusRefs.current[idx - 1]?.focus();
+      }
+    }}
+    className={inputCls} />
+  <button
+    ref={el => { listInAmPmRefs.current[idx] = el; }}
+    tabIndex={isViewMode || row.status === "ABSENT" ? -1 : 0}
+    onClick={e => e.preventDefault()}
+    onKeyDown={e => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        if (!row.in || row.status === "ABSENT" || isViewMode) return;
+        handleListRowChange(idx, "in", toggleAmPm(row.in));
+      }
+      if (e.key === " ") {
+        e.preventDefault();
+        if (row.in && row.status !== "ABSENT" && !isViewMode) {
+          handleListRowChange(idx, "in", toggleAmPm(row.in));
+        }
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        listOutRefs.current[idx]?.focus();
+      }
+      if (e.key === "Backspace" && e.shiftKey) {
+        e.preventDefault();
+        listInRefs.current[idx]?.focus();
+      }
+    }}
+    style={{
+      background: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+      color: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+      borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
+      display: "flex", alignItems: "center",
+      cursor: row.in && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
+      fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0",
+      opacity: (!row.in || isViewMode || row.status === "ABSENT") ? 0.5 : 1
+    }}>
+    {row.in && parseInt(row.in.split(":")[0]) >= 12 ? "PM" : "AM"}
+  </button>
+</div>
 
-                </div>{/* end main content */}
-              </div>
-            )}
+{/* OUT */}
+<div className="px-2 py-2 flex items-center gap-1">
+  <input type="time"
+    disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
+    ref={el => { listOutRefs.current[idx] = el; }}
+    value={row.out || ""}
+    onChange={e => handleListRowChange(idx, "out", e.target.value)}
+    onKeyDown={e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setTimeout(() => listOutAmPmRefs.current[idx]?.focus(), 0);
+      }
+      if (e.key === "Backspace" && e.shiftKey) {
+        e.preventDefault();
+        listInAmPmRefs.current[idx]?.focus();
+      }
+    }}
+    className={inputCls} />
+  <button
+    ref={el => { listOutAmPmRefs.current[idx] = el; }}
+    tabIndex={isViewMode || row.status === "ABSENT" ? -1 : 0}
+    onClick={e => e.preventDefault()}
+    onKeyDown={e => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        if (!row.out || row.status === "ABSENT" || isViewMode) return;
+        handleListRowChange(idx, "out", toggleAmPm(row.out));
+      }
+      if (e.key === " ") {
+        e.preventDefault();
+        if (row.out && row.status !== "ABSENT" && !isViewMode) {
+          handleListRowChange(idx, "out", toggleAmPm(row.out));
+        }
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        listStatusRefs.current[idx]?.focus();
+      }
+      if (e.key === "Backspace" && e.shiftKey) {
+        e.preventDefault();
+        listOutRefs.current[idx]?.focus();
+      }
+    }}
+    style={{
+      background: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+      color: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+      borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
+      display: "flex", alignItems: "center",
+      cursor: row.out && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
+      fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0",
+      opacity: (!row.out || isViewMode || row.status === "ABSENT") ? 0.5 : 1
+    }}>
+    {row.out && parseInt(row.out.split(":")[0]) >= 12 ? "PM" : "AM"}
+  </button>
+</div>
+
+{/* STATUS */}
+<div className="px-4 py-3">
+  <select
+    disabled={isViewMode || row.is_holiday || row.is_weekoff || row.is_leave}
+    tabIndex={row.is_holiday || row.is_weekoff || row.is_leave ? -1 : 0}
+    ref={el => { listStatusRefs.current[idx] = el; }}
+    value={row.status}
+    onChange={e => {
+      handleListRowChange(idx, "status", e.target.value);
+      setTimeout(() => { listInRefs.current[idx + 1]?.focus(); }, 0);
+    }}
+    onKeyDown={e => {
+      if (e.key === "Backspace" && e.shiftKey) {
+        e.preventDefault();
+        listOutAmPmRefs.current[idx]?.focus();
+      }
+    }}
+    className={`h-7 w-full text-[12px] text-center font-semibold border rounded-md px-2 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed ${row.status ? getStatusBadge(row.status) : "border-slate-200 text-slate-400 bg-white"}`}>
+    <option value="">— Select —</option>
+    {statusOptions.map(o => (
+      <option key={o.value} value={o.value} className="bg-white text-slate-800 font-normal">{o.label}</option>
+    ))}
+  </select>
+</div>
+                                  </TableRow>
+                                );
+                              })}
+                        </div>
+                      </>
+                    )}
+
+                  </div>{/* end main content */}
+                </div>
+              )}
 
           </div>
         </div>
@@ -966,7 +1037,7 @@ const AttendancePage = ({
             }
           }}
           onNewEntry={onNewEntry}
-          onEditCancel={() => { setDeleteMode(false); setSelectedDeleteIds([]); onEditCancel?.(); }}
+          onEditCancel={onEditCancel}
           saving={saving} canPrint={canPrint} rights={rights}
           showPrevious={false} showNext={false}
         />

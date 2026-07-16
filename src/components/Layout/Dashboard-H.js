@@ -71,14 +71,10 @@ function Dashboard({
     loadMenus();
   }, [activeModule]);
 
-  useEffect(() => {
-
-    if (!activeTab) return;
-
-    setLoadedTabs((prev) => {
-
-      if (prev.includes(activeTab.id)) return prev;
-
+  useEffect(() => { 
+    if (!activeTab) return; 
+    setLoadedTabs((prev) => { 
+      if (prev.includes(activeTab.id)) return prev; 
       return [...prev, activeTab.id];
 
     });

@@ -457,11 +457,11 @@ const AttendanceRegularizationForm = ({
 
     return (
         <div
-            className="w-full max-w-[720px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden"
+            className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden"
             style={{ fontFamily: FONT }}
         >
             <ERPHeader
-                title="ATTENDANCE REGULARIZATION"
+                title="Attendance Regularization"
                 isAddMode={isAddMode}
                 isEditMode={isEditMode}
                 isViewMode={isViewMode}
@@ -477,7 +477,7 @@ const AttendanceRegularizationForm = ({
             <div className="flex-1 p-4 overflow-y-auto flex justify-center">
                 <div
                     id="attendance-form-container"
-                    className="w-full h-fit bg-white border border-slate-200 shadow-sm rounded-md p-4 flex flex-col gap-y-4"
+                    className="w-full max-w-[750px] h-fit bg-white border border-slate-200 shadow-sm rounded-md p-4 flex flex-col gap-y-4"
                 >
                     {/* ROW 1: Employee + Date */}
                     <div className="flex flex-col sm:flex-row gap-4">

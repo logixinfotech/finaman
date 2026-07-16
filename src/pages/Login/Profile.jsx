@@ -1,224 +1,24 @@
-// // import { useEffect, useState } from "react";
-// // import { fetchUserProfile } from "../../utils/api";
-
-// // const ProfilePage = () => {
-// //   const [user, setUser] = useState(null);
-// //   const [loading, setLoading] = useState(true);
-
-// //   useEffect(() => {
-// //     const loadProfile = async () => {
-// //       try {
-// //         const data = await fetchUserProfile();
-// //         setUser(data);
-// //       } catch (error) {
-// //         console.error("Profile load error:", error);
-// //       } finally {
-// //         setLoading(false);
-// //       }
-// //     };
-
-// //     loadProfile();
-// //   }, []);
-
-// //   if (loading) {
-// //     return <div className="profile-loading">Loading profile...</div>;
-// //   }
-
-// //   if (!user) {
-// //     return <div className="profile-loading">No user data found</div>;
-// //   }
-
-// //   return (
-// //     <div className="profile-page">
-// //       <div className="profile-card modern-card">
-
-// //         {/* Header */}
-// //         <div className="profile-header">
-// //           <div className="profile-avatar">
-// //             {user.user_name?.charAt(0)?.toUpperCase() ||
-// //               user.user_id?.charAt(0)?.toUpperCase()}
-// //           </div>
-
-// //           <div className="profile-header-info">
-// //             <h2>{user.user_name}</h2>
-// //             <p className="profile-role">{user.role}</p>
-// //             <span className="profile-company">{user.company}</span>
-// //           </div>
-// //         </div>
-
-// //         <div className="profile-divider" />
-
-// //         <div className="profile-section">
-// //           <ProfileRow label="User ID" value={user.user_id} />
-// //           <ProfileRow label="User Master ID" value={user.userma_id} />
-// //           <ProfileRow label="Role" value={user.role} />
-// //           <ProfileRow label="Company Code" value={user.com_code} />
-// //         </div>
-
-// //       </div>
-// //     </div>
-// //   );
-// // };
-
-// // const ProfileRow = ({ label, value }) => (
-// //   <div className="profile-row">
-// //     <div className="profile-label">{label}</div>
-// //     <div className="profile-value">{value || "-"}</div>
-// //   </div>
-// // );
-
-// // export default ProfilePage;
-// import { useEffect, useState, useCallback } from "react";
-// import { fetchUserProfile } from "../../utils/api";
-
-// // --- sub-components (Ideally moved to separate files in a component library) ---
-
-// /**
-//  * Loading Skeleton for Enterprise UI consistency
-//  */
-// const ProfileSkeleton = () => (
-//   <div className="profile-page skeleton-loading animate-pulse">
-//     <div className="profile-card modern-card">
-//       <div className="profile-header">
-//         <div className="profile-avatar bg-gray-300 w-16 h-16 rounded-full" />
-//         <div className="profile-header-info space-y-2">
-//           <div className="h-6 bg-gray-300 rounded w-48" />
-//           <div className="h-4 bg-gray-200 rounded w-32" />
-//         </div>
-//       </div>
-//       <div className="profile-divider my-4 border-t border-gray-200" />
-//       <div className="profile-section space-y-3">
-//         {[1, 2, 3, 4].map((i) => (
-//           <div key={i} className="flex justify-between"><div className="h-4 bg-gray-200 rounded w-1/4" /><div className="h-4 bg-gray-200 rounded w-1/2" /></div>
-//         ))}
-//       </div>
-//     </div>
-//   </div>
-// );
-
-// /**
-//  * Reusable Error State with a Retry Action
-//  */
-// const ErrorState = ({ message, onRetry }) => (
-//   <div className="profile-error-container p-6 text-center border border-red-200 rounded-lg bg-red-50">
-//     <p className="text-red-700 font-medium">Failed to load ERP profile data.</p>
-//     <p className="text-xs text-red-500 mt-1">{message || "Internal Server Error or Network Timeout"}</p>
-//     {onRetry && (
-//       <button 
-//         onClick={onRetry} 
-//         className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm transition-colors"
-//       >
-//         Retry Connection
-//       </button>
-//     )}
-//   </div>
-// );
-
-// /**
-//  * Clean data presentation row
-//  */
-// const ProfileRow = ({ label, value, isSensitive = false }) => (
-//   <div className="profile-row flex justify-between py-2 border-b border-gray-100 last:border-none">
-//     <span className="profile-label text-sm text-gray-500 font-medium">{label}</span>
-//     <span className={`profile-value text-sm font-semibold ${isSensitive ? "font-mono tracking-wider text-gray-700" : "text-gray-900"}`}>
-//       {value ?? "—"}
-//     </span>
-//   </div>
-// );
-
-// // --- Main Component ---
-
-// const ProfilePage = () => {
-//   const [user, setUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-
-//   // Memoized load function to allow secure retries without recreating closures
-//   const loadProfile = useCallback(async () => {
-//     setLoading(true);
-//     setError(null);
-//     try {
-//       const data = await fetchUserProfile();
-//       if (!data) throw new Error("Null data payload returned from gateway.");
-//       setUser(data);
-//     } catch (err) {
-//       console.error("[ERP-AUTH-ERR] Profile fetch failed:", err);
-//       setError(err.message || "An unexpected error occurred.");
-//     } finally {
-//       setLoading(false);
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     let isMounted = true;
-//     if (isMounted) {
-//       loadProfile();
-//     }
-//     return () => { isMounted = false; }; // Prevent state updates on unmounted components
-//   }, [loadProfile]);
-
-//   // Phase 1: Global system loaders
-//   if (loading) return <ProfileSkeleton />;
-
-//   // Phase 2: Error boundary representation
-//   if (error) return <ErrorState message={error} onRetry={loadProfile} />;
-//   if (!user) return <ErrorState message="No account matching this session metadata exists." onRetry={loadProfile} />;
-
-//   // Dynamic Avatar Initial Generation
-//   const avatarInitial = (user.user_name || user.user_id || "?").charAt(0).toUpperCase();
-
-//   return (
-//     <div className="profile-page-wrapper p-4 max-w-4xl mx-auto">
-//       <div className="profile-card modern-card shadow-lg rounded-xl p-6 bg-white border border-gray-100">
-
-//         {/* Master Identity Header */}
-//         <div className="profile-header flex items-center space-x-4">
-//           <div className="profile-avatar flex items-center justify-center bg-blue-600 text-white font-bold text-xl rounded-full h-14 w-14 shadow-inner">
-//             {avatarInitial}
-//           </div>
-
-//           <div className="profile-header-info">
-//             <h2 className="text-xl font-bold text-gray-900">{user.user_name || "System User"}</h2>
-//             <div className="flex items-center space-x-2 mt-1">
-//               <span className="profile-role px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full uppercase tracking-wider">
-//                 {user.role}
-//               </span>
-//               <span className="text-gray-300">|</span>
-//               <span className="profile-company text-sm text-gray-500 font-medium">{user.company || "Global Holding"}</span>
-//             </div>
-//           </div>
-//         </div>
-
-//         <div className="profile-divider my-6 border-b border-gray-200" />
-
-//         {/* System Meta-Data Core Segmentation */}
-//         <div className="profile-section space-y-1 bg-gray-50 p-4 rounded-lg">
-//           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">System Access Metadata</h3>
-//           <ProfileRow label="User ID Key" value={user.user_id} isSensitive />
-//           <ProfileRow label="Master Ledger ID (userma_id)" value={user.userma_id} isSensitive />
-//           <ProfileRow label="Functional Scope Role" value={user.role} />
-//           <ProfileRow label="Organizational Company Code" value={user.com_code} isSensitive />
-//         </div>
-
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default ProfilePage;
 import React, { useEffect, useState } from "react";
 import { 
   Building2, Fingerprint, Shield, Briefcase, UserCircle,
   Copy, Check, MapPin, Clock, KeyRound, Mail, Phone,
   ChevronRight, ShieldCheck, Laptop, MoreVertical, 
-  CheckCircle2, Activity, Wallet, Network, History, Lock
+  CheckCircle2, Activity, Wallet, Network, History, Lock,
+  ArrowLeftRight, Search, X as CloseIcon, Loader2, AlertCircle
 } from "lucide-react";
-import { fetchUserProfile } from "../../utils/api";
+import { fetchUserProfile, fetchSwitchableCompanies, switchCompany } from "../../utils/api";
 
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+ 
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [companies, setCompanies] = useState([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+  const [switching, setSwitching] = useState(null);
+  const [companySearch, setCompanySearch] = useState("");
+  const [switchError, setSwitchError] = useState("");
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -251,6 +51,58 @@ const ProfilePage = () => {
     loadProfile();
   }, []);
 
+  // ── Company switcher handlers ─────────────────────────────────────────────
+  const openSwitcher = async () => {
+    setShowSwitcher(true);
+    setSwitchError("");
+    setCompanySearch("");
+    setCompaniesLoading(true);
+    try {
+      const res = await fetchSwitchableCompanies();
+      setCompanies(res.companies || []);
+    } catch (err) {
+      console.error("Failed to load companies:", err);
+      setSwitchError("Could not load company list. Please try again.");
+    } finally {
+      setCompaniesLoading(false);
+    }
+  };
+
+  const closeSwitcher = () => {
+    if (switching) return; // don't allow closing mid-switch
+    setShowSwitcher(false);
+    setSwitchError("");
+    setCompanySearch("");
+  };
+
+  const handleSwitch = async (company) => {
+    if (switching) return;
+    if (String(company.com_id) === String(user?.com_id)) return; // already active
+
+    setSwitching(company.com_id);
+    setSwitchError("");
+    try {
+      const res = await switchCompany(company.com_id);
+      if (!res.success) throw new Error(res.message || "Failed to switch company.");
+
+      sessionStorage.setItem("token", res.token);
+      sessionStorage.setItem("user", JSON.stringify(res.user));
+      sessionStorage.setItem("permissions", JSON.stringify(res.permissions));
+
+      // Full reload guarantees every tenant-scoped screen/state resets cleanly
+      window.location.reload();
+    } catch (err) {
+      console.error("Switch company error:", err);
+      setSwitchError(err.response?.data?.message || err.message || "Failed to switch company.");
+      setSwitching(null);
+    }
+  };
+
+  const filteredCompanies = companies.filter(c =>
+    c.company?.toLowerCase().includes(companySearch.toLowerCase()) ||
+    c.com_code?.toLowerCase().includes(companySearch.toLowerCase())
+  );
+
   if (loading) return (
     <div className="flex h-full min-h-[500px] w-full items-center justify-center bg-slate-50">
       <div className="text-center animate-pulse text-slate-500 font-medium">Loading Enterprise Profile...</div>
@@ -259,14 +111,9 @@ const ProfilePage = () => {
 
   if (!user) return <div className="p-8 text-center text-red-500">Failed to load user data.</div>;
 
-  return (
-    /* FIX 1: h-full w-full overflow-y-auto ensure karta hai ki ye page parent ke andar freely scroll ho. FIX 2: pb-24 ensures no cut-off at bottom */
+  return ( 
     <div className="h-full w-full overflow-y-auto bg-slate-50/50 pb-24 pt-4 sm:pt-6 lg:pt-8 custom-scrollbar">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        
-      
-
-        {/* Top Header Actions */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"> 
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">User Profile</h1>
@@ -354,14 +201,25 @@ const ProfilePage = () => {
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 {/* Organization Setup */}
                 <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                  <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex items-center">
-                    <Network className="h-4 w-4 text-slate-500 mr-2" />
-                    <h3 className="text-sm font-semibold text-slate-900">Organization & Hierarchy</h3>
+                  <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Network className="h-4 w-4 text-slate-500 mr-2" />
+                      <h3 className="text-sm font-semibold text-slate-900">Organization & Hierarchy</h3>
+                    </div>
+                    <button
+                      onClick={openSwitcher}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600
+                                 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg
+                                 px-3 py-1.5 transition-colors"
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                      Switch Company
+                    </button>
                   </div>
                   <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <div className="space-y-6">
                       <CopyableRow icon={Building2} label="Company Code" value={user.com_code} />
-                      <ProfileRow icon={Building2} label="Legal Entity" value={user.company} />
+                      <ProfileRow icon={Building2} label="Legal Entity" value={user.com_name || user.company} />
                     </div>
                     <div className="space-y-6">
                       <ProfileRow icon={UserCircle} label="Reporting Manager" value={user.manager} />
@@ -489,11 +347,143 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Company Switcher Modal ─────────────────────────────────────────── */}
+      {showSwitcher && (
+        <CompanySwitcherModal
+          currentComId={user.com_id}
+          companies={filteredCompanies}
+          loading={companiesLoading}
+          switching={switching}
+          search={companySearch}
+          onSearchChange={setCompanySearch}
+          error={switchError}
+          onSelect={handleSwitch}
+          onClose={closeSwitcher}
+        />
+      )}
+    </div>
+  );
+}; 
+ 
+const CompanySwitcherModal = ({
+  currentComId, companies, loading, switching,
+  search, onSearchChange, error, onSelect, onClose,
+}) => {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div>
+            <h3 className="text-[15px] font-bold text-slate-900">Switch Company</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Select a company to work in.</p>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={!!switching}
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400
+                       hover:bg-slate-100 hover:text-slate-600 transition-colors
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-5 pt-4">
+          <div className="relative">
+            <Search className="h-4 w-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              autoFocus
+              value={search}
+              onChange={e => onSearchChange(e.target.value)}
+              placeholder="Search by company name or code…"
+              disabled={!!switching}
+              className="w-full h-10 pl-9 pr-3 rounded-lg border border-slate-200 bg-white
+                         text-[13.5px] text-slate-700 outline-none placeholder:text-slate-300
+                         focus:border-indigo-400 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]
+                         transition-all duration-200 disabled:bg-slate-50"
+            />
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mx-5 mt-3 flex items-center gap-2 bg-red-50 border border-red-100
+                          rounded-lg px-3 py-2 text-red-700 text-[12.5px]">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Company list */}
+        <div className="px-5 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-10 text-slate-400 text-sm gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading companies…
+            </div>
+          ) : companies.length === 0 ? (
+            <p className="text-[13px] text-slate-400 text-center py-10">
+              No companies match your search.
+            </p>
+          ) : (
+            <div className="max-h-[280px] overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-100">
+              {companies.map((company) => {
+                const isCurrent = String(company.com_id) === String(currentComId);
+                const isSwitchingThis = switching === company.com_id;
+                const isDisabled = !!switching;
+
+                return (
+                  <button
+                    key={company.com_id}
+                    type="button"
+                    disabled={isDisabled || isCurrent}
+                    onClick={() => onSelect(company)}
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left
+                                transition-colors duration-150 disabled:cursor-not-allowed
+                                ${isCurrent ? "bg-indigo-50" : "hover:bg-slate-50"}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0
+                                      ${isCurrent ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-400"}`}>
+                        {isSwitchingThis
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Building2 className="h-4 w-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-[13.5px] font-semibold truncate
+                                       ${isCurrent ? "text-indigo-700" : "text-slate-800"}`}>
+                          {company.company}
+                        </p>
+                        <p className={`text-[11px] truncate ${isCurrent ? "text-indigo-400" : "text-slate-400"}`}>
+                          {company.com_code}
+                        </p>
+                      </div>
+                    </div>
+                    {isCurrent && (
+                      <span className="text-[10.5px] font-semibold text-indigo-600 bg-white
+                                       px-2 py-0.5 rounded-full shrink-0">
+                        Current
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
-
-// ---------------- Helper Components ---------------- //
 
 const StatCard = ({ icon: Icon, label, value, trend, urgent }) => (
   <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
@@ -554,3 +544,4 @@ const CopyableRow = ({ icon: Icon, label, value }) => {
 };
 
 export default ProfilePage;
+ 

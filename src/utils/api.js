@@ -11,6 +11,7 @@ const api = axios.create({
   },
   timeout: 30000,
 });
+
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem("token");
 
@@ -18,8 +19,17 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+
+  if (user.database) {
+    config.headers["x-tenant-db"] = user.database;
+  }
+
+  console.log("Tenant DB =>", config.headers["x-tenant-db"]);
+
   return config;
 });
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -89,6 +99,34 @@ export const selectCompany = async (body) => {
     return response.data;
   } catch (error) {
     console.error("Select Company Error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const fetchSwitchableCompanies = async () => {
+  try {
+    const response = await api.get("/api/authenticate/companies");
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error fetching companies:",
+      error.response ? error.response.data : error.message
+    );
+    throw error;
+  }
+};
+
+export const switchCompany = async (com_id) => {
+  try {
+    const response = await api.post("/api/authenticate/switch-company", {
+      com_id,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Switch Company Error:",
+      error.response ? error.response.data : error.message
+    );
     throw error;
   }
 };
@@ -274,6 +312,12 @@ export const fetchMenuMasterList = async (filters = {}) => {
   });
   return response.data;
 };
+
+export const fetchMenuGroups = async (params = {}) => {
+  const response = await api.get("/api/masmnu/groups", { params });
+  return response.data;
+};
+
 export const createMasmnu = async (data) => {
   const response = await api.post("/api/masmnu", data, {
 
@@ -294,6 +338,9 @@ export const deleteMasmnu = async (id) => {
   });
   return response.data;
 };
+
+export const fetchMenuGroupList = () =>
+  handleApi(() => api.get("/api/user/groups?type=MU_GRP"));
 
 export const saveUserPermissions = (payload) =>
   handleApi(() => api.post("/api/user/permissions", payload));
@@ -937,24 +984,25 @@ export const getPayrollMonthly = (month_year) =>
 export const getPayslipData = (payrollId) =>
   handleApi(() => api.get(`/api/payroll-monthly/${payrollId}/payslip`));
 
-// export const getPayrollById = (id) =>
-//   handleApi(() => api.get(`/api/payroll-monthly/${id}`));
-
 export const calculatePayroll = (data) =>
   handleApi(() => api.post("/api/payroll-monthly/calculate", data));
  
 export const approvePayroll = (data) =>
   handleApi(() => api.post("/api/payroll-monthly/approve", data));
 
-// export const updatePayrollStatus = (id, data) =>
-//   handleApi(() => api.put(`/api/payroll-monthly/${id}/status`, data));
-
 export const bulkUpdatePayrollStatus = (data) =>
   handleApi(() => api.put("/api/payroll-monthly/bulk/status", data));
-
-// export const deletePayroll = (id) =>
-//   handleApi(() => api.delete(`/api/payroll-monthly/${id}`));
 
 // Dashboard
 export const fetchDashboardSummary = async () =>
   handleApi(() => api.get("/api/dashboard/summary"));
+export const fetchDepartmentAttendance = (month) =>
+  handleApi(() => api.get("/api/attendance/department-wise", { params: { month } }));
+
+
+export const fetchSalesDashboard = (params = {}) =>
+  handleApi(() => api.get("/api/sales-dashboard", { params }));
+  // params: { from_date, to_date, state, city, cust, grp, item } — all optional
+
+export const fetchSalesDashboardFilters = () =>
+  handleApi(() => api.get("/api/sales-dashboard/filters"));

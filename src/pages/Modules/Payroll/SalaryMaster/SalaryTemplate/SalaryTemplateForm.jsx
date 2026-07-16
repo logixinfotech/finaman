@@ -249,7 +249,7 @@ const SalaryTemplateForm = ({
 
   return (
     <div
-      className="w-full max-w-[1300px] mx-auto h-[calc(100vh-120px)] bg-[#eef1f6] flex flex-col"
+      className="w-full max-w-[1300px] mx-auto h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col"
       style={{ fontFamily: FONT }}
     >
     
@@ -301,7 +301,7 @@ const SalaryTemplateForm = ({
 />
             </div>
             <div className="flex items-center gap-3">
-              <label className="w-[180px]">Effective From</label>
+              <label className="w-[210px]">Effective From</label>
               <ERPDateInput
                 value={formData.effective_from || ""}
 onChange={(value) => handleChange("effective_from", value)}

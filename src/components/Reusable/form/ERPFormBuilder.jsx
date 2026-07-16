@@ -575,10 +575,10 @@ const displayPhoto = (rawPhoto && typeof rawPhoto === "string")
   : null;
 
   return (
-    <div className="w-full h-full sm:h-[calc(100vh-120px)] bg-[#eef1f8] flex flex-col overflow-hidden font-['Segoe_UI',system-ui,Arial,sans-serif] text-[13px] text-[#0f172a] leading-[1.4]">
+    <div className="w-full h-full sm:h-[calc(100vh-100px)] bg-[#eef1f8] flex flex-col overflow-hidden font-['Segoe_UI',system-ui,Arial,sans-serif] text-[13px] text-[#0f172a] leading-[1.4]">
       
       <ERPHeader
-        title={title.toUpperCase()}
+        title={title}
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}

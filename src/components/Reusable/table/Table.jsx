@@ -1,4 +1,4 @@
- import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 
 import { motion } from "framer-motion";
 import TableExport from "./TableExport";
@@ -31,7 +31,6 @@ const DEFAULT_COL_WIDTH = 150;
 const MIN_COL_WIDTH = 50;
 const SEARCH_DEBOUNCE_MS = 400;
 
-/* ── tiny toolbar button ── */
 const TBtn = ({ onClick, active, title, children, className = "" }) => (
   <button
     title={title}
@@ -49,7 +48,6 @@ const TBtn = ({ onClick, active, title, children, className = "" }) => (
   </button>
 );
 
-/* ── column settings panel ── */
 const ColumnPanel = ({
   columns,
   visibleColumns,
@@ -108,7 +106,7 @@ const Table = ({
   onRowDoubleClick,
   onDeleteMultiple,
   onRefresh,
-
+  onExportAll,
   isHidden,
 
   onAdd,
@@ -117,7 +115,7 @@ const Table = ({
   showForm,
   formComponent,
   onToggleFilter,
-  onImport,  
+  onImport,
   pageSizeOptions = [10, 15, 20, 50, 100, 200],
   defaultPageSize = 50,
 }) => {
@@ -186,12 +184,10 @@ const Table = ({
     });
     return () => setERPHandlers({});
   }, [onAdd, onRefresh, onDeleteMultiple]);
-
-  // ── server pagination trigger ──
   useEffect(() => {
     if (serverPagination && onPageChange)
-      onPageChange(page, pageSize, searchText);
-  }, [page, pageSize, serverPagination]);
+      onPageChange(page, pageSize, searchText, sortField, sortOrder);
+  }, [page, pageSize, serverPagination, sortField, sortOrder]);
 
   useEffect(() => {
     setPageSize(defaultPageSize);
@@ -217,9 +213,7 @@ const Table = ({
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, sortField, sortOrder]);
-
-  // ── close column menu on outside click ──
+  }, [debouncedSearch, sortField, sortOrder]); 
   useEffect(() => {
     const h = (e) => {
       if (columnMenuRef.current && !columnMenuRef.current.contains(e.target))
@@ -407,7 +401,7 @@ const Table = ({
     });
   }, []);
 
-  const handleRowSelect = useCallback(
+const handleRowSelect = useCallback(
     (type, index) => {
       const cur = serverPagination ? data : paginatedData;
       const row = cur[index];
@@ -425,6 +419,7 @@ const Table = ({
         setSelectedRows(cur.slice(start, end + 1).map((r) => r[rowKey]));
       }
       setAnchorIndex(index);
+      setFocusedRowIndex(index); // 🆕 mouse click ab keyboard cursor ko bhi wahi le jayega
     },
     [paginatedData, data, rowKey, anchorIndex, serverPagination],
   );
@@ -446,14 +441,11 @@ const Table = ({
         <div className="h-[2px] w-full bg-blue-50 overflow-hidden flex-shrink-0">
           <div className="h-full bg-blue-600 w-1/2 animate-[progress_1.4s_ease-in-out_infinite] origin-left" />
         </div>
-      )}
-
-      {/* ── TOOLBAR ── */}
-
-      <div
-        className="flex items-center justify-between px-3.5 border-b border-slate-200 bg-white flex-shrink-0"
-        style={{ height: 48 }}
-      >
+      )} 
+     <div
+  className="relative flex items-center justify-between px-3.5 border-b border-slate-200 bg-white flex-shrink-0"
+  style={{ height: 48 }}
+>
         {/* left: title + count */}
         {!isHidden && (
           <div className="flex items-center gap-0.5 bg-slate-100 rounded-[10px] p-[3px]">
@@ -496,92 +488,23 @@ const Table = ({
                       }}
                     />
                   )}
-                  <Icon size={1} className="relative z-10 shrink-0" />
+                  <Icon size={13} className="relative z-10 shrink-0" />
                   <span className="relative z-10">{label}</span>
                 </button>
               );
             })}
           </div>
-        )}
-        {/* {!isHidden && (<div
-          className="flex items-center justify-center gap-2.5 px-3.5 border-r border-slate-200 self-stretch"
-          style={{
-            background: "var(--accent-soft, #eff6ff)",
-            marginLeft: "auto",
-            marginRight: "auto",
-
-            borderTopLeftRadius: "11px",
-          }}
-        >
-          <div
-            className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center shrink-0 relative overflow-hidden"
-            style={{
-              background:
-                "linear-gradient(145deg, #dbeafe 0%, #bfdbfe 60%, #93c5fd 100%)",
-              boxShadow:
-                "0 1px 2px rgba(37,99,235,0.18), inset 0 1px 0 rgba(255,255,255,0.6)",
-            }}
-          >
-            <TitleIcon
-              size={15}
-              strokeWidth={2.2}
-              style={{ color: "#1d4ed8", position: "relative", zIndex: 1 }}
-            />
-          </div>
-
-          <div className="flex flex-col leading-tight">
-            <span className="text-[12.5px] font-semibold text-slate-800 whitespace-nowrap">
-              {title}
-            </span>
-    
-          </div>
-        </div>
-)}
-{isHidden&&(<div
-          className="flex items-center justify-center gap-2.5 px-3.5 border-r border-slate-200 self-stretch"
-          style={{
-            background: "var(--accent-soft, #eff6ff)",
-           marginLeft:"-14px",
-            marginRight: "14px",
-            borderTopLeftRadius: "11px",
-          }}
-        >
-          <div
-            className="w-[32px] h-[32px] rounded-[9px] flex items-center justify-center shrink-0 relative overflow-hidden"
-            style={{
-              background:
-                "linear-gradient(145deg, #dbeafe 0%, #bfdbfe 60%, #93c5fd 100%)",
-              boxShadow:
-                "0 1px 2px rgba(37,99,235,0.18), inset 0 1px 0 rgba(255,255,255,0.6)",
-            }}
-          >
-            <TitleIcon
-              size={15}
-              strokeWidth={2.2}
-              style={{ color: "#1d4ed8", position: "relative", zIndex: 1 }}
-            />
-          </div>
-
-          <div className="flex flex-col leading-tight">
-            <span className="text-[12.5px] font-semibold text-slate-800 whitespace-nowrap">
-              {title}
-            </span>
-           
-          </div>
-        </div>)} */}
-        {!isHidden && (<div className="flex items-center gap-3.5 px-4 py-2 self-stretch bg-slate-50/60 rounded-tl-xl mx-auto">
-          {/* High Contrast Soft Blue Icon Box */}
+        )} 
+      {!isHidden && (<div className="absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3.5 py-2 self-stretch bg-slate-50/60 rounded-tl-xl">
           <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
             <TitleIcon
               size={12}
               strokeWidth={2.5}
               className="text-white"
             />
-          </div>
-
-          {/* Clean, No-Nonsense Text */}
+          </div> 
           <div className="flex flex-col min-w-0">
-            <span className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap" title={title}>
+            <span className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap" style={{ fontFamily: "'Inter', 'Roboto', 'Segoe UI', system-ui, sans-serif" }} title={title}>
               {title}
             </span>
           </div>
@@ -594,17 +517,14 @@ const Table = ({
             marginLeft: "-14px",
             marginRight: "14px",
             borderTopLeftRadius: "11px",
-          }}>
-          {/* High Contrast Soft Blue Icon Box */}
+          }}> 
           <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
             <TitleIcon
               size={12}
               strokeWidth={2.5}
               className="text-white"
             />
-          </div>
-
-          {/* Clean, No-Nonsense Text */}
+          </div> 
           <div className="flex flex-col min-w-0">
             <span className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap" title={title}>
               {title}
@@ -648,53 +568,47 @@ const Table = ({
             )}
           </div>
 
-          <div className="w-px h-5 bg-slate-200 mx-0.5" aria-hidden="true" />
-
-          {/* FIX: density S/M/L now actually changes rowHeight via state */}
-          <div className="flex border border-slate-200 rounded-md overflow-hidden h-8">
-            <button
-              title={
-                density === "M"
-                  ? "Normal — click for Relaxed"
-                  : "Relaxed — click for Normal"
-              }
-              onClick={toggleDensity}
-              className="w-7 h-8 inline-flex items-center justify-center text-[10px] font-bold rounded-md border border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
-            >
-              {density}
-            </button>
-          </div>
-
-          <div className="w-px h-5 bg-slate-200 mx-0.5" aria-hidden="true" />
+ 
 
           <TableExport
             title={title}
             columns={columns}
             data={sortedData}
             visibleColumns={visibleColumns}
+            serverPagination={serverPagination}
+            onExportAll={onExportAll}
           />
-          {onImport && (
-            <TBtn onClick={onImport} title="Import data">
-              <Upload size={12} />
-              <span className="text-[11px]"></span>
-            </TBtn>
-          )}
-
-          {onRefresh && (
-            <TBtn onClick={onRefresh} title="Refresh (Alt+R)">
-              <RefreshCw size={12} />
-            </TBtn>
-          )}
-
+         {onImport && (
+  <button
+    onClick={onImport}
+    title="Import data"
+    className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-emerald-50 border-emerald-300 text-emerald-600 hover:bg-emerald-100"
+  >
+    <Upload size={12} />
+  </button>
+)}
+{onRefresh && (
+  <button
+    onClick={onRefresh}
+    title="Refresh (Alt+R)"
+    className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-blue-50 border-pink-300 text-pink-600 hover:bg-pink-100"
+  >
+    <RefreshCw size={12} />
+  </button>
+)}
           {/* FIX: column menu — was broken because visibleColumns toggle wasn't being called correctly */}
           <div className="relative" ref={columnMenuRef}>
-            <TBtn
-              active={showColumnMenu}
-              title="Column settings"
-              onClick={() => setShowColumnMenu((p) => !p)}
-            >
-              <Settings size={12} />
-            </TBtn>
+<button
+  onClick={() => setShowColumnMenu((p) => !p)}
+  title="Column settings"
+  className={`h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
+    showColumnMenu
+      ? "bg-slate-200 border-slate-400 text-slate-700"
+      : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"
+  }`}
+>
+  <Settings size={12} />
+</button>
             {showColumnMenu && (
               <div className="absolute right-0 mt-1.5 bg-white border border-slate-200 rounded-lg shadow-lg z-[200] overflow-hidden">
                 <ColumnPanel
@@ -708,12 +622,19 @@ const Table = ({
             )}
           </div>
 
-          {onToggleFilter && (
-            <TBtn active={showForm} title="Filters" onClick={onToggleFilter}>
-              <Filter size={12} />
-            </TBtn>
-          )}
-
+       {onToggleFilter && (
+  <button
+    onClick={onToggleFilter}
+    title="Filters"
+    className={`h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
+      showForm
+        ? "bg-amber-100 border-amber-400 text-amber-700"
+        : "bg-amber-50 border-amber-300 text-amber-600 hover:bg-amber-100"
+    }`}
+  >
+    <Filter size={12} />
+  </button>
+)}
           {onAdd && <HeaderAddButton onClick={onAdd} />}
         </div>
       </div>

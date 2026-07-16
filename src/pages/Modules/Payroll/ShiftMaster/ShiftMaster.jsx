@@ -21,7 +21,18 @@ const columns = [
   { key: "shift_name", label: "Shift Name" },
   { key: "start_time", label: "Start Time" }, // Must match the key in API JSON
   { key: "end_time", label: "End Time" },
-  { key: "full_day_hours", label: "Hours" },
+    {
+    key: "full_day_hours",
+    label: "Hours",
+    render: (row) => {
+      const val = parseFloat(row.full_day_hours);
+      if (!val) return "—";
+      const hrs = Math.floor(val);
+      const mins = Math.round((val - hrs) * 60);
+      return mins > 0 ? `${hrs} hrs ${mins} min` : `${hrs} hrs`;
+    }
+  },
+
 ];
 
 const ShiftMaster = ({ tab }) => {
@@ -168,9 +179,9 @@ const handleDeleteMultiple = async (selected) => {
       ) : (
         <div className=" bg-slate-50 h-full">
           <Table
-           activeTab={"search"}
-                    onTabChange={handleTabChange}
-            title="Shift Master List"
+            activeTab={"search"}
+            onTabChange={handleTabChange}
+            title="Shift Master"
             data={list}
             columns={columns}
             onDeleteMultiple={handleDeleteMultiple}

@@ -983,7 +983,7 @@ const TDSMasterForm = ({
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="TDS MASTER ENTRY"
+        title="TDS Master "
         isAddMode={isAddMode} isEditMode={isEditMode} isViewMode={isViewMode}
         activeTab={activeTab} onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}

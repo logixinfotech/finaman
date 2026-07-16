@@ -9,17 +9,7 @@ import { downloadPayslip } from "../../../../../utils/Payslipdownload";
 // ─── DATA ────────────────────────────────────────────────────────────────────
 const EMPS = [
   { id: 1, name: "Arjun Mehta", dept: "Engineering", role: "Sr. Engineer", basic: 65000, hra: 26000, special: 12000, travel: 3000 },
-  { id: 2, name: "Priya Sharma", dept: "Product", role: "Product Manager", basic: 75000, hra: 30000, special: 14000, travel: 3000 },
-  { id: 3, name: "Rohan Desai", dept: "Engineering", role: "Frontend Engineer", basic: 52000, hra: 20800, special: 9000, travel: 2000 },
-  { id: 4, name: "Neha Kulkarni", dept: "Design", role: "UX Designer", basic: 55000, hra: 22000, special: 10000, travel: 2000 },
-  { id: 5, name: "Kiran Reddy", dept: "Engineering", role: "Backend Engineer", basic: 60000, hra: 24000, special: 11000, travel: 2500 },
-  { id: 6, name: "Sunita Patel", dept: "HR", role: "HR Manager", basic: 58000, hra: 23200, special: 10500, travel: 2500 },
-  { id: 7, name: "Vikram Singh", dept: "Sales", role: "Sales Lead", basic: 62000, hra: 24800, special: 11500, travel: 4000 },
-  { id: 8, name: "Ananya Iyer", dept: "Finance", role: "Finance Analyst", basic: 56000, hra: 22400, special: 9500, travel: 2000 },
-  { id: 9, name: "Dev Kumar", dept: "Engineering", role: "DevOps Engineer", basic: 63000, hra: 25200, special: 11800, travel: 2500 },
-  { id: 10, name: "Meera Nair", dept: "Marketing", role: "Marketing Manager", basic: 59000, hra: 23600, special: 10800, travel: 3000 },
-  { id: 11, name: "Sanjay Gupta", dept: "Engineering", role: "Tech Lead", basic: 82000, hra: 32800, special: 15000, travel: 3500 },
-  { id: 12, name: "Deepa Venkat", dept: "Design", role: "Product Designer", basic: 53000, hra: 21200, special: 9200, travel: 2000 },
+  
 ];
 
 const ATT_BASE = {

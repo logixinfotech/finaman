@@ -35,10 +35,10 @@ const TableRow = memo(
         onRowSelect,
         searchText,
         setAnchorIndex,
-        rowHeight, // Received dynamic height from parent
+        rowHeight,
       },
       ref
-    ) => { 
+    ) => {
       const baseBg =
         index % 2 === 0
           ? "bg-white"
@@ -65,21 +65,21 @@ const TableRow = memo(
 
       const handleDoubleClick = useCallback(() => {
         onRowDoubleClick?.(row);
-      }, [onRowDoubleClick, row]); 
+      }, [onRowDoubleClick, row]);
       const visibleCols = columns.filter((c) => visibleColumns[c.key]);
-      const firstKey = visibleCols[0]?.key; 
-      let leftOffset = 0; 
+      const firstKey = visibleCols[0]?.key;
+      let leftOffset = 0;
       const rowClass = [
         "group relative border-b cursor-default transition-colors duration-[60ms]",
         "text-[11.5px]",
         isSelected
-          ? "bg-blue-100 border-blue-200"
+          ? "bg-amber-100 outline outline-[1.5px] outline-amber-400 outline-offset-[-1px] z-[1]"
           : [
-              isFocused
-                ? "bg-[#EFF6FF] outline outline-1 outline-blue-300 outline-offset-[-1px]"
-                : baseBg,
-              "hover:bg-slate-50",
-            ]
+            isFocused
+              ? "bg-[#EFF6FF] outline outline-1 outline-blue-300 outline-offset-[-1px]"
+              : baseBg,
+            "hover:bg-slate-50",
+          ]
             .filter(Boolean)
             .join(" "),
         "border-slate-100",
@@ -102,24 +102,22 @@ const TableRow = memo(
             const width = columnWidths[c.key] || 150;
             const isFrozen = lockedColumns.includes(c.key);
             const isFirst = c.key === firstKey;
-
-            /* frozen background must match row state exactly */
             const frozenBg = isSelected
-              ? "#DBEAFE"
+              ? "#E0E7FF"
               : isFocused
-              ? "#EFF6FF"
-              : index % 2 === 0
-              ? "#ffffff"
-              : "#FAFAFA";
+                ? "#EFF6FF"
+                : index % 2 === 0
+                  ? "#ffffff"
+                  : "#FAFAFA";
 
             const stickyStyle = isFrozen
               ? {
-                  position: "sticky",
-                  left: leftOffset,
-                  zIndex: 5,
-                  backgroundColor: frozenBg,
-                  boxShadow: "1px 0 0 0 rgba(226,232,240,1)",
-                }
+                position: "sticky",
+                left: leftOffset,
+                zIndex: 5,
+                backgroundColor: frozenBg,
+                boxShadow: "1px 0 0 0 rgba(226,232,240,1)",
+              }
               : {};
 
             if (isFrozen) leftOffset += width;
@@ -128,10 +126,10 @@ const TableRow = memo(
               "px-3 py-0 border-r border-slate-100",
               "whitespace-nowrap overflow-hidden text-ellipsis align-middle",
               isSelected
-                ? "text-blue-900"
+                ? "text-indigo-950 font-semibold"
                 : isFrozen
-                ? "font-medium text-slate-800"
-                : "text-slate-700",
+                  ? "font-medium text-slate-800"
+                  : "text-slate-700",
             ]
               .filter(Boolean)
               .join(" ");
@@ -140,51 +138,33 @@ const TableRow = memo(
               <td
                 key={c.key}
                 role="gridcell"
-                style={{ 
-                  width, 
-                  maxWidth: width, 
-                  lineHeight: `${rowHeight}px`, // Dynamic vertical alignment
-                  ...stickyStyle 
+                style={{
+                  width,
+                  maxWidth: width,
+                  lineHeight: `${rowHeight}px`, 
+                  ...stickyStyle
                 }}
                 className={tdClass}
-              > 
+              >
                 {isFirst && (
                   <span
                     aria-hidden="true"
                     className={[
-                      "absolute left-0 top-0 h-full w-[3px] rounded-none transition-opacity duration-75",
+                      "absolute left-0 top-0 h-full transition-opacity duration-75",
                       isSelected
-                        ? "bg-blue-600 opacity-100"
+                        ? "w-[5px] bg-indigo-600 opacity-100"
                         : isFocused
-                        ? "bg-blue-400 opacity-100"
-                        : "opacity-0",
+                          ? "w-[3px] bg-blue-400 opacity-100"
+                          : "w-[3px] opacity-0",
                     ].join(" ")}
                   />
                 )}
 
-                <div 
+                <div
                   className="truncate flex items-center gap-0"
                   style={{ height: rowHeight }} // Maintains cell height
-                > 
-                  {isSelected && isFirst && (
-                    <span
-                      aria-hidden="true"
-                      className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-[3px] bg-blue-600 mr-1.5 flex-shrink-0"
-                    >
-                      <svg
-                        viewBox="0 0 9 9"
-                        width="9"
-                        height="9"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M1.5 4.5l2 2 4-4" />
-                      </svg>
-                    </span>
-                  )}
+                >
+
 
                   {c.render ? (
                     c.render(row)

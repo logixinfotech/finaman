@@ -1,4 +1,4 @@
- 
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,11 +21,11 @@ import {
 
 const NAV = [
   { k: "mytasks", l: "My Tasks", Icon: CheckSquare },
-  { k: "diaryentry", l: "Diary Entry", Icon: Table2 },
-  { k: "summary", l: "Summary", Icon: LayoutDashboard },
+ 
+
   { k: "report", l: "Analytics", Icon: BarChart2 },
 
-]; 
+];
 const MobileTopBar = ({ activeNav, onHamburger }) => {
   const current = NAV.find(n => n.k === activeNav);
   return (
@@ -174,136 +174,133 @@ function WorkDiary({ tab }) {
       employee_name: currentUser?.user_id || p.employee_name,
     }));
   }, [currentUser]);
-const handleSave = useCallback(async (taskLines, subtaskMap = {}, updatedSubtasks = []) => {
-  if (!Array.isArray(taskLines) || taskLines.length === 0) return;
-  if (isSaving) return;
-  setIsSaving(true);
+  const handleSave = useCallback(async (taskLines, subtaskMap = {}, updatedSubtasks = []) => {
+    if (!Array.isArray(taskLines) || taskLines.length === 0) return;
+    if (isSaving) return;
+    setIsSaving(true);
 
-  try {
-    const newTaskLines = taskLines
-      .filter(t => t.work_plan?.trim())
-      .map(({ _key, _pendingSubtasks, attachment, ...rest }) => rest);
+    try {
+      const newTaskLines = taskLines
+        .filter(t => t.work_plan?.trim())
+        .map(({ _key, _pendingSubtasks, attachment, ...rest }) => rest);
 
-    if (newTaskLines.length === 0) return;
+      if (newTaskLines.length === 0) return;
 
-    const dept = taskLines[0]?.category || formData.department || "";
-    const employee_id = currentUser?.userma_id || formData.employee_id;
-    const employee_name = currentUser?.user_id || formData.employee_name;
-    const diary_date = formData.diary_date || todayStr();
- 
-    let existingTaskLines = [];
-    let diary_id = formData.diary_id;
+      const dept = taskLines[0]?.category || formData.department || "";
+      const employee_id = currentUser?.userma_id || formData.employee_id;
+      const employee_name = currentUser?.user_id || formData.employee_name;
+      const diary_date = formData.diary_date || todayStr();
 
-    if (diary_id) {
-      // Already known diary — fetch existing lines
-      try {
-        const fresh = await fetchWorkDiaryById(diary_id);
-        existingTaskLines = fresh?.task_lines || fresh?.data?.task_lines || [];
-      } catch { }
-    } else {
-      // Check karo aaj ki diary already exist karti hai kya
-      try {
-        const todayDiaries = await fetchWorkDiaries();
-        const rows = Array.isArray(todayDiaries) ? todayDiaries : todayDiaries?.data || [];
-        const found = rows.find(d =>
-          String(d.employee_id) === String(employee_id) &&
-          d.diary_date === diary_date
-        );
-        if (found?.diary_id) {
-          diary_id = found.diary_id;
-          setFormData(p => ({ ...p, diary_id: found.diary_id }));
-          const fresh = await fetchWorkDiaryById(found.diary_id);
+      let existingTaskLines = [];
+      let diary_id = formData.diary_id;
+
+      if (diary_id) {
+        // Already known diary — fetch existing lines
+        try {
+          const fresh = await fetchWorkDiaryById(diary_id);
           existingTaskLines = fresh?.task_lines || fresh?.data?.task_lines || [];
-        }
-      } catch { }
-    }
+        } catch { }
+      } else {
+        // Check karo aaj ki diary already exist karti hai kya
+        try {
+          const todayDiaries = await fetchWorkDiaries();
+          const rows = Array.isArray(todayDiaries) ? todayDiaries : todayDiaries?.data || [];
+          const found = rows.find(d =>
+            String(d.employee_id) === String(employee_id) &&
+            d.diary_date === diary_date
+          );
+          if (found?.diary_id) {
+            diary_id = found.diary_id;
+            setFormData(p => ({ ...p, diary_id: found.diary_id }));
+            const fresh = await fetchWorkDiaryById(found.diary_id);
+            existingTaskLines = fresh?.task_lines || fresh?.data?.task_lines || [];
+          }
+        } catch { }
+      }
 
-    // Purani lines + nayi lines merge karo
-    const mergedLines = [...existingTaskLines, ...newTaskLines];
-    // ── NAYA LOGIC END ──
+      const mergedLines = [...existingTaskLines, ...newTaskLines];
+      const data = {
+        ...formData,
+        diary_id,
+        diary_status: "Submitted",
+        task_lines: mergedLines,
+        department: dept,
+        employee_id,
+        employee_name,
+        diary_date,
+      };
 
-    const data = {
-      ...formData,
-      diary_id,
-      diary_status: "Submitted",
-      task_lines: mergedLines,
-      department: dept,
-      employee_id,
-      employee_name,
-      diary_date,
-    };
+      let isEdit = !!data.diary_id;
+      let r = isEdit
+        ? await updateWorkDiary(data.diary_id, data)
+        : await createWorkDiary(data);
 
-    let isEdit = !!data.diary_id;
-    let r = isEdit
-      ? await updateWorkDiary(data.diary_id, data)
-      : await createWorkDiary(data);
+      if (!r?.success) {
+        alertError("Save Failed", r?.message || "Unknown error");
+        return;
+      }
 
-    if (!r?.success) {
-      alertError("Save Failed", r?.message || "Unknown error");
-      return;
-    }
-
-    const savedDiaryId = r.diary_id || data.diary_id;
-    if (!isEdit && r.diary_id) {
-      setFormData(p => ({ ...p, diary_id: r.diary_id }));
-    }
-  if (Object.keys(subtaskMap).length > 0 && savedDiaryId) {
-    try {
-      const freshResp = await fetchWorkDiaryById(savedDiaryId);
-      const freshLines = freshResp?.task_lines || freshResp?.data?.task_lines || [];
-      const planToKey = {};
-      taskLines.forEach(t => {
-        if (t.work_plan?.trim()) planToKey[t.work_plan.trim()] = t._key;
-      });
-      for (const line of freshLines) {
-        const matchKey = planToKey[line.work_plan?.trim()];
-        if (!matchKey) continue;
-        const pending = subtaskMap[matchKey];
-        if (!pending?.length) continue;
-        for (let i = 0; i < pending.length; i++) {
-          const s = pending[i];
-          await addSubtask({
-            line_id:       line.line_id,
-            diary_id:      savedDiaryId,
-            subtask_text:  typeof s === "string" ? s : s.subtask_text,
-            priority:      typeof s === "string" ? "Medium" : (s.priority || "Medium"),
-            status:        typeof s === "string" ? "Pending" : (s.status  || "Pending"),
-            due_date:      typeof s === "string" ? null      : (s.due_date || null),
-            expected_time: typeof s === "string" ? 0         : (parseFloat(s.expected_time) || 0),
-            sort_order:    i,
+      const savedDiaryId = r.diary_id || data.diary_id;
+      if (!isEdit && r.diary_id) {
+        setFormData(p => ({ ...p, diary_id: r.diary_id }));
+      }
+      if (Object.keys(subtaskMap).length > 0 && savedDiaryId) {
+        try {
+          const freshResp = await fetchWorkDiaryById(savedDiaryId);
+          const freshLines = freshResp?.task_lines || freshResp?.data?.task_lines || [];
+          const planToKey = {};
+          taskLines.forEach(t => {
+            if (t.work_plan?.trim()) planToKey[t.work_plan.trim()] = t._key;
           });
+          for (const line of freshLines) {
+            const matchKey = planToKey[line.work_plan?.trim()];
+            if (!matchKey) continue;
+            const pending = subtaskMap[matchKey];
+            if (!pending?.length) continue;
+            for (let i = 0; i < pending.length; i++) {
+              const s = pending[i];
+              await addSubtask({
+                line_id: line.line_id,
+                diary_id: savedDiaryId,
+                subtask_text: typeof s === "string" ? s : s.subtask_text,
+                priority: typeof s === "string" ? "Medium" : (s.priority || "Medium"),
+                status: typeof s === "string" ? "Pending" : (s.status || "Pending"),
+                due_date: typeof s === "string" ? null : (s.due_date || null),
+                expected_time: typeof s === "string" ? 0 : (parseFloat(s.expected_time) || 0),
+                sort_order: i,
+              });
+            }
+          }
+        } catch (subErr) {
+          console.error("[WorkDiary] Subtask save failed:", subErr.message);
         }
       }
-    } catch (subErr) {
-      console.error("[WorkDiary] Subtask save failed:", subErr.message);
-    }
-  }
-   if (updatedSubtasks?.length > 0) {
-    try {
-      for (const s of updatedSubtasks) {
-        await updateSubtask(s.subtask_id, {
-          priority:      s.priority,
-          status:        s.status,
-          due_date:      s.due_date      || null,
-          expected_time: parseFloat(s.expected_time) || 0,
-        });
+      if (updatedSubtasks?.length > 0) {
+        try {
+          for (const s of updatedSubtasks) {
+            await updateSubtask(s.subtask_id, {
+              priority: s.priority,
+              status: s.status,
+              due_date: s.due_date || null,
+              expected_time: parseFloat(s.expected_time) || 0,
+            });
+          }
+        } catch (subErr) {
+          console.error("[WorkDiary] Subtask update failed:", subErr.message);
+        }
       }
-    } catch (subErr) {
-      console.error("[WorkDiary] Subtask update failed:", subErr.message);
-    }
-  }
-    const refreshJobs = [loadList(), loadCategories()];
-    if (activeNav === "summary" || activeNav === "report") {
-      refreshJobs.push(loadAllList());
-    }
-    await Promise.all(refreshJobs);
+      const refreshJobs = [loadList(), loadCategories()];
+      if (activeNav === "summary" || activeNav === "report") {
+        refreshJobs.push(loadAllList());
+      }
+      await Promise.all(refreshJobs);
 
-  } catch (err) {
-    alertError("Error", err.message);
-  } finally {
-    setIsSaving(false);
-  }
-}, [formData, isSaving, activeNav, loadList, loadAllList, loadCategories, currentUser]);
+    } catch (err) {
+      alertError("Error", err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [formData, isSaving, activeNav, loadList, loadAllList, loadCategories, currentUser]);
 
   useEffect(() => {
     setERPHandlers({
@@ -428,26 +425,22 @@ const handleSave = useCallback(async (taskLines, subtaskMap = {}, updatedSubtask
                 {activeNav === "mytasks" && <MyTasksScreen {...myTasksProps} />}
                 {activeNav === "diaryentry" && (
                   <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
-                    <TaskTableEntry
+                   <TaskTableEntry
                       initialTask={editingTask}
                       onClose={() => { setEditingTask(null); setActiveNav("mytasks"); }}
-onSave={async (task) => {
-  const subtaskMap = {};
-  if (task._pendingSubtasks?.length) {
-    subtaskMap[task._key] = task._pendingSubtasks;
-  }
-  // _updatedSubtasks bhi handleSave ko pass karo
-  await handleSave([task], subtaskMap, task._updatedSubtasks || []);
-  setEditingTask(null);
-  setActiveNav("mytasks");
-}}
+                      onSave={async (tasks) => {
+                        const list = Array.isArray(tasks) ? tasks : [tasks];
+                        await handleSave(list);        // ← wrap MAT karo, seedha bhejo
+                        setEditingTask(null);
+                        setActiveNav("mytasks");
+                      }}
                       currentUser={currentUser}
                       employees={employees}
                       categoryOptions={categoryList.map(c => c.category)}
                     />
                   </div>
                 )}
-                {activeNav === "summary" && <SummaryScreen list={list} currentUser={currentUser} />}
+
                 {activeNav === "report" && <ReportScreen list={allList} employees={employees} />}
 
               </motion.div>

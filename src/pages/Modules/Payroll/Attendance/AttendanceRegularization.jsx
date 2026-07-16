@@ -457,12 +457,12 @@ const AttendanceRegularization = ({ tab }) => {
           onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className=" bg-slate-50 h-full">
           <Table
            activeTab={"search"}
                   onTabChange={handleTabChange}
 
-            title="Attendance Regularization List"
+            title="Attendance Regularization"
             data={list}
             onDeleteMultiple={handleDeleteMultiple}
             columns={columns}

@@ -513,11 +513,11 @@ const PFMasterForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-[calc(100vh-120px)] bg-[#eef1f6] flex flex-col"
+      className="w-full  h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="PF MASTER ENTRY"
+        title="PF Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -533,10 +533,9 @@ const PFMasterForm = ({
       <div className="flex-1 p-4 overflow-y-auto flex justify-center items-start">
         <div
           id="pf-form-container"
-          className="w-full bg-white border rounded-md p-4 flex flex-col gap-4"
+          className="w-full max-w-[720px] bg-white border rounded-md p-4 flex flex-col gap-4"
         >
 
-          {/* Row 1 — Name + Applicable From */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-3">
               <label className="w-[150px]">
@@ -549,18 +548,18 @@ const PFMasterForm = ({
                 onChange={e => handleChange("name", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="e.g. Standard PF"
-                className={`${getInputClass(isViewMode, "name")} flex-1`}
+                className={`${getInputClass(isViewMode, "name")} max-w-[170px] flex-1`}
               />
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="w-[190px]">Applicable From</label>
+              <label className="w-[280px]">Applicable From</label>
               <ERPDateInput
                 value={formData.applicable_from || ""}
                 disabled={isViewMode}
                 onChange={value => handleChange("applicable_from", value)}
                 onKeyDown={handleKeyDown}
-                className={`${getInputClass(isViewMode, "applicable_from")} flex-1`}
+                className={`${getInputClass(isViewMode, "applicable_from")} max-w-[175px] flex-1`}
               />
             </div>
           </div>
@@ -652,7 +651,7 @@ const PFMasterForm = ({
                 onChange={val => handleChange("apply_ceiling", val)}
                 disabled={isViewMode}
                 onKeyDown={handleKeyDown}
-                className={`${getInputClass(isViewMode, "apply_ceiling")} w-[170px]`}
+                className={`${getInputClass(isViewMode, "apply_ceiling")} max-w-[170px]`}
               />
             </div>
           </div>

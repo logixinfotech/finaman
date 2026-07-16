@@ -68,7 +68,7 @@ export const LeaveAccrualForm = ({
     let updated = { ...localData };
 
     if (field === "employee_name") {
-      const emp = employees.find(e => e.Led_name?.trim() === value?.trim());
+      const emp = employees.find(e => (e.full_name || e.Led_name)?.trim() === value?.trim());
       updated.employee_name = value;
       updated.employee_id   = emp ? Number(emp.Actled_id) : null;
     } else if (field === "leave_name") {
@@ -109,7 +109,7 @@ export const LeaveAccrualForm = ({
     </div>
   );
 
-  const employeeNames  = employees.map(e => e.Led_name?.trim()).filter(Boolean);
+  const employeeNames = employees.map(e => (e.full_name || e.Led_name)?.trim()).filter(Boolean);
   const leaveTypeNames = leaveTypes.map(lt => lt.leave_name);
 
   return (

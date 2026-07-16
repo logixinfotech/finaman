@@ -494,11 +494,11 @@ const PTMasterForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-[calc(100vh-120px)] bg-[#eef1f6] flex flex-col"
+      className="w-full  h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="PROFESSIONAL TAX MASTER"
+        title="Proffesional Tax Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -515,7 +515,7 @@ const PTMasterForm = ({
         <div
           ref={formRef}
           id="pt-form-container"
-          className="w-full bg-white border rounded-md p-4 flex flex-col gap-4"
+          className="w-full bg-white border max-w-[750px] mx-auto rounded-md p-4 flex flex-col gap-4"
         >
 
           {/* Row 1 — Name + State */}
@@ -531,7 +531,7 @@ const PTMasterForm = ({
                 onChange={e => handleChange("name", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="e.g. PT Maharashtra"
-                className={`${getInputClass(isViewMode, "name")} field-name flex-1`}
+                className={`${getInputClass(isViewMode, "name")} field-name flex-1 max-w-[170px]`}
               />
             </div>
 
@@ -569,7 +569,7 @@ const PTMasterForm = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="w-[150px]">Salary To (₹)</label>
+              <label className="w-[145px]">Salary To (₹)</label>
               <input
                 name="salary_to"
                 type="number"
@@ -579,7 +579,7 @@ const PTMasterForm = ({
                 onChange={e => handleChange("salary_to", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="e.g. 10000"
-                className={`${getInputClass(isViewMode, "salary_to")} field-salary_to w-[170px]`}
+                className={`${getInputClass(isViewMode, "salary_to")} field-salary_to max-w-[190px]`}
               />
             </div>
           </div>
@@ -604,13 +604,13 @@ const PTMasterForm = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="w-[150px]">Applicable From</label>
+              <label className="w-[260px]">Applicable From</label>
               <ERPDateInput
                 value={formData.applicable_from || ""}
                 disabled={isViewMode}
                 onChange={value => handleChange("applicable_from", value)}
                 onKeyDown={handleKeyDown}
-                className={`${getInputClass(isViewMode, "applicable_from")} field-applicable_from flex-1`}
+                className={`${getInputClass(isViewMode, "applicable_from")} max-w-[190px] field-applicable_from flex-1`}
               />
             </div>
           </div>

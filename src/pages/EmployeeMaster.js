@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef ,useMemo} from "react";
 import Table from "../components/Reusable/table/Table";
 import EmployeeMasterForm from "../components/EmployeeMaster/EmpolyeeMasterForm";
 import Filter from "../components/EmployeeMaster/Filter"
@@ -11,9 +11,10 @@ import {
   showToast,
   alertError,
 } from "../components/Reusable/alert";
-
+import UnivarsalFilter from "../components/Reusable/Filter/UnivarsalFilter.jsx"
 import { setERPHandlers } from "../utils/erpShortcuts";
 import { useERPMode } from "../components/Reusable/form/useFormMode";
+import { useGroupOptions } from "../Hooks/useUserGroupOption";
 
 
 // ✅ INITIAL STATE KEYS MATCHED WITH FORM FIELDS
@@ -68,7 +69,18 @@ const initialState = {
 };
 
 const columns = [
-  { key: "employee_name", label: "Employee Name" },
+{
+  key: "employee_name",
+  label: "Employee Name",
+  render: (row) => {
+    const parts = [
+      row.Led_name || row.employee_name || "",
+      row.Middle_name || "",
+      row.Led_alias || "",
+    ].filter(Boolean);
+    return parts.join(" ");
+  }
+},
    { key: "employee_code", label: "Emp Code" },
   { key: "mobile", label: "Mobile" },
   { key: "email", label: "Email" },
@@ -166,17 +178,39 @@ const EmployeeMaster = ({ tab }) => {
     () => loadEmployees(),
     tab?.appl_name
   );
-const [filters, setFilters] = useState({});
+const [filters, setFilters] = useState({ Status: "Active" });
 const [page, setPage] = useState(1);
  const [showFilter, setShowFilter] = useState(false);
-   const applyFilter = useCallback(() => {
-    setPage(1);
-  }, []);
+const applyFilter = useCallback(() => {
+  setPage(1);
+}, []);
 
-  const clearFilter = useCallback(() => {
-    setFilters({});
-    setPage(1);
-  }, []);
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "Active" }); // Clear pe bhi default Active hi rahega
+  setPage(1);
+}, []);
+const filteredList = useMemo(() => {
+  return list.filter((item) => {
+    // Employee Name
+    if (filters.employee_name) {
+      const name = (item.employee_name || "").toLowerCase();
+      if (!name.includes(filters.employee_name.toLowerCase())) return false;
+    }
+
+    // Department
+    if (filters.Department) {
+      const dept = (item.department || "").toLowerCase();
+      if (!dept.includes(filters.Department.toLowerCase())) return false;
+    }
+
+    // Status
+    if (filters.Status && filters.Status !== "All") {
+  if (item.status !== filters.Status) return false;
+}
+
+    return true;
+  });
+}, [list, filters]);
 
   const handleTabChange = (targetTab) => {
     if (targetTab === "search") setShowForm(false);
@@ -350,18 +384,14 @@ const [page, setPage] = useState(1);
         fetchUserGroupsByType("DEP"),
         fetchUserGroupsByType("DESG")
       ]);
-      console.log("Calling getActledListAll...");
-      console.log("getActledListAll response:", res);
      
 
       const deptList = deptRes?.data || [];
       const desgList = desgRes?.data || [];
-
-      // Helper function to map an ID to a Name
       const getGroupName = (list, id) => {
         if (!id) return "";
         const found = list.find((g) => String(g.group_id) === String(id));
-        return found ? found.group_name : id; // Returns Name if found, otherwise falls back to ID
+        return found ? found.group_name : id; 
       };
 
       const mappedData = (res?.data || res || []).map((item) => ({
@@ -416,7 +446,6 @@ const [page, setPage] = useState(1);
         "Account Number": item.Bank_acc || "",
         "Branch Name": item.Bank_add || "",
 
-        // 👉 Keep these as raw IDs so the Form bindings don't break
         "Department": item.Op_id3 || "",
         "Designation": item.Op_id5 || "",
         "Grade / Level": item.Op_id1 || "",
@@ -678,6 +707,7 @@ const [page, setPage] = useState(1);
     handleAdd();
     setFormData(prev => ({ ...prev, "Status": "Active" }));
   };
+  const {options}=useGroupOptions();
 
   return (
     <div className="h-full w-full">
@@ -709,7 +739,7 @@ const [page, setPage] = useState(1);
             activeTab="search"
             onTabChange={handleTabChange}
             title="Employee Master"
-            data={list}
+            data={filteredList}
             columns={columns}
             rowKey="employee_id"
             loading={loading}
@@ -719,12 +749,20 @@ const [page, setPage] = useState(1);
             onToggleFilter={() => setShowFilter((p) => !p)}
             showForm={showFilter}
             formComponent={
-            <Filter
-              filters={filters}
-              setFilters={setFilters}
-              onApply={applyFilter}
-              onClear={clearFilter}
-            />
+            // <Filter
+            //   filters={filters}
+            //   setFilters={setFilters}
+            //   onApply={applyFilter}
+            //   onClear={clearFilter}
+            // />
+            <UnivarsalFilter
+            options={options}
+            filters={filters}
+            visibleFields={[ "employee", "department","status"]}
+            setFilters={setFilters}
+            onApply={applyFilter}
+            onClear={clearFilter}
+          />
           }
             
             onDeleteMultiple={async (ids) => {

@@ -11,7 +11,8 @@ import {
   createMasmnu,
   updateMasmnu,
   deleteMasmnu,
-  fetchSidebarMenu
+  fetchSidebarMenu,
+  fetchUserGroupsByType
 } from "../utils/api";  
 
 const initialState = {
@@ -19,6 +20,7 @@ const initialState = {
   masmod_id: "",
   pad_type: "1",
   pad_name: "",
+   grp_name: "",
   item_type: "",
   srl_no: "",
   bar_srl: "",
@@ -33,6 +35,7 @@ const columns = [
   { key: "masmnu_id", label: "ID" },
   { key: "mod_name", label: "Module" }, 
   { key: "pad_name", label: "Section" }, 
+  { key: "grp_name", label: "Group" },
   { key: "bar_name", label: "Menu Name" }, 
   { key: "item_type", label: "Item Type" },
   { key: "srl_no", label: "Serial No" },
@@ -51,6 +54,7 @@ const columns = [
  
 const MenuMasterPage = ({ tab }) => {
   const [modules, setModules] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [list, setList] = useState([]);
   const [filters, setFilters] = useState({});
   const [showFilter, setShowFilter] = useState(false);
@@ -80,6 +84,16 @@ const MenuMasterPage = ({ tab }) => {
     }
   }, []);
 
+const loadGroups = useCallback(async () => {
+    try {
+      const data = await fetchUserGroupsByType("MU_GRP");
+      const arr = Array.isArray(data) ? data : data?.data || [];
+      setGroups(arr.map((g) => g.group_name));   // 👈 sirf names chahiye
+    } catch (err) {
+      console.error("❌ loadGroups error:", err);
+    }
+  }, []);
+
   const {
     mode, formData, setFormData, showForm, setShowForm, saving,
     handleView, handleAdd, handleModify, performSave, handleEditCancel,onNewEntry,
@@ -91,10 +105,11 @@ const MenuMasterPage = ({ tab }) => {
     tab.appl_name
   );
 
-  useEffect(() => {
+ useEffect(() => {
     loadMenuList();
     loadModules();
-  }, [loadMenuList, loadModules]);
+    loadGroups();           
+  }, [loadMenuList, loadModules, loadGroups]);
 
   // Sync Form Data when navigating records via Footer/Header
   useEffect(() => {
@@ -262,6 +277,7 @@ const MenuMasterPage = ({ tab }) => {
       {showForm ? (
         <MenuMasterForm
           modules={modules}
+          groups={groups}                  
           formData={formData}
           setFormData={setFormData}
           onSave={handleSave}
@@ -284,7 +300,7 @@ const MenuMasterPage = ({ tab }) => {
         <Table
         activeTab="search" 
              onTabChange={handleTabChange}
-          title="Menu List"
+          title="Menu Master"
           data={list}
           columns={columns}
           rowKey="masmnu_id"

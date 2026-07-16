@@ -202,11 +202,10 @@ const handleSave = async () => {
                             handleToggleBlock(row);
                         }}
                         title={blocked ? "Click to unblock" : "Click to block"}
-                        className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold cursor-pointer transition-colors ${
-                            blocked
-                                ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                : "bg-green-100 text-green-700 hover:bg-green-200"
-                        }`}
+                         className={`px-2 py-1 text-xs rounded ${blocked
+          ? "bg-red-100 text-red-600" 
+          :  "bg-green-100 text-green-700"
+          }`}
                     >
                         {blocked ? "Blocked" : "Active"}
                     </button>

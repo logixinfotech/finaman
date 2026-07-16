@@ -33,24 +33,9 @@ function TabBar({
         onReorderTabs(items);
     };
 
-    const handleTabClick = (tab) => {
-        if (tab.label === "Dashboard") {
-            const newTab = {
-                id: `tab-${Date.now()}`,
-                label: `New Tab ${tabs.length}`,
-                type: "page",
-                icon: "📄"
-            };
-
-            const updatedTabs = [...tabs];
-            updatedTabs.splice(1, 0, newTab);
-
-            onReorderTabs(updatedTabs);
-            onChangeActiveTab(newTab.id);
-        } else {
-            onChangeActiveTab(tab.id);
-        }
-    };
+const handleTabClick = (tab) => {
+    onChangeActiveTab(tab.id);
+};
 
     return (
         <div className="chrome-tabbar">

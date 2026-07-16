@@ -41,7 +41,7 @@ const Filter = ({ filters, setFilters, onApply, onClear }) => {
             type="text"
             value={filters.Status || ""}
             onChange={(e) => handleChange('Status', e)}
-            options={["Active","Inactive"]}
+            options={["Active","Inactive","All"]}
             placeholder="Status"
             className="h-8 w-40 px-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500/20 outline-none"
           />

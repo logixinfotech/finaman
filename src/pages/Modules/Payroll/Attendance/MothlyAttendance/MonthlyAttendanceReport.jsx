@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Table from "../../../../../components/Reusable/table/Table";
-import MonthlyAttendanceFilter from "../../OverTime/OvertimeFilter";
+import UnivarsalFilter from "../../../../../components/Reusable/Filter/UnivarsalFilter"
 import {
   fetchMonthlyAttendanceSummary,
   fetchEmployeeAttendanceDetail
@@ -13,10 +13,22 @@ import {
   ResponsiveContainer,
   Legend
 } from "recharts";
+import { useGroupOptions } from "../../../../../Hooks/useUserGroupOption";
 
 const columns = [
   { key: "employee_code", label: "Employee Code" },
-  { key: "employee_name", label: "Employee Name" },
+  {
+  key: "employee_name",
+  label: "Employee Name",
+  render: (row) => {
+    const parts = [
+      row.Led_name || row.employee_name || "",
+      row.Middle_name || "",
+      row.Led_alias || "",
+    ].filter(Boolean);
+    return parts.join(" ");
+  }
+},
   { key: "department", label: "Department" },
   { key: "present_days", label: "Present Days" },
   { key: "absent_days", label: "Absent Days" },
@@ -359,18 +371,19 @@ const MonthlyAttendanceReport = () => {
   }, [filters.month, filters.year]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
+  const {options}=useGroupOptions();
 
   // --- ADDED DYNAMIC FILTERING LOGIC ---
   const filteredData = useMemo(() => {
     return tableData.filter((emp) => {
       // Check department match
       const matchDepartment = filters.department_id
-        ? emp.department.toLowerCase() === filters.department_id.toLowerCase()
+        ? emp.department === filters.department_id
         : true;
 
       // Check employee match
       const matchEmployee = filters.employee_id
-        ? emp.employee_code.toLowerCase() === filters.employee_id.toLowerCase()
+        ? emp.employee_code === filters.employee_id
         : true;
 
       return matchDepartment && matchEmployee;
@@ -423,14 +436,17 @@ const MonthlyAttendanceReport = () => {
             onClick: (row) => setSelectedEmployee(row)
           }
         ]}
+      
 
         showForm={showFilter}
         onToggleFilter={() => setShowFilter((prev) => !prev)}
         serverPagination={false}
 
         formComponent={
-          <MonthlyAttendanceFilter
+          <UnivarsalFilter
+            options={options}
             filters={filters}
+            visibleFields={["filterType", "employee", "department"]}
             setFilters={setFilters}
             onApply={loadSummary}
             onClear={() => {

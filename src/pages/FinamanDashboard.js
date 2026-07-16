@@ -1,4 +1,6 @@
-// import React from "react";
+
+
+// import React, { useEffect } from "react";
 // import KpiStrip from "../components/Layout/DashboardComponnt/KpiStrip";
 // import { useDashboard } from "../Hooks/useDashboard";
 // import AttendanceHeatmap from "../components/Layout/DashboardComponnt/AttendanceHeatmap";
@@ -19,95 +21,374 @@
 //   Tooltip,
 //   Legend,
 //   Filler,
-// } from "chart.js"; 
-// ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend, Filler);
+// } from "chart.js";
+
+// ChartJS.register(
+//   CategoryScale,
+//   LinearScale,
+//   BarElement,
+//   LineElement,
+//   PointElement,
+//   ArcElement,
+//   Tooltip,
+//   Legend,
+//   Filler
+// );
+
+// const RESPONSIVE_CSS = `
+//   .fd-shell {
+//     height: 100%;
+//     display: flex;
+//     flex-direction: column;
+//     background: #f0f2f5;
+//     overflow: hidden;
+//     min-height: 0;
+//   }
+
+//   .fd-body {
+//     flex: 1;
+//     overflow-y: auto;
+//     overflow-x: hidden;
+//     padding: 12px 16px;
+//     display: flex;
+//     flex-direction: column;
+//     gap: 0;
+//     box-sizing: border-box;
+//     min-height: 0;
+//   }
+
+//   /* ── Row 2: Heatmap + Upcoming Events — both grow to fill full row width ── */
+//   .fd-row2 {
+//     display: flex;
+//     flex-wrap: wrap;
+//     gap: 10px;
+//     margin-bottom: 12px;
+//     align-items: flex-start;
+//     min-width: 0;
+//   }
+
+//   .fd-row2 > * {
+//     min-width: 0;
+//     overflow: hidden;
+//   }
+
+//   .fd-heatmap-col {
+//     flex: 2 1 600px;   /* grows to fill row, min 600px */
+//     max-width: 100%;
+//   }
+
+//   .fd-sidebar {
+//     flex: 1 1 320px;   /* grows too, min 320px, so total row = full width */
+//     max-width: 420px;
+//     position: sticky;
+//     top: 0;
+//   }
+
+//   /* ── Row 3: Three columns ── */
+//   .fd-three-col {
+//     display: grid;
+//     grid-template-columns: repeat(3, minmax(0, 1fr));
+//     gap: 10px;
+//     margin-bottom: 12px;
+//     min-width: 0;
+//   }
+
+//   .fd-three-col > * {
+//     min-width: 0;
+//     overflow: hidden;
+//   }
+
+//   /* ── Tablet: ≤ 1024px ── */
+//   @media (max-width: 1024px) {
+//     .fd-body {
+//       padding: 10px 12px;
+//     }
+
+//     .fd-heatmap-col,
+//     .fd-sidebar {
+//       flex: 1 1 100%;
+//       max-width: 100%;
+//       position: static;
+//     }
+
+//     .fd-three-col {
+//       grid-template-columns: repeat(2, minmax(0, 1fr));
+//     }
+
+//     .fd-three-col > *:last-child {
+//       grid-column: 1 / -1;
+//     }
+//   }
+
+//   /* ── Small tablet / large phone: ≤ 768px ── */
+//   @media (max-width: 768px) {
+//     .fd-body {
+//       padding: 8px 10px;
+//     }
+
+//     .fd-three-col {
+//       grid-template-columns: minmax(0, 1fr);
+//     }
+
+//     .fd-three-col > *:last-child {
+//       grid-column: auto;
+//     }
+//   }
+
+//   /* ── Mobile: ≤ 480px ── */
+//   @media (max-width: 480px) {
+//     .fd-body {
+//       padding: 6px 8px;
+//     }
+
+//     .fd-row2 {
+//       gap: 8px;
+//       margin-bottom: 8px;
+//     }
+
+//     .fd-three-col {
+//       gap: 8px;
+//       margin-bottom: 8px;
+//     }
+//   }
+// `;
 
 // const FinamanDashboard = () => {
 //   const { data, loading, error, refetch, lastFetched } = useDashboard();
 
-//   const syncTime = lastFetched
-//     ? lastFetched.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
-//     : "—";
+//   useEffect(() => {
+//     // Inject responsive styles once, avoid duplicates
+//     const styleId = "fd-responsive-styles";
+//     if (!document.getElementById(styleId)) {
+//       const tag = document.createElement("style");
+//       tag.id = styleId;
+//       tag.textContent = RESPONSIVE_CSS;
+//       document.head.appendChild(tag);
+//     }
+//     return () => { 
+//     };
+//   }, []);
 
 //   return (
-//     <div style={styles.shell}>
-    
-//       {/* Scrollable body */}
-//       <div style={styles.body}>
-
-//         {/* Row 0: Alerts strip */}
+//     <div className="fd-shell">
+//       <div className="fd-body"> 
 //         <AlertsStrip />
-
-//         {/* Row 1: KPI strip — real data */}
-//         <KpiStrip data={data} loading={loading} />
-
-//         {/* Row 2: Heatmap + UpcomingEvents (static for now) */}
-//         <div style={styles.row2}>
-//           <AttendanceHeatmap />
-//           <div style={styles.sidebar}>
+ 
+//         <KpiStrip data={data} loading={loading} /> 
+//         <div className="fd-row2">
+//           <div className="fd-heatmap-col">
+//             <AttendanceHeatmap />
+//           </div>
+//           <div className="fd-sidebar">
 //             <UpcomingEvents isHalf={true} />
 //           </div>
-//         </div>
-
-//         {/* Row 3: Leave + Approvals + WorkDiary */}
-//         <div style={styles.threeCol}>
+//         </div> 
+//         <div className="fd-three-col">
 //           <LeaveAnalytics isHalf={true} />
 //           <ApprovalWorkflow />
 //           <WorkDiarySummary data={data} loading={loading} />
 //         </div>
 
-//         {/* Row 4: Payroll — real data */}
+//         {/* Row 4: Payroll */}
 //         <PayrollOverview data={data} loading={loading} />
-
 //       </div>
 //     </div>
 //   );
 // };
 
-// const styles = {
-//   shell: {
-//     height: "100%", display: "flex", flexDirection: "column",
-//     background: "#f0f2f5", overflow: "hidden",
-//   },
-//   infoBar: {
-//     background: "#185FA5", padding: "8px 18px",
-//     display: "flex", alignItems: "center", justifyContent: "space-between",
-//     flexShrink: 0,
-//   },
-//   infoLeft:  { display: "flex", alignItems: "center", gap: 6 },
-//   infoTitle: { fontSize: 12, fontWeight: 500, color: "#E6F1FB" },
-//   infoDot:   { fontSize: 12, color: "#85B7EB" },
-//   infoSub:   { fontSize: 11, color: "#85B7EB" },
-//   syncBadge: {
-//     fontSize: 10, color: "#9FE1CB", background: "#0C447C",
-//     padding: "3px 9px", borderRadius: 20,
-//     display: "flex", alignItems: "center",
-//     border: "none", cursor: "pointer",
-//   },
-//   errorBar: {
-//     background: "#FCEBEB", color: "#A32D2D",
-//     padding: "6px 18px", fontSize: 11,
-//     display: "flex", alignItems: "center", gap: 8,
-//     flexShrink: 0,
-//   },
-//   retryBtn: {
-//     fontSize: 11, color: "#A32D2D", background: "none",
-//     border: "0.5px solid #A32D2D", borderRadius: 4,
-//     padding: "1px 8px", cursor: "pointer", marginLeft: 4,
-//   },
-//   body: {
-//     flex: 1, overflowY: "auto", padding: "12px 16px",
-//     display: "flex", flexDirection: "column", gap: 0,
-//   },
-//   row2: {
-//     display: "grid", gridTemplateColumns: "1fr 220px",
-//     gap: 10, marginBottom: 12, alignItems: "start",
-//   },
-//   sidebar:  { position: "sticky", top: 0 },
-//   threeCol: {
-//     display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
-//     gap: 10, marginBottom: 12,
-//   },
+// export default FinamanDashboard;
+// // export default FinamanDashboard;
+// import React, { useEffect } from "react";
+// import KpiStrip from "../components/Layout/DashboardComponnt/KpiStrip";
+// import { useDashboard } from "../Hooks/useDashboard";
+// import AttendanceHeatmap from "../components/Layout/DashboardComponnt/AttendanceHeatmap";
+// import LeaveAnalytics from "../components/Layout/DashboardComponnt/LeaveAnalytics";
+// import ApprovalWorkflow from "../components/Layout/DashboardComponnt/ApprovalWorkflow";
+// import WorkDiarySummary from "../components/Layout/DashboardComponnt/WorkDiarySummary";
+// import PayrollOverview from "../components/Layout/DashboardComponnt/PayrollOverview";
+// import UpcomingEvents from "../components/Layout/DashboardComponnt/UpcomingEvents";
+// import AlertsStrip from "../components/Layout/DashboardComponnt/AlertsStrip";
+// import {
+//   Chart as ChartJS,
+//   CategoryScale,
+//   LinearScale,
+//   BarElement,
+//   LineElement,
+//   PointElement,
+//   ArcElement,
+//   Tooltip,
+//   Legend,
+//   Filler,
+// } from "chart.js";
+
+// ChartJS.register(
+//   CategoryScale,
+//   LinearScale,
+//   BarElement,
+//   LineElement,
+//   PointElement,
+//   ArcElement,
+//   Tooltip,
+//   Legend,
+//   Filler
+// );
+
+// /*
+//   Layout note:
+//   This mirrors the "bento-grid" from the HTML prototype — ONE flat responsive
+//   grid (not row1/row2/three-col groups). Every card is a direct child of
+//   .fd-bento-grid, all rows share a fixed height (--fd-card-h), and the grid
+//   auto-fills/reflows itself using minmax(300px, 1fr). To make a card span
+//   wider (like the prototype's Payroll strip at the bottom, or a hero tile),
+//   add the fd-span-2 / fd-span-3 / fd-row-span-2 helper class to that child's
+//   wrapper — don't add a new manual row wrapper.
+
+//   If a child component (e.g. KpiStrip) needs to emit more than one card,
+//   have it return a React Fragment (<>...</>) with multiple top-level
+//   ".card"-styled elements — they will each drop into their own grid cell
+//   automatically instead of being nested inside one big box.
+// */
+
+// const RESPONSIVE_CSS = `
+//   :root {
+//     --fd-card-h: 262px;
+//   }
+
+//   .fd-shell {
+//     height: 100%;
+//     display: flex;
+//     flex-direction: column;
+//     background: #f0f2f5;
+//     overflow: hidden;
+//     min-height: 0;
+//   }
+
+//   .fd-body {
+//     flex: 1;
+//     overflow-y: auto;
+//     overflow-x: hidden;
+//     padding: 12px 16px;
+//     box-sizing: border-box;
+//     min-height: 0;
+//   }
+
+//   .fd-alerts {
+//     margin-bottom: 12px;
+//   }
+
+//   /* ── Single flat bento grid — every card is a direct child, same fixed
+//      row height, reflows as ONE unit (no manual row/column grouping) ── */
+//   .fd-bento-grid {
+//     display: grid;
+//     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+//     grid-auto-rows: var(--fd-card-h);
+//     gap: 14px;
+//     min-width: 0;
+//   }
+
+//   .fd-bento-grid > * {
+//     min-width: 0;
+//     min-height: 0;
+//     overflow: hidden;
+//   }
+
+//   /* Optional span helpers — apply on the wrapper of any card that should
+//      take up more room than a single cell (e.g. Payroll, a wide hero, etc). */
+//   .fd-span-2 { grid-column: span 2; }
+//   .fd-span-3 { grid-column: span 3; }
+//   .fd-row-span-2 { grid-row: span 2; height: calc(var(--fd-card-h) * 2 + 14px); }
+
+//   /* ── Tablet: ≤ 1024px ── */
+//   @media (max-width: 1024px) {
+//     .fd-body {
+//       padding: 10px 12px;
+//     }
+
+//     .fd-bento-grid {
+//       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+//     }
+
+//     .fd-span-3 { grid-column: span 2; }
+//   }
+
+//   /* ── Small tablet / large phone: ≤ 768px ── */
+//   @media (max-width: 768px) {
+//     .fd-body {
+//       padding: 8px 10px;
+//     }
+
+//     .fd-bento-grid {
+//       grid-template-columns: 1fr;
+//       gap: 10px;
+//     }
+
+//     .fd-span-2,
+//     .fd-span-3 {
+//       grid-column: span 1;
+//     }
+
+//     .fd-row-span-2 {
+//       grid-row: span 1;
+//       height: var(--fd-card-h);
+//     }
+//   }
+
+//   /* ── Mobile: ≤ 480px ── */
+//   @media (max-width: 480px) {
+//     .fd-body {
+//       padding: 6px 8px;
+//     }
+
+//     .fd-bento-grid {
+//       gap: 8px;
+//     }
+//   }
+// `;
+
+// const FinamanDashboard = () => {
+//   const { data, loading, error, refetch, lastFetched } = useDashboard();
+
+//   useEffect(() => {
+//     // Inject responsive styles once, avoid duplicates
+//     const styleId = "fd-responsive-styles";
+//     if (!document.getElementById(styleId)) {
+//       const tag = document.createElement("style");
+//       tag.id = styleId;
+//       tag.textContent = RESPONSIVE_CSS;
+//       document.head.appendChild(tag);
+//     }
+//     return () => {};
+//   }, []);
+
+//   return (
+//     <div className="fd-shell">
+//       <div className="fd-body">
+//         <div className="fd-alerts">
+//           <AlertsStrip />
+//         </div>
+
+//         <div className="fd-bento-grid">
+//           {/* KpiStrip should render its own card(s) — e.g. the workforce
+//               hero tile — as a Fragment so each one slots into the grid. */}
+//           <KpiStrip data={data} loading={loading} />
+
+//           <AttendanceHeatmap />
+
+//           <UpcomingEvents isHalf={true} />
+
+//           <LeaveAnalytics isHalf={true} />
+
+//           <ApprovalWorkflow />
+
+//           <WorkDiarySummary data={data} loading={loading} />
+
+//           <div className="fd-span-2">
+//             <PayrollOverview data={data} loading={loading} />
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
 // };
 
 // export default FinamanDashboard;
@@ -146,7 +427,26 @@ ChartJS.register(
   Filler
 );
 
+/*
+  Layout note:
+  This mirrors the "bento-grid" from the HTML prototype — ONE flat responsive
+  grid (not row1/row2/three-col groups). Every card is a direct child of
+  .fd-bento-grid, all rows share a fixed height (--fd-card-h), and the grid
+  auto-fills/reflows itself using minmax(300px, 1fr). To make a card span
+  wider (like the prototype's Payroll strip at the bottom, or a hero tile),
+  add the fd-span-2 / fd-span-3 / fd-row-span-2 helper class to that child's
+  wrapper — don't add a new manual row wrapper.
+
+  KpiStrip is NOT part of the bento grid — it renders its own row of 5 KPI
+  cards above the grid, with its own internal grid/sizing, and is placed as
+  a standalone strip between the alerts bar and the bento grid.
+*/
+
 const RESPONSIVE_CSS = `
+  :root {
+    --fd-card-h: 292px;
+  }
+
   .fd-shell {
     height: 100%;
     display: flex;
@@ -161,47 +461,39 @@ const RESPONSIVE_CSS = `
     overflow-y: auto;
     overflow-x: hidden;
     padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
     box-sizing: border-box;
     min-height: 0;
   }
 
-  /* ── Row 2: Heatmap + Sidebar ── */
-  .fd-row2 {
-    display: grid;
-    grid-template-columns: 1fr 220px;
-    gap: 10px;
+  .fd-alerts {
     margin-bottom: 12px;
-    align-items: start;
+  }
+
+  .fd-kpi-strip {
+    margin-bottom: 14px;
+  }
+
+  /* ── Single flat bento grid — every card is a direct child, same fixed
+     row height, reflows as ONE unit (no manual row/column grouping) ── */
+  .fd-bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-auto-rows: var(--fd-card-h);
+    gap: 14px;
     min-width: 0;
   }
 
-  .fd-row2 > * {
+  .fd-bento-grid > * {
     min-width: 0;
+    min-height: 0;
     overflow: hidden;
   }
 
-  .fd-sidebar {
-    position: sticky;
-    top: 0;
-    min-width: 0;
-  }
-
-  /* ── Row 3: Three columns ── */
-  .fd-three-col {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 12px;
-    min-width: 0;
-  }
-
-  .fd-three-col > * {
-    min-width: 0;
-    overflow: hidden;
-  }
+  /* Optional span helpers — apply on the wrapper of any card that should
+     take up more room than a single cell (e.g. Payroll, a wide hero, etc). */
+  .fd-span-2 { grid-column: span 2; }
+  .fd-span-3 { grid-column: span 3; }
+  .fd-row-span-2 { grid-row: span 2; height: calc(var(--fd-card-h) * 2 + 14px); }
 
   /* ── Tablet: ≤ 1024px ── */
   @media (max-width: 1024px) {
@@ -209,18 +501,11 @@ const RESPONSIVE_CSS = `
       padding: 10px 12px;
     }
 
-    .fd-row2 {
-      grid-template-columns: 1fr 200px;
+    .fd-bento-grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     }
 
-    .fd-three-col {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    /* WorkDiarySummary spans full width on 2-col layout */
-    .fd-three-col > *:last-child {
-      grid-column: 1 / -1;
-    }
+    .fd-span-3 { grid-column: span 2; }
   }
 
   /* ── Small tablet / large phone: ≤ 768px ── */
@@ -229,20 +514,19 @@ const RESPONSIVE_CSS = `
       padding: 8px 10px;
     }
 
-    .fd-row2 {
+    .fd-bento-grid {
       grid-template-columns: 1fr;
+      gap: 10px;
     }
 
-    .fd-sidebar {
-      position: static;
+    .fd-span-2,
+    .fd-span-3 {
+      grid-column: span 1;
     }
 
-    .fd-three-col {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .fd-three-col > *:last-child {
-      grid-column: auto;
+    .fd-row-span-2 {
+      grid-row: span 1;
+      height: var(--fd-card-h);
     }
   }
 
@@ -252,16 +536,32 @@ const RESPONSIVE_CSS = `
       padding: 6px 8px;
     }
 
-    .fd-row2 {
+    .fd-bento-grid {
       gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .fd-three-col {
-      gap: 8px;
-      margin-bottom: 8px;
     }
   }
+    @media (max-width: 768px) {
+  .fd-bento-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .fd-span-2,
+  .fd-span-3 {
+    grid-column: span 1;
+  }
+
+  .fd-row-span-2 {
+    grid-row: span 1;
+    height: var(--fd-card-h);
+  }
+
+  /* 👇 ye naya block add karo — Payroll ko clip hone se rokta hai */
+  .fd-payroll-wrap {
+    height: auto;
+    overflow: visible;
+  }
+}
 `;
 
 const FinamanDashboard = () => {
@@ -276,38 +576,35 @@ const FinamanDashboard = () => {
       tag.textContent = RESPONSIVE_CSS;
       document.head.appendChild(tag);
     }
-    return () => {
-      // Leave styles in place if multiple instances might mount;
-      // remove only when absolutely sure this is the sole consumer.
-    };
+    return () => {};
   }, []);
 
   return (
     <div className="fd-shell">
       <div className="fd-body">
-        {/* Row 0: Alerts strip */}
-        <AlertsStrip />
+    
 
-        {/* Row 1: KPI strip */}
-        <KpiStrip data={data} loading={loading} />
+        {/* KpiStrip sits above the bento grid as its own row — it is not
+            a grid child, so it isn't constrained to --fd-card-h. */}
+        <div className="fd-kpi-strip">
+          <KpiStrip data={data} loading={loading} />
+        </div>
 
-        {/* Row 2: Heatmap + Upcoming Events */}
-        <div className="fd-row2">
+        <div className="fd-bento-grid">
           <AttendanceHeatmap />
-          <div className="fd-sidebar">
-            <UpcomingEvents isHalf={true} />
+
+          <UpcomingEvents isHalf={true} />
+
+          <LeaveAnalytics isHalf={true} />
+
+          <ApprovalWorkflow />
+
+          <WorkDiarySummary data={data} loading={loading} />
+
+          <div className="fd-span-2 fd-payroll-wrap">
+            <PayrollOverview data={data} loading={loading} />
           </div>
         </div>
-
-        {/* Row 3: Leave + Approvals + WorkDiary */}
-        <div className="fd-three-col">
-          <LeaveAnalytics isHalf={true} />
-          <ApprovalWorkflow />
-          <WorkDiarySummary data={data} loading={loading} />
-        </div>
-
-        {/* Row 4: Payroll */}
-        <PayrollOverview data={data} loading={loading} />
       </div>
     </div>
   );

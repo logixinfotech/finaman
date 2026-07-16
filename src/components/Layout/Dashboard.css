@@ -451,6 +451,55 @@
   overflow: hidden;
 }
 
+
+.menu-group-block { margin-bottom: 14px; }
+
+.menu-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #64748b;
+  padding: 6px 4px;
+  margin-bottom: 4px;
+  border: none;
+  border-bottom: 1px dashed #e2e8f0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: color .15s, background .15s;
+}
+
+.menu-group-title:hover {
+  color: #4f46e5;
+  background: #f8fafc;
+}
+
+.menu-group-chevron {
+  display: inline-flex;
+  font-size: 9px;
+  color: #94a3b8;
+  transition: color .15s;
+}
+
+.menu-group-title:hover .menu-group-chevron { color: #4f46e5; }
+
+.menu-group-name { flex: 1; }
+
+.menu-group-title.is-collapsed { border-bottom-style: solid; }
+
+.menu-group-count {
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+}
 /* ── Responsive breakpoints ───────────────────────────────────────────── */
 @media (max-width: 900px) {
   .dashboard-dual {

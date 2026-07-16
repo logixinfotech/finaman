@@ -19,12 +19,10 @@ const AttendanceRegisterFilter = ({ filters, setFilters, onApply, onClear }) => 
   const { options, loading } = useGroupOptions();
 
   // Local draft state initialized with parent filters
-  const todayStr = new Date().toISOString().split("T")[0];
-const [draft, setDraft] = useState({
-  date: filters.date || todayStr,   // ← ADD
-  month: filters.month || new Date().getMonth() + 1,
-  year: filters.year || currentYear,
-  branch_id: filters.branch_id || "",
+  const [draft, setDraft] = useState({
+    month: filters.month || new Date().getMonth() + 1,
+    year: filters.year || currentYear,
+    branch_id: filters.branch_id || "",
     branch_name: filters.branch_name || "",
     department_id: filters.department_id || "",
     department_name: filters.department_name || "",
@@ -36,26 +34,16 @@ const [draft, setDraft] = useState({
     MONTHS.find((m) => m.value === draft.month)?.label || ""
   );
 
-  const [local, setLocal] = useState({
-  date: filters.date || "",
-  employee_id: filters.employee_id || "",
-  department: filters.department || "",
-  in_time: filters.in_time || "",
-  out_time: filters.out_time || "",
-  status: filters.status || "",
-});
-
-// Apply button
-const handleApply = () => {
-  onApply(local);  // parent ko pass karo
-};
+  const handleApply = () => {
+    setFilters(draft);
+    onApply?.(draft);
+  };
 
   const handleClear = () => {
     const now = new Date();
     const currentMonthNum = now.getMonth() + 1;
     
     const cleared = {
-      date: todayStr,
       month: currentMonthNum,
       year: now.getFullYear(),
       branch_id: "",
@@ -75,19 +63,6 @@ const handleApply = () => {
   return (
     <div className="bg-white rounded-lg px-5 py-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-6">
-
-        {/* Date */}
-<div className="relative max-w-[150px] flex-1 sm:flex-none">
-  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-    Date
-  </label>
-  <input
-    type="date"
-    value={draft.date || ""}
-    onChange={(e) => setDraft((prev) => ({ ...prev, date: e.target.value }))}
-    className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-  />
-</div>
         
         {/* Month */}
         <div className="relative max-w-[140px] flex-1 sm:flex-none">

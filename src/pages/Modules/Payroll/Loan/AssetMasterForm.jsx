@@ -226,11 +226,11 @@ const AssetMasterForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="ASSET MASTER ENTRY"
+        title="Asset Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -246,7 +246,7 @@ const AssetMasterForm = ({
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">
         <div
           ref={formRef}
-          className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-visible relative"
+          className="w-full bg-white border max-w-[750px] mx-auto border-slate-200 shadow-sm rounded-md overflow-visible relative"
         >
           <div className="p-5 grid grid-cols-1 gap-y-5">
             {/* Row 1 */}

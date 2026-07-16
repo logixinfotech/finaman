@@ -85,7 +85,7 @@ export const generateId = () => Math.random().toString(36).slice(2, 9);
 
 export const newTask = (u = null) => ({
   _key: generateId(), item_type: "task",
-  work_plan: "", target: "", priority: "Medium", category: "Development",
+  work_plan: "", target: "", priority: "Medium", category: "",
   expected_time: "", actual_time: "", status: "Pending", due_date: "", remarks: "",
   assign_type: "self",
   assigned_to_id: u?.userma_id || null,
@@ -270,168 +270,148 @@ const Th = ({ children, w, align = "left" }) => (
   }}>{children}</th>
 );
  
-const TaskRows = memo(({ t, isExpanded, isLoading, subs, onToggle, onOpen, onDelete }) => {
-  const hasSubs = !!subs;
-  const subCount = subs?.length ?? 0;
+const formatDT = (iso) => {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso.replace(' ', 'T'));
+    return d.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  } catch { return null; }
+};
+
+const PRIO_COLORS = { High: { bg: "#fee2e2", c: "#b91c1c" }, Medium: { bg: "#fef3c7", c: "#b45309" }, Low: { bg: "#dcfce7", c: "#15803d" } };
+const STATUS_COLORS = { "Pending": { bg: "#f1f5f9", c: "#475569" }, "In Progress": { bg: "#e0f2fe", c: "#0369a1" }, "Completed": { bg: "#dcfce7", c: "#15803d" }, "Open": { bg: "#fef3c7", c: "#b45309" } };
+
+// ── Plain DD-MM-YYYY (+ time if present) formatter — normal text, no monospace/bold ──
+const fmtDT = (raw) => {
+  if (!raw) return "";
+  const hasTime = raw.length > 10;
+  const d = new Date(hasTime ? raw : `${raw}T00:00:00`);
+  if (isNaN(d)) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  if (!hasTime) return `${dd}-${mm}-${yyyy}`;
+  let h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${dd}-${mm}-${yyyy}, ${h}:${m} ${ap}`;
+};
+
+const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
+  const dueDT = fmtDT(t.due_date);
+  const assignDT = fmtDT(t.assign_datetime);
+  const prioStyle = PRIO_COLORS[t.priority] || PRIO_COLORS.Medium;
+  const statusStyle = STATUS_COLORS[t.status] || STATUS_COLORS.Pending;
+  const key = t._key || t.line_id;
+    const clickTimer = useRef(null);
+ const handleClick = () => {
+    if (clickTimer.current) return;
+    clickTimer.current = setTimeout(() => {
+      onOpen(key);
+      clickTimer.current = null;
+    }, 220);
+  };
+  const handleDoubleClick = (e) => {
+    if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null; }
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit?.(t);
+  };
 
   return (
     <tr
-      style={{
-        background: isExpanded
-          ? "linear-gradient(to right, #eff6ff, #f8fafc)"
-          : "#ffffff",
-        borderBottom: isExpanded ? "none" : "1px solid #f1f5f9",
-        transition: "background .15s",
-      }}> 
-      <td style={{ padding: "0 0 0 14px", width: 32 }}>
-        <button
-          onClick={() => onToggle(t)}
-          title={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
-          style={{
-            width: 22, height: 22, borderRadius: 6,
-            border: `1.5px solid ${isExpanded ? "#185FA5" : "#cbd5e1"}`,
-            background: isExpanded
-              ? "linear-gradient(135deg, #185FA5, #1d4ed8)"
-              : "#f8fafc",
-            cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: isExpanded ? "#fff" : "#64748b",
-            transition: "all .16s cubic-bezier(.4,0,.2,1)",
-            flexShrink: 0,
-            boxShadow: isExpanded ? "0 2px 6px rgba(24,95,165,.3)" : "none",
-          }}>
-          {isLoading ? (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="3"
-              style={{ animation: "tte-spin .7s linear infinite" }}>
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
-          ) : (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-              style={{
-                transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                transition: "transform .18s cubic-bezier(.4,0,.2,1)",
-              }}>
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          )}
-        </button>
-      </td> 
-      <td style={{ padding: "11px 14px" }}>
-        <div
-          onClick={() => onOpen(t._key || t.line_id)}
-          style={{
-            fontSize: 13, fontWeight: 700,
-            color: "#0f172a", cursor: "pointer",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            display: "flex", alignItems: "center", gap: 7,
-            maxWidth: 320,
-            transition: "color .12s",
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = "#185FA5"}
-          onMouseLeave={e => e.currentTarget.style.color = "#0f172a"}>
-          <span style={{
-            width: 7, height: 7, borderRadius: "50%",
-            background: "linear-gradient(135deg, #185FA5, #1d4ed8)",
-            flexShrink: 0, boxShadow: "0 1px 3px rgba(24,95,165,.4)",
-          }} />
-          {t.work_plan || "Untitled task"}
-        </div>
-        {t.target && (
-          <div style={{
-            fontSize: 11, color: "#94a3b8", marginTop: 3,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            maxWidth: 320, paddingLeft: 14,
-          }}>
-            {t.target}
-          </div>
-        )}
-      </td> 
-      <td style={{ padding: "11px 14px" }}>
-        {t.category ? (
-          <span style={{
-            padding: "3px 9px", borderRadius: 5, fontSize: 11, fontWeight: 600,
-            fontFamily: "'Consolas', monospace",
-            background: "#f1f5f9", color: "#475569",
-            border: "1px solid #e2e8f0", letterSpacing: ".2px",
-          }}>{t.category}</span>
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      className={`task-row${selected ? " selected" : ""}`}>
+{/* Assignee */}
+<td data-label="Assignee">
+  {t.assigned_to_name ? (
+    <span style={{
+      fontSize: 12, fontWeight: 500, color: "#334155",
+      overflow: "hidden", textOverflow: "ellipsis",
+      whiteSpace: "nowrap", maxWidth: 100, display: "inline-block",
+    }}>
+      {t.assigned_to_name}
+    </span>
+  ) : (
+    <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
+  )}
+</td> 
+   {/* Task */}
+<td data-label="Task">
+  <div style={{
+    fontSize: 13, fontWeight: 600, color: "#0f172a",
+    whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.4,
+  }}>
+    {t.work_plan || "Untitled task"}
+  </div>
+  {t.target && (
+    <div style={{
+      fontSize: 11, color: "#94a3b8", marginTop: 2,
+      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+    }}>
+      {t.target}
+    </div>
+  )}
+</td>
+      {/* Due Date + Time */}
+      <td data-label="Due Date">
+        {dueDT ? (
+          <span style={{ fontSize: 12, color: "#334155" }}>{dueDT}</span>
         ) : (
-          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
+          <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
         )}
       </td>
 
-      {/* Assignee */}
-      <td style={{ padding: "11px 14px" }}>
-        {t.assigned_to_name ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <div style={{
-              width: 22, height: 22, borderRadius: "50%",
-              background: "linear-gradient(135deg, #185FA5, #8b5cf6)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 9, fontWeight: 800, color: "#fff", flexShrink: 0,
-              boxShadow: "0 1px 3px rgba(24,95,165,.25)",
-            }}>
-              {(t.assigned_to_name || "").slice(0, 2).toUpperCase()}
-            </div>
-            <span style={{
-              fontSize: 12, fontWeight: 600, color: "#334155",
-              overflow: "hidden", textOverflow: "ellipsis",
-              whiteSpace: "nowrap", maxWidth: 90,
-            }}>
-              {t.assigned_to_name}
-            </span>
-          </div>
+      {/* Assigned By */}
+      <td data-label="Assigned By">
+        {t.assigned_by ? (
+          <span style={{
+            fontSize: 12, fontWeight: 500, color: "#334155",
+            overflow: "hidden", textOverflow: "ellipsis",
+            whiteSpace: "nowrap", maxWidth: 100, display: "inline-block",
+          }}>
+            {t.assigned_by}
+          </span>
         ) : (
-          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
+          <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
         )}
       </td>
 
-      {/* colspan 4 — Priority/Status/Due/Hrs in subtask */}
-      <td colSpan={4} style={{ padding: "11px 14px" }}>
-        {!isExpanded && (
-          hasSubs ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{
-                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
-                background: "#eff6ff", color: "#185FA5", border: "1px solid #bfdbfe",
-                fontFamily: "'Consolas', monospace",
-              }}>
-                {subCount} subtask{subCount !== 1 ? "s" : ""}
-              </span>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>· click ▶ to expand</span>
-            </div>
-          ) : (
-            <span style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>
-              click ▶ to load subtasks
-            </span>
-          )
+      {/* Assign Date + Time */}
+      <td data-label="Assigned On">
+        {assignDT ? (
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>{assignDT}</span>
+        ) : (
+          <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
         )}
+      </td>
+
+      {/* Priority */}
+      <td data-label="Priority">
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+          background: prioStyle.bg, color: prioStyle.c,
+        }}>{t.priority || "—"}</span>
+      </td>
+
+      {/* Status */}
+      <td data-label="Status">
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
+          background: statusStyle.bg, color: statusStyle.c,
+        }}>{t.status || "—"}</span>
       </td>
 
       {/* Delete */}
-      <td style={{ padding: "11px 10px", textAlign: "center" }}>
-        {!t.assigned_by && (
+      <td className="task-del-cell">
+        {canEdit && (
           <button
-            onClick={e => { e.stopPropagation(); onDelete(t._key || t.line_id); }}
+            onClick={e => { e.stopPropagation(); onDelete(key); }}
             title="Delete task"
-            style={{
-              width: 26, height: 26, borderRadius: 6,
-              border: "1.5px solid #e2e8f0", background: "#f8fafc",
-              cursor: "pointer", display: "flex",
-              alignItems: "center", justifyContent: "center",
-              color: "#94a3b8", transition: "all .14s",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "#fee2e2";
-              e.currentTarget.style.color = "#b91c1c";
-              e.currentTarget.style.borderColor = "#fca5a5";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "#f8fafc";
-              e.currentTarget.style.color = "#94a3b8";
-              e.currentTarget.style.borderColor = "#e2e8f0";
-            }}>
+            className="task-del-btn">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <polyline points="3 6 5 6 21 6" />
@@ -444,200 +424,27 @@ const TaskRows = memo(({ t, isExpanded, isLoading, subs, onToggle, onOpen, onDel
     </tr>
   );
 });
- 
-const SubtaskRow = memo(({ s, isLast, tod }) => {
-  const pb = PRIO_BADGE[s.priority] || DEFAULT_PRIO;
-  const sc = STAT_COLORS[s.status] || DEFAULT_STAT;
-  const over = s.due_date && s.due_date < tod;
-  const isDone = s.status === "Completed" || !!s.is_done;
 
+export const TaskTable = ({ tasks, onOpen, onEdit, onDelete, onStatusChange, selectedKey, isEditable }) => {
   return (
-    <tr style={{
-      background: isDone
-        ? "linear-gradient(to right, #f0fdf4, #f8fafc)"
-        : "linear-gradient(to right, #eff6ff, #f8faff)",
-      borderBottom: isLast ? "2px solid #e2e8f0" : "1px solid #e8f0fb",
-      opacity: isDone ? 0.7 : 1,
-      transition: "opacity .12s",
-    }}>
-
-      {/* Connector visual */}
-      <td style={{ padding: "0", width: 32, position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-          <div style={{
-            width: 12, height: 12,
-            borderLeft: "2px solid #bfdbfe",
-            borderBottom: "2px solid #bfdbfe",
-            borderRadius: "0 0 0 5px",
-            marginTop: -4,
-          }} />
-        </div>
-      </td>
- 
-      <td style={{ padding: "8px 14px" }}>
-        <div style={{
-          fontSize: 12.5, fontWeight: 600,
-          color: isDone ? "#94a3b8" : "#1e293b",
-          textDecoration: isDone ? "line-through" : "none",
-          display: "flex", alignItems: "center", gap: 7,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          maxWidth: 300,
-        }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-            stroke="#185FA5" strokeWidth="2" strokeLinecap="round"
-            style={{ opacity: .55, flexShrink: 0 }}>
-            <polyline points="9 11 12 14 22 4" />
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-          </svg>
-          {s.subtask_text}
-        </div>
-      </td> 
-      <td style={{ padding: "8px 14px" }} /> 
-      <td style={{ padding: "8px 14px" }} />
-
-      {/* Priority */}
-      <td style={{ padding: "8px 14px" }}>
-        <span style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          padding: "3px 8px", borderRadius: 5, fontSize: 10.5, fontWeight: 700,
-          fontFamily: "'Consolas', monospace",
-          background: pb.bg, color: pb.color,
-          border: `1px solid ${pb.border}`,
-        }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: pb.dot, flexShrink: 0 }} />
-          {s.priority || "Medium"}
-        </span>
-      </td>
-
-      {/* Status */}
-      <td style={{ padding: "8px 14px" }}>
-        <span style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          padding: "3px 8px", borderRadius: 5, fontSize: 10.5, fontWeight: 700,
-          fontFamily: "'Consolas', monospace",
-          background: sc.bg, color: sc.color,
-          border: `1px solid ${sc.border}`,
-        }}>
-          {isDone && (
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          )}
-          {s.status || "Pending"}
-        </span>
-      </td> 
-      <td style={{ padding: "8px 14px" }}>
-        {s.due_date ? (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            fontFamily: "'Consolas', monospace", fontSize: 11.5,
-            color: over ? "#b91c1c" : "#64748b",
-            fontWeight: over ? 700 : 500,
-            background: over ? "#fff1f1" : "transparent",
-            padding: over ? "2px 7px" : "0",
-            borderRadius: over ? 4 : 0,
-            border: over ? "1px solid #fecaca" : "none",
-          }}>
-            {over && (
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
-                stroke="#b91c1c" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            )}
-            {s.due_date}
-          </span>
-        ) : (
-          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
-        )}
-      </td> 
-      <td style={{ padding: "8px 14px" }}>
-        {parseFloat(s.expected_time) > 0 ? (
-          <span style={{
-            fontFamily: "'Consolas', monospace", fontSize: 11.5,
-            color: "#334155", fontWeight: 600,
-          }}>
-            {parseFloat(s.expected_time).toFixed(1)}h
-          </span>
-        ) : (
-          <span style={{ color: "#cbd5e1", fontSize: 13 }}>—</span>
-        )}
-      </td> 
-      <td style={{ padding: "8px 10px" }} />
-    </tr>
-  );
-});
-
-export const TaskTable = ({ tasks, onOpen, onDelete, onStatusChange }) => {
-  const tod = todayStr();
-  const [expanded, setExpanded] = useState({});
-  const [subtaskData, setSubtaskData] = useState({});
-  const [loadingId, setLoadingId] = useState(null); 
-  const toggleExpand = useCallback(async (task) => {
-    const id = task.line_id;
-    if (!id) return;
-
-    let needsFetch = false;
-    setExpanded(prev => {
-      const nowOpen = !prev[id];
-      if (nowOpen) needsFetch = true;
-      return { ...prev, [id]: nowOpen };
-    });
-
-    setSubtaskData(prev => {
-      if (!needsFetch || prev[id] !== undefined) return prev;  
-      return prev; 
-    }); 
-    setSubtaskData(prev => {
-      if (prev[id] !== undefined) return prev; 
-      return prev;
-    });
-
-    setSubtaskData(prev => {
-      if (prev[id] !== undefined) { needsFetch = false; } // already have it
-      return prev;
-    });
-
-    if (!needsFetch) return;
-
-    setLoadingId(id);
-    try {
-      const r = await fetchSubtasks(id);
-      const subs = Array.isArray(r) ? r : (r?.data || []);
-      setSubtaskData(prev => ({ ...prev, [id]: subs }));
-    } catch {
-      setSubtaskData(prev => ({ ...prev, [id]: [] }));
-    } finally {
-      setLoadingId(null);
-    }
-  }, []); 
-
-  return (
-    <div style={{
-      border: "1.5px solid #e2e8f0", borderRadius: 12,
-      overflow: "auto", background: "#ffffff",
-      boxShadow: "0 1px 4px rgba(15,23,42,.05), 0 4px 16px rgba(15,23,42,.04)",
-    }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div className="task-table-wrap">
+      <table className="task-table">
         <thead>
           <tr>
-            <Th w="32px" />
-            <Th w="30%">Task</Th>
-            <Th w="12%">Category</Th>
-            <Th w="14%">Assignee</Th>
-            <Th w="10%">Priority</Th>
-            <Th w="12%">Status</Th>
-            <Th w="10%">Due Date</Th>
-            <Th w="8%">Exp. Hrs</Th>
-            <Th w="40px" />
+            <Th w="12%">Assignee</Th>
+            <Th w="28%">Task</Th>
+            <Th w="14%">Due Date</Th>
+            <Th w="12%">Assigned By</Th>
+            <Th w="14%">Assigned On</Th>
+            <Th w="8%">Priority</Th>
+            <Th w="8%">Status</Th>
+            <Th w="34px" />
           </tr>
         </thead>
         <tbody>
           {tasks.length === 0 ? (
             <tr>
-              <td colSpan={9}>
+              <td colSpan={8}>
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center",
                   padding: "48px 24px", gap: 10,
@@ -660,73 +467,78 @@ export const TaskTable = ({ tasks, onOpen, onDelete, onStatusChange }) => {
               </td>
             </tr>
           ) : tasks.map(t => {
-            const id = t.line_id;
-            const isExpanded = !!expanded[id];
-            const subs = subtaskData[id];
-            const isLoading = loadingId === id;
-
+            const key = t._key || t.line_id;
             return (
-              <Fragment key={t._key || id}>
-                <TaskRows
-                  t={t}
-                  isExpanded={isExpanded}
-                  isLoading={isLoading}
-                  subs={subs}
-                  onToggle={toggleExpand}
-                  onOpen={onOpen}
-                  onDelete={onDelete}
-                />
-
-                {isExpanded && (
-                  <>
-                    {isLoading && (
-                      <tr style={{ background: "#f8fafc" }}>
-                        <td colSpan={9} style={{ padding: "12px 14px 12px 46px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#94a3b8", fontSize: 12 }}>
-                            <div style={{
-                              width: 12, height: 12, border: "2px solid #bfdbfe",
-                              borderTop: "2px solid #185FA5", borderRadius: "50%",
-                              animation: "tte-spin .7s linear infinite",
-                            }} />
-                            Loading subtasks…
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    {!isLoading && subs?.length === 0 && (
-                      <tr style={{ background: "#f8fafc" }}>
-                        <td colSpan={9} style={{
-                          padding: "10px 14px 10px 46px",
-                          fontSize: 12, color: "#94a3b8",
-                          borderBottom: "2px solid #e2e8f0",
-                          fontStyle: "italic",
-                        }}>
-                          No subtasks for this task
-                        </td>
-                      </tr>
-                    )}
-                    {!isLoading && subs?.map((s, si) => (
-                      <SubtaskRow
-                        key={s.subtask_id}
-                        s={s}
-                        isLast={si === subs.length - 1}
-                        tod={tod}
-                      />
-                    ))}
-                  </>
-                )}
-              </Fragment>
+              <TaskRows
+                key={key}
+                t={t}
+                onOpen={onOpen}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                canEdit={isEditable ? isEditable(t) : !t.assigned_by}
+                selected={selectedKey !== null && selectedKey !== undefined &&
+                  (key === selectedKey || String(t.line_id) === String(selectedKey))}
+              />
             );
           })}
         </tbody>
       </table>
 
       <style>{`
-        @keyframes tte-spin { to { transform: rotate(360deg); } }
+        .task-table-wrap {
+          border: 1px solid #e2e8f0; border-radius: 10px;
+          overflow: auto; background: #ffffff;
+        }
+        .task-table {
+          width: 100%; border-collapse: collapse;
+          font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .task-table td {
+          padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top;
+        }
+        .task-row { background: #fff; cursor: pointer; }
+        .task-row:hover:not(.selected) { background: #f8fafc; }
+        .task-row.selected {
+          background: #EFF6FF;
+          box-shadow: inset 3px 0 0 #185FA5;
+        }
+
+        .task-del-cell { text-align: center; padding: 6px 8px !important; }
+        .task-del-btn {
+          width: 24px; height: 24px; border-radius: 6px;
+          border: 1px solid #e2e8f0; background: #f8fafc;
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+          color: #94a3b8;
+        }
+        .task-del-btn:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+
+        /* ── Mobile: table becomes a stacked, labelled card list ── */
+      /* ── Mobile: table becomes a stacked, labelled card list ── */
+@media (max-width: 680px) {
+  .task-table-wrap { border: none; background: transparent; overflow: visible; }
+  .task-table, .task-table thead, .task-table tbody, .task-table tr, .task-table td {
+    display: block; width: 100%;
+  }
+  .task-table thead { display: none; }
+  .task-table tbody tr {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+    margin-bottom: 8px; padding: 10px 12px 6px;
+  }
+  .task-table td {
+    padding: 5px 0; border-bottom: none;
+  }
+  .task-table td[data-label]::before {
+    content: attr(data-label);
+    display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 2px;
+  }
+  .task-del-cell { text-align: left; padding: 6px 0 2px !important; }
+}
       `}</style>
     </div>
   );
 };
+
 
 const TaskCardMemo = ({ task, onOpen, onDelete, onStatusChange, isAssignedToMe = false, isSelected = false }) => {
   const [ctx, setCtx] = useState(null);
@@ -752,7 +564,7 @@ const TaskCardMemo = ({ task, onOpen, onDelete, onStatusChange, isAssignedToMe =
       onClick={() => onOpen(task._key)}
       onContextMenu={e => { e.preventDefault(); setCtx({ x: e.clientX, y: e.clientY }); }}
       style={{
-        background: isSelected ? "#f0f7ff" : C.surface,   // ← add isSelected bg
+        background: isSelected ? "#f0f7ff" : C.surface,   
         borderRadius: 12,
         cursor: "pointer",
         opacity: done ? 0.55 : 1,
@@ -1049,6 +861,38 @@ export const TaskRow = ({ task, onOpen, onToggle, onDelete, isAssignedToMe = fal
 };
 
 // ─── DetailPanel ─────────────────────────────────────────────────
+// ── Turns plain-text lines into real list markup: "- item" becomes a bullet <li>,
+// "1. item" / "1) item" becomes a numbered <li>, anything else is a paragraph.
+// This is what actually shows the Shift+Enter lists (built in TaskTableEntry) as
+// proper points on the frontend instead of squished plain text. ──
+const renderFormatted = (text) => {
+  if (!text) return null;
+  const lines = text.split("\n");
+  const blocks = [];
+  let current = null;
+
+  lines.forEach(raw => {
+    const bullet = raw.match(/^\s*-\s+(.*)$/);
+    const numbered = raw.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (bullet) {
+      if (!current || current.type !== "ul") { current = { type: "ul", items: [] }; blocks.push(current); }
+      current.items.push(bullet[1]);
+    } else if (numbered) {
+      if (!current || current.type !== "ol") { current = { type: "ol", items: [] }; blocks.push(current); }
+      current.items.push(numbered[1]);
+    } else {
+      current = null;
+      blocks.push({ type: "p", text: raw });
+    }
+  });
+
+  return blocks.map((b, i) => {
+    if (b.type === "ul") return <ul key={i} className="dp-list">{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>;
+    if (b.type === "ol") return <ol key={i} className="dp-list">{b.items.map((it, j) => <li key={j}>{it}</li>)}</ol>;
+    return b.text.trim() ? <p key={i} className="dp-line">{b.text}</p> : null;
+  });
+};
+
 export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnly = false, isMobile = false, fullHeight = false }) => {
   const [cmt, setCmt] = useState("");
   const [cmts, setCmts] = useState([]);
@@ -1072,7 +916,6 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
       .finally(() => setCmtLoading(false));
   }, [task?.line_id]);
 
-  // lock body scroll on mobile
   useEffect(() => {
     if (isMobile) document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -1081,9 +924,7 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
   if (!task) return null;
 
   const isTicket = task.item_type === "ticket";
-  const pc = PRIO_CFG[task.priority] || PRIO_CFG.Medium;
   const done = isTicket ? (task.status === "Resolved" || task.status === "Closed") : task.status === "Completed";
-  const over = task.due_date && task.due_date < todayStr() && !done;
   const stCfg = STAT_BADGE[task.status] || {};
   const subDone = subTasks.filter(s => s.is_done).length;
   const timeAlert = getTimeAlert(task);
@@ -1132,89 +973,45 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
   };
 
   const panelContent = (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.surface, overflow: "hidden" }}>
+    <div className="dp-root" style={{ display: "flex", flexDirection: "column", height: "100%", background: C.surface, overflow: "hidden" }}>
       {/* Header */}
-      <div style={{ padding: "16px 16px 12px", borderBottom: `1.5px solid ${C.border}`, flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
+      <div className="dp-header" style={{ padding: "16px 44px 12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, position: "relative" }}>
+        {stCfg.label && (
           <span style={{
-            fontFamily: FM, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
-            background: pc.badge.bg, color: pc.badge.color, display: "inline-flex", alignItems: "center", gap: 4
+            display: "inline-block", fontSize: 10.5, fontWeight: 700, letterSpacing: ".3px",
+            padding: "2px 8px", borderRadius: 6, marginBottom: 7,
+            background: stCfg.bg || C.blueLight, color: stCfg.color || C.blueDark,
           }}>
-            <PDot color={pc.dot} size={5} />{task.priority}
+            {stCfg.label || task.status}
           </span>
-          <span style={{
-            fontFamily: FM, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
-            background: stCfg.bg, color: stCfg.color
-          }}>{task.status}</span>
-          {over && <span style={{
-            fontFamily: FM, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
-            background: "#fee2e2", color: "#b91c1c", display: "inline-flex", alignItems: "center", gap: 4
-          }}>
-            <AlertTriangle size={9} /> Overdue
-          </span>}
-          {timeAlert && (
-            <span style={{
-              fontFamily: FM, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
-              background: timeAlert === "over" ? "#fee2e2" : "#fef3c7",
-              color: timeAlert === "over" ? "#b91c1c" : "#b45309",
-              display: "inline-flex", alignItems: "center", gap: 4,
-              animation: timeAlert === "warning" ? "pulse 2s ease-in-out infinite" : "none",
-            }}>
-              <TrendingUp size={9} />
-              {timeAlert === "over" ? "Time over budget" : "80% time used"}
-            </span>
-          )}
-          <button onClick={onClose}
-            style={{ marginLeft: "auto", ...btnSecondary, padding: "4px 9px", fontSize: 12 }}>
-            <X size={14} />
-          </button>
+        )}
+
+        <div className="dp-title" style={{
+          fontFamily: FD, fontSize: 15, fontWeight: 700, color: C.t1, lineHeight: 1.45,
+          textDecoration: done ? "line-through" : "none", opacity: done ? .6 : 1,
+        }}>
+          {renderFormatted(task.work_plan || "Untitled task")}
         </div>
 
-        <div style={{
-          fontFamily: FD, fontSize: 15, fontWeight: 800, color: C.t1, lineHeight: 1.4,
-          textDecoration: done ? "line-through" : "none"
-        }}>
-          {task.work_plan || "Untitled task"}
-        </div>
         {task.target && (
-          <div style={{ fontSize: 13, color: C.t3, marginTop: 6, lineHeight: 1.6, fontFamily: F, fontWeight: 400 }}>
-            {task.target}
+          <div className="dp-target" style={{ fontSize: 12.5, color: C.t3, marginTop: 6, lineHeight: 1.6, fontFamily: F }}>
+            {renderFormatted(task.target)}
           </div>
         )}
+
+        <button onClick={onClose} className="dp-close-btn" aria-label="Close">
+          <X size={15} />
+        </button>
       </div>
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
 
-        {/* Details grid */}
-        <div>
-          <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase",
-            color: C.t4, marginBottom: 8, fontFamily: F
-          }}>Details</div>
-          {[
-            { l: "Category", v: task.category || "—" },
-            { l: "Due date", v: fmtDate(task.due_date), red: over },
-            { l: "Exp. hrs", v: exp > 0 ? `${fmtHrs(exp)}h` : "—" },
-            { l: "Actual hrs", v: act > 0 ? `${fmtHrs(act)}h` : "—", amber: exp > 0 && act > exp },
-            { l: "Assignee", v: task.assigned_to_name || "—" },
-            task.assigned_by ? { l: "Assigned by", v: task.assigned_by } : null,
-          ].filter(Boolean).map(({ l, v, red, amber }) => (
-            <div key={l} style={{
-              display: "flex", justifyContent: "space-between", padding: "6px 0",
-              borderBottom: `1px solid ${C.bg}`, fontSize: 13
-            }}>
-              <span style={{ color: C.t3, fontFamily: F }}>{l}</span>
-              <span style={{ fontFamily: F, fontWeight: 600, color: red ? "#b91c1c" : amber ? "#b45309" : C.t1 }}>{v}</span>
-            </div>
-          ))}
-        </div>
-
         {/* Hours progress */}
         {exp > 0 && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", color: C.t4, fontFamily: F }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: C.t4, fontFamily: F }}>
                 Time Budget
               </div>
               <span style={{
@@ -1227,8 +1024,8 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
             <div style={{ height: 6, background: C.bg, borderRadius: 3, overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 3,
-                background: timeAlert === "over" ? "#ef4444" : timeAlert === "warning" ? "#f59e0b" : "linear-gradient(90deg,#22c55e,#14b8a6)",
-                width: `${Math.min(100, exp > 0 ? (act / exp) * 100 : 0)}%`, transition: "width .5s ease",
+                background: timeAlert === "over" ? "#ef4444" : timeAlert === "warning" ? "#f59e0b" : "#22c55e",
+                width: `${Math.min(100, exp > 0 ? (act / exp) * 100 : 0)}%`,
               }} />
             </div>
           </div>
@@ -1236,11 +1033,11 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
 
         {task.remarks && (
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", color: C.t4, marginBottom: 6 }}>Remarks</div>
-            <div style={{
-              fontSize: 12, color: C.t3, background: C.bg, border: `1px solid ${C.border}`,
-              borderRadius: 9, padding: "10px 12px", lineHeight: 1.6
-            }}>{task.remarks}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: C.t4, marginBottom: 6 }}>Remarks</div>
+            <div className="dp-remarks" style={{
+              fontSize: 12.5, color: C.t3, background: C.bg, border: `1px solid ${C.border}`,
+              borderRadius: 8, padding: "10px 12px", lineHeight: 1.6
+            }}>{renderFormatted(task.remarks)}</div>
           </div>
         )}
 
@@ -1248,7 +1045,7 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase",
+              fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase",
               color: C.t4, display: "flex", alignItems: "center", gap: 6
             }}>
               <ListChecks size={12} color={C.t4} /> Sub-tasks
@@ -1271,10 +1068,8 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
               {subTasks.length > 0 && (
                 <div style={{ height: 4, background: C.bg, borderRadius: 2, overflow: "hidden", marginBottom: 10 }}>
                   <div style={{
-                    height: "100%", borderRadius: 2,
-                    background: "linear-gradient(90deg,#22c55e,#14b8a6)",
+                    height: "100%", borderRadius: 2, background: "#22c55e",
                     width: `${subTasks.length ? Math.round((subDone / subTasks.length) * 100) : 0}%`,
-                    transition: "width .4s ease"
                   }} />
                 </div>
               )}
@@ -1284,34 +1079,34 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
                 : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
                     {subTasks.map(s => (
-                      <div key={s.subtask_id}
+                      <div key={s.subtask_id} className="dp-sub-row"
                         style={{
                           display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
                           background: s.is_done ? "#f0fdf4" : C.bg,
-                          border: `1.5px solid ${s.is_done ? "#bbf7d0" : C.border}`,
-                          borderRadius: 8, transition: "all .14s",
+                          border: `1px solid ${s.is_done ? "#bbf7d0" : C.border}`,
+                          borderRadius: 8,
                         }}>
                         <div onClick={() => handleToggleSub(s.subtask_id, s.is_done)}
+                          className="dp-checkbox"
                           style={{
                             width: 16, height: 16, borderRadius: 4,
                             border: `2px solid ${s.is_done ? "#22c55e" : C.borderS}`,
                             background: s.is_done ? "#22c55e" : "#fff",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            cursor: "pointer", flexShrink: 0, transition: "all .13s"
+                            cursor: "pointer", flexShrink: 0,
                           }}>
                           {s.is_done && <Check size={9} color="#fff" strokeWidth={3.5} />}
                         </div>
                         <span style={{
                           flex: 1, fontSize: 13, color: s.is_done ? C.t4 : C.t2,
-                          textDecoration: s.is_done ? "line-through" : "none", fontFamily: F, lineHeight: 1.4
+                          textDecoration: s.is_done ? "line-through" : "none", fontFamily: F, lineHeight: 1.4,
+                          wordBreak: "break-word",
                         }}>
                           {s.subtask_text}
                         </span>
                         {!readOnly && (
-                          <span onClick={() => handleDeleteSub(s.subtask_id)}
-                            style={{ cursor: "pointer", color: C.border, display: "flex", flexShrink: 0, padding: 2, transition: "color .13s" }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#ef4444"}
-                            onMouseLeave={e => e.currentTarget.style.color = C.border}>
+                          <span onClick={() => handleDeleteSub(s.subtask_id)} className="dp-sub-del"
+                            style={{ cursor: "pointer", color: C.border, display: "flex", flexShrink: 0, padding: 2 }}>
                             <X size={12} />
                           </span>
                         )}
@@ -1322,9 +1117,9 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
               }
 
               {!readOnly && (
-                <div style={{
+                <div className="dp-sub-input" style={{
                   display: "flex", alignItems: "center", gap: 8, background: C.bg,
-                  border: `1.5px solid ${C.border}`, borderRadius: 9, padding: "7px 12px"
+                  border: `1px solid ${C.border}`, borderRadius: 8, padding: "7px 12px"
                 }}>
                   <Plus size={13} color={C.t4} strokeWidth={2.5} />
                   <input value={subInp} onChange={e => setSubInp(e.target.value)}
@@ -1335,11 +1130,7 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
                       color: C.t1, flex: 1, fontFamily: F
                     }} />
                   {subInp && (
-                    <button onClick={handleAddSub}
-                      style={{
-                        background: C.blue, border: "none", borderRadius: 6, padding: "3px 8px",
-                        cursor: "pointer", display: "flex", alignItems: "center"
-                      }}>
+                    <button onClick={handleAddSub} className="dp-sub-add-btn">
                       <Check size={11} color="#fff" strokeWidth={3} />
                     </button>
                   )}
@@ -1347,12 +1138,10 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
               )}
             </>
           )}
-        </div>
-
-        {/* Comments */}
+        </div> 
         <div>
           <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase",
+            fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase",
             color: C.t4, marginBottom: 8, display: "flex", alignItems: "center", gap: 6
           }}>
             <MessageSquare size={12} color={C.t4} /> Comments
@@ -1380,9 +1169,9 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
                       <div style={{
                         fontSize: 13, color: C.t2, lineHeight: 1.6,
                         background: C.bg, border: `1px solid ${C.border}`,
-                        borderRadius: "0 8px 8px 8px", padding: "8px 10px", fontFamily: F
+                        borderRadius: "0 8px 8px 8px", padding: "8px 10px", fontFamily: F, wordBreak: "break-word",
                       }}>
-                        {cm.comment_text}
+                        {renderFormatted(cm.comment_text)}
                       </div>
                     </div>
                   </div>
@@ -1395,13 +1184,11 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
             <input value={cmt} onChange={e => setCmt(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleAddCmt()}
               placeholder="Write a comment…"
+              className="dp-comment-input"
               style={{
-                flex: 1, background: C.bg, border: `1.5px solid ${C.border}`, borderRadius: 9,
+                flex: 1, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
                 padding: "8px 12px", fontSize: 12, outline: "none", color: C.t1, fontFamily: F,
-                transition: "border-color .14s"
-              }}
-              onFocus={e => e.target.style.borderColor = C.blue}
-              onBlur={e => e.target.style.borderColor = C.border} />
+              }} />
             <button onClick={handleAddCmt} disabled={addingCmt}
               style={{ ...btnSecondary, padding: "7px 10px", flexShrink: 0 }}>
               <Send size={14} />
@@ -1412,29 +1199,33 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
 
       {/* Footer */}
       <div style={{
-        padding: "12px 16px", borderTop: `1.5px solid ${C.border}`,
+        padding: "12px 16px", borderTop: `1px solid ${C.border}`,
         display: "flex", gap: 8, flexShrink: 0, background: C.surface
       }}>
         {!readOnly ? (
-          <>
-            <button onClick={() => onToggle(task._key)}
-              style={{ ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12 }}>
-              {done
-                ? <><CornerDownLeft size={13} />Reopen</>
-                : <><CheckCircle2 size={13} />Complete</>}
-            </button>
-            <button onClick={onEdit}
-              style={{ ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12 }}>
-              <Pencil size={13} /> Edit
-            </button>
-            <button onClick={() => onDelete(task._key)}
-              style={{
-                padding: "8px 11px", borderRadius: 8, border: "1.5px solid #fee2e2",
-                background: "#fff", cursor: "pointer", color: "#b91c1c", display: "flex", alignItems: "center"
-              }}>
-              <Trash2 size={14} />
-            </button>
-          </>
+       <>
+  <button onClick={() => onToggle(task._key)}
+    style={{
+      ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12,
+      background: done ? C.bg : "#ECFDF5",
+      borderColor: done ? C.border : "#A7F3D0",
+      color: done ? C.t3 : "#15803D",
+    }}>
+    {done
+      ? <><CornerDownLeft size={13} />Reopen</>
+      : <><CheckCircle2 size={13} />Complete</>}
+  </button>
+  <button onClick={onEdit}
+    style={{
+      ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12,
+      background: "#FEFCE8", borderColor: "#FDE68A", color: "#A16207",
+    }}>
+    <Pencil size={13} /> Edit
+  </button>
+  <button onClick={() => onDelete(task._key)} className="dp-delete-btn">
+    <Trash2 size={14} />
+  </button>
+</>
         ) : (
           <button onClick={() => onToggle(task._key)}
             style={{ ...btnPrimary, flex: 1, justifyContent: "center" }}>
@@ -1442,30 +1233,69 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
           </button>
         )}
       </div>
+
+      <style>{`
+        .dp-line { margin: 0 0 4px; }
+        .dp-line:last-child { margin-bottom: 0; }
+        .dp-list { margin: 4px 0; padding-left: 18px; }
+        .dp-list li { margin-bottom: 3px; font-weight: 500; }
+        .dp-list li:last-child { margin-bottom: 0; }
+        .dp-title .dp-list li, .dp-title .dp-line { font-size: 13.5px; font-weight: 500; }
+        .dp-target .dp-list, .dp-remarks .dp-list { font-size: inherit; }
+
+        .dp-close-btn {
+          position: absolute; top: 14px; right: 14px;
+          width: 26px; height: 26px; border-radius: 7px;
+          border: 1px solid ${C.border}; background: ${C.surface};
+          color: ${C.t3}; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .dp-close-btn:hover { background: ${C.bg}; }
+
+        .dp-checkbox:hover { border-color: #22c55e; }
+        .dp-sub-del { }
+        .dp-sub-del:hover { color: #ef4444; }
+        .dp-sub-add-btn {
+          background: ${C.blue}; border: none; border-radius: 6px; padding: 3px 8px;
+          cursor: pointer; display: flex; align-items: center;
+        }
+        .dp-comment-input:focus { border-color: ${C.blue}; }
+
+        .dp-delete-btn {
+          padding: 8px 11px; border-radius: 8px; border: 1px solid #fee2e2;
+          background: #fff; cursor: pointer; color: #b91c1c;
+          display: flex; align-items: center;
+        }
+        .dp-delete-btn:hover { background: #fef2f2; }
+
+        @media (max-width: 480px) {
+          .dp-header { padding: 14px 40px 10px 14px; }
+        }
+      `}</style>
     </div>
   );
 
-  // Mobile: bottom sheet overlay
   if (isMobile) {
     return (
       <>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: .15 }}
           onClick={onClose}
           style={{
             position: "fixed", inset: 0, zIndex: 200, background: "rgba(12,25,52,.35)",
           }} />
         <motion.div
           initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-          transition={{ duration: .28, ease: [.32, 0, .67, 0] }}
+          transition={{ duration: .22, ease: "easeOut" }}
           style={{
             position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 201,
-            height: "90dvh", borderRadius: "20px 20px 0 0",
-            background: C.surface, border: `1.5px solid ${C.border}`,
-            boxShadow: "0 -8px 32px rgba(12,25,52,.15)",
+            height: "90dvh", borderRadius: "16px 16px 0 0",
+            background: C.surface, border: `1px solid ${C.border}`,
+            boxShadow: "0 -8px 24px rgba(12,25,52,.12)",
             display: "flex", flexDirection: "column", overflow: "hidden"
           }}>
           <div style={{
-            width: 40, height: 4, borderRadius: 2, background: C.borderS,
+            width: 36, height: 4, borderRadius: 2, background: C.borderS,
             margin: "10px auto 0", flexShrink: 0
           }} />
           <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
@@ -1476,19 +1306,16 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
     );
   }
 
-  // Desktop: slide-in panel
   return (
-    <motion.div initial={false}
-      transition={{ duration: 0 }}
-
-      style={{
-        width: 340, flexShrink: 0, borderLeft: `1.5px solid ${C.border}`,
-        height: "100%", display: "flex", flexDirection: "column", overflow: "hidden"
-      }}>
+    <div style={{
+      width: 340, flexShrink: 0, borderLeft: `1px solid ${C.border}`,
+      height: "100%", display: "flex", flexDirection: "column", overflow: "hidden"
+    }}>
       {panelContent}
-    </motion.div>
+    </div>
   );
 };
+
 // ─── ModalShell ───────────────────────────────────────────────────
 const ModalShell = ({ onClose, children, isMobile }) => {
   useEffect(() => {

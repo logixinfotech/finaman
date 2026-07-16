@@ -14,6 +14,7 @@ import {
   deleteEmployeeDocument,
   viewEmployeeDocument,
 } from "../../utils/api";
+import { showToast } from "../../components/Reusable/alert";
 
 const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = [], employeeId = null }) => {
   const [previewFile, setPreviewFile] = useState(null);
@@ -25,7 +26,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
   const [uploading, setUploading] = useState({});
 
   const baseDocumentCategories = useMemo(() => {
-    
+
 
     // Dynamic — USRGRP data se build karo
     const grouped = {};
@@ -84,58 +85,58 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
 
 
   useEffect(() => {
-  if (!employeeId) return;
+    if (!employeeId) return;
 
-  // Pending local attachments upload karo
-  const uploadPending = async () => {
-    for (const [docName, file] of Object.entries(attachments)) {
-      // Agar file local object hai (server pe save nahi) aur savedDocs mein nahi hai
-      if (file && !file._saved && !savedDocs[docName]) {
-        const docObj = Object.values(
-          // documents array se group_id nikalo
-          {} // placeholder
-        ).flat();
-        // USRGRP se docGroupId nikalo
-        const doc = typeof documents !== 'undefined' 
-          ? documents.find(d => d.group_name === docName) 
-          : null;
-        const docGroupId = doc?.group_id || "";
+    // Pending local attachments upload karo
+    const uploadPending = async () => {
+      for (const [docName, file] of Object.entries(attachments)) {
+        // Agar file local object hai (server pe save nahi) aur savedDocs mein nahi hai
+        if (file && !file._saved && !savedDocs[docName]) {
+          const docObj = Object.values(
+            // documents array se group_id nikalo
+            {} // placeholder
+          ).flat();
+          // USRGRP se docGroupId nikalo
+          const doc = typeof documents !== 'undefined'
+            ? documents.find(d => d.group_name === docName)
+            : null;
+          const docGroupId = doc?.group_id || "";
 
-        try {
-          const fd = new FormData();
-          fd.append("file", file);
-          fd.append("doc_group_id", docGroupId);
-          fd.append("doc_name", docName);
-          await uploadEmployeeDocument(employeeId, fd);
-        } catch (e) {
-          console.error("Pending upload failed:", e);
+          try {
+            const fd = new FormData();
+            fd.append("file", file);
+            fd.append("doc_group_id", docGroupId);
+            fd.append("doc_name", docName);
+            await uploadEmployeeDocument(employeeId, fd);
+          } catch (e) {
+            console.error("Pending upload failed:", e);
+          }
         }
       }
-    }
 
-    // Reload saved docs
-    const res = await getEmployeeDocuments(employeeId);
-    if (res?.data) {
-      const map = {};
-      const attMap = { ...attachments };
-      res.data.forEach(d => {
-        map[d.doc_name] = d;
-        attMap[d.doc_name] = {
-          name: d.file_name,
-          size: d.file_size,
-          type: d.mime_type,
-          _saved: true,
-          _doc_id: d.doc_id,
-          _view_url: viewEmployeeDocument(employeeId, d.doc_id)
-        };
-      });
-      setSavedDocs(map);
-      setAttachments(attMap);
-    }
-  };
+      // Reload saved docs
+      const res = await getEmployeeDocuments(employeeId);
+      if (res?.data) {
+        const map = {};
+        const attMap = { ...attachments };
+        res.data.forEach(d => {
+          map[d.doc_name] = d;
+          attMap[d.doc_name] = {
+            name: d.file_name,
+            size: d.file_size,
+            type: d.mime_type,
+            _saved: true,
+            _doc_id: d.doc_id,
+            _view_url: viewEmployeeDocument(employeeId, d.doc_id)
+          };
+        });
+        setSavedDocs(map);
+        setAttachments(attMap);
+      }
+    };
 
-  uploadPending();
-}, [employeeId]); 
+    uploadPending();
+  }, [employeeId]);
 
   const handleDragOver = (e, docName) => {
     e.preventDefault();
@@ -160,17 +161,24 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
     }
   };
 
+
   // REPLACE handleFileAttach WITH:
-  const handleFileAttach = async (file, docName, globalIdx, docGroupId) => {
+  const handleFileAttach = async (file, docName, globalIdx, docGroupId, docTypeId) => {
     if (!file) return;
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      showToast({ icon: "error", title: `File too large! Max 5 MB allowed. "${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB.` }); return;
+    }
+
     setAttachments(prev => ({ ...prev, [docName]: file }));
     if (employeeId) {
       setUploading(prev => ({ ...prev, [docName]: true }));
       try {
         const fd = new FormData();
-        fd.append("file", file);
-        fd.append("doc_group_id", docGroupId || "");
-        fd.append("doc_name", docName);
+        fd.append("file", file, file.name);          // file.name explicitly do
+        fd.append("doc_name", docName || "");
+        fd.append("doc_group_id", String(docTypeId || ""));
 
         const res = await uploadEmployeeDocument(employeeId, fd);
         if (res?.success) {
@@ -294,23 +302,23 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
     }
   };
 
- 
-const handleView = async (file, globalIdx) => {
-  if (!file) return;
-  if (file._saved && file._view_url) {
-    // Token ke saath fetch karo
-    const token = sessionStorage.getItem("token");
-    const res = await fetch(file._view_url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-  } else {
-    setPreviewFile(file);
-    setActivePreviewIdx(globalIdx);
-  }
-};
+
+  const handleView = async (file, globalIdx) => {
+    if (!file) return;
+    if (file._saved && file._view_url) {
+      // Token ke saath fetch karo
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(file._view_url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } else {
+      setPreviewFile(file);
+      setActivePreviewIdx(globalIdx);
+    }
+  };
 
   const closePreview = () => {
     setPreviewFile(null);

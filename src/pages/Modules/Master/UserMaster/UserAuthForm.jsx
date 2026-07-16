@@ -212,7 +212,7 @@ const UserAuthForm = ({
       .catch(err => console.error("Save Error:", err));
   }; 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-[calc(100vh-120px)] overflow-hidden">
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-[calc(100vh-100px)] overflow-hidden">
 
       {/* ── Header — same prop shape as UserGroupForm ── */}
       <ERPHeader
@@ -247,7 +247,7 @@ const UserAuthForm = ({
         <>
           <div className="flex flex-col flex-1 bg-gray-50 min-h-0">
  
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto space-y-3">
               {loading ? (
                 <div className="text-center py-10 text-gray-400 font-medium text-sm">
                   <FaIcons.FaSpinner className="animate-spin inline mr-2" />

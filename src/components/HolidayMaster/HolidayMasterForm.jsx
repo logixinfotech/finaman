@@ -160,7 +160,7 @@ const HolidayMasterForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
@@ -178,7 +178,7 @@ const HolidayMasterForm = ({
       />
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">
-        <div id="holiday-form-container" className="w-full max-w-[800px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
+        <div id="holiday-form-container" className="w-full max-w-[750px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
           <div className="p-3 grid grid-cols-1 gap-y-3">
             {/* DATE FIELD - Added ID wrapper for reliable focusing */}
             <div className="flex flex-col sm:flex-row sm:gap-4 w-full">
@@ -193,7 +193,7 @@ const HolidayMasterForm = ({
                   disabled={isViewMode}
                   onKeyDown={handleKeyDown}
                   className={getInputClass(isViewMode, "date")}
-                />
+                                  />
               </div>
             </div>
 

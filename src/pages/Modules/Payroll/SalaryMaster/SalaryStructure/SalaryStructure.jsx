@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+
+import { useEffect, useState, useCallback, useRef } from "react";
 import Table from "../../../../../components/Reusable/table/Table";
 import SalaryStructureForm from "./SalaryStructureForm";
 import { useERPMode } from "../../../../../components/Reusable/form/useFormMode";
@@ -49,10 +50,30 @@ const SalaryStructure = ({ tab }) => {
   const [list, setList]                     = useState([]);
   const [loading, setLoading]               = useState(true);
   const [currentIndex, setCurrentIndex]     = useState(0);
-  const [employees, setEmployees]           = useState([]);   // All employees from Actled
-  const [templates, setTemplates]           = useState([]);   // All salary templates
-  const [incomeHeads, setIncomeHeads]       = useState([]);   // Master list for Manual mode
+  const [employees, setEmployees]           = useState([]);
+  const [templates, setTemplates]           = useState([]);
+  const [incomeHeads, setIncomeHeads]       = useState([]);
   const [deductionHeads, setDeductionHeads] = useState([]);
+
+  // 🔑 Race-condition guard: sirf latest fired request ka response accept hoga
+  const latestRequestId = useRef(0);
+  // latestRequestId ref ke turant baad ye add karo
+const invalidatePendingFetches = () => { latestRequestId.current++; };
+
+const handleAddWrapped = () => {
+  invalidatePendingFetches();   // 👈 koi bhi purana in-flight fetch ab "stale" ho jayega
+  handleAdd();
+};
+
+const handleModifyWrapped = () => {
+  invalidatePendingFetches();
+  handleModify();
+};
+
+const handleEditCancelWrapped = () => {
+  invalidatePendingFetches();
+  handleEditCancel();
+};
 
   const {
     mode, formData, setFormData,
@@ -70,49 +91,43 @@ const SalaryStructure = ({ tab }) => {
     tab?.appl_name || "Salary Structure"
   );
 
-  // ── Load list ──────────────────────────────────────────────
-  const { options: groupOptions, loading: optionsLoading } = useGroupOptions(); 
-const formatGradeWithLabel = useCallback((gradeId) => {
-  const matchingGrade = groupOptions?.grade?.find(
-    g => String(g.value) === String(gradeId)
-  );
-  return matchingGrade ? matchingGrade.label : gradeId;
-}, [groupOptions?.grade]);
-const loadList = useCallback(async () => {
-  try {
-    setLoading(true);
-    const data = await fetchSalaryStructures();
-    
-    const rawTemplates = Array.isArray(data) ? data : data?.data || [];
-    
-    const finalData = rawTemplates.map(template => {
-      // Hook ki list se matching grade dhoondo
-      const matchingGrade = groupOptions.grade.find(
-        g => String(g.value) === String(template.grade)
-      );
+  const { options: groupOptions, loading: optionsLoading } = useGroupOptions();
 
-      return {
-        ...template, 
-        grade: matchingGrade ? matchingGrade.label :undefined
-      };
-    });
+  const formatGradeWithLabel = useCallback((gradeId) => {
+    const matchingGrade = groupOptions?.grade?.find(
+      g => String(g.value) === String(gradeId)
+    );
+    return matchingGrade ? matchingGrade.label : gradeId;
+  }, [groupOptions?.grade]);
 
-    setList(finalData);
-    
-    if (finalData.length > 0) {
-      // Ab yahan direct Grade Name print hoga (jaise "Grade A"), ID nahi!
+  // ── Load list (ab ye formData ko force overwrite NAHI karta) ──
+  const loadList = useCallback(async (opts = {}) => {
+    try {
+      setLoading(true);
+      const data = await fetchSalaryStructures();
+      const rawTemplates = Array.isArray(data) ? data : data?.data || [];
 
-      
-      setFormData(finalData[0]);
-      setCurrentIndex(0);
+      const finalData = rawTemplates.map(template => {
+        const matchingGrade = groupOptions.grade.find(
+          g => String(g.value) === String(template.grade)
+        );
+        return { ...template, grade: matchingGrade ? matchingGrade.label : undefined };
+      });
+
+      setList(finalData);
+
+      // 👇 sirf pehli baar (mount) pe hi auto-select karo, save/refresh ke baad nahi
+      if (opts.selectFirst && finalData.length > 0) {
+        setFormData(finalData[0]);
+        setCurrentIndex(0);
+      }
+    } catch (err) {
+      alertError("Fetch Error", "Failed to load salary templates");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    alertError("Fetch Error", "Failed to load salary templates");
-  } finally {
-    setLoading(false);
-  }
-}, [setFormData, groupOptions.grade]);
-  // ── Load supporting data once ──────────────────────────────
+  }, [setFormData, groupOptions.grade]);
+
   const loadSupportingData = useCallback(async () => {
     try {
       const [empRes, tplRes, ihRes, dhRes] = await Promise.all([
@@ -131,50 +146,123 @@ const loadList = useCallback(async () => {
   }, []);
 
   useEffect(() => {
-    loadList();
+    loadList({ selectFirst: true });
     loadSupportingData();
   }, []);
 
+  // ── Prev/Next record navigation (view mode) ────────────────────
+  // Pehle ye sparse list[currentIndex] seedhe formData mein daal deta tha.
+  // Ab full record fetch karta hai (with incomeLines/deductionLines), race-safe.
+  // useEffect(() => {
+  //   if (!(showForm && mode === "view" && list.length > 0)) return;
+
+  //   const row = list[currentIndex];
+  //   if (!row?.salary_structure_id) return;
+
+  //   const requestId = ++latestRequestId.current;
+
+  //   (async () => {
+  //     try {
+  //       const res = await fetchSalaryStructureById(row.salary_structure_id);
+  //       if (requestId !== latestRequestId.current) return; // stale, ignore
+  //       setFormData(res?.data || row);
+  //     } catch {
+  //       if (requestId !== latestRequestId.current) return;
+  //       setFormData(row);
+  //     }
+  //   })();
+  // }, [currentIndex, list, showForm, mode, setFormData]);
   useEffect(() => {
-    if (showForm && mode === "view" && list.length > 0) {
-      setFormData(list[currentIndex]);
+  if (!(showForm && mode === "view" && list.length > 0)) return;
+
+  const row = list[currentIndex];
+  if (!row?.salary_structure_id) return;
+
+  // 👇 Agar formData already isi record ka hai (with lines), dobara fetch mat karo
+  if (
+    formData.salary_structure_id === row.salary_structure_id &&
+    (formData.incomeLines || formData.deductionLines)
+  ) {
+    return;
+  }
+
+  const requestId = ++latestRequestId.current;
+
+  (async () => {
+    try {
+      const res = await fetchSalaryStructureById(row.salary_structure_id);
+      if (requestId !== latestRequestId.current) return;
+      setFormData(res?.data || row);
+    } catch {
+      if (requestId !== latestRequestId.current) return;
+      setFormData(row);
     }
-  }, [currentIndex, list, showForm, mode, setFormData]);
+  })();
+}, [currentIndex, list, showForm, mode, setFormData, formData.salary_structure_id, formData.incomeLines, formData.deductionLines]);
 
   const handleTabChange = (t) => {
     if (t === "search") setShowForm(false);
     if (t === "entry")  setShowForm(true);
   };
 
-const handleRowSelect = async (row) => {
-  const index = list.findIndex(i => i.salary_structure_id === row.salary_structure_id);
-  if (index !== -1) setCurrentIndex(index);
-
-  try {
-    const res = await fetchSalaryStructureById(row.salary_structure_id);
-    handleView(res?.data || row);  // ← incomeLines + deductionLines included
-  } catch {
-    handleView(row);  // fallback
-  }
-};
-const handleSidebarViewPick = async (emp) => {
-  const existingStructure = list.find(
-    s => String(s.employee_id) === String(emp.Actled_id)
-  );
-  if (!existingStructure) return;
-  try {
-    const res = await fetchSalaryStructureById(existingStructure.salary_structure_id);
-    handleView(res?.data || existingStructure);
-    const index = list.findIndex(i => i.salary_structure_id === existingStructure.salary_structure_id);
+  // ── Row double-click (race-safe) ────────────────────────────────
+  const handleRowSelect = async (row) => {
+    const index = list.findIndex(i => i.salary_structure_id === row.salary_structure_id);
     if (index !== -1) setCurrentIndex(index);
-  } catch {
-    handleView(existingStructure);
-  }
-};
+
+    const requestId = ++latestRequestId.current;
+
+    try {
+      const res = await fetchSalaryStructureById(row.salary_structure_id);
+      if (requestId !== latestRequestId.current) return; // ek naya click ho chuka, ye response purana hai
+      handleView(res?.data || row);
+    } catch {
+      if (requestId !== latestRequestId.current) return;
+      handleView(row);
+    }
+  };
+
+  // ── Sidebar pick in view mode (race-safe) ───────────────────────
+  const handleSidebarViewPick = async (emp) => {
+    const existingStructure = list.find(
+      s => String(s.employee_id) === String(emp.Actled_id)
+    );
+    if (!existingStructure) return;
+
+    const requestId = ++latestRequestId.current;
+
+    try {
+      const res = await fetchSalaryStructureById(existingStructure.salary_structure_id);
+      if (requestId !== latestRequestId.current) return;
+
+      handleView(res?.data || existingStructure);
+      const index = list.findIndex(i => i.salary_structure_id === existingStructure.salary_structure_id);
+      if (index !== -1) setCurrentIndex(index);
+    } catch {
+      if (requestId !== latestRequestId.current) return;
+      handleView(existingStructure);
+    }
+  };
+
+  // ── Save (list refresh + turant full data fetch, race-safe) ────
   const handleSave = async (updatedData) => {
     const response = await performSave("salary_structure_id", updatedData);
     if (response?.success) {
-      await loadList();
+      await loadList(); // ab formData ko touch nahi karega
+
+      const savedId = response.data?.salary_structure_id || updatedData.salary_structure_id;
+      if (savedId) {
+        const requestId = ++latestRequestId.current;
+        try {
+          const fullRes = await fetchSalaryStructureById(savedId);
+          if (requestId !== latestRequestId.current) return; // beech mein kahin aur click ho gaya
+          if (fullRes?.data) {
+            setFormData(fullRes.data);
+          }
+        } catch (err) {
+          // silent fail — list to already refresh ho chuka hai
+        }
+      }
     }
   };
 
@@ -215,16 +303,15 @@ const handleSidebarViewPick = async (emp) => {
       alertError("Delete Error", "Failed to delete some structures");
     }
   };
-
-  useEffect(() => {
-    setERPHandlers({
-      onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
-      onPrevRecord: () => setCurrentIndex(p => Math. max(p - 1, 0)),
-      onNew:  handleAdd,
-      onSave: handleSave,
-      onEsc:  () => setShowForm(false),
-    });
-  }, [list, handleAdd, handleSave, setShowForm]);
+useEffect(() => {
+  setERPHandlers({
+    onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
+    onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
+    onNew:  handleAddWrapped,      // 👈 changed
+    onSave: handleSave,
+    onEsc:  () => setShowForm(false),
+  });
+}, [list, handleAdd, handleSave, setShowForm]);
 
   return (
     <div className="h-full w-full">
@@ -237,12 +324,12 @@ const handleSidebarViewPick = async (emp) => {
           onCancel={() => setShowForm(false)}
           mode={mode}
           saving={saving}
-          onModify={handleModify}
-          onNewEntry={handleAdd}
+         onModify={handleModifyWrapped}      // 👈 changed
+  onNewEntry={handleAddWrapped}       
           currentRecord={list.length > 0 ? currentIndex + 1 : 0}
           totalRecords={list.length}
           rights={rights}
-          onEditCancel={handleEditCancel}
+         onEditCancel={handleEditCancelWrapped} 
           activeTab="entry"
           onTabChange={handleTabChange}
           employees={employees}
@@ -250,15 +337,15 @@ const handleSidebarViewPick = async (emp) => {
           incomeHeads={incomeHeads}
           deductionHeads={deductionHeads}
           structuresList={list}
-           onSidebarViewPick={handleSidebarViewPick}
-           onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
+          onSidebarViewPick={handleSidebarViewPick}
+          onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
           onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
         <div className="bg-slate-50 h-full">
           <Table
-          activeTab="search"
-          onTabChange={handleTabChange}
+            activeTab="search"
+            onTabChange={handleTabChange}
             title="Salary Structure"
             data={list}
             columns={columns}

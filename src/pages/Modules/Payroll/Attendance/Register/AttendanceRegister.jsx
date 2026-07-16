@@ -78,7 +78,13 @@ const AttendanceRegister = () => {
             empMap[empId] = {
               id: empId,
               code: row.employee_code,
-              name: row.employee_name,
+              name: [
+                row.first_name?.trim(),
+                row.middle_name?.trim(),
+                row.last_name?.trim()
+              ]
+                .filter(v => v)
+                .join(" "),
               dept: row.department,
               desig: row.designation,
               daily: {},

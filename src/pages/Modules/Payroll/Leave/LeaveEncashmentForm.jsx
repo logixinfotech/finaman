@@ -447,8 +447,8 @@ const handleChange = (field, value) => {
   const leaveTypeNames = leaveTypes.map(lt => lt.leave_name);
 
   return (
-    <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden" style={{ fontFamily: FONT }}>
-      <ERPHeader title="LEAVE ENCASHMENT ENTRY" isAddMode={isAddMode}
+    <div className="w-full  h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden" style={{ fontFamily: FONT }}>
+      <ERPHeader title="Leave Encashment" isAddMode={isAddMode}
         isEditMode={isEditMode} isViewMode={isViewMode} activeTab={activeTab}
         onTabChange={onTabChange} rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}  currentIndex={currentRecord}      // 👈
         totalRecords={totalRecords}        // 👈
@@ -456,7 +456,8 @@ const handleChange = (field, value) => {
         onNextRecord={onNextRecord}   />
 
       <div className="flex-1 p-4 overflow-y-auto">
-        <div ref={formRef} className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
+        <div ref={formRef} className="w-full bg-white border border-slate-200 max-w-[750px] mx-auto
+       shadow-sm rounded-md overflow-hidden">
 
           {/* Row 1: Employee | Leave Type */}
           <div className="flex items-center gap-4 px-5 py-2">

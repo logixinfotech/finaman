@@ -123,6 +123,7 @@ export const statusOptions = [
 export const attendanceTypeOptions = [
   { label: "Month Entry",             value: "Manual" },
   { label: "Day Entry",               value: "List" },
+  { label: "Horizontal Entry", value: "Horizontal" },
   { label: "Biometric Integration",   value: "Biometric" },
   { label: "Excel Import",            value: "Excel" },
 ];
@@ -195,7 +196,7 @@ export const AvatarCell = ({ name, code, empId, photo }) => {
     <div className="px-3 py-2 flex items-center gap-2 min-w-0">
       {photo ? (
         <img src={`${baseUrl}${photo}`} alt={name}
-          className="w-7 h-7 rounded-full object-cover shrink-0"
+          className="w-12 h-12 rounded-full object-cover shrink-0"
           onError={e => { e.target.style.display = "none"; }} />
       ) : (
         <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] font-semibold"

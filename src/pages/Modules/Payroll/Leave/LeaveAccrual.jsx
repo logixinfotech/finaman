@@ -233,81 +233,91 @@ const LeaveAccrualBulk = ({ tab }) => {
     .toFixed(2);
 
   // ── Load existing accruals ────────────────────────────────────────────
-  const loadAccruals = useCallback(async () => {
-    if (!year || filteredEmployees.length === 0) { setRows([]); return; }
-    try {
-      setLoading(true);
-      const res = await getLeaveAccruals({ year });
-      const existing = res?.data || [];
+const loadAccruals = useCallback(async () => {
+  if (!year || filteredEmployees.length === 0) { setRows([]); return; }
+  try {
+    setLoading(true);
+    const res = await getLeaveAccruals({ year });
+    const existing = res?.data || [];
 
-      const newRows = filteredEmployees.map((emp) => {
-        const empAccruals = existing.filter(
-          (a) => Number(a.employee_id) === Number(emp.Actled_id)
-        );
+    const newRows = filteredEmployees.map((emp) => {
+      const empAccruals = existing.filter(
+        (a) => Number(a.employee_id) === Number(emp.Actled_id)
+      );
 
-        // Build months — distribute existing accrual_days evenly
-        const months = {};
-        // Total annual accrual sabka combined
-        const totalAnnual = empAccruals.reduce((s, a) =>
-          s + parseFloat(a.accrual_days || 0), 0
-        );
-        // Per month = annual / 12
-        const perMonthDisplay = parseFloat((totalAnnual / 12).toFixed(2));
+      const months = {};
+      const totalAnnual = empAccruals.reduce((s, a) =>
+        s + parseFloat(a.accrual_days || 0), 0
+      );
+      const perMonthDisplay = parseFloat((totalAnnual / 12).toFixed(2));
+      const isPostedAll = empAccruals.length > 0 && empAccruals.every(a => !!a.is_posted);
 
-        for (let i = 1; i <= 12; i++) {
-          const ltBreakdown = empAccruals.map(a => ({
-            leave_type_id: a.leave_type_id,
-            leave_name: a.leave_name,
-            accrual_id: a.accrual_id,
-            perMonth: parseFloat((parseFloat(a.accrual_days || 0) / 12).toFixed(2)),
-          }));
+      // ✅ remarks se month-wise data parse karo
+      let monthData = {};
+      try {
+        const remarksStr = empAccruals[0]?.remarks || "";
+        const parsed = JSON.parse(remarksStr);
+        if (parsed?.months) monthData = parsed.months;
+      } catch (e) {
+        monthData = {};
+      }
+      const hasMonthData = Object.keys(monthData).length > 0;
 
-          months[i] = {
-            accrual_ids: empAccruals.map(a => a.accrual_id).filter(Boolean),
-            days: perMonthDisplay > 0 ? String(perMonthDisplay) : "",
-            ltBreakdown,
-            is_posted: empAccruals.length > 0 && empAccruals.every(a => !!a.is_posted),
-          };
-        }
+      for (let i = 1; i <= 12; i++) {
+        const ltBreakdown = empAccruals.map(a => ({
+          leave_type_id: a.leave_type_id,
+          leave_name: a.leave_name,
+          accrual_id: a.accrual_id,
+          perMonth: parseFloat((parseFloat(a.accrual_days || 0) / 12).toFixed(2)),
+        }));
 
-        const carry_forward = fmtNum(empAccruals[0]?.carry_forward || 0);
-        const isPosted = empAccruals.length > 0 && empAccruals.every((a) => a.is_posted);
-
-        // ── Build checked leave types from existing data ────────────────
-        const existingLTIds = {};
-        empAccruals.forEach((a) => {
-          if (a.leave_type_id) existingLTIds[a.leave_type_id] = true;
-        });
-
-        return {
-          employee_id: emp.Actled_id,
-          employee_name: emp.Led_name?.trim() || "",
-          dept_name: emp.Op_name3 || "—",
-          months,
-          carry_forward,
-          is_posted: isPosted,
-          existingLTIds,  // which LTs already have data
+        months[i] = {
+          accrual_ids: empAccruals.map(a => a.accrual_id).filter(Boolean),
+          // ✅ Month data available hai to use karo, warna annual/12
+          days: hasMonthData
+            ? (monthData[String(i)] > 0 ? String(monthData[String(i)]) : "")
+            : (perMonthDisplay > 0 ? String(perMonthDisplay) : ""),
+          ltBreakdown,
+          is_posted: isPostedAll,
         };
+      }
+
+      const carry_forward = fmtNum(empAccruals[0]?.carry_forward || 0);
+      const isPosted = empAccruals.length > 0 && empAccruals.every((a) => a.is_posted);
+
+      const existingLTIds = {};
+      empAccruals.forEach((a) => {
+        if (a.leave_type_id) existingLTIds[a.leave_type_id] = true;
       });
 
-      setRows(newRows);
-      originalRows.current = JSON.parse(JSON.stringify(newRows));
+      return {
+        employee_id: emp.Actled_id,
+        employee_name: (emp.full_name || emp.Led_name)?.trim() || "",
+        dept_name: emp.Op_name3 || "—",
+        months,
+        carry_forward,
+        is_posted: isPosted,
+        existingLTIds,
+      };
+    });
 
-      // ✅ FIX 1: Default selected = EMPTY (no auto-check)
-      setSelected({});
-    } catch (err) {
-      console.error("loadAccruals error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [year, deptId, allEmployees]);
+    setRows(newRows);
+    originalRows.current = JSON.parse(JSON.stringify(newRows));
+    setSelected({});
+  } catch (err) {
+    console.error("loadAccruals error:", err);
+  } finally {
+    setLoading(false);
+  }
+}, [year, deptId, allEmployees]);
 
   useEffect(() => { loadAccruals(); }, [year, deptId, allEmployees]);
 
   // ── When a row is selected in modify mode — pre-check its leave types ──
   // This runs when user clicks a row checkbox
   const handleRowSelect = (empId, row) => {
-    const newSelected = { ...selected, [empId]: !selected[empId] };
+    const key = String(empId);
+    const newSelected = { ...selected, [key]: !selected[key] };
     setSelected(newSelected);
 
     // Selected employees ke baad unki common leave types compute karo
@@ -342,9 +352,9 @@ const LeaveAccrualBulk = ({ tab }) => {
 
   const toggleSelectAll = () => {
     const nonPosted = rows.filter((r) => !r.is_posted);
-    const allSel = nonPosted.every((r) => selected[r.employee_id]);
+    const allSel = nonPosted.every((r) => selected[String(r.employee_id)]);
     const next = {};
-    nonPosted.forEach((r) => { next[r.employee_id] = !allSel; });
+    nonPosted.forEach((r) => { next[String(r.employee_id)] = !allSel; });
     setSelected(next);
   };
 
@@ -357,15 +367,18 @@ const LeaveAccrualBulk = ({ tab }) => {
     const rate = parseFloat(totalRate) || 0;
     setRows(prev =>
       prev.map(row => {
-        if (row.is_posted || !selected[row.employee_id]) return row;
+        // ✅ String comparison — dono ko String mein convert karo
+        const isSelected = Object.keys(selected).some(
+          k => String(k) === String(row.employee_id) && selected[k]
+        );
+        if (row.is_posted || !isSelected) return row;
+
         const months = { ...row.months };
         for (let m = 1; m <= 12; m++) {
           if (!months[m]?.is_posted) {
-            // Sirf empty cells fill karo — already filled cells mat change karo
-            // Agar manually kuch likha hai to woh same rahega
             months[m] = {
               ...months[m],
-              days: months[m]?.days || rate.toFixed(2),
+              days: rate.toFixed(2),
               is_posted: false
             };
           }
@@ -374,6 +387,8 @@ const LeaveAccrualBulk = ({ tab }) => {
       })
     );
   };
+
+
   const handleCellChange = (empId, monthNum, value) => {
     if (isViewMode) return;
     setRows(prev => prev.map(row => {
@@ -443,7 +458,12 @@ const LeaveAccrualBulk = ({ tab }) => {
             accrual_days: finalAccrualDays,
             carry_forward: cf,
             total_accrued: ltTotal,
-            remarks: "Bulk Accrual",
+            // ✅ months data JSON mein store karo
+            remarks: JSON.stringify({
+              months: Object.fromEntries(
+                Object.entries(row.months).map(([m, v]) => [m, parseFloat(v.days) || 0])
+              )
+            }),
           });
         });
       });
@@ -511,7 +531,7 @@ const LeaveAccrualBulk = ({ tab }) => {
     if (!confirmed) return;
 
     try {
-       for (const row of selRows) {
+      for (const row of selRows) {
         const accrualIds = new Set();
 
         Object.values(row.months).forEach(m => {
@@ -712,7 +732,7 @@ const LeaveAccrualBulk = ({ tab }) => {
                   .map((row, rowIdx) => {
                     const { bg, text } = AVATAR_COLORS[rowIdx % AVATAR_COLORS.length];
                     const isPosted = row.is_posted;
-                    const isSel = !!selected[row.employee_id];
+                    const isSel = !!selected[String(row.employee_id)];
                     const total = getTotalBalance(row);
 
                     return (

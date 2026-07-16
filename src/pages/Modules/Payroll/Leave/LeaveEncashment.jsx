@@ -396,12 +396,12 @@ const LeaveEncashment = ({ tab }) => {
           onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
         />
       ) : (
-        <div className="p-4 bg-slate-50 h-full">
+        <div className="bg-slate-50 h-full">
           <Table
           onDeleteMultiple={handleDeleteMultiple}
           activeTab="search"
           onTabChange={handleTabChange}
-            title="Leave Encashment Entry"
+            title="Leave Encashment "
             data={list}
             columns={columns}
             rowKey="encashment_id"

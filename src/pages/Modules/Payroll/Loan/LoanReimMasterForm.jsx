@@ -155,11 +155,11 @@ const LoanReimMasterForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="LOAN / REIMBURSEMENT"
+        title="Loan / Reimbursement Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -175,7 +175,7 @@ const LoanReimMasterForm = ({
       <div className="flex-1 p-4 overflow-y-auto flex justify-center">
         <div
           ref={formRef}
-          className="w-full bg-white border border-slate-200 shadow-sm rounded-md overflow-visible relative"
+          className="w-full bg-white border border-slate-200 max-w-[750px] shadow-sm rounded-md overflow-visible relative"
         >
           <div className="p-5 grid grid-cols-1 gap-y-5">
 

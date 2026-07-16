@@ -52,6 +52,8 @@ const ReportMasterPageing = React.lazy(() =>
 const ReportMasterPage = React.lazy(() =>
     import("./Modules/Master/ShortMaster/DepartmentMasterPage")
 );
+
+
 const OTEntry = React.lazy(() =>
     import("./Modules/Payroll/OverTime/OTEntry")
 );
@@ -111,7 +113,7 @@ const PageRegistry = {
     EmployeeMaster,
     CompanyMasterPage,
     MASMNU: MenuMasterPage,
-    DASH_BHS: BusinessHealthSnapshot,
+     
     USERMA: UserMasterPage,
     NOTIFICATIONS_PAGE: NotificationsPage,
     PROFILE: ProfilePage,
@@ -164,6 +166,8 @@ const PageRegistry = {
     TDSMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/TDSMaster")),
     LWFMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/LWFMaster")),
     POA: React.lazy(() => import("./Modules/Approval/PurchaseOrder/POApproval")),
+    SalesDashboard: React.lazy(() => import("./Modules/Dashboard/SalesDashboard/SalesDashboard")),
+    MU_GRP: React.lazy(() => import("./Modules/Master/ShortMaster/MenuGroupMaster.jsx")),
 
 };
 

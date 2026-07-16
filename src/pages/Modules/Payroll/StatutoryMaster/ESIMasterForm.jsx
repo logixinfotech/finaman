@@ -452,11 +452,11 @@ const ESIMasterForm = ({
 
   return (
     <div
-      className="w-full max-w-[700px] mx-auto h-[calc(100vh-120px)] bg-[#eef1f6] flex flex-col"
+      className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
-        title="ESI MASTER ENTRY"
+        title="ESI Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -472,7 +472,7 @@ const ESIMasterForm = ({
       <div className="flex-1 p-4 overflow-y-auto flex justify-center items-start">
         <div
           id="esi-form-container"
-          className="w-full bg-white border rounded-md p-4 flex flex-col gap-4"
+          className="w-full bg-white border rounded-md p-4 max-w-[750px] flex flex-col gap-4"
         >
 
           {/* Row 1 — Name + Applicable From */}
@@ -488,23 +488,21 @@ const ESIMasterForm = ({
                 onChange={e => handleChange("name", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="e.g. Standard ESI"
-                className={`${getInputClass(isViewMode, "name")} flex-1`}
+                className={`${getInputClass(isViewMode, "name")} max-w-[170px] flex-1`}
               />
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="w-[150px]">Applicable From</label>
+              <label className="w-[280px]">Applicable From</label>
               <ERPDateInput
                 value={formData.applicable_from || ""}
                 disabled={isViewMode}
                 onChange={value => handleChange("applicable_from", value)}
                 onKeyDown={handleKeyDown}
-                className={`${getInputClass(isViewMode, "applicable_from")} flex-1`}
+                className={`${getInputClass(isViewMode, "applicable_from")} max-w-[190px] flex-1`}
               />
             </div>
           </div>
-
-          {/* Row 2 — Employee Rate + Employer Rate */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-3">
               <label className="w-[150px]">Employee Rate %</label>
@@ -530,7 +528,7 @@ const ESIMasterForm = ({
                 disabled={isViewMode}
                 onChange={e => handleChange("employer_rate", e.target.value)}
                 onKeyDown={handleKeyDown}
-                className={`${getInputClass(isViewMode, "employer_rate")} w-[170px]`}
+                className={`${getInputClass(isViewMode, "employer_rate")} w-[190px]`}
               />
             </div>
           </div>
@@ -552,7 +550,7 @@ const ESIMasterForm = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="w-[150px]">Apply Ceiling</label>
+              <label className="w-[160px]">Apply Ceiling</label>
               <ERPAutocomplete
                 data-auto
                 options={["Yes", "No"]}
