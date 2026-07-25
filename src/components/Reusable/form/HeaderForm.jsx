@@ -7,6 +7,7 @@ import {
   User,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useEffect } from "react"; 
 
 const TAB_CONFIG_BASE = [
   { id: "entry", Icon: FileText, label: "Entry" },
@@ -87,6 +88,38 @@ const showNav = (onPrevRecord || onNextRecord) && !isSettingsTab && isViewMode;
     e.currentTarget.style.color = "#64748b";
     e.currentTarget.style.borderColor = "#e2e8f0";
   };
+  useEffect(() => {
+  if (!showNav) return;
+
+  const isTypingTarget = (el) => {
+    if (!el) return false;
+    const tag = el.tagName;
+    return (
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT" ||
+      el.isContentEditable
+    );
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key !== "PageUp" && e.key !== "PageDown") return;
+    if (isTypingTarget(document.activeElement)) return;
+
+    if (e.key === "PageDown") {
+      if (atStart || !onPrevRecord) return;
+      e.preventDefault();
+      onPrevRecord();
+    } else if (e.key === "PageUp") {
+      if (atEnd || !onNextRecord) return;
+      e.preventDefault();
+      onNextRecord();
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [showNav, atStart, atEnd, onPrevRecord, onNextRecord]);
 
   return (
    <div
@@ -213,7 +246,7 @@ style={{
               whileTap={!atStart ? { scale: 0.85 } : undefined}
               onMouseEnter={navHoverIn}
               onMouseLeave={navHoverOut}
-              className="w-[28px] h-[28px] flex items-center justify-center rounded-[8px] border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-[28px] h-[28px] flex items-center justify-center font-semibold  rounded-[8px] border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
                 background: "#ffffff",
                 color: "#64748b",
@@ -238,7 +271,7 @@ style={{
               whileTap={!atEnd ? { scale: 0.85 } : undefined}
               onMouseEnter={navHoverIn}
               onMouseLeave={navHoverOut}
-              className="w-[28px] h-[28px] flex items-center justify-center rounded-[8px] border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-[28px] h-[28px] flex items-center font-semibold justify-center rounded-[8px] border transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
                 background: "#ffffff",
                 color: "#64748b",

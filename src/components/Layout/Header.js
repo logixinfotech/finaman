@@ -231,7 +231,7 @@ function Header({
             <img
               src="/finaman-logo.png"
               alt="Logo"
-              className="h-4 w-4 object-contain"
+              className="h-6 w-6 object-contain"
             />
           </button>
         )}
@@ -245,7 +245,7 @@ function Header({
             <img
               src="/finaman-logo.png"
               alt="Logo"
-              className="h-4 w-4 object-contain"
+              className="h-6 w-6 object-contain"
             />
           </button>
         )}
@@ -254,7 +254,7 @@ function Header({
           <span className="relative inline-block text-[12px] font-bold uppercase tracking-wider text-white/90">
             FINAMAN ERP
           </span>
-          <span className="text-[9px] text-white/50 font-medium tracking-wide hidden md:block">
+          <span className="text-[9px] text-white/50 font-medium pt-[2px] tracking-wide hidden md:block">
             Process Manufacturing Management Software
           </span>
         </div>

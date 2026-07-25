@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ERPFormBuilder from "../../../../components/Reusable/form/ERPFormBuilder";
-import { fieldGroups ,sidebarConfig , validateFullForm, widthConfig ,requiredFields,cleanAndSliceField,validateSingleField} from "./companyValidation";
+import { fieldGroups ,sidebarConfig , validateFullForm, widthConfig ,requiredFields,cleanAndSliceField, configs, getHeaderStyle, TabIcon, getInitials ,validateSingleField} from "./companyValidation";
 import { fetchCountries, fetchStates } from "../../../../utils/api"; 
 import { COMPANY_SETTINGS_CONFIG, COMPANY_SETTINGS_DEFAULTS } from './companySettingsConfig';
+
+
  
 const tabs = Object.keys(fieldGroups);  
 
@@ -147,6 +149,10 @@ const handleKeyDown = useCallback((e) => {
         tabs={tabs}
         fieldGroups={fieldGroups}
         sidebarConfig={sidebarConfig(formData)}
+        configs={configs}
+        getHeaderStyle={getHeaderStyle}
+        TabIcon={TabIcon}
+        getInitials={getInitials}
         twoColumn={true}
         customTabs={{}}
         formData={formData}

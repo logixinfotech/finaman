@@ -12,8 +12,7 @@ import "./App.css";
 import Swal from "sweetalert2";
 import { useNotifications } from "./theme/NotificationContext";
 import NotificationToast from "./components/Layout/Notification/NotificationToast";
-import { startGlobalAutocompleteGuard } from "./utils/disableGlobalAutocomplete";
-
+import { startGlobalAutocompleteGuard } from "./utils/disableGlobalAutocomplete"; 
 import 'primeicons/primeicons.css';
 function AppShell({
   theme,
@@ -45,9 +44,23 @@ function AppShell({
       await logoutUser();
     }
   };
+  const isWebView =
+  /wv/.test(navigator.userAgent) ||
+  /Version\/[\d.]+/.test(navigator.userAgent);
+
+const isChrome =
+  /Chrome/.test(navigator.userAgent) && !isWebView;
 
   return ( 
-    <div className={`app-layout flex flex-col h-screen overflow-hidden ${theme}`}>
+   <div
+  className={`app-layout flex flex-col overflow-hidden ${theme}`}
+  style={{
+    height:
+      window.innerWidth < 768
+        ? "calc(100dvh - env(safe-area-inset-top))"
+        : "100vh",
+  }}
+>
 
       <Header
         theme={theme}
@@ -67,14 +80,18 @@ function AppShell({
           />
         )}
         <div
-          className={`
-            layout-sidebar
-            ${sidebarCollapsed ? "collapsed" : ""}
-            fixed top-0 left-0 h-screen lg:h-full lg:relative z-50 lg:z-auto
-            transition-transform duration-300 ease-in-out
-            ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          `}
-        >
+  className={`
+    layout-sidebar
+    ${sidebarCollapsed ? "collapsed" : ""}
+    fixed left-0 z-50 lg:z-auto
+    transition-transform duration-300 ease-in-out
+    ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+    lg:relative lg:translate-x-0
+  `}
+style={{
+  marginTop: isWebView ? "100px" : "0px",
+}}
+>
           <Sidebar
             collapsed={sidebarCollapsed}
             onMenuItemClick={(mod) => {

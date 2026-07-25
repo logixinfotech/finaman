@@ -1,39 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Settings2, RotateCcw, Check, AlertCircle } from "lucide-react";
 
-// ─────────────────────────────────────────────
-// FIELD RENDERERS
-// ─────────────────────────────────────────────
+// ── Controls (unchanged) ──
 
 const CheckboxCtrl = ({ value, onChange }) => (
-  <input
-    type="checkbox"
-    checked={!!value}
-    onChange={e => onChange(e.target.checked)}
-    className="w-[15px] h-[15px] rounded accent-blue-500 cursor-pointer shrink-0"
-  />
+  <button
+    type="button"
+    role="switch"
+    aria-checked={!!value}
+    onClick={() => onChange(!value)}
+    className={`relative w-[38px] h-[22px] rounded-full transition-colors duration-200 shrink-0 ${
+      value ? "bg-blue-600" : "bg-slate-200"
+    }`}
+  >
+    <span
+      className={`absolute top-[2px] left-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${
+        value ? "translate-x-[16px]" : "translate-x-0"
+      }`}
+    />
+  </button>
 );
 
-const NumberCtrl = ({ value, onChange, width = "54px", suffix }) => (
-  <div className="flex items-center gap-1">
+const NumberCtrl = ({ value, onChange, width = "70px", suffix }) => (
+  <div className="flex items-center gap-1.5">
     <input
       type="number"
       value={value ?? ""}
-      onChange={e => onChange(e.target.value)}
-      className="h-[24px] border border-gray-200 rounded text-right text-[12px] px-1.5 bg-white text-gray-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-      style={{ width }}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-[30px] border border-slate-200 rounded-md text-right text-[12.5px] px-2 bg-white text-slate-800 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100 w-[70px] sm:w-auto"
+      style={{ maxWidth: width }}
     />
-    {suffix && <span className="text-[11px] text-gray-400">{suffix}</span>}
+    {suffix && <span className="text-[11.5px] text-slate-400 font-medium whitespace-nowrap">{suffix}</span>}
   </div>
 );
 
-const SelectCtrl = ({ value, onChange, options, width = "140px" }) => (
+const SelectCtrl = ({ value, onChange, options, width = "160px" }) => (
   <select
     value={value ?? ""}
-    onChange={e => onChange(e.target.value)}
-    className="h-[24px] border border-gray-200 rounded text-[12px] px-1.5 bg-white text-gray-800 outline-none focus:border-blue-400"
+    onChange={(e) => onChange(e.target.value)}
+    className="h-[30px] border border-slate-200 rounded-md text-[12.5px] px-2 bg-white text-slate-800 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100 cursor-pointer min-w-[110px]"
     style={{ maxWidth: width }}
   >
-    {options.map(opt => (
+    {options.map((opt) => (
       <option key={opt.value ?? opt} value={opt.value ?? opt}>
         {opt.label ?? opt}
       </option>
@@ -45,33 +53,28 @@ const DateCtrl = ({ value, onChange }) => (
   <input
     type="date"
     value={value ?? ""}
-    onChange={e => onChange(e.target.value)}
-    className="h-[24px] border border-gray-200 rounded text-[12px] px-1.5 bg-white text-gray-800 outline-none focus:border-blue-400"
+    onChange={(e) => onChange(e.target.value)}
+    className="h-[30px] border border-slate-200 rounded-md text-[12.5px] px-2 bg-white text-slate-800 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
   />
 );
 
-const TextCtrl = ({ value, onChange, width = "140px", placeholder = "" }) => (
+const TextCtrl = ({ value, onChange, width = "180px", placeholder = "" }) => (
   <input
     type="text"
     value={value ?? ""}
-    onChange={e => onChange(e.target.value)}
+    onChange={(e) => onChange(e.target.value)}
     placeholder={placeholder}
-    className="h-[24px] border border-gray-200 rounded text-[12px] px-1.5 bg-white text-gray-800 outline-none focus:border-blue-400"
-    style={{ width }}
+    className="h-[30px] border border-slate-200 rounded-md text-[12.5px] px-2.5 bg-white text-slate-800 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100 min-w-[120px]"
+    style={{ maxWidth: width }}
   />
 );
 
-// ─────────────────────────────────────────────
-// SINGLE ROW
-// Each row = { key, label, bold?, controls: [...] }
-// controls: [{ type, key, ...props }, ...]
-// ─────────────────────────────────────────────
+// ── Row ──
 
 const SettingRow = ({ row, values, onChange }) => {
   const renderCtrl = (ctrl) => {
     const val = values[ctrl.key];
     const change = (v) => onChange(ctrl.key, v);
-
     switch (ctrl.type) {
       case "checkbox": return <CheckboxCtrl key={ctrl.key} value={val} onChange={change} />;
       case "number":   return <NumberCtrl  key={ctrl.key} value={val} onChange={change} width={ctrl.width} suffix={ctrl.suffix} />;
@@ -83,74 +86,51 @@ const SettingRow = ({ row, values, onChange }) => {
   };
 
   return (
-    <div className={`
-      flex items-center justify-between px-3.5 min-h-[34px]
-      border-b border-gray-100 gap-2.5 last:border-0
-      hover:bg-gray-50 transition-colors
-    `}>
-      <span className={`text-[12.5px] leading-snug py-1.5 flex-1 ${
-        row.bold ? "font-medium text-gray-800" : "text-gray-500"
-      }`}>
-        {row.label}
-      </span>
-      <div className="flex items-center gap-1.5 shrink-0">
-        {row.controls.map(ctrl => renderCtrl(ctrl))}
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 px-4 py-[11px] border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors">
+      <div className="flex-1 min-w-0">
+        <span className={`text-[12.5px] leading-snug ${row.bold ? "font-semibold text-slate-800" : "text-slate-600"}`}>
+          {row.label}
+        </span>
+        {row.description && (
+          <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{row.description}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+        {row.controls.map((ctrl) => renderCtrl(ctrl))}
       </div>
     </div>
   );
 };
 
-// ─────────────────────────────────────────────
-// SECTION LABEL
-// ─────────────────────────────────────────────
+// ── Section card ──
 
-const SectionLabel = ({ title }) => (
-  <div className="text-[10px] font-medium tracking-[0.16em] uppercase text-gray-400 bg-gray-50 px-3.5 py-1.5 border-y border-gray-100">
-    {title}
-  </div>
-);
+const SettingSection = ({ section, values, onChange }) => {
+  const rows = section.rows || [];
+  const mid = Math.ceil(rows.length / 2);
+  const leftRows = rows.slice(0, mid);
+  const rightRows = rows.slice(mid);
 
-// ─────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+      {section.section && (
+        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+          <span className="text-[11px] font-bold tracking-[0.08em] uppercase text-slate-500">
+            {section.section}
+          </span>
+        </div>
+      )}
+      <div className={`grid ${rightRows.length > 0 ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"} xl:divide-x divide-slate-100`}>
+        <div>{leftRows.map((row, i) => <SettingRow key={row.controls[0]?.key ?? i} row={row} values={values} onChange={onChange} />)}</div>
+        {rightRows.length > 0 && (
+          <div>{rightRows.map((row, i) => <SettingRow key={row.controls[0]?.key ?? i} row={row} values={values} onChange={onChange} />)}</div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-/**
- * ERPSettings — reusable settings panel
- *
- * Props:
- *   applName   — module display name (shown in header)
- *   config     — array of sections (see CONFIG SHAPE below)
- *   onSave     — (values) => void
- *   onCancel   — () => void
- *   onRestore  — () => void  (optional)
- *
- * CONFIG SHAPE:
- * [
- *   {
- *     section: "General",          // section label (falsy = no label)
- *     rows: [
- *       {
- *         key: "allowTaxMod",       // unique key (used when section has 1 col)
- *         label: "Allow mod of tax details for GST",
- *         bold: false,              // optional bold label
- *         controls: [
- *           { type: "checkbox", key: "allowTaxMod" },
- *           { type: "number",   key: "taxPct", width: "54px", suffix: "%" },
- *           { type: "select",   key: "itemType", options: ["Finish Goods","Trading"] },
- *           { type: "date",     key: "effectiveDate" },
- *           { type: "text",     key: "ledgerName", width: "140px" },
- *         ]
- *       },
- *       ...
- *     ]
- *   },
- *   ...
- * ]
- *
- * LAYOUT: rows are split into two columns automatically.
- * Each section's rows array is split in half — left col gets rows[0..half], right gets rows[half..end].
- * For a single-column section, just put all rows in rows[] — they still split naturally.
- */
+// ── Main component ──
+
 const ERPSettings = ({
   applName = "Module",
   config = [],
@@ -160,85 +140,81 @@ const ERPSettings = ({
   onRestore,
 }) => {
   const [values, setValues] = useState(initialValues);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isDirty) setValues(initialValues);
+  }, [initialValues, isDirty]);
 
   const handleChange = (key, value) => {
-    setValues(prev => ({ ...prev, [key]: value }));
+    setValues((prev) => ({ ...prev, [key]: value }));
+    setIsDirty(true);
   };
 
-  const handleSave = () => {
-    if (onSave) onSave(values);
+  const handleSave = async () => {
+    if (!onSave) return;
+    setSaving(true);
+    try {
+      await onSave(values);
+      setIsDirty(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRestore = () => {
     setValues(initialValues);
-    if (onRestore) onRestore();
+    setIsDirty(false);
+    onRestore?.();
   };
 
+  const isEmpty = !config || config.length === 0;
+
   return (
-    <div className="flex flex-col flex-1 min-h-0" style={{ fontFamily: "'Inter','Tahoma',system-ui,sans-serif" }}>
-
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-        <span className="text-[11px] font-medium tracking-[0.14em] uppercase text-gray-400">
-          Settings
-        </span>
-        <span className="text-[11px] text-gray-300 italic">{applName}</span>
-      </div>
-
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto">
-        {config.map((section, si) => (
-          <div key={si}>
-            {section.section && <SectionLabel title={section.section} />}
-
-            {/* Two-column split */}
-            <div className="grid grid-cols-2 divide-x divide-gray-100">
-              {/* Left col — first half of rows */}
-              <div className="divide-y divide-gray-100">
-                {section.rows
-                  .slice(0, Math.ceil(section.rows.length / 2))
-                  .map(row => (
-                    <SettingRow key={row.controls[0]?.key} row={row} values={values} onChange={handleChange} />
-                  ))
-                }
-              </div>
-              {/* Right col — second half */}
-              <div className="divide-y divide-gray-100">
-                {section.rows
-                  .slice(Math.ceil(section.rows.length / 2))
-                  .map(row => (
-                    <SettingRow key={row.controls[0]?.key} row={row} values={values} onChange={handleChange} />
-                  ))
-                }
-              </div>
-            </div>
+    <div className="flex flex-col flex-1 min-h-0 bg-[#eef1f8] w-full h-full" style={{ fontFamily: "'Inter','Tahoma',system-ui,sans-serif" }}> 
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+        {isEmpty ? (
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+            <Settings2 size={32} strokeWidth={1.2} />
+            <span className="text-[12.5px]">No configurable settings for this module.</span>
           </div>
-        ))}
+        ) : (
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 sm:gap-4 w-full">
+            {config.map((section, si) => (
+              <SettingSection key={section.section ?? si} section={section} values={values} onChange={handleChange} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-t border-gray-100">
-        <span className="text-[11px] text-gray-300 italic">Changes apply on next session load</span>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 px-4 sm:px-6 py-2.5 bg-white border-t border-slate-200 shrink-0">
+        <span className="text-[11px] text-slate-400">
+          {isDirty ? "You have unsaved changes" : "All changes saved"}
+        </span>
+        <div className="flex gap-2 w-full sm:w-auto">
           {onRestore && (
             <button
               onClick={handleRestore}
-              className="px-3 py-1 text-[12px] text-gray-500 border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+              disabled={!isDirty}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Restore defaults
+              <RotateCcw size={12} /> <span className="hidden sm:inline">Restore defaults</span>
             </button>
           )}
           <button
             onClick={onCancel}
-            className="px-3 py-1 text-[12px] text-gray-600 border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+            className="px-3.5 py-1.5 text-[12px] font-medium text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-3 py-1 text-[12px] text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors"
+            disabled={!isDirty || saving}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto sm:ml-0"
           >
-            Save settings
+            <Check size={12} /> {saving ? "Saving…" : "Save settings"}
           </button>
         </div>
       </div>

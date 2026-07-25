@@ -4,7 +4,7 @@ import config from "../config";
 import { handleApi } from "./apiHandler";
 import { transformToBackend } from "./employeeMapper";
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: config.apiUrl,
   headers: {
     'Content-Type': 'application/json',
@@ -223,6 +223,9 @@ export const fetchSidebarMenu = async () => {
   }
 };
 
+// export const updateModuleGroups = (masmod_id, groups) =>
+//   handleApi(() => api.put(`/api/masmod/${masmod_id}/groups`, { groups }));
+
 export const fetchMasmnuData = async (token) => {
   try {
     const response = await api.get('/api/masmnu');
@@ -313,10 +316,10 @@ export const fetchMenuMasterList = async (filters = {}) => {
   return response.data;
 };
 
-export const fetchMenuGroups = async (params = {}) => {
-  const response = await api.get("/api/masmnu/groups", { params });
-  return response.data;
-};
+// export const fetchMenuGroups = async (params = {}) => {
+//   const response = await api.get("/api/masmnu/groups", { params });
+//   return response.data;
+// };
 
 export const createMasmnu = async (data) => {
   const response = await api.post("/api/masmnu", data, {
@@ -341,6 +344,27 @@ export const deleteMasmnu = async (id) => {
 
 export const fetchMenuGroupList = () =>
   handleApi(() => api.get("/api/user/groups?type=MU_GRP"));
+
+//------------------------------------ Menu Group (masgrp) --------------------------------------------------------
+export const fetchMasgrpList = async (params = {}) => {
+  const response = await api.get("/api/masgrp", { params });
+  return response.data;
+};
+
+export const createMasgrp = async (data) => {
+  const response = await api.post("/api/masgrp", data);
+  return response.data;
+};
+
+export const updateMasgrp = async (id, data) => {
+  const response = await api.put(`/api/masgrp/${id}`, data);
+  return response.data;
+};
+
+export const deleteMasgrp = async (id) => {
+  const response = await api.delete(`/api/masgrp/${id}`);
+  return response.data;
+};
 
 export const saveUserPermissions = (payload) =>
   handleApi(() => api.post("/api/user/permissions", payload));
@@ -730,38 +754,38 @@ export const updateLeaveEncashment          = (id, data)     =>
 export const deleteLeaveEncashment          = (id)           =>
   handleApi(() => api.delete(`/api/LeaveEncashment/${id}`));
 
-// ── PF ────────────────────────────────────────────────────
+// ───────────────────────────────────── PF ────────────────────────────────────────────────────
 export const fetchPFList    = ()         => handleApi(() => api.get("/api/statutory-master/?type=PF"));
 export const createPF       = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
 export const updatePF       = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
 export const deletePF       = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
 
-// ── ESI ───────────────────────────────────────────────────
+// ───────────────────────────────────── ESI ───────────────────────────────────────────────────
 export const fetchESIList   = ()         => handleApi(() => api.get("/api/statutory-master/?type=ESI"));
 export const createESI      = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
 export const updateESI      = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
 export const deleteESI      = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
 
-// ── PT ────────────────────────────────────────────────────
+// ───────────────────────────────────── PT ────────────────────────────────────────────────────
 export const fetchPTList    = ()         => handleApi(() => api.get("/api/statutory-master/?type=PT"));
 export const createPT       = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
 export const updatePT       = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
 export const deletePT       = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
 
-// ── LWF ───────────────────────────────────────────────────
+// ───────────────────────────────────── LWF ───────────────────────────────────────────────────
 export const fetchLWFList   = ()         => handleApi(() => api.get("/api/statutory-master/?type=LWF"));
 export const createLWF      = (data)     => handleApi(() => api.post("/api/statutory-master/", data));
 export const updateLWF      = (id, data) => handleApi(() => api.put(`/api/statutory-master/${id}`, data));
 export const deleteLWF      = (id)       => handleApi(() => api.delete(`/api/statutory-master/${id}`));
 
-// ── TDS ───────────────────────────────────────────────────
+// ───────────────────────────────────── TDS ───────────────────────────────────────────────────
 export const fetchTDSList   = ()         => handleApi(() => api.get("/api/statutory-master/tds"));
 export const createTDS      = (data)     => handleApi(() => api.post("/api/statutory-master/tds", data));
 export const updateTDS      = (id, data) => handleApi(() => api.put(`/api/statutory-master/tds/${id}`, data));
 export const deleteTDS      = (id)       => handleApi(() => api.delete(`/api/statutory-master/tds/${id}`));
 
 
-// ── loan-reimbursement ───────────────────────────────────────────────────
+// ───────────────────────────────────── loan-reimbursement ───────────────────────────────────────────────────
 export const getLoanReimbursement = () =>
   handleApi(() => api.get("/api/loanReimbursement"));
 
@@ -775,7 +799,7 @@ export const deleteLoanReimbursement = (id) =>
   handleApi(() => api.delete(`/api/loanReimbursement/${id}`));
 
 
-// ── asset-master ───────────────────────────────────────────────────
+// ───────────────────────────────────── asset-master ───────────────────────────────────────────────────
 
 export const getAssetMaster = () =>
   handleApi(() => api.get("/api/assetMaster"));
@@ -790,7 +814,7 @@ export const deleteAssetMaster = (id) =>
   handleApi(() => api.delete(`/api/assetMaster/${id}`));
 
  
-// ── createTrainingSkill-master ───────────────────────────────────────────────────
+// ───────────────────────────────────── createTrainingSkill-master ───────────────────────────────────────────────────
 
 export const getTrainingSkillMaster = () =>
   handleApi(() =>
@@ -811,9 +835,8 @@ export const deleteTrainingSkillMaster = (id) =>
   handleApi(() =>
     api.delete(`/api/training-skill-master/${id}`)
   );
-// ─── Purchase Order Approval ──────────────────────────────────────────────────
-// Add these lines into your existing utils/api.js file
- 
+// ───────────────────────────────────── Purchase Order Approval ──────────────────────────────────────────────────
+  
 export const fetchApprovals = (status) =>
     handleApi(() => api.get("/api/poa", status !== "All" ? { params: { status } } : {}));
  
@@ -826,7 +849,7 @@ export const submitApproval = (payload) =>
 export const patchApproval = (approval_id, payload) =>
     handleApi(() => api.patch(`/api/poa/${approval_id}/action`, payload));
 
-// ─── OT Transactions ─────────────────────────────────────────────────────────
+// ───────────────────────────────────── OT Transactions ─────────────────────────────────────────────────────────
  
 export const getOTTransactions = (params = {}) =>
   handleApi(() => api.get("/api/payroll/ot-transactions", { params }));
@@ -851,7 +874,7 @@ export const updateOTStatus = (id, payload) =>
 export const deleteOTTransaction = (id) =>
   handleApi(() => api.delete(`/api/payroll/ot-transactions/${id}`));
 
-// ─── Monthly Attendance Report ─────────────────────────────────────────────────────────
+// ───────────────────────────────────── Monthly Attendance Report ─────────────────────────────────────────────────────────
 
 export const fetchMonthlyAttendanceSummary = (month, year) =>
   handleApi(() => api.get(`/api/reports/monthly-attendance-summary?month=${month}&year=${year}`));
@@ -859,12 +882,12 @@ export const fetchMonthlyAttendanceSummary = (month, year) =>
 export const fetchEmployeeAttendanceDetail = (employeeId, month, year) =>
   handleApi(() => api.get(`/api/reports/employee-attendance-detail?employee_id=${employeeId}&month=${month}&year=${year}`));
 
-// ───Attendance Register ─────────────────────────────────────────────────────────
+// ───────────────────────────────────── Attendance Register ─────────────────────────────────────────────────────────
 
 export const fetchAttendanceRegister = (month, year) =>
   handleApi(() => api.get(`/api/reports/attendance-register?month=${month}&year=${year}`));
 
-// ── ADD THESE to your existing utils/api.js ──────────────────────────────────
+// ───────────────────────────────────── Salary Structures  ──────────────────────────────────
 
 export const fetchSalaryStructures = () =>
   api.get("/api/salary-master/salary-structures").then(r => r.data);
@@ -911,9 +934,8 @@ export const fetchPayrollSummary = (emp_id, month_year) =>
   handleApi(() =>
     api.get(`/api/salary-master/salary-transactions/payroll-summary?emp_id=${emp_id}&month_year=${month_year}`)
   );
-// ─── Work Diary API functions ─────────────────────────────────────
-// Replace the existing work diary section in your api.js with this
-
+// ─────────────────────────────────────────── Work Diary API functions ─────────────────────────────────────
+ 
 export const fetchWorkDiaries = (params = "") =>
   handleApi(() => api.get(`/api/work-diary${params ? `?${params}` : ""}`));
 
@@ -947,7 +969,7 @@ export const fetchWorkDiaryReport = (params = {}) => {
     api.get(`/api/work-diary/report${q ? `?${q}` : ""}`)
   );
 };
-// ─── Subtasks ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────── Subtasks ─────────────────────────────────────────────────────
 export const fetchSubtasks = (line_id) =>
   handleApi(() => api.get(`/api/work-diary/subtasks/${line_id}`));
 
@@ -962,12 +984,11 @@ export const updateSubtask = (subtask_id, data) =>
 export const deleteSubtask = (subtask_id) =>
   handleApi(() => api.delete(`/api/work-diary/subtasks/${subtask_id}`));
 export const fetchWorkDiaryById = (id) =>
-  handleApi(() => api.get(`/api/work-diary/${id}`));
-// api.js mein change karo:
+  handleApi(() => api.get(`/api/work-diary/${id}`)); 
 export const fetchWorkDiariesByDept = (dept) =>
   handleApi(() => api.get(`/api/work-diary?all=1&include_lines=1&department=${encodeURIComponent(dept)}`));
 //                                          ↑ ye add karo
-// ─── Comments ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────── Comments ─────────────────────────────────────────────────────
 export const fetchComments = (line_id) =>
   handleApi(() => api.get(`/api/work-diary/comments/${line_id}`));
 
@@ -977,7 +998,7 @@ export const addComment = (data) =>
  export const updateTaskLineStatus = (line_id, status) =>
   handleApi(() => api.patch(`/api/work-diary/lines/${line_id}/status`, { status }));
  
- // ── Payroll Monthly ───────────────────────────────────────────
+ // ─────────────────────────────────────────── Payroll Monthly ───────────────────────────────────────────
 export const getPayrollMonthly = (month_year) =>
   handleApi(() => api.get(`/api/payroll-monthly${month_year ? `?month_year=${month_year}` : ""}`));
 
@@ -993,7 +1014,7 @@ export const approvePayroll = (data) =>
 export const bulkUpdatePayrollStatus = (data) =>
   handleApi(() => api.put("/api/payroll-monthly/bulk/status", data));
 
-// Dashboard
+//─────────────────────────────────────────── Dashboard───────────────────────────────────────────
 export const fetchDashboardSummary = async () =>
   handleApi(() => api.get("/api/dashboard/summary"));
 export const fetchDepartmentAttendance = (month) =>
@@ -1006,3 +1027,21 @@ export const fetchSalesDashboard = (params = {}) =>
 
 export const fetchSalesDashboardFilters = () =>
   handleApi(() => api.get("/api/sales-dashboard/filters"));
+
+
+export const fetchOrderDashboard = (params = {}) =>
+  handleApi(() => api.get("/api/order-dashboard", { params })); 
+
+export const fetchOrderDashboardFilters = () =>
+  handleApi(() => api.get("/api/order-dashboard/filters"));
+
+export const fetchOrderDashboardHistory = () =>
+  handleApi(() => api.get("/api/order-dashboard/history"));
+
+  
+ // ─────────────────────────────────────────── Setting ───────────────────────────────────────────
+export const getApplSettings = (applName) =>
+  handleApi(() => api.get(`/api/settings/${applName}`));
+
+export const saveApplSettings = (applName, values) =>
+  handleApi(() => api.post(`/api/settings/${applName}`, values));   // ✅ direct

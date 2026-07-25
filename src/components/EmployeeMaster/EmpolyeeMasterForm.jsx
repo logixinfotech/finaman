@@ -344,7 +344,7 @@ const EmployeeMasterForm = forwardRef(
       loadGroups();
     }, []);
     const {options:op}=useGroupOptions();
-    console.log(op.pt);
+    
 
     const getDisplayValue = useCallback(
       (field, value) => {

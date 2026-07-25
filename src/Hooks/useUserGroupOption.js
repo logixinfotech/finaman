@@ -1,66 +1,58 @@
-
 import { useState, useEffect, useMemo } from 'react';
-import { fetchPFList, fetchPTList, fetchUserGroupsByType, getActledList } from "../utils/api"; 
+import { fetchUserGroupsByType, getActledList } from "../utils/api";
+import { getMasterOptions } from "../pages/Modules/QMS/Utils/QmsAPI";
+
+const QMS_MASTERS = ["product", "supplier", "equipment", "area", "personnel", "instrument"];
 
 export const useGroupOptions = () => {
   const [rawData, setRawData] = useState({
-    division: [], 
-    department: [], 
-    designation: [], 
-    grade: [], 
-    reporting: [],
-    employees: [] ,
-    pt:[]
+    division: [], department: [], designation: [], grade: [], reporting: [], employees: [],
   });
+  const [masterData, setMasterData] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [div, dept, desg, grade, reporting, empRes,pt] = await Promise.all([
+        const [div, dept, desg, grade, reporting, empRes] = await Promise.all([
           fetchUserGroupsByType("DIV"),
           fetchUserGroupsByType("DEP"),
           fetchUserGroupsByType("DESG"),
           fetchUserGroupsByType("GRADE"),
           fetchUserGroupsByType("RME"),
-         
-          getActledList() ,
-           fetchPTList(),
+          getActledList(),
         ]);
-
         setRawData({
           division: div?.data || [],
           department: dept?.data || [],
           designation: desg?.data || [],
           grade: grade?.data || [],
           reporting: reporting?.data || [],
-          employees: empRes?.data || empRes || [] ,
-          pt:pt?.data||[]
+          employees: empRes?.data || empRes || [],
         });
-      
+
+        // Sab QMS masters ek hi generic call se — getMasterOptions already {value,label} deta hai
+        const results = await Promise.all(QMS_MASTERS.map((m) => getMasterOptions(m)));
+        setMasterData(Object.fromEntries(QMS_MASTERS.map((m, i) => [m, results[i] || []])));
       } catch (err) {
-      
+        console.error("useGroupOptions error:", err);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, []);
-  console.log(rawData.pt)
-  const options = useMemo(() => {
-      const normalizeGroup = (arr) => (Array.isArray(arr) ? arr.map(item => ({
-      value: item.group_id||item.statutory_id,
-      label: item.group_name||item.name
-    })) : []);
-    const normalizeEmp = (arr) => {
-      const employeeArray = arr || []; 
 
-      return Array.isArray(employeeArray) ? employeeArray.map(item => ({
-        value: item.Actledkey || item.Led_code ||item.statutory_id,
-        label: item.Led_name || item.emp_name || item.Led_code ||item.name
-      })) : [];
-    };
+  const options = useMemo(() => {
+    const normalizeGroup = (arr) => (Array.isArray(arr) ? arr.map((item) => ({
+      value: item.group_id || item.statutory_id,
+      label: item.group_name || item.name,
+    })) : []);
+    const normalizeEmp = (arr) => (Array.isArray(arr) ? arr.map((item) => ({
+      value: item.Actledkey || item.Led_code || item.statutory_id,
+      label: item.Led_name || item.emp_name || item.Led_code || item.name,
+    })) : []);
 
     return {
       division: normalizeGroup(rawData.division),
@@ -69,9 +61,14 @@ export const useGroupOptions = () => {
       grade: normalizeGroup(rawData.grade),
       reporting: normalizeGroup(rawData.reporting),
       employees: normalizeEmp(rawData.employees), 
-      pt:normalizeEmp(rawData.pt)
+      product: masterData.product || [],
+      supplier: masterData.supplier || [],
+      equipment: masterData.equipment || [],
+      area: masterData.area || [],
+      personnel: masterData.personnel || [],
+      instrument: masterData.instrument || [],
     };
-  }, [rawData]);
+  }, [rawData, masterData]);
 
   return { options, loading };
 };

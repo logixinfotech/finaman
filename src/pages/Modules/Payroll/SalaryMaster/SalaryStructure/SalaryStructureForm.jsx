@@ -282,6 +282,41 @@ const SalaryStructureForm = ({
       return () => clearTimeout(timer);
     }
   }, [isViewMode, isAddMode, isEditMode]);
+  const normalizeTemplate = (grade, templates) => {
+  const tmpl = templates.find(
+    t => String(t.grade) === String(grade) && t.status === "Active"
+  );
+  if (!tmpl) return null;
+
+  const incomeFormulas = {};
+  (tmpl.incomeHeads || []).forEach(row => {
+    incomeFormulas[row.income_head_id] = {
+      formula_type: row.formula_type,
+      percentage: row.percentage,
+    };
+  });
+
+  const deductionFormulas = {};
+  (tmpl.deductionHeads || []).forEach(row => {
+    deductionFormulas[row.deduction_head_id] = {
+      formula_type: row.formula_type,
+      percentage: row.percentage,
+    };
+  });
+
+  return {
+    salary_template_id: tmpl.salary_template_id,
+    incomeFormulas,
+    deductionFormulas,
+  };
+};
+useEffect(() => {
+  if (isManualMode || !formData.grade) {
+    setCurrentTemplate(null);
+    return;
+  }
+  setCurrentTemplate(normalizeTemplate(formData.grade, templates));
+}, [formData.grade, formData.type, templates, isManualMode]);
   const handleChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {

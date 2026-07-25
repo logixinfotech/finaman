@@ -11,16 +11,16 @@ import {
   createMasmnu,
   updateMasmnu,
   deleteMasmnu,
-  fetchSidebarMenu,
-  fetchUserGroupsByType
+  fetchSidebarMenu, fetchMasgrpList
 } from "../utils/api";  
+import GenericFilter from "../components/Reusable/Filter/UnivarsalFilter";
 
 const initialState = {
   masmnu_id: null,
   masmod_id: "",
   pad_type: "1",
   pad_name: "",
-   grp_name: "",
+   grp_id: null,
   item_type: "",
   srl_no: "",
   bar_srl: "",
@@ -28,6 +28,7 @@ const initialState = {
   appl_type: "F",
   appl_name: "",
   appl_para: "",
+  icon_name: "",
   menu_hide: "",
 };
 
@@ -37,6 +38,7 @@ const columns = [
   { key: "pad_name", label: "Section" }, 
   { key: "grp_name", label: "Group" },
   { key: "bar_name", label: "Menu Name" }, 
+  { key: "icon_name", label: "Icon" }, 
   { key: "item_type", label: "Item Type" },
   { key: "srl_no", label: "Serial No" },
   {
@@ -84,15 +86,16 @@ const MenuMasterPage = ({ tab }) => {
     }
   }, []);
 
-const loadGroups = useCallback(async () => {
+  const loadGroups = useCallback(async () => {
     try {
-      const data = await fetchUserGroupsByType("MU_GRP");
-      const arr = Array.isArray(data) ? data : data?.data || [];
-      setGroups(arr.map((g) => g.group_name));   // 👈 sirf names chahiye
+      const data = await fetchMasgrpList();
+      setGroups(Array.isArray(data) ? data : data?.data || []);
     } catch (err) {
       console.error("❌ loadGroups error:", err);
     }
   }, []);
+
+ 
 
   const {
     mode, formData, setFormData, showForm, setShowForm, saving,
@@ -104,13 +107,12 @@ const loadGroups = useCallback(async () => {
     () => loadMenuList(filters),
     tab.appl_name
   );
-
- useEffect(() => {
+useEffect(() => {
     loadMenuList();
     loadModules();
-    loadGroups();           
+    loadGroups();           // 👈
   }, [loadMenuList, loadModules, loadGroups]);
-
+  
   // Sync Form Data when navigating records via Footer/Header
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
@@ -276,7 +278,7 @@ const loadGroups = useCallback(async () => {
     <div className="h-full w-full">
       {showForm ? (
         <MenuMasterForm
-          modules={modules}
+          modules={modules} 
           groups={groups}                  
           formData={formData}
           setFormData={setFormData}
@@ -311,13 +313,21 @@ const loadGroups = useCallback(async () => {
           onToggleFilter={() => setShowFilter((p) => !p)}
           onRowDoubleClick={handleRowSelect}
           formComponent={
-            <MenuMasterFilterForm
-              modules={modules}
-              filters={filters}
-              setFilters={setFilters}
-              onApply={applyFilter}
-              onClear={clearFilter}
-            />
+            // <MenuMasterFilterForm
+            //   modules={modules}
+            //   filters={filters}
+            //   setFilters={setFilters}
+            //   onApply={applyFilter}
+            //   onClear={clearFilter}
+            // />
+            <GenericFilter
+  filters={filters}
+  setFilters={setFilters}
+  onApply={applyFilter}
+  onClear={clearFilter}
+  visibleFields={["module", "menu", "application", "itemType"]}
+  options={{ modules }}
+/>
           }
           onAdd={rights.add === 1 ? handleAdd : null}
         />
@@ -325,5 +335,4 @@ const loadGroups = useCallback(async () => {
     </div>
   );
 };
-
 export default MenuMasterPage;

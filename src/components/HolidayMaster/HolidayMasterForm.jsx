@@ -159,10 +159,8 @@ const HolidayMasterForm = ({
   
 
   return (
-    <div
-      className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
-      style={{ fontFamily: FONT }}
-    >
+      <div className="w-full h-full  sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
+
       <ERPHeader
        activeTab={activeTab}
         onTabChange={onTabChange}

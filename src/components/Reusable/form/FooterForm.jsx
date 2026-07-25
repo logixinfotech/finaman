@@ -18,8 +18,7 @@ const ERPFooter = ({
 }) => {
   
   const CommonActions = (
-    <>
-      {/* Only render Delete if handler is provided */}
+    <> 
       {onDelete && (
         <DeleteButton
           onClick={onDelete}

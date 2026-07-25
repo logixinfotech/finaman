@@ -1,10 +1,23 @@
 import React from "react";
-import UserMasterPage from "./Modules/Master/UserMaster/UserMasterCreation";
-import DailyAttendance from "./Modules/Payroll/Attendance/DailyAttendence";
-import HolidayMaster from "../components/HolidayMaster/HolidayMaster";
-import ShiftMaster from "./Modules/Payroll/ShiftMaster/ShiftMaster";
-import ShiftAllocation from "./Modules/Payroll/ShiftMaster/ShiftAllocationMaster";
-import SalaryFormulaEngine from "./Modules/Payroll/SalaryMaster/SalaryTemplate/SalaryFormulaEngine";
+import DocumentMasterPage from "./Modules/QMS/Document.jsx";
+import TrainingMasterPage from "./Modules/QMS/Trainning.jsx";
+import { environmentalMonitoringFieldGroups } from "./Modules/QMS/Utils/Qmsconfigs.js";
+import STPMasterPage from "./Modules/QMS/STP.jsx";
+import AuditMasterPage from "./Modules/QMS/AuditManage.jsx";
+const UserMasterPage = React.lazy(() => import("./Modules/Master/UserMaster/UserMasterCreation.jsx"))
+const DailyAttendance = React.lazy(() => import("./Modules/Payroll/Attendance/DailyAttendence"))
+const HolidayMaster = React.lazy(() => import("../components/HolidayMaster/HolidayMaster"))
+const ShiftMaster = React.lazy(() => import("./Modules/Payroll/ShiftMaster/ShiftMaster.jsx"))
+const ShiftAllocation = React.lazy(() => import("./Modules/Payroll/ShiftMaster/ShiftAllocationMaster"))
+const SalaryFormulaEngine = React.lazy(() => import("./Modules/Payroll/SalaryMaster/SalaryTemplate/SalaryFormulaEngine.jsx"))
+const ProductMasterPage = React.lazy(() => import("./Modules/QMS/Master/QMSShortMasterEntry.jsx"))
+const InstrumentMasterPage = React.lazy(() => import("./Modules/QMS/Master/QMSShortMasterEntry.jsx"))
+const EquipmentMasterPage = React.lazy(() => import("./Modules/QMS/Master/QMSShortMasterEntry.jsx"))
+const AreaLocationMasterPage = React.lazy(() => import("./Modules/QMS/Master/QMSShortMasterEntry.jsx"))
+const PersonnelMasterPage = React.lazy(() => import("./Modules/QMS/Master/QMSShortMasterEntry.jsx"))
+const SupplierVendorMasterPage = React.lazy(() => import("./Modules/QMS/Master/QMSShortMasterEntry.jsx"))
+const ProductRecallMasterPage = React.lazy(() => import("./Modules/QMS/ProductRecall.jsx"))
+const IncidentMasterPage = React.lazy(() => import("./Modules/QMS/Incidents.jsx"))
 const IncomeHeadMaster = React.lazy(() => import("./Modules/Payroll/SalaryMaster/IncomeMaster/IncomeHead"));
 const FBPConfig = React.lazy(() => import("./Modules/Payroll/SalaryMaster/FlexiBenefitMaster/FBPConfig"));
 const DeductionHeadMaster = React.lazy(() => import("./Modules/Payroll/SalaryMaster/DeductionMaster/DeductionHead"));
@@ -113,7 +126,6 @@ const PageRegistry = {
     EmployeeMaster,
     CompanyMasterPage,
     MASMNU: MenuMasterPage,
-     
     USERMA: UserMasterPage,
     NOTIFICATIONS_PAGE: NotificationsPage,
     PROFILE: ProfilePage,
@@ -155,9 +167,20 @@ const PageRegistry = {
     SSE: SalaryStructure,
     Salary_Trans: SalaryTransaction,
     salary_processing: SalaryProcessing,
-    LeaveAnalytics:LeaveAnalytics,
-    UpcomingEvents:UpcomingEvents,
-
+    LeaveAnalytics: LeaveAnalytics,
+    UpcomingEvents: UpcomingEvents,
+    products: ProductMasterPage,
+    instrument: InstrumentMasterPage,
+    equipment: EquipmentMasterPage,
+    area: AreaLocationMasterPage,
+    personnel: PersonnelMasterPage,
+    vendor: SupplierVendorMasterPage,
+    ProductRecall: ProductRecallMasterPage,
+    Incidents: IncidentMasterPage,
+    dms: DocumentMasterPage,
+    trainning: TrainingMasterPage,
+    STP: STPMasterPage,
+    Audit: AuditMasterPage,
     WorkDiaryForm: React.lazy(() => import("../components/WorkDiary/WorkDiary")),
     // TaskManage: React.lazy(() => import("../components/TaskManage/TaskManage")),
     pf_master: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/PfMaster")),
@@ -167,7 +190,21 @@ const PageRegistry = {
     LWFMaster: React.lazy(() => import("./Modules/Payroll/StatutoryMaster/LWFMaster")),
     POA: React.lazy(() => import("./Modules/Approval/PurchaseOrder/POApproval")),
     SalesDashboard: React.lazy(() => import("./Modules/Dashboard/SalesDashboard/SalesDashboard")),
-    MU_GRP: React.lazy(() => import("./Modules/Master/ShortMaster/MenuGroupMaster.jsx")),
+    MU_GRP: React.lazy(() => import("./Modules/MainMenu/MenuMasterPage/MenuGroupMaster.jsx")),
+
+    deviation: React.lazy(() => import("./Modules/QMS/Deviation.jsx")),
+    AuditTrail: React.lazy(() => import("./Modules/QMS/Utils/AuditTrailPage.jsx")),
+    Calibration: React.lazy(() => import("./Modules/QMS/InstrumentCalibration.jsx")),
+    environment: React.lazy(() => import("./Modules/QMS/Environmnetal.jsx")),
+    Qualification: React.lazy(() => import("./Modules/QMS/QualificationPlanner.jsx")),
+    PreventiveMain: React.lazy(() => import("./Modules/QMS/PreventiveMaintenance.jsx")),
+    CAPA: React.lazy(() => import("./Modules/QMS/CAPA.jsx")),
+    ChangeControl: React.lazy(() => import("./Modules/QMS/ChangeControl.jsx")),
+
+
+
+
+
 
 };
 

@@ -473,7 +473,7 @@ const handleRowSelect = useCallback(
                 >
                   {active && (
                     <motion.span
-                      layoutId="erpHeaderTabHighlight"
+                      layoutId="tableHeaderTabHighlight"
                       className="absolute inset-0 rounded-[4px] -z-0"
                       style={{
                         background: "#ffffff",

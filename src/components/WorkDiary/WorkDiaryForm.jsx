@@ -1,5 +1,5 @@
- 
-import { useState, useEffect, useCallback, useRef, useMemo, memo , Fragment} from "react";
+
+import { useState, useEffect, useCallback, useRef, useMemo, memo, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ERPAutocomplete from "../Reusable/input/ERPAutocomplete";
 import ERPDateInput from "../Reusable/input/Date";
@@ -14,7 +14,7 @@ import {
   CheckCircle2, RefreshCw, CornerDownLeft, Ticket, User,
   Play, Pause, Square, TrendingUp,
 } from "lucide-react";
- 
+
 export const F = "'DM Sans',system-ui,sans-serif";
 export const FD = "'Sora',system-ui,sans-serif";
 export const FM = "'DM Mono',monospace";
@@ -189,8 +189,8 @@ export const getTimeAlert = (task) => {
   const act = parseFloat(task.actual_time) || 0;
   if (exp <= 0) return null;
   const pct = act / exp;
-  if (pct >= 1) return "over";    // actual ≥ expected → red overshoot
-  if (pct >= 0.8) return "warning"; // 80–99% → pulsing orange warning
+  if (pct >= 1) return "over";    
+  if (pct >= 0.8) return "warning";  
   return null;
 };
 
@@ -239,19 +239,19 @@ const CtxMenu = ({ x, y, onClose, items }) => {
     </div>
   );
 };
- 
+
 const taskStatusOpts = ["Pending", "In Progress", "Completed", "Hold"];
-const ticketStatusOpts = ["Open", "In Progress", "Resolved", "Closed"]; 
+const ticketStatusOpts = ["Open", "In Progress", "Resolved", "Closed"];
 const PRIO_BADGE = {
-  High:   { bg: "#fff1f1", color: "#c0392b", dot: "#e74c3c", border: "#fecaca" },
+  High: { bg: "#fff1f1", color: "#c0392b", dot: "#e74c3c", border: "#fecaca" },
   Medium: { bg: "#fffbeb", color: "#b45309", dot: "#f59e0b", border: "#fde68a" },
-  Low:    { bg: "#f0fdf4", color: "#15803d", dot: "#22c55e", border: "#bbf7d0" },
+  Low: { bg: "#f0fdf4", color: "#15803d", dot: "#22c55e", border: "#bbf7d0" },
 };
 const STAT_COLORS = {
-  Pending:       { bg: "#f5f3ff", color: "#6d28d9", border: "#ddd6fe" },
+  Pending: { bg: "#f5f3ff", color: "#6d28d9", border: "#ddd6fe" },
   "In Progress": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
-  Completed:     { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
-  Hold:          { bg: "#fff1f1", color: "#b91c1c", border: "#fecaca" },
+  Completed: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  Hold: { bg: "#fff1f1", color: "#b91c1c", border: "#fecaca" },
 };
 const DEFAULT_STAT = { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" };
 const DEFAULT_PRIO = PRIO_BADGE.Medium;
@@ -269,18 +269,10 @@ const Th = ({ children, w, align = "left" }) => (
     boxShadow: "0 1px 0 #e2e8f0",
   }}>{children}</th>
 );
- 
-const formatDT = (iso) => {
-  if (!iso) return null;
-  try {
-    const d = new Date(iso.replace(' ', 'T'));
-    return d.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-  } catch { return null; }
-};
+
 
 const PRIO_COLORS = { High: { bg: "#fee2e2", c: "#b91c1c" }, Medium: { bg: "#fef3c7", c: "#b45309" }, Low: { bg: "#dcfce7", c: "#15803d" } };
 const STATUS_COLORS = { "Pending": { bg: "#f1f5f9", c: "#475569" }, "In Progress": { bg: "#e0f2fe", c: "#0369a1" }, "Completed": { bg: "#dcfce7", c: "#15803d" }, "Open": { bg: "#fef3c7", c: "#b45309" } };
-
 // ── Plain DD-MM-YYYY (+ time if present) formatter — normal text, no monospace/bold ──
 const fmtDT = (raw) => {
   if (!raw) return "";
@@ -304,8 +296,14 @@ const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
   const prioStyle = PRIO_COLORS[t.priority] || PRIO_COLORS.Medium;
   const statusStyle = STATUS_COLORS[t.status] || STATUS_COLORS.Pending;
   const key = t._key || t.line_id;
-    const clickTimer = useRef(null);
- const handleClick = () => {
+  const clickTimer = useRef(null);
+
+  useEffect(() => () => { if (clickTimer.current) clearTimeout(clickTimer.current); }, []);
+
+  // ── Single click ka onOpen 220ms ke liye hold hota hai. Agar isi window me
+  // doosra click aa jaye (dblclick), to open cancel ho jaata hai aur seedha
+  // edit chalta hai — is tarah detail panel beech me flash nahi hota. ──
+  const handleClick = () => {
     if (clickTimer.current) return;
     clickTimer.current = setTimeout(() => {
       onOpen(key);
@@ -325,37 +323,40 @@ const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       className={`task-row${selected ? " selected" : ""}`}>
-{/* Assignee */}
-<td data-label="Assignee">
-  {t.assigned_to_name ? (
-    <span style={{
-      fontSize: 12, fontWeight: 500, color: "#334155",
-      overflow: "hidden", textOverflow: "ellipsis",
-      whiteSpace: "nowrap", maxWidth: 100, display: "inline-block",
-    }}>
-      {t.assigned_to_name}
-    </span>
-  ) : (
-    <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
-  )}
-</td> 
-   {/* Task */}
-<td data-label="Task">
-  <div style={{
-    fontSize: 13, fontWeight: 600, color: "#0f172a",
-    whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.4,
-  }}>
-    {t.work_plan || "Untitled task"}
-  </div>
-  {t.target && (
-    <div style={{
-      fontSize: 11, color: "#94a3b8", marginTop: 2,
-      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-    }}>
-      {t.target}
-    </div>
-  )}
-</td>
+
+      {/* Assignee */}
+      <td data-label="Assignee">
+        {t.assigned_to_name ? (
+          <span style={{
+            fontSize: 12, fontWeight: 500, color: "#334155",
+            overflow: "hidden", textOverflow: "ellipsis",
+            whiteSpace: "nowrap", maxWidth: 100, display: "inline-block",
+          }}>
+            {t.assigned_to_name}
+          </span>
+        ) : (
+          <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
+        )}
+      </td>
+
+      {/* Task */}
+      <td data-label="Task">
+        <div style={{
+          fontSize: 13, fontWeight: 600, color: "#0f172a",
+          whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.4,
+        }}>
+          {t.work_plan || "Untitled task"}
+        </div>
+        {t.target && (
+          <div style={{
+            fontSize: 11, color: "#94a3b8", marginTop: 2,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {t.target}
+          </div>
+        )}
+      </td>
+
       {/* Due Date + Time */}
       <td data-label="Due Date">
         {dueDT ? (
@@ -512,28 +513,37 @@ export const TaskTable = ({ tasks, onOpen, onEdit, onDelete, onStatusChange, sel
         }
         .task-del-btn:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
 
-        /* ── Mobile: table becomes a stacked, labelled card list ── */
-      /* ── Mobile: table becomes a stacked, labelled card list ── */
-@media (max-width: 680px) {
-  .task-table-wrap { border: none; background: transparent; overflow: visible; }
-  .task-table, .task-table thead, .task-table tbody, .task-table tr, .task-table td {
-    display: block; width: 100%;
-  }
-  .task-table thead { display: none; }
-  .task-table tbody tr {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
-    margin-bottom: 8px; padding: 10px 12px 6px;
-  }
-  .task-table td {
-    padding: 5px 0; border-bottom: none;
-  }
-  .task-table td[data-label]::before {
-    content: attr(data-label);
-    display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .4px;
-    text-transform: uppercase; color: #94a3b8; margin-bottom: 2px;
-  }
-  .task-del-cell { text-align: left; padding: 6px 0 2px !important; }
-}
+        /* ── Mobile: each row becomes a compact card, fields paired 2-per-row
+             (Task always full width on top) instead of stacking one-per-line ── */
+        @media (max-width: 680px) {
+          .task-table-wrap { border: none; background: transparent; overflow: visible; }
+          .task-table, .task-table thead, .task-table tbody { display: block; width: 100%; }
+          .task-table thead { display: none; }
+
+          .task-table tbody tr {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px 10px;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+            margin-bottom: 8px; padding: 10px 32px 10px 12px; position: relative;
+          }
+          .task-table td {
+            display: block; width: auto; padding: 0 !important; border-bottom: none;
+            min-width: 0;
+          }
+          .task-table td[data-label]::before {
+            content: attr(data-label);
+            display: block; font-size: 9px; font-weight: 700; letter-spacing: .4px;
+            text-transform: uppercase; color: #94a3b8; margin-bottom: 2px;
+          }
+          /* Task sabse pehle aur poori width leta hai, baaki fields DOM order me
+             apne aap 2-2 ke jode me sit ho jaate hain */
+          .task-table td[data-label="Task"] { grid-column: 1 / -1; order: -1; }
+
+          .task-del-cell {
+            position: absolute; top: 8px; right: 8px;
+          }
+        }
       `}</style>
     </div>
   );
@@ -564,7 +574,7 @@ const TaskCardMemo = ({ task, onOpen, onDelete, onStatusChange, isAssignedToMe =
       onClick={() => onOpen(task._key)}
       onContextMenu={e => { e.preventDefault(); setCtx({ x: e.clientX, y: e.clientY }); }}
       style={{
-        background: isSelected ? "#f0f7ff" : C.surface,   
+        background: isSelected ? "#f0f7ff" : C.surface,
         borderRadius: 12,
         cursor: "pointer",
         opacity: done ? 0.55 : 1,
@@ -1138,7 +1148,7 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
               )}
             </>
           )}
-        </div> 
+        </div>
         <div>
           <div style={{
             fontSize: 10, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase",
@@ -1203,29 +1213,29 @@ export const DetailPanel = ({ task, onClose, onEdit, onDelete, onToggle, readOnl
         display: "flex", gap: 8, flexShrink: 0, background: C.surface
       }}>
         {!readOnly ? (
-       <>
-  <button onClick={() => onToggle(task._key)}
-    style={{
-      ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12,
-      background: done ? C.bg : "#ECFDF5",
-      borderColor: done ? C.border : "#A7F3D0",
-      color: done ? C.t3 : "#15803D",
-    }}>
-    {done
-      ? <><CornerDownLeft size={13} />Reopen</>
-      : <><CheckCircle2 size={13} />Complete</>}
-  </button>
-  <button onClick={onEdit}
-    style={{
-      ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12,
-      background: "#FEFCE8", borderColor: "#FDE68A", color: "#A16207",
-    }}>
-    <Pencil size={13} /> Edit
-  </button>
-  <button onClick={() => onDelete(task._key)} className="dp-delete-btn">
-    <Trash2 size={14} />
-  </button>
-</>
+          <>
+            <button onClick={() => onToggle(task._key)}
+              style={{
+                ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12,
+                background: done ? C.bg : "#ECFDF5",
+                borderColor: done ? C.border : "#A7F3D0",
+                color: done ? C.t3 : "#15803D",
+              }}>
+              {done
+                ? <><CornerDownLeft size={13} />Reopen</>
+                : <><CheckCircle2 size={13} />Complete</>}
+            </button>
+            <button onClick={onEdit}
+              style={{
+                ...btnSecondary, flex: 1, justifyContent: "center", fontSize: 12,
+                background: "#FEFCE8", borderColor: "#FDE68A", color: "#A16207",
+              }}>
+              <Pencil size={13} /> Edit
+            </button>
+            <button onClick={() => onDelete(task._key)} className="dp-delete-btn">
+              <Trash2 size={14} />
+            </button>
+          </>
         ) : (
           <button onClick={() => onToggle(task._key)}
             style={{ ...btnPrimary, flex: 1, justifyContent: "center" }}>

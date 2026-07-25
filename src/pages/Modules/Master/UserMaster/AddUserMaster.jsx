@@ -314,10 +314,11 @@ const AddUserMaster = ({
   };
 
   return (
-    <div className="w-full max-w-[700px] mx-auto h-[calc(100vh-140px)] bg-[#eef1f6] flex flex-col" style={{ fontFamily: FONT }}>
+    <div className="w-full h-full  sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
+
 
       <ERPHeader
-        title="USER MASTER"
+        title="User Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
@@ -430,22 +431,22 @@ const AddUserMaster = ({
               />
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-  <label className="w-full sm:w-[102px]">Block</label>
-  <label className="flex items-center gap-2 h-[38px] sm:h-[30px]">
-<input
-  type="checkbox"
-  name="block"
-  checked={String(formData.block) === "1"}
-  disabled={isViewMode}
-  onChange={(e) => handleChange("block", e.target.checked ? 1 : 0)}
-  onKeyDown={handleKeyDown}
-  className="w-4 h-4 accent-blue-600"
-/>
-    <span className="text-[13px] text-gray-600">
-      {String(formData.block) === "1" ? "Blocked" : "Active"}
-    </span>
-  </label>
-</div>
+              <label className="w-full sm:w-[102px]">Block</label>
+              <label className="flex items-center gap-2 h-[38px] sm:h-[30px]">
+                <input
+                  type="checkbox"
+                  name="block"
+                  checked={String(formData.block) === "1"}
+                  disabled={isViewMode}
+                  onChange={(e) => handleChange("block", e.target.checked ? 1 : 0)}
+                  onKeyDown={handleKeyDown}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-[13px] text-gray-600">
+                  {String(formData.block) === "1" ? "Blocked" : "Active"}
+                </span>
+              </label>
+            </div>
           </div>
 
           {/* SIGNATURE */}
@@ -612,8 +613,7 @@ const AddUserMaster = ({
           </div>
         </div>
       )}
-
-      {/* GROUP MODAL */}
+ 
       {showGroupModal && (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50"

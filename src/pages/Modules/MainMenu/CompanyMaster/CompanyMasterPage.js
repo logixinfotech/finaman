@@ -352,7 +352,7 @@ const CompanyMasterPage = ({ tab }) => {
           canPrint={canPrint}
           currentRecord={currentRecord}
           totalRecords={totalRecords}
-          activeTab={formTab}
+          activeTab={activeTab}
           onFormTabChange={setFormTab}
           onHeaderTabChange={handleTabChange}
           onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}

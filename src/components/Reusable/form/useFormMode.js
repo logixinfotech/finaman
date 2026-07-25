@@ -53,8 +53,7 @@ const [activeTab, setActiveTab] = useState("entry");
     setMode("edit");
     setCanPrint(false);
   }, [formData, canModify, rights.modDays, isWithinLimit]);
-
-  const handleEditCancel = useCallback(async () => {
+ const handleEditCancel = useCallback(async () => {
     if (isDirty) {
       const confirmed = await confirmWarning({
         title: "Discard Changes?",
@@ -71,6 +70,7 @@ const [activeTab, setActiveTab] = useState("entry");
     }
     if (!showForm) {
       setShowForm(true);
+      setActiveTab("entry");   // ✅ ye line add karo
     } else {
       if (mode === "add") {
         setShowForm(false);
@@ -80,7 +80,7 @@ const [activeTab, setActiveTab] = useState("entry");
         setShowForm(false);
       }
     }
-  }, [isDirty, mode, originalData, initialState, showForm]);
+  }, [isDirty, mode, originalData, initialState, showForm, setActiveTab]); // 👈 deps mein setActiveTab add karo
 
   useEffect(() => {
     const handleEsc = (event) => {

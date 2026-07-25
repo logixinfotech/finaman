@@ -181,7 +181,7 @@ const DepartmentMasterPage = ({ tab }) => {
     };
 
     return (
-        <div className="h-full">
+        <div className="h-full w-full">
             {showForm ? (
                 <UserGroupForm
                     title="Department Master"

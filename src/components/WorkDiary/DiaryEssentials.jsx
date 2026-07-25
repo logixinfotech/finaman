@@ -338,8 +338,7 @@ export const MyTasksScreen = ({
     const set = new Set(scopedTasks.map(t => t.assigned_to_name).filter(Boolean));
     return [...set].sort();
   }, [scopedTasks]);
-
-
+ 
 
   const handleStatusChange = useCallback(async (key, newStatus) => {
     const upd = p => p.map(t => (t._key === key || String(t.line_id) === String(key)) ? { ...t, status: newStatus } : t);
@@ -386,9 +385,7 @@ export const MyTasksScreen = ({
 
   const openDetail = useCallback(k => setDetailKey(k), []);
 
-  const categoryOptions = useMemo(() => categoryList.map(c => c.category), [categoryList]);
-
-  // Visible quick pills — the rest live inside "More filters"
+  const categoryOptions = useMemo(() => categoryList.map(c => c.category), [categoryList]); 
   const FPILLS = [
     { k: "all", l: "All" },
     { k: "pending", l: "Pending" },
@@ -674,7 +671,7 @@ export const MyTasksScreen = ({
           ) : (
             <div style={{ paddingTop: 16 }}>
               <TaskTable tasks={filtered} onOpen={openDetail} onDelete={delTask} onStatusChange={handleStatusChange} selectedKey={detailKey}
-                isEditable={t => !t.assigned_by || isMine(t.assigned_by)} />
+  isEditable={t => !t.assigned_by || isMine(t.assigned_by)} />
             </div>
           )}
         </div>

@@ -589,43 +589,43 @@ export const TaskTableEntry = ({
         overflow: "hidden", width: "100%", height: "100%",
       }}>
 
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 20px", flexShrink: 0, borderBottom: `1px solid ${T.line}`,
-        background: T.bg,
-      }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: T.accentTint, border: `1px solid ${T.accent}22`,
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}>
-          <ListChecks size={16} color={T.accent} strokeWidth={2.2} />
-        </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: T.font, fontSize: 15, fontWeight: 700, color: T.t1, lineHeight: 1.2 }}>
-            {isEditMode ? "Edit task" : "New task"}
-          </div>
-        </div>
-        {validRows > 0 && (
-          <div style={{
-            fontFamily: T.fontMono, fontSize: 11, color: T.accent, background: T.accentTint,
-            border: `1px solid ${T.accent}33`,
-            padding: "3px 9px", borderRadius: 20, fontWeight: 600,
-          }}>
-            {validRows}/{rows.length} filled
-          </div>
-        )}
-        <button onClick={onClose} aria-label="Close"
-          style={{
-            width: 28, height: 28, borderRadius: 7, background: T.surface,
-            border: `1px solid ${T.line}`, cursor: "pointer", color: T.t3,
-            display: "flex", alignItems: "center", justifyContent: "center", transition: "all .14s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = T.dangerTint; e.currentTarget.style.color = T.danger; e.currentTarget.style.borderColor = `${T.danger}55`; }}
-          onMouseLeave={e => { e.currentTarget.style.background = T.surface; e.currentTarget.style.color = T.t3; e.currentTarget.style.borderColor = T.line; }}>
-          <X size={16} />
-        </button>
-      </div>
+<div style={{
+  display: "flex", alignItems: "center", gap: 10,
+  padding: "11px 16px", flexShrink: 0, borderBottom: `1px solid ${T.line}`,
+  background: T.bg,
+}}>
+  <div style={{
+    width: 26, height: 26, borderRadius: 7,
+    background: T.accentTint, border: `1px solid ${T.accent}22`,
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  }}>
+    <ListChecks size={14} color={T.accent} strokeWidth={2.2} />
+  </div>
+  <div style={{ minWidth: 0, flex: 1 }}>
+    <div style={{ fontFamily: T.font, fontSize: 14, fontWeight: 700, color: T.t1, lineHeight: 1.2 }}>
+      {isEditMode ? "Edit task" : "New task"}
+    </div>
+  </div>
+  {validRows > 0 && (
+    <div style={{
+      fontFamily: T.fontMono, fontSize: 10.5, color: T.accent, background: T.accentTint,
+      border: `1px solid ${T.accent}33`,
+      padding: "2px 8px", borderRadius: 20, fontWeight: 600,
+    }}>
+      {validRows}/{rows.length} filled
+    </div>
+  )}
+  <button onClick={onClose} aria-label="Close"
+    style={{
+      width: 26, height: 26, borderRadius: 7, background: T.surface,
+      border: `1px solid ${T.line}`, cursor: "pointer", color: T.t3,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}
+    onMouseEnter={e => { e.currentTarget.style.background = T.dangerTint; e.currentTarget.style.color = T.danger; e.currentTarget.style.borderColor = `${T.danger}55`; }}
+    onMouseLeave={e => { e.currentTarget.style.background = T.surface; e.currentTarget.style.color = T.t3; e.currentTarget.style.borderColor = T.line; }}>
+    <X size={15} />
+  </button>
+</div>
 
       <div id="task-form-container" onKeyDown={handleKeyDown} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
 
@@ -715,24 +715,23 @@ export const TaskTableEntry = ({
                         />
                       </div>
 
-                      <div className="subtask-cell" data-label="Assigned on" style={{ paddingRight: 10 }}>
-                        <ProDateInput
-                          name={`assign_date_${idx}`}
-                          value={row.assign_date || ""}
-                          onChange={v => updateRow(row._key, "assign_date", v)}
-                          placeholder="Assign date"
-                          placeholder="DD-MM-YYYY"
-                        />
-                      </div>
+                     <div className="subtask-cell" data-label="Assigned on" style={{ paddingRight: 10 }}>
+  <ProDateInput
+    name={`assign_date_${idx}`}
+    value={row.assign_date || ""}
+    onChange={v => updateRow(row._key, "assign_date", v)}
+    placeholder="DD-MM-YYYY"
+  />
+</div>
 
-                      <div className="subtask-cell" data-label="Due date" style={{ paddingRight: 10 }}>
-                        <ProDateInput
-                          name={`due_date_${idx}`}
-                          value={row.due_date || ""}
-                          onChange={v => updateRow(row._key, "due_date", v)}
-
-                        />
-                      </div>
+<div className="subtask-cell" data-label="Due date" style={{ paddingRight: 10 }}>
+  <ProDateInput
+    name={`due_date_${idx}`}
+    value={row.due_date || ""}
+    onChange={v => updateRow(row._key, "due_date", v)}
+    placeholder="DD-MM-YYYY"
+  />
+</div>
 
                       <div className="subtask-cell" data-label="Due time" style={{ paddingRight: 10 }}>
                         <div className="field-input field-dense" style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 8px" }}>
@@ -911,41 +910,55 @@ export const TaskTableEntry = ({
 
         /* ── Mobile: header fields stack, and each subtask row becomes a
              labelled card instead of a cramped horizontal-scroll row ── */
-        @media (max-width: 680px) {
-          .task-form-wrapper { padding: 14px 14px 10px; }
-          .subtask-section-wrapper { padding: 12px 14px; }
-          .resp-grid-2 { grid-template-columns: 1fr; max-width: none; gap: 12px; }
+   /* ── Mobile: header fields stack; each subtask row becomes a compact card
+     with a 2-column grid — Task full width, then Date pair, then Time+Priority pair ── */
+@media (max-width: 680px) {
+  .task-form-wrapper { padding: 12px 14px 8px; }
+  .subtask-section-wrapper { padding: 10px 14px; }
+  .resp-grid-2 { grid-template-columns: 1fr; max-width: none; gap: 10px; }
 
-          .subtask-table-container { border: none; border-radius: 0; overflow: visible; }
-          .subtask-table-scroll { overflow-x: visible !important; }
-          .subtask-table-inner { min-width: 0 !important; }
+  .subtask-table-container { border: none; border-radius: 0; overflow: visible; }
+  .subtask-table-scroll { overflow-x: visible !important; }
+  .subtask-table-inner { min-width: 0 !important; }
 
-          .resp-subtask-grid.subtask-header-row { display: none !important; }
+  .resp-subtask-grid.subtask-header-row { display: none !important; }
 
-          .resp-subtask-grid.subtask-data-row {
-            display: flex !important; flex-direction: column !important;
-            gap: 10px; border: 1px solid ${T.line} !important; border-radius: 10px;
-            margin-bottom: 10px; padding: 12px !important; background: ${T.surface} !important;
-          }
-          .subtask-idx-cell { display: none; }
-          .subtask-cell { padding-right: 0 !important; display: flex; flex-direction: column; gap: 4px; }
-          .subtask-cell[data-label]::before {
-            content: attr(data-label);
-            font-size: 10px; font-weight: 700; letter-spacing: .5px;
-            text-transform: uppercase; color: ${T.t4}; font-family: ${T.font};
-          }
-          .subtask-delete-btn {
-            width: 100% !important; height: 34px !important; gap: 6px;
-            border-radius: 7px !important;
-          }
-          .subtask-delete-label { display: inline; font-size: 12px; font-weight: 600; font-family: ${T.font}; }
+  .resp-subtask-grid.subtask-data-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px 10px !important;
+    border: 1px solid ${T.line} !important; border-radius: 10px;
+    margin-bottom: 8px; padding: 26px 10px 10px !important; position: relative;
+    background: ${T.surface} !important;
+  }
 
-          .footer-wrapper { padding: 12px 14px; flex-direction: column; }
-          .footer-wrapper > button { width: 100%; justify-content: center; margin-bottom: 8px; }
-          .footer-actions { width: 100%; justify-content: space-between; gap: 12px; }
-          .footer-actions > button { flex: 1; justify-content: center; }
-        }
+  /* Row number + delete button become a slim strip at the top of each card */
+  .subtask-idx-cell {
+    display: block !important; position: absolute; top: 7px; left: 10px;
+    font-size: 10px; padding: 0;
+  }
+  .subtask-delete-btn {
+    position: absolute !important; top: 5px !important; right: 5px !important;
+    width: 22px !important; height: 22px !important; margin-top: 0 !important;
+    border-radius: 6px !important;
+  }
+  .subtask-delete-label { display: none !important; }
 
+  .subtask-cell { padding-right: 0 !important; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .subtask-cell[data-label]::before {
+    content: attr(data-label);
+    font-size: 9.5px; font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; color: ${T.t4}; font-family: ${T.font};
+  }
+  /* Task apni poori row le, baaki fields 2-2 ke jode me sit karte hain (auto grid flow) */
+  .subtask-cell[data-label="Task"] { grid-column: 1 / -1; }
+  .subtask-cell[data-label="Status"] { grid-column: 1 / -1; }
+
+  .footer-wrapper { padding: 10px 14px; flex-direction: column; }
+  .footer-wrapper > button { width: 100%; justify-content: center; margin-bottom: 8px; }
+  .footer-actions { width: 100%; justify-content: space-between; gap: 12px; }
+  .footer-actions > button { flex: 1; justify-content: center; }
+}
         /* ── Small phones: date calendar popover should never overflow the viewport ── */
         @media (max-width: 340px) {
           .date-popover { width: calc(100vw - 24px) !important; left: 12px !important; }

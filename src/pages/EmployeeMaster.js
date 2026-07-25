@@ -749,12 +749,6 @@ const filteredList = useMemo(() => {
             onToggleFilter={() => setShowFilter((p) => !p)}
             showForm={showFilter}
             formComponent={
-            // <Filter
-            //   filters={filters}
-            //   setFilters={setFilters}
-            //   onApply={applyFilter}
-            //   onClear={clearFilter}
-            // />
             <UnivarsalFilter
             options={options}
             filters={filters}
@@ -763,7 +757,7 @@ const filteredList = useMemo(() => {
             onApply={applyFilter}
             onClear={clearFilter}
           />
-          }
+            }
             
             onDeleteMultiple={async (ids) => {
               const confirmed = await confirmDelete({
@@ -808,7 +802,7 @@ const filteredList = useMemo(() => {
               onClose={() => setShowImport(false)}
               onSuccess={() => {
                 loadEmployees();
-                showToast({ icon: "success", title: "Import completed" });  // ✅ extra toast
+                showToast({ icon: "success", title: "Import completed" });   
               }}
             />
           )}

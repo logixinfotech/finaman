@@ -14,7 +14,7 @@
   --bg-header: #ffffff;
   --bg-footer: #ffffff;
  
-  --bg-active: rgba(59, 130, 246, 0.18); 
+  --bg-active: rgba(14, 47, 100, 0.18); 
   --bg-hover: rgba(255, 255, 255, 0.08); 
   --text-main: #0f172a;
   --text-muted: #64748b;
@@ -29,6 +29,17 @@
   --tabbar-bg: #142a52; /* fallback */
   
 }
+#root {
+  padding-top: env(safe-area-inset-top);
+  
+}
+
+.sidebar {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+}
+
 
  
 .theme-light {
@@ -41,7 +52,7 @@
   --tabbar-bg: #142a52;
 
   --bg-hover: rgba(255, 255, 255, 0.08); 
-  --bg-active: rgba(59, 130, 246, 0.25); 
+  --bg-active: rgba(59, 131, 246, 0.911); 
   --header-start: #1e40af;
   --header-middle: #3b82f6;
   --header-end: #2563eb; 
@@ -69,7 +80,7 @@
   --tabbar-bg: #0b1322;
 
   --bg-hover: rgba(255, 255, 255, 0.08); 
-  --bg-active: rgba(59, 130, 246, 0.20); 
+  --bg-active: rgba(59, 131, 246, 0.925); 
   --header-start: #1e293b;
   --header-middle: #0f172a;
   --header-end: #020617;
@@ -87,15 +98,15 @@
 
 .theme-corporate {
   --bg-main: #f8fafc;
-  --bg-sidebar: linear-gradient(180deg, #020617, #0F172A);
+  --bg-sidebar: linear-gradient(90deg, #020617, #464d5e);
   --bg-header: #ffffff;
   --bg-footer: #ffffff;
 
   --sidebar-top-bg: linear-gradient(90deg, #334155, #64748b);
-  --tabbar-bg: #3a4658;
+  --tabbar-bg: #414f61;
 
   --bg-hover: rgba(255, 255, 255, 0.08);
-  --bg-active: #334155;
+  --bg-active: #58595a;
 
   --header-start: #334155;
   --header-middle: #475569;
@@ -121,7 +132,7 @@
   --sidebar-top-bg: linear-gradient(90deg, #0b1f3a, #1e3a8a); 
   --tabbar-bg: #122a55;
   --bg-hover: rgba(255, 255, 255, 0.08); 
-  --bg-active: rgba(59, 130, 246, 0.25);
+  --bg-active: rgba(32, 89, 180, 0.925);
 
 
   --header-start: #1e40af;
@@ -143,14 +154,14 @@
 .theme-teal {
   --bg-main: #f0fdfa;
 
-  --bg-sidebar: linear-gradient(180deg, #020617, #0f172a);
+  --bg-sidebar: #083532;
 
   --bg-header: #ffffff;
   --bg-footer: #ffffff; 
-  --sidebar-top-bg: linear-gradient(90deg, #0d9488, #0f766e); 
+  --sidebar-top-bg: linear-gradient(90deg, #0d9488, #0c5f58); 
   --tabbar-bg: #0c5d57;
   --bg-hover: rgba(255, 255, 255, 0.08); 
-  --bg-active: rgba(20, 184, 166, 0.20); 
+  --bg-active: rgba(2, 156, 138, 0.925); 
   --header-start: #2dd4bf;
   --header-middle: #14b8a6;
   --header-end: #0f766e;

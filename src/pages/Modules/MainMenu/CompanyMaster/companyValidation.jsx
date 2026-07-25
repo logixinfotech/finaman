@@ -3,7 +3,8 @@
 import React, { memo } from "react";
 import {
   FaBuilding, FaPhoneAlt, FaIdCard, FaCertificate, FaMapMarkerAlt, 
-  FaCreditCard, FaMoneyBillWave, FaCogs, FaFileAlt, FaEnvelope, FaGlobe,FaShieldAlt
+  FaCreditCard, FaMoneyBillWave, FaCogs, FaFileAlt, FaEnvelope, FaGlobe, FaShieldAlt,
+  FaExclamationTriangle, FaLink, FaTruck, FaGavel, FaCheckCircle
 } from "react-icons/fa";
  
 export const TabIcon = memo(({ tab }) => {
@@ -14,10 +15,12 @@ export const TabIcon = memo(({ tab }) => {
   if (t.includes("bank") || t.includes("finance")) return <FaCreditCard className={baseClass} />;
   if (t.includes("system") || t.includes("settings")) return <FaCogs className={baseClass} />;
   if (t.includes("address")) return <FaMapMarkerAlt className={baseClass} />;
+
+ 
+
   if (t.includes("document")) return <FaFileAlt className={baseClass} />;
   return <FaFileAlt className={baseClass} />;
 });
-
 export const getInitials = (name) => {
   if (!name || name === "New Entry") return "NA";
   const parts = name.trim().split(" ");
@@ -46,6 +49,20 @@ export const configs = {
 // ==========================================
 // 3. HEADER STYLES (Colors & Icons)
 // ==========================================
+// export const getHeaderStyle = (title) => {
+//   const t = (title || "").toLowerCase();
+  
+//   if (t.includes("basic") || t.includes("company")) return { icon: <FaBuilding />, barBg: "bg-[#eff6ff]", iconBg: "bg-[#2563eb]/15 text-[#2563eb]", text: "text-[#0f2137]", border: "border-[#bfdbfe]" };
+//   if (t.includes("communication") || t.includes("contact")) return { icon: <FaPhoneAlt />, barBg: "bg-[#e6f7f4]", iconBg: "bg-[#0d9488]/15 text-[#0d9488]", text: "text-[#0f2137]", border: "border-[#b2e3da]" };
+//   if (t.includes("tax") || t.includes("identifiers")) return { icon: <FaIdCard />, barBg: "bg-[#f3e8ff]", iconBg: "bg-[#7c3aed]/15 text-[#7c3aed]", text: "text-[#0f2137]", border: "border-[#d4b8f5]" };
+//   if (t.includes("license") || t.includes("compliance")) return { icon: <FaCertificate />, barBg: "bg-[#fff1f2]", iconBg: "bg-[#f43f5e]/15 text-[#e11d48]", text: "text-[#0f2137]", border: "border-[#fecdd3]" };
+//   if (t.includes("address")) return { icon: <FaMapMarkerAlt />, barBg: "bg-[#fff7ed]", iconBg: "bg-[#f97316]/15 text-[#f97316]", text: "text-[#0f2137]", border: "border-[#ffedd5]" };
+//   if (t.includes("bank") || t.includes("digital")) return { icon: <FaCreditCard />, barBg: "bg-[#e0f2fe]", iconBg: "bg-[#0284c7]/15 text-[#0284c7]", text: "text-[#0f2137]", border: "border-[#7dd3fc]" };
+//   if (t.includes("financial")) return { icon: <FaMoneyBillWave />, barBg: "bg-[#ecfdf5]", iconBg: "bg-[#10b981]/15 text-[#059669]", text: "text-[#0f2137]", border: "border-[#a7f3d0]" };
+//   if (t.includes("system")) return { icon: <FaCogs />, barBg: "bg-[#fefce8]", iconBg: "bg-[#eab308]/20 text-[#d97706]", text: "text-[#0f2137]", border: "border-[#fef08a]" };
+  
+//   return { icon: <FaFileAlt />, barBg: "bg-[#eef1f7]", iconBg: "bg-[#64748b]/15 text-[#475569]", text: "text-[#0f2137]", border: "border-[#dde1ea]" };
+// };
 export const getHeaderStyle = (title) => {
   const t = (title || "").toLowerCase();
   
@@ -57,10 +74,9 @@ export const getHeaderStyle = (title) => {
   if (t.includes("bank") || t.includes("digital")) return { icon: <FaCreditCard />, barBg: "bg-[#e0f2fe]", iconBg: "bg-[#0284c7]/15 text-[#0284c7]", text: "text-[#0f2137]", border: "border-[#7dd3fc]" };
   if (t.includes("financial")) return { icon: <FaMoneyBillWave />, barBg: "bg-[#ecfdf5]", iconBg: "bg-[#10b981]/15 text-[#059669]", text: "text-[#0f2137]", border: "border-[#a7f3d0]" };
   if (t.includes("system")) return { icon: <FaCogs />, barBg: "bg-[#fefce8]", iconBg: "bg-[#eab308]/20 text-[#d97706]", text: "text-[#0f2137]", border: "border-[#fef08a]" };
-  
-  return { icon: <FaFileAlt />, barBg: "bg-[#eef1f7]", iconBg: "bg-[#64748b]/15 text-[#475569]", text: "text-[#0f2137]", border: "border-[#dde1ea]" };
-};
 
+
+};
 // ==========================================
 // 4. VALIDATION & STRICTOR LENGTH RULES (Real-time slicing boundaries)
 // ==========================================
@@ -305,6 +321,7 @@ export const widthConfig = {
   "UPI ID": "col-span-1",
   "Branch": "col-span-1",
   "Account Type": "col-span-1",
+   
 };
 
 // ==========================================

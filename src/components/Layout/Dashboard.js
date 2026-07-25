@@ -1,7 +1,6 @@
 import React, { useEffect, useState, Suspense, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import "./Dashboard.css";
-import { fetchMasmnuData } from "../../utils/api";
+import "./Dashboard.css"; 
 import TabBar from "./TabBar";
 import PageRegistry from "../../pages/PageRegistry";
 import * as FaIcons from "react-icons/fa";
@@ -19,6 +18,7 @@ import {
 } from "react-icons/fa";
 import FinamanDashboard from "../../pages/FinamanDashboard";
 import RecentActivity from "./RecentActivity";
+import { fetchMasmnuData, fetchMasgrpList } from "../../utils/api";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -40,6 +40,7 @@ function Dashboard({
   setTabs,
 }) {
   const [menus, setMenus] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadedTabs, setLoadedTabs] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,20 +91,34 @@ function Dashboard({
   }, [activeModule?.masmod_id]);
   // ─────────────────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
+useEffect(() => {
     const loadMenus = async () => {
-      if (!activeModule) { setMenus([]); return; }
+      if (!activeModule) { setMenus([]); setGroups([]); return; }
       setLoading(true);
       try {
         const token = sessionStorage.getItem("token");
-        const data = await fetchMasmnuData(token);
-        const filtered = (data || []).filter(
-          (x) => x.masmod_id === activeModule.masmod_id && x.menu_hide !== "Y"
+        const [menuData, grpData] = await Promise.all([
+          fetchMasmnuData(token),
+          fetchMasgrpList({ masmod_id: activeModule.masmod_id }),
+        ]);
+
+        // hidden groups ke saare menus bhi gayab honge
+        const grpList = (Array.isArray(grpData) ? grpData : grpData?.data || [])
+          .filter((g) => g.grp_hide !== "Y");
+        const visibleIds = new Set(grpList.map((g) => g.grp_id));
+
+        const filtered = (menuData || []).filter(
+          (x) =>
+            x.masmod_id === activeModule.masmod_id &&
+            x.menu_hide !== "Y" &&
+            (!x.grp_id || visibleIds.has(x.grp_id))     // 👈 grp_hide filter
         );
+
+        setGroups(grpList);
         setMenus(filtered);
       } catch (err) {
         console.error("Dashboard masmnu error:", err);
-        setMenus([]);
+        setMenus([]); setGroups([]);
       } finally {
         setLoading(false);
       }
@@ -206,22 +221,28 @@ function Dashboard({
     () => [...reports].sort((a, b) => isFav(b.masmnu_id) - isFav(a.masmnu_id)),
     [reports, isFav]
   );
- 
-// Group by grp_name — order-preserving
-  const groupBy = (arr) => {
+  
+const groupBy = useCallback((arr, padType) => {
     const map = new Map();
+
+    groups
+      .filter((g) => g.pad_type === padType)
+      .sort((a, b) => (a.srl_no || 0) - (b.srl_no || 0))
+      .forEach((g) => map.set(g.grp_name, { icon: g.icon_name, items: [] }));   // 👈
+
     arr.forEach((m) => {
-      const g = (m.grp_name || "").trim() || "General";
-      if (!map.has(g)) map.set(g, []);
-      map.get(g).push(m);
+      const g = groups.find((x) => x.grp_id=== m.grp_id);
+      const name = g ? g.grp_name : "General";
+      if (!map.has(name)) map.set(name, { icon: g?.icon_name || null, items: [] });  // 👈
+      map.get(name).items.push(m);
     });
-    return Array.from(map, ([group, items]) => ({ group, items }));
-  };
 
-  const entryGroups  = useMemo(() => groupBy(sortedEntries), [sortedEntries]);
-  const reportGroups = useMemo(() => groupBy(sortedReports), [sortedReports]);
+    return Array.from(map, ([group, v]) => ({ group, icon: v.icon, items: v.items }))
+      .filter((x) => x.items.length > 0);
+  }, [groups]);
 
-  // A/B/C shortcut order = rendered order
+  const entryGroups  = useMemo(() => groupBy(sortedEntries, "1"), [sortedEntries, groupBy]);
+  const reportGroups = useMemo(() => groupBy(sortedReports, "2"), [sortedReports, groupBy]); 
   const shortcutMenus = useMemo(
     () => [
       ...entryGroups.flatMap((g) => g.items),
@@ -287,8 +308,38 @@ function Dashboard({
       key={m.masmnu_id}
       className="dashboard-card entry-card"
       onClick={() => onOpenPage(m)}
+      style={{ position: "relative", overflow: "hidden" }}
     >
-      <div className="menu-serial">{getAlphabet(baseIndex + index)}</div>
+      <div
+        className="menu-serial"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 22,
+          height: 22,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "flex-start",
+          padding: "2px 0 0 3px",
+          border: "none",
+          borderRadius: "0 0 100% 0",
+          background: "#eef2ff",
+          color: "#6366f1",
+          fontSize: 9,
+          fontWeight: 700,
+          lineHeight: 1,
+          margin: 0,
+          transform: "none",
+          boxShadow: "none",
+          flex: "none",
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+      >
+        {getAlphabet(baseIndex + index)}
+      </div>
+
       <div
         className="dashboard-card-icon colored-icon"
         style={{ background: getMenuColor(m.bar_name) }}
@@ -297,7 +348,6 @@ function Dashboard({
       </div>
       <div className="dashboard-card-title">{m.bar_name}</div>
 
-      {/* FIX: stop the event at pointer-down AND click so the card never opens. */}
       <button
         type="button"
         aria-label={isFav(m.masmnu_id) ? "Remove from favourites" : "Add to favourites"}
@@ -308,6 +358,17 @@ function Dashboard({
           e.preventDefault();
           toggleFavourite(m.masmnu_id);
         }}
+        style={{
+          opacity: 1,
+          visibility: "visible",
+          color: isFav(m.masmnu_id) ? "#f59e0b" : "#cbd5e1",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: 4,
+          fontSize: 13,
+          marginLeft: "auto",
+        }}
       >
         {isFav(m.masmnu_id) ? <FaStar /> : <FaRegStar />}
       </button>
@@ -316,28 +377,30 @@ function Dashboard({
 
 const renderGroupedSection = (groups, baseOffset, sectionKey) => {
     let running = baseOffset;
-    return groups.map(({ group, items }) => {
+    return groups.map(({ group, icon, items }) => {          // 👈 icon
       const start = running;
-      running += items.length;                      // 👈 collapsed ho tab bhi
-      const key = `${sectionKey}::${group}`;         //    shortcut letters shift na ho
+      running += items.length;
+      const key = `${sectionKey}::${group}`;
       const isCollapsed = collapsedGroups.has(key);
+      const GrpIcon = icon && FaIcons[icon] ? FaIcons[icon] : null;   // 👈
 
       return (
         <div key={key} className="menu-group-block">
-          <button
+         <button
             type="button"
             className={`menu-group-title ${isCollapsed ? "is-collapsed" : ""}`}
             onClick={() => toggleGroup(key)}
             aria-expanded={!isCollapsed}
           >
+            {GrpIcon && <GrpIcon className="menu-group-icon" />}
+            <span className="menu-group-name">{group}</span>
+            {/* <span className="menu-group-count">{items.length}</span> */}
             <span className="menu-group-chevron">
               {isCollapsed ? <FaChevronRight /> : <FaChevronDown />}
             </span>
-            <span className="menu-group-name">{group}</span>
-            <span className="menu-group-count">{items.length}</span>
           </button>
 
-          <AnimatePresence initial={false}>
+   <AnimatePresence initial={false}>
             {!isCollapsed && (
               <motion.div
                 key="body"
@@ -347,14 +410,16 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
                 transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                 style={{ overflow: "hidden" }}
               >
-                <motion.div
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="dashboard-card-grid"
-                >
-                  {items.map((m, i) => renderCard(m, i, start))}
-                </motion.div>
+                <div className="menu-group-card">              {/* 👈 naya */}
+                  <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="dashboard-card-grid"
+                  >
+                    {items.map((m, i) => renderCard(m, i, start))}
+                  </motion.div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -423,7 +488,7 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
               <div className="section-title">
                 <FaRegWindowMaximize className="section-icon" />
                 <span>Entries</span>
-                <span className="section-count">{sortedEntries.length}</span>
+                {/* <span className="section-count">{sortedEntries.length}</span> */}
               </div>
              {sortedEntries.length === 0 ? (
                 <EmptyState title="No entries" subtitle="No entry menus in this module." />
@@ -436,7 +501,7 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
               <div className="section-title">
                 <FaChartBar className="section-icon" style={{ color: "#4f46e5" }} />
                 <span>Reports</span>
-                <span className="section-count">{sortedReports.length}</span>
+                {/* <span className="section-count">{sortedReports.length}</span> */}
               </div>
              {sortedReports.length === 0 ? (
                 <EmptyState title="No reports" subtitle="No report menus in this module." />
@@ -561,9 +626,7 @@ useEffect(() => {
           >
             {isActivityOpen ? <FaChevronRight size={14} /> : <FaHistory size={16} />}
           </motion.div>
-        </div>
-
-        {/* Desktop / tablet: side panel.  Mobile: bottom sheet. */}
+        </div> 
         {isMobile ? (
           <AnimatePresence>
             {isActivityOpen && (

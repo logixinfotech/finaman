@@ -6,15 +6,15 @@ import ERPDateInput from "../../../../components/Reusable/input/Date";
 const INPUT_CLS =
   "h-9 rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-800 placeholder:text-slate-400 " +
   "outline-none transition-shadow focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100";
-
+const ORDER_STATUS_OPTIONS = ["Completed", "Pending"];
 const DEBOUNCE_MS = 280;
 
 function FiltersBar({
-  filters, setFilters, filterLists, rows, dateBounds,
-  // header bits, now rendered inside this same sticky block
+  filters, setFilters, filterLists, rows, dateBounds, tab,
   recordCount, lastFetched, loading, onRefresh, onExport,
 }) {
   const [open, setOpen] = useState(false);
+  const showOrderFilters = tab !== "sales"; // Order Status / Pay Terms only relevant on order tabs
 
   const cityByState = useMemo(() => {
     const map = new Map();
@@ -38,30 +38,36 @@ function FiltersBar({
 
   const reset = useCallback(() => {
     startTransition(() => {
-      setFilters({ state: "", city: "", cust: "", grp: "", item: "", from: dateBounds.min, to: dateBounds.max });
+      setFilters({
+        state: "", city: "", cust: "", grp: "", item: "",
+        orderStatus: "", payTerms: "",
+        from: dateBounds.min, to: dateBounds.max,
+      });
     });
   }, [setFilters, dateBounds.min, dateBounds.max]);
 
-  const chips = useMemo(
-    () =>
-      [
-        ["state", "State", filters.state],
-        ["city", "City", filters.city],
-        ["cust", "Customer", filters.cust],
-        ["grp", "Group", filters.grp],
-        ["item", "Product", filters.item],
-      ].filter(([, , v]) => v),
-    [filters.state, filters.city, filters.cust, filters.grp, filters.item]
-  );
+  const chips = useMemo(() => {
+    const base = [
+      ["state", "State", filters.state],
+      ["city", "City", filters.city],
+      ["cust", "Customer", filters.cust],
+      ["grp", "Group", filters.grp],
+      ["item", "Product", filters.item],
+    ];
+    if (showOrderFilters) {
+      base.push(
+        ["orderStatus", "Status", filters.orderStatus],
+        ["payTerms", "Pay Terms", filters.payTerms]
+      );
+    }
+    return base.filter(([, , v]) => v);
+  }, [filters, showOrderFilters]);
 
   const activeCount = chips.length;
 
   return (
-    // Solid bg-white (no /95 + backdrop-blur) — content scrolling underneath this
-    // sticky block now disappears cleanly behind it, instead of showing through
-    // faintly for a frame, which read as "scrolling through" the bar.
     <div className="sticky top-0 z-30 mb-4 rounded-xl border border-slate-200 bg-white shadow-sm">
-      {/* Title row — now part of the same sticky block */}
+      {/* Title row */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <h1 className="text-base font-bold tracking-tight text-slate-900 shrink-0">Sales Dashboard</h1>
@@ -123,6 +129,23 @@ function FiltersBar({
             placeholder="All Groups"
           />
           <DebouncedTextField placeholder="Search product..." value={filters.item} onCommit={(v) => update({ item: v })} />
+
+          {showOrderFilters && (
+            <>
+              <AutoField
+                options={ORDER_STATUS_OPTIONS} value={filters.orderStatus}
+                onChange={(v) => update({ orderStatus: v })}
+                onClear={() => update({ orderStatus: "" })}
+                placeholder="All Orders"
+              />
+              <AutoField
+                options={filterLists.payTerms || []} value={filters.payTerms}
+                onChange={(v) => update({ payTerms: v })}
+                onClear={() => update({ payTerms: "" })}
+                placeholder="All Terms"
+              />
+            </>
+          )}
 
           <div className="flex items-center gap-1">
             <ERPDateInput value={filters.from} onChange={(d) => update({ from: d })} maxDate={filters.to} maxDateLabel="To date" className="h-9 w-[110px] text-xs" />

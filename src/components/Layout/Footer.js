@@ -4,12 +4,29 @@ import "./Footer.css";
 function Footer({ activeModule }) {
 
   const [dateTime, setDateTime] = useState("");
-  const [serverStatus] = useState("Online");
-  const [dbStatus] = useState("Connected");
+
+   const [companyInfo, setCompanyInfo] = useState({
+      name: "Demo Company Private Limited",
+      loc: "Uttar Pradesh",
+      fy: "2026-27",
+    });
 
   const appVersion = "v1.0.0";
-  const companyName = "LOGIX INFOTECH LLP";
-  const appName = "FINAMAN ERP";
+
+  useEffect(() => {
+    const user = JSON.parse(sessionStorage.getItem("user"));
+    if (user) {
+
+      if (user.com_name || user.com_code) {
+        setCompanyInfo({
+          name: user.com_name || user.com_code,
+          loc: user.location || "Noida, UP",
+          fy: user.fy || "2026-27",
+        });
+      }
+    }
+  }, []);
+
 
   useEffect(() => {
 
@@ -40,12 +57,9 @@ function Footer({ activeModule }) {
       <div className="erp-footer-left">
 
         <span className="erp-footer-brand">
-          © {new Date().getFullYear()} {companyName}
+          © {new Date().getFullYear()} {companyInfo.name}
         </span>
 
-        <span className="erp-footer-copy">
-          | {appName}
-        </span>
 
       </div>
 

@@ -20,9 +20,7 @@ import {
 } from "lucide-react";
 
 const NAV = [
-  { k: "mytasks", l: "My Tasks", Icon: CheckSquare },
- 
-
+  { k: "mytasks", l: "My Tasks", Icon: CheckSquare }, 
   { k: "report", l: "Analytics", Icon: BarChart2 },
 
 ];

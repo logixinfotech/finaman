@@ -24,9 +24,7 @@ const sectionVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } },
   exit: { opacity: 0, y: -8, transition: { duration: 0.18 } },
-};
-
-// Collapses/expands the User ID + Password fields block
+}; 
 const fieldsVariant = {
   hidden: { opacity: 0, height: 0, marginBottom: 0 },
   visible: {
@@ -78,8 +76,7 @@ function LoginPage({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showForceLogin, setShowForceLogin] = useState(false);
-
+  const [showForceLogin, setShowForceLogin] = useState(false); 
   const [companies, setCompanies] = useState([]);
   const [preToken, setPreToken] = useState("");
   const [selecting, setSelecting] = useState(null);
@@ -258,11 +255,9 @@ function LoginPage({ onLoginSuccess }) {
                    shadow-[0_25px_50px_rgba(30,64,175,0.25)]
                    border border-white/80 overflow-hidden"
       >
-        {/* Top accent strip — fills the space, keeps it from looking bare */}
         <div className="h-1.5 w-full bg-gradient-to-r from-blue-400 via-blue-600 to-indigo-500" />
 
         <div className="px-8 py-3">
-          {/* Brand header — stays exactly as-is on every step */}
           <div className="w-[100px] mx-auto shrink-0 flex flex-col items-center justify-center
                             gap-2 hidden sm:flex">
             <img
@@ -278,8 +273,6 @@ function LoginPage({ onLoginSuccess }) {
               Secure enterprise platform
             </span>
           </div>
-
-          {/* User ID + Password — collapses away entirely once company picker is shown */}
           <AnimatePresence initial={false}>
             {!isPicking && (
               <motion.div
@@ -373,7 +366,6 @@ function LoginPage({ onLoginSuccess }) {
             )}
           </AnimatePresence>
 
-          {/* Step-dependent lower section — same window, content swaps */}
           <AnimatePresence mode="wait">
             {step === "credentials" && (
               <motion.form
@@ -459,9 +451,6 @@ function LoginPage({ onLoginSuccess }) {
                   >
                     <CloseIcon size={15} />
                   </button>
-
-
-
                   <input
                     ref={searchRef}
                     type="text"
@@ -477,8 +466,6 @@ function LoginPage({ onLoginSuccess }) {
                 </div>
 
                 <div className="flex gap-0 rounded-xl border border-slate-200 overflow-hidden">
-
-                  {/* Sr No. — sabse pehle */}
                   <div className="w-[60px] shrink-0 border-r border-slate-200">
                     <div className="bg-[#2563eb] text-white text-[11px] font-semibold
                     tracking-[0.08em] uppercase px-3 py-2.5
@@ -502,8 +489,6 @@ function LoginPage({ onLoginSuccess }) {
                       ))}
                     </div>
                   </div>
-
-                  {/* A/C Year */}
                   <div className="w-[100px] shrink-0 border-r border-slate-200">
                     <div className="bg-[#2563eb] text-white text-[11px] font-semibold
                     tracking-[0.08em] uppercase px-3 py-2.5

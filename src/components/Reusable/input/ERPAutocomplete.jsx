@@ -31,6 +31,17 @@ const ERPAutocomplete = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+  // Toggle dropdown when arrow icon is clicked
+const toggleDropdown = () => {
+  if (disabled) return;
+  if (show) {
+    setShow(false);
+    setHighlightIndex(-1);
+  } else {
+    setFiltered(options);
+    setShow(true);
+  }
+};
 
   const handleChange = (e) => {
     const val = e.target.value;
@@ -115,7 +126,7 @@ if (e.key === "Enter") {
   return (
     <div ref={wrapperRef} className="relative">
       <input
-        className={`w-full ${className}`}
+        className={`w-full pr-7 ${className}`}
         value={value || ""}
         placeholder={placeholder}
         disabled={disabled}
@@ -126,6 +137,36 @@ if (e.key === "Enter") {
         }}
         onKeyDown={handleKey}
       />
+      {/* Dropdown arrow icon */}
+<button
+  type="button"
+  tabIndex={-1}
+  disabled={disabled}
+  onMouseDown={(e) => {
+    e.preventDefault(); // prevent input blur before toggle
+    toggleDropdown();
+  }}
+  className={`absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center ${
+    disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"
+  }`}
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={`text-gray-500 transition-transform duration-150 ${
+      show ? "rotate-180" : ""
+    }`}
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+</button>
 
       {show && (
         <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow max-h-52 overflow-auto text-xs">

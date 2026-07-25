@@ -27,8 +27,6 @@ const initialState = {
     signature: "",
     block: 0
 };
-// Base columns (module-level, unchanged). The clickable "Status" column that
-// needs the toggle handler is appended inside the component via useMemo.
 const baseColumns = [
     {
         key: "user_name",
@@ -47,7 +45,7 @@ const baseColumns = [
             }
         }
     },
-    { key: "user_id", label: "User ID" }, 
+    { key: "user_id", label: "User ID" },
     {
         key: "user_type",
         label: "User Type",
@@ -104,12 +102,12 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
         if (index !== -1) setCurrentIndex(index);
         handleView(row);
     };
-const handleSave = async () => {
-    const passwordRequired = !isEditMode;
-    if (!formData.user_id || !formData.user_type || (passwordRequired && !formData.password)) {
-        alertError("Validation Error", "Please fill all required fields marked with *");
-        return;
-    }
+    const handleSave = async () => {
+        const passwordRequired = !isEditMode;
+        if (!formData.user_id || !formData.user_type || (passwordRequired && !formData.password)) {
+            alertError("Validation Error", "Please fill all required fields marked with *");
+            return;
+        }
         console.log("MODE:", mode, "| isEditMode:", isEditMode, "| user_id:", formData.user_id);
 
         const response = await performSave("user_id", formData);
@@ -138,15 +136,15 @@ const handleSave = async () => {
                     ? "User updated successfully"
                     : "User added successfully",
             });
-} else if (response?.message?.toLowerCase().includes("already exists")) {
-    // 👇 ADD THIS
-    alertError("Duplicate User ID", `User ID "${formData.user_id}" already exists. Please choose a different ID.`);
-    // Focus back on user_id field
-    setTimeout(() => {
-        const el = document.querySelector('[name="user_id"]');
-        if (el) { el.focus(); el.select(); }
-    }, 100);
-}
+        } else if (response?.message?.toLowerCase().includes("already exists")) {
+            // 👇 ADD THIS
+            alertError("Duplicate User ID", `User ID "${formData.user_id}" already exists. Please choose a different ID.`);
+            // Focus back on user_id field
+            setTimeout(() => {
+                const el = document.querySelector('[name="user_id"]');
+                if (el) { el.focus(); el.select(); }
+            }, 100);
+        }
     };
 
     const handleTabChange = (targetTab) => {
@@ -184,9 +182,6 @@ const handleSave = async () => {
             );
         }
     }, []);
-
-    // Columns + clickable Status badge. Memoized so its identity stays stable
-    // (Table resets column order/visibility whenever the columns prop changes).
     const columns = useMemo(() => [
         ...baseColumns,
         {
@@ -202,10 +197,10 @@ const handleSave = async () => {
                             handleToggleBlock(row);
                         }}
                         title={blocked ? "Click to unblock" : "Click to block"}
-                         className={`px-2 py-1 text-xs rounded ${blocked
-          ? "bg-red-100 text-red-600" 
-          :  "bg-green-100 text-green-700"
-          }`}
+                        className={`px-2 py-1 text-xs rounded ${blocked
+                            ? "bg-red-100 text-red-600"
+                            : "bg-green-100 text-green-700"
+                            }`}
                     >
                         {blocked ? "Blocked" : "Active"}
                     </button>
@@ -214,7 +209,6 @@ const handleSave = async () => {
         },
     ], [handleToggleBlock]);
 
-    // Global ERP Handlers
     useEffect(() => {
         setERPHandlers({
             onNextRecord: () => setCurrentIndex(prev => Math.min(prev + 1, list.length - 1)),
@@ -257,7 +251,7 @@ const handleSave = async () => {
                     activeTab="entry"
                     onTabChange={handleTabChange}
                     onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
-          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
+                    onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
                 />
             ) : (
                 <Table
