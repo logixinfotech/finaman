@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import { useERPMode } from "../../../components/Reusable/form/useFormMode";
@@ -8,6 +8,7 @@ import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { getCapas, createCapa, updateCapa, deleteCapa, getNextRecordNo } from "./Utils/QmsAPI";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 
 const initialState = {
   Id: null, RecordNo: "", Status: "Open", InitiationDate: new Date().toISOString().slice(0, 10),
@@ -107,6 +108,23 @@ export default function CapaMasterPage({ tab }) {
     await handleEditCancel();
     if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
   };
+  const [filters, setFilters] = useState({ Status: "All Status" });
+const [showFilter, setShowFilter] = useState(false);
+
+const applyFilter = useCallback(() => {}, []);
+
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "All Status" });
+}, []);
+
+const filteredList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.Status && filters.Status !== "All Status") {
+      if (item.Status !== filters.Status) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
 
   return (
     <div className="h-full w-full">
@@ -132,14 +150,30 @@ export default function CapaMasterPage({ tab }) {
           headerActiveTab={activeTab} onHeaderTabChange={handleHeaderTabChange}
         />
       ) : (
-        <Table
-          activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="CAPA" data={listWithSr} columns={capaTableColumns}
-          rowKey="Id" loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+       <Table
+  activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="CAPA" data={filteredList} columns={capaTableColumns}
+  rowKey="Id" loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+   onRefresh={() => loadData()}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+        visibleFields={["status", "capaType", "department"]}
+      setFilters={setFilters}
+      options={{
+        ...groupOptions,
+        status: [ "Open", "Investigation", "Action In Progress", "Effectiveness Check", "Closed", "Rejected"],
+      }}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

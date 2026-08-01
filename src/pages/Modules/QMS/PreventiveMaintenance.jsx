@@ -8,6 +8,9 @@ import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { getPmRecords, createPmRecord, updatePmRecord, deletePmRecord, getNextRecordNo } from "./Utils/QmsAPI";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
+import { useMemo } from "react"; // pehli line ko update karo:
+ 
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 
 const initialState = {
   Id: null, RecordNo: "", Status: "Active", EquipmentName: "", EquipmentId: "", Location: "", PmType: "",
@@ -105,6 +108,22 @@ export default function PreventiveMaintenanceMasterPage({ tab }) {
     await handleEditCancel();
     if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
   };
+  const [filters, setFilters] = useState({ Status: "All" });
+const [showFilter, setShowFilter] = useState(false);
+
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "All" });
+}, []);
+
+const filteredList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.Status && filters.Status !== "All") {
+      if (item.Status !== filters.Status) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
 
   return (
     <div className="h-full w-full">
@@ -131,13 +150,29 @@ export default function PreventiveMaintenanceMasterPage({ tab }) {
         />
       ) : (
         <Table
-          activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Preventive Maintenance" data={listWithSr} columns={pmTableColumns}
-          rowKey="Id" loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+  activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="Preventive Maintenance" data={filteredList} columns={pmTableColumns}
+  rowKey="Id" loading={loading}
+  onRefresh={()=>loadData()}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status"]}
+      setFilters={setFilters}
+      options={{
+        ...groupOptions,
+        status: ["Active","Retired", "Rejected"],
+      }}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

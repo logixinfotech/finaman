@@ -1,3 +1,4 @@
+ 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
@@ -227,7 +228,7 @@ const LeaveRequestForm = ({
 
   return (
     <div
-      className="w-full h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      className="w-full h-full sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
@@ -244,15 +245,15 @@ const LeaveRequestForm = ({
         onNextRecord={onNextRecord}
       />
 
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-2 sm:p-4 overflow-y-auto">
         <div ref={formRef} className="w-full bg-white border max-w-[750px] mx-auto border-slate-200 shadow-sm rounded-md overflow-visible relative">
-          <div className="p-5 grid grid-cols-1 gap-y-5">
+          <div className="p-3 sm:p-5 grid grid-cols-1 gap-y-3 sm:gap-y-5">
 
 
             {/* ── Employee ── */}
-            <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
-              <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1">
-                <label className="text-[15px] w-[100px] pt-1 shrink-0">
+            <div className="flex flex-row gap-2 sm:gap-6 w-full">
+              <div className="flex flex-row items-start px-1 flex-1">
+                <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] pt-1 shrink-0">
                   Employee <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -274,8 +275,8 @@ const LeaveRequestForm = ({
               </div>
 
               {/* ── Leave Type ── */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1 mt-3 sm:mt-0">
-                <label className="text-[15px] w-[100px] pt-1 shrink-0">
+              <div className="flex flex-row items-start px-1 flex-1">
+                <label className="text-[13px] sm:text-[15px] w-[60px] sm:w-[100px] pt-1 shrink-0">
                   Leave Type <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -293,9 +294,9 @@ const LeaveRequestForm = ({
             </div>
 
             {/* ── Dates ── */}
-            <div className="flex flex-col sm:flex-row sm:gap-6 w-full">
-              <div className="flex flex-col sm:flex-row items-start px-1 flex-1">
-                <label className="text-[15px] w-[100px] shrink-0">
+            <div className="flex flex-row gap-2 sm:gap-6 w-full">
+              <div className="flex flex-row items-start px-1 flex-1">
+                <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] shrink-0">
                   From Date <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -309,8 +310,8 @@ const LeaveRequestForm = ({
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-start px-1 flex-1 mt-3 sm:mt-0">
-                <label className="text-[15px] w-[100px] shrink-0">
+              <div className="flex flex-row items-start px-1 flex-1">
+                <label className="text-[13px] sm:text-[15px] w-[55px] sm:w-[100px] shrink-0">
                   To Date <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -327,8 +328,8 @@ const LeaveRequestForm = ({
             </div>
 
             {/* ── Total Days (auto-calculated, read-only) ── */}
-            <div className="flex flex-col sm:flex-row items-start px-1">
-              <label className="text-[15px] w-[100px] shrink-0">Total Days</label>
+            <div className="flex flex-row items-start px-1">
+              <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] shrink-0">Total Days</label>
               <div className="flex-1 w-full">
                 <input
                   type="number"
@@ -342,8 +343,8 @@ const LeaveRequestForm = ({
             </div>
 
             {/* ── Reason ── */}
-            <div className="flex flex-col sm:flex-row items-start px-1">
-              <label className="text-[15px] w-[100px] pt-1 shrink-0">Reason</label>
+            <div className="flex flex-row items-start px-1">
+              <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] pt-1 shrink-0">Reason</label>
               <div className="flex-1 w-full">
                 <textarea
                   rows={3}

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import { useERPMode } from "../../../components/Reusable/form/useFormMode";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 import {
   dmsTabs,
   getDmsFieldGroups,
@@ -24,6 +25,7 @@ import {
   createDmsRecord,
   updateDmsRecord,
   deleteDmsRecord,
+  getNextRecordNo,
 } from "./Utils/QmsAPI";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
 
@@ -64,11 +66,6 @@ export default function DocumentMasterPage({ tab }) {
   );
 
   const { options: groupOptions } = useGroupOptions();
-
-  // BUGFIX: groupOptions is undefined until useGroupOptions resolves.
-  // getDmsFieldGroups(undefined) can throw inside render (e.g. if it maps
-  // over the value), which silently prevents the form from ever opening.
-  // Default to [] until the real options arrive.
   const dmsFieldGroup = useMemo(
     () => getDmsFieldGroups(groupOptions || []),
     [groupOptions],
@@ -125,7 +122,13 @@ export default function DocumentMasterPage({ tab }) {
     loadData,
     "DMS",
   );
+const [filters, setFilters] = useState({ Status: "All", Department: "", DocType: "All" });
+const [showFilter, setShowFilter] = useState(false);
 
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "All", Department: "", DocType: "All" });
+}, []);
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -138,10 +141,14 @@ export default function DocumentMasterPage({ tab }) {
     [setActiveTab, setShowForm],
   );
 
-  const handleAddNew = () => {
+  const handleAddNew =async () => {
     handleAdd();
     setShowForm(true);
     setActiveTab("entry");
+  const  recordNo = await getNextRecordNo("dms");
+        
+        setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
+    
   };
 
   useEffect(() => {
@@ -252,6 +259,7 @@ export default function DocumentMasterPage({ tab }) {
     handleAddNew,
     handleFormExit,
   };
+  console.log(tab.icon_name);
 
   useEffect(() => {
     setERPHandlers({
@@ -263,13 +271,28 @@ export default function DocumentMasterPage({ tab }) {
       onEsc: () => latest.current.handleFormExit(),
     });
   }, []);
+  const filteredDocList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.Status && filters.Status !== "All") {
+      if (item.Status !== filters.Status) return false;
+    }
+    if (filters.Department) {
+      const dept = String(item.Department || "").toLowerCase();
+      if (!dept.includes(filters.Department.toLowerCase())) return false;
+    }
+    if (filters.DocType && filters.DocType !== "All") {
+      if (item.DocType !== filters.DocType) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
 
   return (
     <div className="h-full w-full">
       {showForm ? (
         <>
           <ERPFormBuilder
-            title="Document Management (DMS)"
+            title="Document Management"
             tabs={dmsTabs}
             fieldGroups={dmsFieldGroup}
             widthConfig={dmsWidthConfig}
@@ -315,20 +338,33 @@ export default function DocumentMasterPage({ tab }) {
           )}
         </>
       ) : (
-        <Table
-          activeTab={activeTab}
-          onRefresh={() => loadData()}
-          showSettingsTab={true}
-          onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Document Management (DMS)"
-          data={listWithSr}
-          columns={dmsTableColumns}
-          rowKey="Id"
-          loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+       <Table
+  activeTab={activeTab}
+  onRefresh={() => loadData()}
+  showSettingsTab={true}
+  onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="Document Management"
+  data={filteredDocList}
+  tab={tab}
+  columns={dmsTableColumns}
+  rowKey="id"
+  loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status", "department", "docType"]}
+      setFilters={setFilters}
+       options={{...groupOptions,status:["Draft","Under Review","Effective","Approved","Superseded","Rejected"]}}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

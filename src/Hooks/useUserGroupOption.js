@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fetchUserGroupsByType, getActledList } from "../utils/api";
+import { fetchPTList, fetchUserGroupsByType, getActledList } from "../utils/api";
 import { getMasterOptions } from "../pages/Modules/QMS/Utils/QmsAPI";
 
 const QMS_MASTERS = ["product", "supplier", "equipment", "area", "personnel", "instrument"];
 
 export const useGroupOptions = () => {
   const [rawData, setRawData] = useState({
-    division: [], department: [], designation: [], grade: [], reporting: [], employees: [],
+    division: [], department: [], designation: [], grade: [], reporting: [], employees: [],pt:[]
   });
   const [masterData, setMasterData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -15,13 +15,14 @@ export const useGroupOptions = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [div, dept, desg, grade, reporting, empRes] = await Promise.all([
+        const [div, dept, desg, grade, reporting, empRes ,pt] = await Promise.all([
           fetchUserGroupsByType("DIV"),
           fetchUserGroupsByType("DEP"),
           fetchUserGroupsByType("DESG"),
           fetchUserGroupsByType("GRADE"),
           fetchUserGroupsByType("RME"),
           getActledList(),
+          fetchPTList(),
         ]);
         setRawData({
           division: div?.data || [],
@@ -30,6 +31,7 @@ export const useGroupOptions = () => {
           grade: grade?.data || [],
           reporting: reporting?.data || [],
           employees: empRes?.data || empRes || [],
+          pt:pt?.data||[]
         });
 
         // Sab QMS masters ek hi generic call se — getMasterOptions already {value,label} deta hai
@@ -43,7 +45,6 @@ export const useGroupOptions = () => {
     };
     fetchData();
   }, []);
-
   const options = useMemo(() => {
     const normalizeGroup = (arr) => (Array.isArray(arr) ? arr.map((item) => ({
       value: item.group_id || item.statutory_id,
@@ -67,6 +68,7 @@ export const useGroupOptions = () => {
       area: masterData.area || [],
       personnel: masterData.personnel || [],
       instrument: masterData.instrument || [],
+      pt:normalizeGroup(rawData.pt)||[]
     };
   }, [rawData, masterData]);
 

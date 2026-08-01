@@ -11,6 +11,7 @@ const initialState = {
   code: "",
   type: "",
   pre_tax: "Yes",
+  max_amount: "",
   status: "Active",
 };
 

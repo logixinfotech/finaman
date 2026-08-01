@@ -19,7 +19,7 @@ const initialState = {
 };
 
 const columns = [
-  { key: "grade",          label: "Grade"          },
+  { key: "grade_label",    label: "Grade"          },  
   { key: "effective_from", label: "Effective From" },
   { key: "status",         label: "Status"         },
 ];
@@ -46,65 +46,42 @@ const SalaryTemplate = ({ tab }) => {
     },
     () => loadList(),
     tab.appl_name
-  );
-
-  // ── Load template list ──────────────────────────────────────
-  // const loadList = useCallback(async () => {
-  //   try {
-  //     setLoading(true);
-  //     const data = await fetchSalaryTemplates();
-     
-  //     const finalData = Array.isArray(data) ? data : data?.data || [];
-  //     setList(finalData);
-  //     console.log( finalData[0].grade)
-  //     if (finalData.length > 0) {
-  //       setFormData(finalData[0]);
-  //       setCurrentIndex(0);
-  //     }
-  //   } catch (err) {
-  //     alertError("Fetch Error", "Failed to load salary templates");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }, [setFormData]);
+  ); 
   const { options: groupOptions, loading: optionsLoading } = useGroupOptions();
-const loadList = useCallback(async () => {
-  try {
-    setLoading(true);
-    const data = await fetchSalaryTemplates();
-    
-    const rawTemplates = Array.isArray(data) ? data : data?.data || [];
-    
-    const finalData = rawTemplates.map(template => {
-      // Hook ki list se matching grade dhoondo
-      const matchingGrade = groupOptions.grade.find(
-        g => String(g.value) === String(template.grade)
-      );
 
-      return {
-        ...template,
-        // 👇 Yahan hum 'grade' key ko hi overwrite kar rahe hain ID ke jagah Name se
-        grade: matchingGrade ? matchingGrade.label :undefined
-      };
-    });
+  // BUG FIX: loadList grade options ke bina bhi chal jaata tha (race condition) —
+  // isliye ab (groupOptions.grade || []) guard laga diya, aur ID milne pe match
+  // na ho to raw id hi dikhega, undefined nahi (list gayab nahi hogi).
+  const loadList = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchSalaryTemplates();
+      const rawTemplates = Array.isArray(data) ? data : data?.data || []; 
+      const finalData = rawTemplates.map(template => {
+        const matchingGrade = (groupOptions.grade || []).find(
+          g => String(g.value) === String(template.grade)
+        );
 
-    setList(finalData);
-    
-    if (finalData.length > 0) {
-      // Ab yahan direct Grade Name print hoga (jaise "Grade A"), ID nahi!
+        return {
+          ...template,
+          grade: template.grade,        // 👈 ID as-is, kabhi mutate mat karo
+          grade_label: matchingGrade ? matchingGrade.label : template.grade,
+        };
+      });
 
-      
-      setFormData(finalData[0]);
-      setCurrentIndex(0);
+      setList(finalData);
+
+      if (finalData.length > 0) {
+        setFormData(finalData[0]);
+        setCurrentIndex(0);
+      }
+    } catch (err) {
+      alertError("Fetch Error", "Failed to load salary templates");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    alertError("Fetch Error", "Failed to load salary templates");
-  } finally {
-    setLoading(false);
-  }
-}, [setFormData, groupOptions.grade]);
-
-  // ── Load income + deduction heads for the form checklist ───
+  }, [setFormData, groupOptions.grade]);
+ 
   const loadHeads = useCallback(async () => {
     try {
       const [ihRes, dhRes] = await Promise.all([
@@ -116,12 +93,16 @@ const loadList = useCallback(async () => {
     } catch (err) {
       alertError("Load Error", "Failed to load income/deduction heads");
     }
+  }, []); 
+  useEffect(() => {
+    loadHeads();
   }, []);
 
   useEffect(() => {
-    loadList();
-    loadHeads();
-  }, []);
+    if (groupOptions.grade && groupOptions.grade.length > 0) {
+      loadList();
+    }
+  }, [groupOptions.grade]);
 
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
@@ -148,7 +129,7 @@ const loadList = useCallback(async () => {
   };
 
   const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({ title: `Delete template for grade "${row.grade}"?` });
+    const confirmed = await confirmDelete({ title: `Delete template for grade "${row.grade_label || row.grade}"?` });
     if (confirmed) {
       const res = await deleteSalaryTemplate(row.salary_template_id);
       if (res.success) {
@@ -159,8 +140,7 @@ const loadList = useCallback(async () => {
     }
   };
 
-  const handleDeleteMultiple = async (selected) => {
-      // FIX: was using income_head_id by mistake — should be salary_template_id
+  const handleDeleteMultiple = async (selected) => { 
       const ids = (selected || []).map((item) =>
         typeof item === "object" ? item.salary_template_id : item
       );

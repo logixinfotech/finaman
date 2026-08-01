@@ -1,254 +1,4 @@
-// import { useState, useEffect } from "react";
-// import ERPAutocomplete from "../input/ERPAutocomplete"; // Path cross check kar lein
-// import ERPDate from "../input/Date";
-
-// const MONTHS = [
-//   { value: 1, label: "January" },
-//   { value: 2, label: "February" },
-//   { value: 3, label: "March" },
-//   { value: 4, label: "April" },
-//   { value: 5, label: "May" },
-//   { value: 6, label: "June" },
-//   { value: 7, label: "July" },
-//   { value: 8, label: "August" },
-//   { value: 9, label: "September" },
-//   { value: 10, label: "October" },
-//   { value: 11, label: "November" },
-//   { value: 12, label: "December" },
-// ];
-
-// const getLastDay = (year, month) => new Date(year, month, 0).getDate();
-// const pad = (n) => String(n).padStart(2, "0");
-
-// const GenericFilter = ({ 
-//   filters, 
-//   setFilters, 
-//   onApply, 
-//   onClear, 
-//   visibleFields = [], // Example: ["filterType", "employee", "department", "status"]
-//   options = { employees: [], department: [] } // Hooks data passed from parent
-// }) => {
-//   const today = new Date();
-
-//   const parseDate = (dateStr) => {
-//     if (!dateStr) {
-//       return { month: today.getMonth() + 1, year: today.getFullYear() };
-//     }
-//     const d = new Date(dateStr);
-//     return { month: d.getMonth() + 1, year: d.getFullYear() };
-//   };
-
-//   const init = parseDate(filters.from_date);
-
-//   // ---- DRAFT STATE CONTROL ----
-//   const [draft, setDraft] = useState({ ...filters });
-//   const [selectedMonth, setSelectedMonth] = useState(init.month);
-//   const [selectedYear, setSelectedYear] = useState(init.year);
-//   const [filterType, setFilterType] = useState("Month Wise");
-  
-//   const [monthText, setMonthText] = useState(
-//     init.month ? MONTHS.find((m) => m.value === init.month)?.label : ""
-//   );
-
-//   // Sync component internal updates when incoming filters change globally
-//   useEffect(() => {
-//     setDraft({ ...filters });
-//     const parsed = parseDate(filters.from_date);
-//     setSelectedMonth(parsed.month);
-//     setMonthText(MONTHS.find((m) => m.value === parsed.month)?.label || "");
-//   }, [filters]);
-
-//   // Handle Month Wise dynamic calculation
-//   useEffect(() => {
-//     if (!visibleFields.includes("filterType") || filterType !== "Month Wise") return;
-//     if (!selectedMonth || !selectedYear) return;
-
-//     const from = `${selectedYear}-${pad(selectedMonth)}-01`;
-//     const lastDay = getLastDay(selectedYear, selectedMonth);
-//     const to = `${selectedYear}-${pad(selectedMonth)}-${pad(lastDay)}`;
-
-//     setDraft((prev) => ({ ...prev, from_date: from, to_date: to }));
-//   }, [selectedMonth, selectedYear, filterType, visibleFields]);
-
-//   const handleApply = () => {
-//     setFilters(draft);
-//     onApply?.(draft);
-//   };
-
-//   const handleClear = () => {
-//     const now = new Date();
-//     const currentMonthNum = now.getMonth() + 1;
-//     const from = `${now.getFullYear()}-${pad(currentMonthNum)}-01`;
-//     const to = `${now.getFullYear()}-${pad(currentMonthNum)}-${pad(
-//       getLastDay(now.getFullYear(), currentMonthNum)
-//     )}`;
-
-//     // Rebuild initial state structure containing only keys that were originally passed
-//     const cleared = Object.keys(filters).reduce((acc, curr) => {
-//       if (curr === "from_date") acc[curr] = from;
-//       else if (curr === "to_date") acc[curr] = to;
-//       else if (curr === "Status" || curr === "status") acc[curr] = "All";
-//       else acc[curr] = "";
-//       return acc;
-//     }, {});
-
-//     setSelectedMonth(currentMonthNum);
-//     setSelectedYear(now.getFullYear());
-//     setFilterType("Month Wise");
-//     setMonthText(MONTHS.find((m) => m.value === currentMonthNum)?.label || "");
-    
-//     setDraft(cleared);
-//     setFilters(cleared);
-//     onClear?.();
-//   };
-
-//   return (
-//     <div className="bg-white rounded-lg px-5 py-5 shadow-sm">
-//       <div className="flex flex-wrap items-center gap-x-4 gap-y-6">
-
-//         {/* 1. FILTER TYPE */}
-//         {visibleFields.includes("filterType") && (
-//           <div className="relative max-w-[150px] w-full">
-//             <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-//               Filter Type
-//             </label>
-//             <ERPAutocomplete
-//               value={filterType}
-//               options={["Month Wise", "Custom Date Range"]}
-//               onChange={(val) => setFilterType(val)}
-//               className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-//             />
-//           </div>
-//         )}
-
-//         {/* 2. MONTH WISE */}
-//         {visibleFields.includes("filterType") && filterType === "Month Wise" && (
-//           <div className="relative max-w-[120px] w-full">
-//             <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-//               Month
-//             </label>
-//             <ERPAutocomplete
-//               value={monthText}
-//               options={MONTHS.map((month) => month.label)}
-//               onChange={(typedValue) => {
-//                 setMonthText(typedValue || "");
-//                 const selected = MONTHS.find((m) => m.label === typedValue);
-//                 setSelectedMonth(selected?.value || "");
-//               }}
-//               className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-//             />
-//           </div>
-//         )}
-
-//         {/* 3. CUSTOM DATE RANGE */}
-//         {visibleFields.includes("filterType") && filterType === "Custom Date Range" && (
-//           <>
-//             <div className="relative max-w-[120px] w-full">
-//               <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-//                 From Date
-//               </label>
-//               <ERPDate
-//                 value={draft.from_date || ""}
-//                 onChange={(e) => setDraft((prev) => ({ ...prev, from_date: e }))}
-//                 className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-//               />
-//             </div>
-
-//             <div className="relative max-w-[120px] w-full">
-//               <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-//                 To Date
-//               </label>
-//               <ERPDate
-//                 value={draft.to_date || ""}
-//                 onChange={(e) => setDraft((prev) => ({ ...prev, to_date: e }))}
-//                 className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-//               />
-//             </div>
-//           </>
-//         )}
-
-//         {/* 4. EMPLOYEE */}
-//         {visibleFields.includes("employee") && (
-//           <div className="relative max-w-[150px] flex-1 sm:flex-none w-full">
-//             <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-//               Employee
-//             </label>
-//             <ERPAutocomplete
-//               options={options?.employees?.map((emp) => emp.label) || []}
-//               value={draft.employee_name || ""}
-//               onChange={(selectedValue) => {
-//                 const selectedEmp = options?.employees?.find((emp) => emp.label === selectedValue);
-//                 setDraft((prev) => ({
-//                   ...prev,
-//                   employee_id: selectedEmp ? String(selectedEmp.value) : "",
-//                   employee_name: selectedValue || "",
-//                 }));
-//               }}
-//               className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-//             />
-//           </div>
-//         )}
-
-//         {/* 5. DEPARTMENT */}
-//         {visibleFields.includes("department") && (
-//           <div className="relative max-w-[150px] flex-1 sm:flex-none w-full">
-//             <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-//               Department
-//             </label>
-//             <ERPAutocomplete
-//               options={options?.department?.map((opt) => opt.label) || []}
-//               value={draft.department_name || draft.Department || ""}
-//               onChange={(selectedValue) => {
-//                 const selectedObj = options?.department?.find((opt) => opt.label === selectedValue);
-//                 setDraft((prev) => ({
-//                   ...prev,
-//                   department_id: selectedObj ? String(selectedObj.value) : "",
-//                   department_name: selectedValue || "",
-//                   Department: selectedValue || "", // Backward Compatibility support for simple strings
-//                 }));
-//               }}
-//               className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-//             />
-//           </div>
-//         )}
-
-//         {/* 6. STATUS */}
-//         {visibleFields.includes("status") && (
-//           <div className="relative max-w-[130px] flex-1 sm:flex-none w-full">
-//             <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-//               Status
-//             </label>
-//             <ERPAutocomplete
-//               value={draft.Status || draft.status || "All"}
-//               options={["Active", "Inactive", "All"]}
-//               onChange={(val) => setDraft((prev) => ({ ...prev, Status: val, status: val }))}
-//               className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-//             />
-//           </div>
-//         )}
-
-//         {/* ACTION BUTTONS */}
-//         <div className="flex items-center gap-3 ml-auto">
-//           <button
-//             onClick={handleApply}
-//             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1 rounded-md transition duration-150 ease-in-out shadow-sm h-[34px]"
-//           >
-//             Apply
-//           </button>
-//           <button
-//             onClick={handleClear}
-//             className="bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1 rounded-md border border-gray-300 transition duration-150 ease-in-out shadow-sm h-[34px]"
-//           >
-//             Clear
-//           </button>
-//         </div>
-
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default GenericFilter;
+ 
 import { useState, useEffect } from "react";
 import { Filter, X } from "lucide-react";
 import ERPAutocomplete from "../input/ERPAutocomplete"; // Path cross check kar lein
@@ -278,7 +28,7 @@ const GenericFilter = ({
   onApply,
   onClear,
   visibleFields = [], // Example: ["filterType", "employee", "department", "status", "module", "menu", "application", "itemType"]
-  options = { employees: [], department: [], modules: [] }, // Hooks data passed from parent
+  options = { employees: [], department: [], modules: [],area: [] }, // Hooks data passed from parent
 }) => {
   const today = new Date();
 
@@ -336,13 +86,15 @@ const GenericFilter = ({
     )}`;
 
     // Rebuild initial state structure containing only keys that were originally passed
-    const cleared = Object.keys(filters).reduce((acc, curr) => {
-      if (curr === "from_date") acc[curr] = from;
-      else if (curr === "to_date") acc[curr] = to;
-      else if (curr === "Status" || curr === "status") acc[curr] = "All";
-      else acc[curr] = "";
-      return acc;
-    }, {});
+  const cleared = Object.keys(filters).reduce((acc, curr) => {
+  if (curr === "from_date") acc[curr] = from;
+  else if (curr === "to_date") acc[curr] = to;
+  else if (curr === "Severity" || curr === "classification" || curr === "DocType" || curr === "training_type" || curr === "MonitoringType" || curr === "category") acc[curr] = "All";
+  else if (curr === "Status" || curr === "status") acc[curr] = "All";
+  else if (curr === "audit_type") acc[curr] = "All";
+   else acc[curr] = "";
+  return acc;
+}, {});
 
     setSelectedMonth(currentMonthNum);
     setSelectedYear(now.getFullYear());
@@ -457,6 +209,8 @@ const GenericFilter = ({
                   department_id: selectedObj ? String(selectedObj.value) : "",
                   department_name: selectedValue || "",
                   Department: selectedValue || "", // Backward Compatibility support for simple strings
+                  target_department: selectedValue || "", 
+                    department: selectedValue || "",           // 👈 STP ke liye
                 }));
               }}
               className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -465,19 +219,188 @@ const GenericFilter = ({
         )}
 
         {/* 6. STATUS */}
-        {visibleFields.includes("status") && (
-          <div className="relative max-w-[130px] flex-1 sm:flex-none w-full">
-            <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
-              Status
-            </label>
-            <ERPAutocomplete
-              value={draft.Status || draft.status || "All"}
-              options={["Active", "Inactive", "All"]}
-              onChange={(val) => setDraft((prev) => ({ ...prev, Status: val, status: val }))}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-        )}
+      
+{visibleFields.includes("status") && (
+  <div className="relative max-w-[130px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Status
+    </label>
+    <ERPAutocomplete
+      value={draft.Status || draft.status || "All"}
+      options={
+        options?.status?.length
+          ? options.status.map((s) => (typeof s === "string" ? s : s.label))
+          : ["Active", "Inactive", "All"]   // 👈 default fallback
+      }
+      onChange={(val) => setDraft((prev) => ({ ...prev, Status: val, status: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{visibleFields.includes("area") && (
+  <div className="relative max-w-[150px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Area
+    </label>
+    <ERPAutocomplete
+      options={options?.area?.map((a) => a.label) || []}
+      value={draft.Area || ""}
+      onChange={(selectedValue) => {
+        const selectedObj = options?.area?.find((a) => a.label === selectedValue);
+        setDraft((prev) => ({
+          ...prev,
+          area_id: selectedObj ? String(selectedObj.value) : "",
+          Area: selectedValue || "",
+        }));
+      }}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{/* 6c. SEVERITY */}
+{visibleFields.includes("severity") && (
+  <div className="relative max-w-[130px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Severity
+    </label>
+    <ERPAutocomplete
+      value={draft.Severity || "All"}
+      options={["All", "Low", "Medium", "High", "Critical"]}
+      onChange={(val) => setDraft((prev) => ({ ...prev, Severity: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{/* 6d. PRODUCT */}
+{visibleFields.includes("product") && (
+  <div className="relative max-w-[150px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Product
+    </label>
+    <ERPAutocomplete
+      options={options?.product?.map((p) => p.label) || []}
+      value={draft.product || ""}
+      onChange={(selectedValue) => {
+        const selectedObj = options?.product?.find((p) => p.label === selectedValue);
+        setDraft((prev) => ({
+          ...prev,
+          product_id: selectedObj ? String(selectedObj.value) : "",
+          product: selectedValue || "",
+        }));
+      }}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+
+{/* 6e. CLASSIFICATION */}
+{visibleFields.includes("classification") && (
+  <div className="relative max-w-[140px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Classification
+    </label>
+    <ERPAutocomplete
+      value={draft.classification || "All"}
+      options={["All", "Class I", "Class II", "Class III"]}
+      onChange={(val) => setDraft((prev) => ({ ...prev, classification: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{/* 6f. DOC TYPE */}
+{visibleFields.includes("docType") && (
+  <div className="relative max-w-[140px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Doc Type
+    </label>
+    <ERPAutocomplete
+      value={draft.DocType || "All"}
+      options={["All", "SOP", "Policy", "Form", "Manual", "Work Instruction"]}
+      onChange={(val) => setDraft((prev) => ({ ...prev, DocType: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{/* 6g. TRAINING TYPE */}
+{visibleFields.includes("trainingType") && (
+  <div className="relative max-w-[150px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Training Type
+    </label>
+    <ERPAutocomplete
+      value={draft.training_type || "All"}
+      options={["All", "Induction", "On-the-Job", "Refresher", "SOP", "GMP"]}
+      onChange={(val) => setDraft((prev) => ({ ...prev, training_type: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{/* 6h. MONITORING TYPE */}
+{visibleFields.includes("monitoringType") && (
+  <div className="relative max-w-[150px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Monitoring Type
+    </label>
+    <ERPAutocomplete
+      value={draft.MonitoringType || "All"}
+      options={["All", "Air", "Surface", "Personnel", "Water"]}
+      onChange={(val) => setDraft((prev) => ({ ...prev, MonitoringType: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{/* 6i. CATEGORY (STP) */}
+{visibleFields.includes("category") && (
+  <div className="relative max-w-[140px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Category
+    </label>
+    <ERPAutocomplete
+      value={draft.category || "All"}
+      options={["All", "Manufacturing", "QC", "QA", "Engineering", "Warehouse"]}
+      onChange={(val) => setDraft((prev) => ({ ...prev, category: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+{/* 6j. AUDIT TYPE */}
+{visibleFields.includes("auditType") && (
+  <div className="relative max-w-[140px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Audit Type
+    </label>
+    <ERPAutocomplete
+      value={draft.audit_type || "All"}
+      options={["All", "Internal", "External", "Regulatory", "Supplier"]}
+      onChange={(val) => setDraft((prev) => ({ ...prev, audit_type: val }))}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
+
+{/* 6k. AREA/DEPT AUDITED (dynamic) */}
+{visibleFields.includes("areaAudited") && (
+  <div className="relative max-w-[160px] flex-1 sm:flex-none w-full">
+    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">
+      Area/Dept Audited
+    </label>
+    <ERPAutocomplete
+      options={options?.department?.map((d) => d.label) || []}
+      value={draft.area_department_audited || ""}
+      onChange={(selectedValue) => {
+        const selectedObj = options?.department?.find(
+          (d) => d.label === selectedValue
+        );
+        setDraft((prev) => ({
+          ...prev,
+          area_department_audited_id: selectedObj ? String(selectedObj.value) : "",
+          area_department_audited: selectedValue || "",
+        }));
+      }}
+      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  </div>
+)}
 
         {/* 7. MODULE (Menu Master) */}
         {visibleFields.includes("module") && (
@@ -548,16 +471,16 @@ const GenericFilter = ({
         <div className="flex items-center gap-3 ml-auto">
           <button
             onClick={handleApply}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1 rounded-md transition duration-150 ease-in-out shadow-sm h-[34px]"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1 rounded-md transition duration-150 ease-in-out shadow-sm h-[28px]"
           >
-            <Filter size={14} />
+            <Filter size={10} />
             Apply
           </button>
           <button
             onClick={handleClear}
-            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1 rounded-md border border-gray-300 transition duration-150 ease-in-out shadow-sm h-[34px]"
+            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1 rounded-md border border-gray-300 transition duration-150 ease-in-out shadow-sm h-[28px]"
           >
-            <X size={14} />
+            <X size={10} />
             Clear
           </button>
         </div>

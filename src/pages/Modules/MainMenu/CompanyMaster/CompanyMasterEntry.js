@@ -28,17 +28,19 @@ const CompanyMasterEntry = ({
   rights,
   saving,
   canPrint,
-  activeTab,
+  formTab,
+  
     headerActiveTab, 
   onFormTabChange,
   onHeaderTabChange,
   showSettingsTab = false,
 }) => {
+  const activeTab="basic"
   const isViewMode = mode === "view";
   const [localTab, setLocalTab] = useState(activeTab ?? tabs[0]);
   const [countryNames, setCountryNames] = useState([]);
   const [stateNames, setStateNames] = useState([]);
-
+console.log(activeTab);
   useEffect(() => {
     if (activeTab && activeTab !== localTab) setLocalTab(activeTab);
   }, [activeTab]);
@@ -125,7 +127,7 @@ const handleKeyDown = useCallback((e) => {
   const stateField = addressFields.find((f) => f.key === "state");
   if (countryField) countryField.options = countryNames;
   if (stateField) stateField.options = stateNames;
-
+  
   return (
     <div
       ref={wrapperRef}
@@ -147,6 +149,7 @@ const handleKeyDown = useCallback((e) => {
           </svg>
         }
         tabs={tabs}
+        formTab={formTab}
         fieldGroups={fieldGroups}
         sidebarConfig={sidebarConfig(formData)}
         configs={configs}

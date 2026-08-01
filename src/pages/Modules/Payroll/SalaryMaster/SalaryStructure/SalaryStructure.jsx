@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback, useRef } from "react";
 import Table from "../../../../../components/Reusable/table/Table";
 import SalaryStructureForm from "./SalaryStructureForm";
@@ -19,61 +18,44 @@ import {
 import { useGroupOptions } from "../../../../../Hooks/useUserGroupOption";
 
 const initialState = {
-  employee_id:        "",
-  employee_name:      "",
-  grade:              "",
-  type:               "Grade Wise",
+  employee_id: "",
+  employee_name: "",
+  grade: "",
+  type: "Grade Wise",
   salary_template_id: "",
-  effective_from:     "",
-  ctc:                "",
-  gross_monthly:      "",
-  total_income:       0,
-  total_deduction:    0,
-  net_salary:         0,
-  revision_reason:    "",
-  arrear_applicable:  "No",
-  status:             "Active",
+  effective_from: "",
+  ctc: "",
+  gross_monthly: "",
+  total_income: 0,
+  total_deduction: 0,
+  net_salary: 0,
+  revision_reason: "",
+  arrear_applicable: "No",
+  status: "Active",
 };
 
 const columns = [
-  { key: "employee_name",     label: "Employee"       },
-  { key: "grade",             label: "Grade"          },
-  { key: "type",              label: "Type"           },
-  { key: "effective_from",    label: "Effective From" },
-  { key: "ctc",               label: "CTC"            },
-  { key: "gross_monthly",     label: "Gross/mo"       },
-  { key: "net_salary",        label: "Net"            },
-  { key: "status",            label: "Status"         },
+  { key: "employee_name", label: "Employee" },
+  { key: "grade_label", label: "Grade" },  // 👈 grade_label = display name, grade = raw ID
+  { key: "type", label: "Type" },
+  { key: "effective_from", label: "Effective From" },
+  { key: "ctc", label: "CTC" },
+  { key: "gross_monthly", label: "Gross/mo" },
+  { key: "net_salary", label: "Net" },
+  { key: "status", label: "Status" },
 ];
 
 const SalaryStructure = ({ tab }) => {
-  const [list, setList]                     = useState([]);
-  const [loading, setLoading]               = useState(true);
-  const [currentIndex, setCurrentIndex]     = useState(0);
-  const [employees, setEmployees]           = useState([]);
-  const [templates, setTemplates]           = useState([]);
-  const [incomeHeads, setIncomeHeads]       = useState([]);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [employees, setEmployees] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [incomeHeads, setIncomeHeads] = useState([]);
   const [deductionHeads, setDeductionHeads] = useState([]);
 
-  // 🔑 Race-condition guard: sirf latest fired request ka response accept hoga
   const latestRequestId = useRef(0);
-  // latestRequestId ref ke turant baad ye add karo
-const invalidatePendingFetches = () => { latestRequestId.current++; };
-
-const handleAddWrapped = () => {
-  invalidatePendingFetches();   // 👈 koi bhi purana in-flight fetch ab "stale" ho jayega
-  handleAdd();
-};
-
-const handleModifyWrapped = () => {
-  invalidatePendingFetches();
-  handleModify();
-};
-
-const handleEditCancelWrapped = () => {
-  invalidatePendingFetches();
-  handleEditCancel();
-};
+  const invalidatePendingFetches = () => { latestRequestId.current++; };
 
   const {
     mode, formData, setFormData,
@@ -91,32 +73,39 @@ const handleEditCancelWrapped = () => {
     tab?.appl_name || "Salary Structure"
   );
 
-  const { options: groupOptions, loading: optionsLoading } = useGroupOptions();
+  const handleAddWrapped = () => {
+    invalidatePendingFetches(); 
+    handleAdd();
+  };
 
-  const formatGradeWithLabel = useCallback((gradeId) => {
-    const matchingGrade = groupOptions?.grade?.find(
-      g => String(g.value) === String(gradeId)
-    );
-    return matchingGrade ? matchingGrade.label : gradeId;
-  }, [groupOptions?.grade]);
+  const handleModifyWrapped = () => {
+    invalidatePendingFetches();
+    handleModify();
+  };
 
-  // ── Load list (ab ye formData ko force overwrite NAHI karta) ──
+  const handleEditCancelWrapped = () => {
+    invalidatePendingFetches();
+    handleEditCancel();
+  };
+
+  const { options: groupOptions, loading: optionsLoading } = useGroupOptions(); 
   const loadList = useCallback(async (opts = {}) => {
     try {
       setLoading(true);
       const data = await fetchSalaryStructures();
-      const rawTemplates = Array.isArray(data) ? data : data?.data || [];
-
+      const rawTemplates = Array.isArray(data) ? data : data?.data || []; 
       const finalData = rawTemplates.map(template => {
-        const matchingGrade = groupOptions.grade.find(
+        const matchingGrade = (groupOptions.grade || []).find(
           g => String(g.value) === String(template.grade)
         );
-        return { ...template, grade: matchingGrade ? matchingGrade.label : undefined };
+        return {
+          ...template,
+          grade: template.grade,
+          grade_label: matchingGrade ? matchingGrade.label : template.grade,
+        };
       });
 
-      setList(finalData);
-
-      // 👇 sirf pehli baar (mount) pe hi auto-select karo, save/refresh ke baad nahi
+      setList(finalData); 
       if (opts.selectFirst && finalData.length > 0) {
         setFormData(finalData[0]);
         setCurrentIndex(0);
@@ -144,65 +133,47 @@ const handleEditCancelWrapped = () => {
       alertError("Load Error", "Failed to load supporting data");
     }
   }, []);
-
+ 
   useEffect(() => {
-    loadList({ selectFirst: true });
     loadSupportingData();
   }, []);
 
-  // ── Prev/Next record navigation (view mode) ────────────────────
-  // Pehle ye sparse list[currentIndex] seedhe formData mein daal deta tha.
-  // Ab full record fetch karta hai (with incomeLines/deductionLines), race-safe.
-  // useEffect(() => {
-  //   if (!(showForm && mode === "view" && list.length > 0)) return;
-
-  //   const row = list[currentIndex];
-  //   if (!row?.salary_structure_id) return;
-
-  //   const requestId = ++latestRequestId.current;
-
-  //   (async () => {
-  //     try {
-  //       const res = await fetchSalaryStructureById(row.salary_structure_id);
-  //       if (requestId !== latestRequestId.current) return; // stale, ignore
-  //       setFormData(res?.data || row);
-  //     } catch {
-  //       if (requestId !== latestRequestId.current) return;
-  //       setFormData(row);
-  //     }
-  //   })();
-  // }, [currentIndex, list, showForm, mode, setFormData]);
   useEffect(() => {
-  if (!(showForm && mode === "view" && list.length > 0)) return;
-
-  const row = list[currentIndex];
-  if (!row?.salary_structure_id) return;
-
-  // 👇 Agar formData already isi record ka hai (with lines), dobara fetch mat karo
-  if (
-    formData.salary_structure_id === row.salary_structure_id &&
-    (formData.incomeLines || formData.deductionLines)
-  ) {
-    return;
-  }
-
-  const requestId = ++latestRequestId.current;
-
-  (async () => {
-    try {
-      const res = await fetchSalaryStructureById(row.salary_structure_id);
-      if (requestId !== latestRequestId.current) return;
-      setFormData(res?.data || row);
-    } catch {
-      if (requestId !== latestRequestId.current) return;
-      setFormData(row);
+    if (groupOptions.grade && groupOptions.grade.length > 0) {
+      loadList({ selectFirst: true });
     }
-  })();
-}, [currentIndex, list, showForm, mode, setFormData, formData.salary_structure_id, formData.incomeLines, formData.deductionLines]);
+  }, [groupOptions.grade]);
+
+  useEffect(() => {
+    if (!(showForm && mode === "view" && list.length > 0)) return;
+
+    const row = list[currentIndex];
+    if (!row?.salary_structure_id) return;
+ 
+    if (
+      formData.salary_structure_id === row.salary_structure_id &&
+      (formData.incomeLines || formData.deductionLines)
+    ) {
+      return;
+    }
+
+    const requestId = ++latestRequestId.current;
+
+    (async () => {
+      try {
+        const res = await fetchSalaryStructureById(row.salary_structure_id);
+        if (requestId !== latestRequestId.current) return;
+        setFormData(res?.data || row);
+      } catch {
+        if (requestId !== latestRequestId.current) return;
+        setFormData(row);
+      }
+    })();
+  }, [currentIndex, list, showForm, mode, setFormData, formData.salary_structure_id, formData.incomeLines, formData.deductionLines]);
 
   const handleTabChange = (t) => {
     if (t === "search") setShowForm(false);
-    if (t === "entry")  setShowForm(true);
+    if (t === "entry") setShowForm(true);
   };
 
   // ── Row double-click (race-safe) ────────────────────────────────
@@ -221,8 +192,7 @@ const handleEditCancelWrapped = () => {
       handleView(row);
     }
   };
-
-  // ── Sidebar pick in view mode (race-safe) ───────────────────────
+ 
   const handleSidebarViewPick = async (emp) => {
     const existingStructure = list.find(
       s => String(s.employee_id) === String(emp.Actled_id)
@@ -243,8 +213,7 @@ const handleEditCancelWrapped = () => {
       handleView(existingStructure);
     }
   };
-
-  // ── Save (list refresh + turant full data fetch, race-safe) ────
+ 
   const handleSave = async (updatedData) => {
     const response = await performSave("salary_structure_id", updatedData);
     if (response?.success) {
@@ -259,8 +228,7 @@ const handleEditCancelWrapped = () => {
           if (fullRes?.data) {
             setFormData(fullRes.data);
           }
-        } catch (err) {
-          // silent fail — list to already refresh ho chuka hai
+        } catch (err) { 
         }
       }
     }
@@ -303,15 +271,15 @@ const handleEditCancelWrapped = () => {
       alertError("Delete Error", "Failed to delete some structures");
     }
   };
-useEffect(() => {
-  setERPHandlers({
-    onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
-    onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
-    onNew:  handleAddWrapped,      // 👈 changed
-    onSave: handleSave,
-    onEsc:  () => setShowForm(false),
-  });
-}, [list, handleAdd, handleSave, setShowForm]);
+  useEffect(() => {
+    setERPHandlers({
+      onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
+      onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
+      onNew: handleAddWrapped,      // 👈 changed
+      onSave: handleSave,
+      onEsc: () => setShowForm(false),
+    });
+  }, [list, handleAdd, handleSave, setShowForm]);
 
   return (
     <div className="h-full w-full">
@@ -324,12 +292,12 @@ useEffect(() => {
           onCancel={() => setShowForm(false)}
           mode={mode}
           saving={saving}
-         onModify={handleModifyWrapped}      // 👈 changed
-  onNewEntry={handleAddWrapped}       
+          onModify={handleModifyWrapped}   
+          onNewEntry={handleAddWrapped}
           currentRecord={list.length > 0 ? currentIndex + 1 : 0}
           totalRecords={list.length}
           rights={rights}
-         onEditCancel={handleEditCancelWrapped} 
+          onEditCancel={handleEditCancelWrapped}
           activeTab="entry"
           onTabChange={handleTabChange}
           employees={employees}

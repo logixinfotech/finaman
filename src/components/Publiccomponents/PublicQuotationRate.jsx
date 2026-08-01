@@ -69,6 +69,7 @@ export default function PublicQuotationRate() {
                 rate: r.rate == null ? "" : String(r.rate),
                 ddlv_dt: r.ddlv_dt ? fromISODate(String(r.ddlv_dt).slice(0, 10)) : "",
                 freight: r.freight || "", make: r.make || "", payterms: r.payterms || "",
+                pkgsz: r.pkgsz || "", 
             }));
             setRows(mapped); setInitialRows(mapped);
             setLedRmks(data.header?.led_rmks || ""); setInitialRmks(data.header?.led_rmks || "");

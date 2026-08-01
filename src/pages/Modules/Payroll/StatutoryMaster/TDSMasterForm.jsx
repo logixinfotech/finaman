@@ -979,7 +979,7 @@ const TDSMasterForm = ({
 
   return (
     <div
-      className="w-full max-w-[1100px] mx-auto h-[calc(100vh-120px)] bg-[#F4F5F7] flex flex-col"
+      className="w-full max-w-[1100px] mx-auto h-full sm:h-[calc(100vh-120px)] bg-[#F4F5F7] flex flex-col"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader

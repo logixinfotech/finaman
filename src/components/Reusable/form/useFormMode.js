@@ -10,7 +10,7 @@ export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
   const [saving, setSaving] = useState(false);
   const [canPrint, setCanPrint] = useState(false); 
   const rights = useMemo(() => getRights(appl_name), [appl_name]);
-const [activeTab, setActiveTab] = useState("entry");
+  const [activeTab, setActiveTab] = useState("entry");
   const canAdd = rights.add === 1;
   const canModify = rights.mod === 1; 
   const isDirty = useMemo(() => {

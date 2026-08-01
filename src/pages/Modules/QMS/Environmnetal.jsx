@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import { useERPMode } from "../../../components/Reusable/form/useFormMode";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 import {
   environmentalMonitoringTabs,
   environmentalMonitoringFieldGroups,
@@ -20,6 +21,7 @@ import {
   createEnvironmentalMonitoring,
   updateEnvironmentalMonitoring,
   deleteEnvironmentalMonitoring,
+  getNextRecordNo,
 } from "./Utils/QmsAPI";
 import { widthConfig, getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
@@ -110,7 +112,13 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
     loadData,
     "Environmental Monitoring",
   );
+const [filters, setFilters] = useState({ Status: "All", Area: "", MonitoringType: "All" });
+const [showFilter, setShowFilter] = useState(false);
 
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "All", Area: "", MonitoringType: "All" });
+}, []);
   const { options: groupOptions } = useGroupOptions();
   const emFieldGroups = useMemo(
     () => environmentalMonitoringFieldGroups(groupOptions || {}),
@@ -129,10 +137,13 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
     [setActiveTab, setShowForm],
   );
 
-  const handleAddNew = () => {
+  const handleAddNew = async() => {
     handleAdd();
     setShowForm(true);
     setActiveTab("entry");
+      const  recordNo = await getNextRecordNo("environmental");
+            
+            setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
   };
 
   useEffect(() => {
@@ -192,7 +203,21 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
       alertError("Delete Error", "Failed to delete environmental monitoring record");
     }
   };
-
+const filteredEmList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.Status && filters.Status !== "All") {
+      if (item.Status !== filters.Status) return false;
+    }
+    if (filters.Area) {
+      const area = String(item.Area || "").toLowerCase();
+      if (!area.includes(filters.Area.toLowerCase())) return false;
+    }
+    if (filters.MonitoringType && filters.MonitoringType !== "All") {
+      if (item.MonitoringType !== filters.MonitoringType) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
   const handleDeleteMultiple = async (selected) => {
     const ids = (selected || []).map((item) =>
       typeof item === "object" ? item.id : item,
@@ -305,19 +330,31 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
         </>
       ) : (
         <Table
-          activeTab={activeTab}
-          onRefresh={() => loadData()}
-          showSettingsTab={true}
-          onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Environmental Monitoring Register"
-          data={listWithSr}
-          columns={environmentalMonitoringTableColumns}
-          rowKey="id"
-          loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+  activeTab={activeTab}
+  onRefresh={() => loadData()}
+  showSettingsTab={true}
+  onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="Environmental Monitoring Register"
+  data={filteredEmList}
+  columns={environmentalMonitoringTableColumns}
+  rowKey="id"
+  loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status", "area", "monitoringType"]}
+      setFilters={setFilters}
+             options={{...groupOptions,status:["Recorded","Reviewed", "Closed","Rejected"]}}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

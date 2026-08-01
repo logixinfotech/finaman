@@ -8,7 +8,8 @@ import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
 import {
   saveAttendanceLog, getActledList, updateAttendance,
-  getAttendanceList, deleteAttendance, getWeekOff, fetchHolidays, getApprovedLeaves
+  getAttendanceList, deleteAttendance, getWeekOff, fetchHolidays, getApprovedLeaves,
+  getLeaveTypes,
 } from "../../../../utils/api";
 
 import {
@@ -16,7 +17,7 @@ import {
   todayDay, todayMonth, todayYear,
   getAvatarColor, getInitials,
   getDayName, isEmployeeWeekoff, isHolidayDate, getAutoStatus, toggleAmPm,
-  getStatusStyle, getStatusBadge, statusOptions, attendanceTypeOptions,
+  getStatusStyle, getStatusBadge, statusOptions, attendanceTypeOptions, buildStatusOptions,
   OutlineButton, AvatarCell, StatusBadge,
   TableHeader, TableRow, EmptyState, LoadingState, FileChip,
   PeriodDropdowns,
@@ -32,7 +33,7 @@ const AttendancePage = ({
   activeTab = "entry", onTabChange,
   currentRecord, totalRecords,
   mode = "view",
-  onModify, onDelete, onPrint, onNewEntry, onEditCancel,initialData={},
+  onModify, onDelete, onPrint, onNewEntry, onEditCancel, initialData = {},
   saving, canPrint, rights
 }) => {
   // ── Mode refs ───────────────────────────────────────────────────────────────
@@ -63,8 +64,7 @@ const AttendancePage = ({
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false, title: "", message: "", onConfirm: null
   });
-
-  // ── Import mode state (passed to AttendanceImports) ─────────────────────────
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [bioTableData, setBioTableData] = useState([]);
   const [excelRows, setExcelRows] = useState([]);
 
@@ -88,6 +88,8 @@ const AttendancePage = ({
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
   const isAddMode = mode === "add";
+  const statusOpts = buildStatusOptions(leaveTypes);
+  const leaveCodes = leaveTypes.map(l => l.leave_code);
 
   const [attendanceData, setAttendanceData] = useState({});
   const [listEntryData, setListEntryData] = useState([]);
@@ -132,6 +134,15 @@ const AttendancePage = ({
       try {
         const res = await getActledList();
         setEmployees(Array.isArray(res) ? res : res?.data || []);
+      } catch (e) { console.error(e); }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getLeaveTypes();
+        setLeaveTypes(res?.data || []);
       } catch (e) { console.error(e); }
     })();
   }, []);
@@ -304,7 +315,7 @@ const AttendancePage = ({
         if (updated.is_holiday) {
           updated.status = hasTime ? "HOLIDAY OT" : "HOLIDAYS";
         } else if (updated.is_weekoff) {
-          updated.status = hasTime ? "WEEK OFF OT" : "WEEK OFF";
+          updated.status = hasTime ? "WEEKOFF OT" : "WEEK OFF";
         }
       }
 
@@ -388,7 +399,7 @@ const AttendancePage = ({
         if (updated.is_holiday) {
           updated.status = hasTime ? "HOLIDAY OT" : "HOLIDAYS";
         } else if (updated.is_weekoff) {
-          updated.status = hasTime ? "WEEK OFF OT" : "WEEK OFF";
+          updated.status = hasTime ? "WEEKOFF OT" : "WEEK OFF";
         }
       }
 
@@ -466,7 +477,7 @@ const AttendancePage = ({
   const totalPresent = src.filter(x => x.status === "PRESENT").length;
   const totalAbsent = src.filter(x => x.status === "ABSENT").length;
   const totalWeekOff = src.filter(x => x.status === "WEEK OFF").length;
-  const totalLeave = src.filter(x => ["LEAVE", "CASUAL LEAVE", "CL", "SL", "PL", "EL", "ML", "PTL", "CO", "SCL"].includes(x.status)).length;
+  const totalLeave = src.filter(x => leaveCodes.includes(x.status)).length;
   const totalHoliday = src.filter(x => x.status === "HOLIDAYS").length;
 
   // ── Style constants ───────────────────────────────────────────────────────────
@@ -486,7 +497,7 @@ const AttendancePage = ({
         onConfirm={confirmModal.onConfirm}
         onCancel={confirmModal.onCancel}
       />
-      <div className="w-full mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-[calc(100vh-120px)] overflow-hidden"
+      <div className="w-full mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-full sm:h-[calc(100vh-120px)] overflow-hidden"
         style={{ fontFamily: FONT }}>
 
         <ERPHeader
@@ -585,6 +596,7 @@ const AttendancePage = ({
                 <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
                   <AttendanceImports
                     employees={employees}
+                    leaveTypes={leaveTypes} 
                     isViewMode={isViewMode}
                     attendanceType={attendanceType}
                     onModeChange={(newType) => {
@@ -756,7 +768,7 @@ const AttendancePage = ({
                                         className={`text-[11px] font-semibold border rounded px-0.5 h-[20px] cursor-pointer appearance-none text-center focus:outline-none focus:ring-1 focus:ring-blue-400 ${getStatusStyle(data.status)} disabled:opacity-50 disabled:cursor-not-allowed`}
                                         style={{ width: 80 }}>
                                         <option value="">SELECT</option>
-                                        {statusOptions.map(o => (
+                                        {statusOpts.map(o => (
                                           <option key={o.value} value={o.value} className="bg-white text-slate-800">{o.label}</option>
                                         ))}
                                       </select>
@@ -870,144 +882,144 @@ const AttendancePage = ({
                                     <div className="px-3 py-2 text-[12px] font-mono text-indigo-700">{row.employee_code}</div>
                                     <div className="px-3 py-2 text-[12px] text-slate-500 truncate">{row.department || "—"}</div>
                                     <div className="px-3 py-2 text-[14px] font-mono text-slate-700">{d}-{m}-{y}</div>
- 
-                                
-                                     {/* IN */}
-<div className="px-2 py-2 flex items-center gap-1">
-  <input type="time"
-    disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
-    ref={el => { listInRefs.current[idx] = el; }}
-    value={row.in || ""}
-    onChange={e => handleListRowChange(idx, "in", e.target.value)}
-    onKeyDown={e => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        setTimeout(() => listInAmPmRefs.current[idx]?.focus(), 0);
-      }
-      if (e.key === "Backspace" && e.shiftKey) {
-        e.preventDefault();
-        listStatusRefs.current[idx - 1]?.focus();
-      }
-    }}
-    className={inputCls} />
-  <button
-    ref={el => { listInAmPmRefs.current[idx] = el; }}
-    tabIndex={isViewMode || row.status === "ABSENT" ? -1 : 0}
-    onClick={e => e.preventDefault()}
-    onKeyDown={e => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        if (!row.in || row.status === "ABSENT" || isViewMode) return;
-        handleListRowChange(idx, "in", toggleAmPm(row.in));
-      }
-      if (e.key === " ") {
-        e.preventDefault();
-        if (row.in && row.status !== "ABSENT" && !isViewMode) {
-          handleListRowChange(idx, "in", toggleAmPm(row.in));
-        }
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        listOutRefs.current[idx]?.focus();
-      }
-      if (e.key === "Backspace" && e.shiftKey) {
-        e.preventDefault();
-        listInRefs.current[idx]?.focus();
-      }
-    }}
-    style={{
-      background: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
-      color: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
-      borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
-      display: "flex", alignItems: "center",
-      cursor: row.in && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
-      fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0",
-      opacity: (!row.in || isViewMode || row.status === "ABSENT") ? 0.5 : 1
-    }}>
-    {row.in && parseInt(row.in.split(":")[0]) >= 12 ? "PM" : "AM"}
-  </button>
-</div>
 
-{/* OUT */}
-<div className="px-2 py-2 flex items-center gap-1">
-  <input type="time"
-    disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
-    ref={el => { listOutRefs.current[idx] = el; }}
-    value={row.out || ""}
-    onChange={e => handleListRowChange(idx, "out", e.target.value)}
-    onKeyDown={e => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        setTimeout(() => listOutAmPmRefs.current[idx]?.focus(), 0);
-      }
-      if (e.key === "Backspace" && e.shiftKey) {
-        e.preventDefault();
-        listInAmPmRefs.current[idx]?.focus();
-      }
-    }}
-    className={inputCls} />
-  <button
-    ref={el => { listOutAmPmRefs.current[idx] = el; }}
-    tabIndex={isViewMode || row.status === "ABSENT" ? -1 : 0}
-    onClick={e => e.preventDefault()}
-    onKeyDown={e => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        if (!row.out || row.status === "ABSENT" || isViewMode) return;
-        handleListRowChange(idx, "out", toggleAmPm(row.out));
-      }
-      if (e.key === " ") {
-        e.preventDefault();
-        if (row.out && row.status !== "ABSENT" && !isViewMode) {
-          handleListRowChange(idx, "out", toggleAmPm(row.out));
-        }
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        listStatusRefs.current[idx]?.focus();
-      }
-      if (e.key === "Backspace" && e.shiftKey) {
-        e.preventDefault();
-        listOutRefs.current[idx]?.focus();
-      }
-    }}
-    style={{
-      background: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
-      color: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
-      borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
-      display: "flex", alignItems: "center",
-      cursor: row.out && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
-      fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0",
-      opacity: (!row.out || isViewMode || row.status === "ABSENT") ? 0.5 : 1
-    }}>
-    {row.out && parseInt(row.out.split(":")[0]) >= 12 ? "PM" : "AM"}
-  </button>
-</div>
 
-{/* STATUS */}
-<div className="px-4 py-3">
-  <select
-    disabled={isViewMode || row.is_holiday || row.is_weekoff || row.is_leave}
-    tabIndex={row.is_holiday || row.is_weekoff || row.is_leave ? -1 : 0}
-    ref={el => { listStatusRefs.current[idx] = el; }}
-    value={row.status}
-    onChange={e => {
-      handleListRowChange(idx, "status", e.target.value);
-      setTimeout(() => { listInRefs.current[idx + 1]?.focus(); }, 0);
-    }}
-    onKeyDown={e => {
-      if (e.key === "Backspace" && e.shiftKey) {
-        e.preventDefault();
-        listOutAmPmRefs.current[idx]?.focus();
-      }
-    }}
-    className={`h-7 w-full text-[12px] text-center font-semibold border rounded-md px-2 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed ${row.status ? getStatusBadge(row.status) : "border-slate-200 text-slate-400 bg-white"}`}>
-    <option value="">— Select —</option>
-    {statusOptions.map(o => (
-      <option key={o.value} value={o.value} className="bg-white text-slate-800 font-normal">{o.label}</option>
-    ))}
-  </select>
-</div>
+                                    {/* IN */}
+                                    <div className="px-2 py-2 flex items-center gap-1">
+                                      <input type="time"
+                                        disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
+                                        ref={el => { listInRefs.current[idx] = el; }}
+                                        value={row.in || ""}
+                                        onChange={e => handleListRowChange(idx, "in", e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            setTimeout(() => listInAmPmRefs.current[idx]?.focus(), 0);
+                                          }
+                                          if (e.key === "Backspace" && e.shiftKey) {
+                                            e.preventDefault();
+                                            listStatusRefs.current[idx - 1]?.focus();
+                                          }
+                                        }}
+                                        className={inputCls} />
+                                      <button
+                                        ref={el => { listInAmPmRefs.current[idx] = el; }}
+                                        tabIndex={isViewMode || row.status === "ABSENT" ? -1 : 0}
+                                        onClick={e => e.preventDefault()}
+                                        onKeyDown={e => {
+                                          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                            e.preventDefault();
+                                            if (!row.in || row.status === "ABSENT" || isViewMode) return;
+                                            handleListRowChange(idx, "in", toggleAmPm(row.in));
+                                          }
+                                          if (e.key === " ") {
+                                            e.preventDefault();
+                                            if (row.in && row.status !== "ABSENT" && !isViewMode) {
+                                              handleListRowChange(idx, "in", toggleAmPm(row.in));
+                                            }
+                                          }
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            listOutRefs.current[idx]?.focus();
+                                          }
+                                          if (e.key === "Backspace" && e.shiftKey) {
+                                            e.preventDefault();
+                                            listInRefs.current[idx]?.focus();
+                                          }
+                                        }}
+                                        style={{
+                                          background: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                          color: row.in && parseInt(row.in.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+                                          borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
+                                          display: "flex", alignItems: "center",
+                                          cursor: row.in && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
+                                          fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0",
+                                          opacity: (!row.in || isViewMode || row.status === "ABSENT") ? 0.5 : 1
+                                        }}>
+                                        {row.in && parseInt(row.in.split(":")[0]) >= 12 ? "PM" : "AM"}
+                                      </button>
+                                    </div>
+
+                                    {/* OUT */}
+                                    <div className="px-2 py-2 flex items-center gap-1">
+                                      <input type="time"
+                                        disabled={isViewMode || row.status === "ABSENT" || row.is_leave}
+                                        ref={el => { listOutRefs.current[idx] = el; }}
+                                        value={row.out || ""}
+                                        onChange={e => handleListRowChange(idx, "out", e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            setTimeout(() => listOutAmPmRefs.current[idx]?.focus(), 0);
+                                          }
+                                          if (e.key === "Backspace" && e.shiftKey) {
+                                            e.preventDefault();
+                                            listInAmPmRefs.current[idx]?.focus();
+                                          }
+                                        }}
+                                        className={inputCls} />
+                                      <button
+                                        ref={el => { listOutAmPmRefs.current[idx] = el; }}
+                                        tabIndex={isViewMode || row.status === "ABSENT" ? -1 : 0}
+                                        onClick={e => e.preventDefault()}
+                                        onKeyDown={e => {
+                                          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                            e.preventDefault();
+                                            if (!row.out || row.status === "ABSENT" || isViewMode) return;
+                                            handleListRowChange(idx, "out", toggleAmPm(row.out));
+                                          }
+                                          if (e.key === " ") {
+                                            e.preventDefault();
+                                            if (row.out && row.status !== "ABSENT" && !isViewMode) {
+                                              handleListRowChange(idx, "out", toggleAmPm(row.out));
+                                            }
+                                          }
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            listStatusRefs.current[idx]?.focus();
+                                          }
+                                          if (e.key === "Backspace" && e.shiftKey) {
+                                            e.preventDefault();
+                                            listOutRefs.current[idx]?.focus();
+                                          }
+                                        }}
+                                        style={{
+                                          background: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#eff6ff" : "#f8fafc",
+                                          color: row.out && parseInt(row.out.split(":")[0]) >= 12 ? "#1d4ed8" : "#64748b",
+                                          borderColor: "#e2e8f0", whiteSpace: "nowrap", height: 24,
+                                          display: "flex", alignItems: "center",
+                                          cursor: row.out && !isViewMode && row.status !== "ABSENT" ? "pointer" : "default",
+                                          fontSize: 10, fontWeight: 700, padding: "0 4px", borderRadius: 4, border: "1px solid #e2e8f0",
+                                          opacity: (!row.out || isViewMode || row.status === "ABSENT") ? 0.5 : 1
+                                        }}>
+                                        {row.out && parseInt(row.out.split(":")[0]) >= 12 ? "PM" : "AM"}
+                                      </button>
+                                    </div>
+
+                                    {/* STATUS */}
+                                    <div className="px-4 py-3">
+                                      <select
+                                        disabled={isViewMode || row.is_holiday || row.is_weekoff || row.is_leave}
+                                        tabIndex={row.is_holiday || row.is_weekoff || row.is_leave ? -1 : 0}
+                                        ref={el => { listStatusRefs.current[idx] = el; }}
+                                        value={row.status}
+                                        onChange={e => {
+                                          handleListRowChange(idx, "status", e.target.value);
+                                          setTimeout(() => { listInRefs.current[idx + 1]?.focus(); }, 0);
+                                        }}
+                                        onKeyDown={e => {
+                                          if (e.key === "Backspace" && e.shiftKey) {
+                                            e.preventDefault();
+                                            listOutAmPmRefs.current[idx]?.focus();
+                                          }
+                                        }}
+                                        className={`h-7 w-full text-[12px] text-center font-semibold border rounded-md px-2 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed ${row.status ? getStatusBadge(row.status) : "border-slate-200 text-slate-400 bg-white"}`}>
+                                        <option value="">— Select —</option>
+                                        {statusOpts.map(o => (
+                                          <option key={o.value} value={o.value} className="bg-white text-slate-800 font-normal">{o.label}</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   </TableRow>
                                 );
                               })}

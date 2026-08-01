@@ -8,7 +8,7 @@ import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { getCalibrations, createCalibration, updateCalibration, deleteCalibration, getNextRecordNo } from "./Utils/QmsAPI";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
-
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 const initialState = {
   Id: null, RecordNo: "", Status: "Calibrated", Instrument: "", InstrumentCode: "", Location: "",
   CalibrationType: "", Agency: "", AcceptanceCriteria: "", FrequencyMonths: "", LastCalibrated: "",
@@ -108,7 +108,22 @@ const fieldGroups = calibrationFieldGroups(groupOptions);
     await handleEditCancel();
     if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
   };
+const [filters, setFilters] = useState({ Status: "All" });
+const [showFilter, setShowFilter] = useState(false);
 
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "All" });
+}, []);
+
+const filteredList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.Status && filters.Status !== "All") {
+      if (item.Status !== filters.Status) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
   return (
     <div className="h-full w-full">
       {showForm ? (
@@ -133,14 +148,30 @@ const fieldGroups = calibrationFieldGroups(groupOptions);
           headerActiveTab={activeTab} onHeaderTabChange={handleHeaderTabChange}
         />
       ) : (
-        <Table
-          activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Instrument Calibration" data={listWithSr} columns={calibrationTableColumns}
-          rowKey="Id" loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+       <Table
+  activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="Instrument Calibration" data={filteredList} columns={calibrationTableColumns}
+  rowKey="Id" loading={loading}
+  onRefresh={()=>loadData()}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status"]}
+      setFilters={setFilters}
+      options={{
+        ...groupOptions,
+        status: ["Scheduled", "Out of Service", "Calibrated", "Rejected"],
+      }}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

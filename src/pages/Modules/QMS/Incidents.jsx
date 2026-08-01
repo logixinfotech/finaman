@@ -1,324 +1,169 @@
-
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { FaClipboardList, FaCheckCircle, FaSearch, FaFlagCheckered, FaHistory } from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
-import { useERPMode } from "../../../components/Reusable/form/useFormMode";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
+import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
+import { getHeaderStyle } from "./Utils/QmsValidation";
+import { useQmsModule } from "./Utils/useQmsModule";
 import {
-  incidentTabs,
-  incidentFieldGroups,
-  incidentRequiredFieldsList,
+  incidentTabs, incidentTabStage, incidentTabLabels,
+  getIncidentFieldGroups, getIncidentRequired,
+  incidentWidthConfig, incidentSectionConfigs, incidentTableColumns,
 } from "./Utils/Qmsconfigs";
 import {
-  confirmDelete,
-  showToast,
-  alertError,
-} from "../../../components/Reusable/alert";
-import { setERPHandlers } from "../../../utils/erpShortcuts";
-import {
-  getIncidents,
-  createIncident,
-  updateIncident,
-  deleteIncident,
+  getIncidents, createIncident, updateIncident, deleteIncident,
 } from "./Utils/QmsAPI";
-import { widthConfig, getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
-import { useApplSettings } from "../../../Hooks/useApplSettings";
-import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
+
+const API = {
+  list: getIncidents, create: createIncident,
+  update: updateIncident, remove: deleteIncident,
+};
 
 const initialState = {
-  Id: null,
-  RecordNo: "",
-  Status: "Open",
+  Id: null, RecordNo: "", Status: "Reported",
   IncidentDate: new Date().toISOString().slice(0, 10),
-  Area: "",
-  Category: "",
-  Severity: "",
-  ReportedBy: "",
-  WitnessedBy: "",
-  EquipmentInvolved: "",
-  ProductBatch: "",
-  Description: "",
-  ImmediateAction: "",
-  ImpactAssessment: "",
-  RootCause: "",
-  InvestigationSummary: "",
-  DeviationRaised: "",
-  DeviationRef: "",
-  CapaRef: "",
-  TargetDate: "",
-  CreatedBy: "",
-  CreatedAt: "",
-  UpdatedBy: "",
-  UpdatedAt: "",
-  ClosedAt: "",
+  IncidentTime: "", Shift: "", Area: "", Category: "",
+  OtherCategoryDetail: "", Severity: "", Description: "",
+  ReportedBy: "", WitnessedBy: "", EquipmentInvolved: "",
+  ProductBatch: "", AttachmentRef: "", ImmediateAction: "",
+  ReviewedBy: "", ReviewDate: "", ImpactAssessment: "",
+  DeviationRaised: "", DeviationRef: "", EscalatedTo: "",
+  InvestigatedBy: "", RootCause: "", InvestigationSummary: "",
+  CapaRef: "", TargetDate: "", ClosedBy: "", ClosureRemarks: "",
 };
 
-const gridConfigs = {
-  "Incident Details": "grid-cols-1 sm:grid-cols-4 2xl:grid-cols-4",
-  "Reporting Information": "grid-cols-1 sm:grid-cols-4 2xl:grid-cols-4",
-  "Incident Description": "grid-cols-1",
-  "Immediate Action": "grid-cols-1",
-  "Impact & Investigation": "grid-cols-1",
-  "Closure & Linked References": "grid-cols-1 sm:grid-cols-4 2xl:grid-cols-4",
+const INC_TAB_ICON = {
+  reported: FaClipboardList,
+  review: FaCheckCircle,
+  investigation: FaSearch,
+  closure: FaFlagCheckered,
+  audit: FaHistory,
 };
+function IncidentTabIcon({ tab }) {
+  const Icon = INC_TAB_ICON[tab];
+  return Icon ? <Icon /> : <span>•</span>;
+}
 
-const tableColumns = [
-  { key: "Sr", label: "Sr" },
-  { key: "RecordNo", label: "Incident No." },
-  {
-    key: "IncidentDate",
-    label: "Date",
-    render: (r) => (r.IncidentDate || "").slice(0, 10),
-  },
-  { key: "Area", label: "Area / Location" },
-  { key: "Severity", label: "Severity" },
-  { key: "Status", label: "Status" },
-];
+const STATUS_OPTIONS = ["Reported", "Under Review", "Under Investigation", "Closed", "Rejected"];
+const EMPTY_FILTERS = { Status: "All", Area: "", Severity: "All" };
 
 export default function IncidentMasterPage({ tab }) {
-  const [incidentList, setIncidentList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(
-    tab?.appl_name || "Incident Management",
-  );
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getIncidents();
-      const arr = Array.isArray(res)
-        ? res
-        : Array.isArray(res?.data)
-          ? res.data
-          : [];
-      setIncidentList(arr);
-    } catch (err) {
-      console.error(err);
-      alertError("Load Error", "Failed to load incident records");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const {
-    mode,
-    formData,
-    setFormData,
-    saving,
-    handleView,
-    handleAdd,
-    handleModify,
-    performSave,
-    rights,
-    showForm,
-    setShowForm,
-    activeTab,
-    setActiveTab,
-    handleEditCancel,
-    isDirty,
-  } = useERPMode(
+  const m = useQmsModule({
+    moduleKey: "incident",
+    title: "Incident",
+    applName: tab?.appl_name || "Incidents",
     initialState,
-    async (data) =>
-      data.Id ? await updateIncident(data.Id, data) : await createIncident(data),
-    loadData,
-    "Incident Management",
+    tabs: incidentTabs,
+    tabStage: incidentTabStage,
+    getRequired: getIncidentRequired,
+    api: API,
+  });
+
+  const fieldGroups = useMemo(
+    () => getIncidentFieldGroups(m.groupOptions),
+    [m.groupOptions]
   );
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleHeaderTabChange = useCallback(
-    (targetTab) => {
-      setActiveTab(targetTab);
-      setShowForm(targetTab !== "search");
-    },
-    [setActiveTab, setShowForm],
-  );
-  const { options: groupOptions } = useGroupOptions();
-  const incidentFieldGroup = useMemo(
-    () => incidentFieldGroups(groupOptions),
-    [groupOptions]   // ✅ sahi
+  const customTabs = useMemo(
+    () => ({ audit: <RecordAuditPanel history={m.history} /> }),
+    [m.history]
   );
 
-  const handleAddNew = () => {
-    handleAdd();
-    setShowForm(true);
-    setActiveTab("entry");
-  };
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
 
-  useEffect(() => {
-    if (showForm && mode === "view" && incidentList.length > 0) {
-      setFormData(incidentList[currentIndex]);
-    }
-  }, [currentIndex, incidentList, showForm, mode, setFormData]);
+  const filteredList = useMemo(() => {
+    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
+    return m.list
+      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Reported" }))
+      .filter((it) =>
+        (filters.Status === "All" || it.Status === filters.Status) &&
+        (!filters.Area || has(it.Area, filters.Area)) &&
+        (filters.Severity === "All" || it.Severity === filters.Severity)
+      );
+  }, [m.list, filters]);
 
-  const listWithSr = incidentList.map((item, index) => ({
-    ...item,
-    Sr: index + 1,
-    Status: item.Status || "Open",
-  }));
-
-  const handleRowSelect = (row) => {
-    const index = incidentList.findIndex((item) => item.Id === row.Id);
-    if (index !== -1) setCurrentIndex(index);
-    handleView(row);
-    setShowForm(true);
-    setActiveTab("entry");
-  };
-
-  const handleSave = async (localData) => {
-    const missing = incidentRequiredFieldsList.find(
-      (f) => !localData[f] || String(localData[f]).trim() === "",
-    );
-    if (missing) {
-      showToast({ icon: "error", title: "Please fill all required fields" });
-      return;
-    }
-    const dataToSave = { ...localData, Id: localData.Id ?? null };
-    const response = await performSave("Id", dataToSave);
-    if (response && response.success) {
-      showToast({ icon: "success", title: "Saved Successfully" });
-      await loadData();
-      const savedId = response.data?.Id;
-      setIncidentList((prev) => {
-        const idx = prev.findIndex((item) => item.Id === savedId);
-        if (idx !== -1) setCurrentIndex(idx);
-        return prev;
-      });
-    }
-  };
-
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({
-      title: `Delete Incident "${row.RecordNo || row.Id}"?`,
-    });
-    if (!confirmed) return;
-    try {
-      await deleteIncident(row.Id);
-      showToast({ icon: "success", title: "Deleted" });
-      setShowForm(false);
-      setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete incident record");
-    }
-  };
-
-  const handleDeleteMultiple = async (selected) => {
-    const ids = (selected || []).map((item) =>
-      typeof item === "object" ? item.Id : item,
-    );
-    if (ids.length === 0) return;
-    const confirmed = await confirmDelete({
-      title: `Delete ${ids.length} incident record(s)?`,
-    });
-    if (!confirmed) return;
-    try {
-      const results = await Promise.all(ids.map((id) => deleteIncident(id)));
-      const failed = results.filter((r) => !r?.success).length;
-      showToast({
-        icon: failed === 0 ? "success" : "warning",
-        title:
-          failed === 0
-            ? `${ids.length} deleted`
-            : `${ids.length - failed} deleted, ${failed} failed`,
-      });
-      setShowForm(false);
-      setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete some incident records");
-    }
-  };
-
-  const handleFormExit = async () => {
-    const wasDirty = isDirty;
-    await handleEditCancel();
-    if (!wasDirty) {
-      setShowForm(false);
-      setActiveTab("search");
-      setFormData(initialState);
-    }
-  };
-
-  // keep latest values/handlers for the keyboard shortcuts (avoids stale closures)
-  const latest = useRef({});
-  latest.current = {
-    formData,
-    incidentList,
-    handleSave,
-    handleAddNew,
-    handleFormExit,
-  };
-
-  useEffect(() => {
-    setERPHandlers({
-      onNextRecord: () =>
-        setCurrentIndex((p) =>
-          Math.min(p + 1, latest.current.incidentList.length - 1),
-        ),
-      onPrevRecord: () => setCurrentIndex((p) => Math.max(p - 1, 0)),
-      onNew: () => latest.current.handleAddNew(),
-      onSave: () => latest.current.handleSave(latest.current.formData),
-      onEsc: () => latest.current.handleFormExit(),
-    });
-  }, []);
-
-  return (
-    <div className="h-full w-full">
-      {showForm ? (
+  if (m.showForm) {
+    return (
+      <div className="h-full w-full">
         <ERPFormBuilder
           title="Incident"
           tabs={incidentTabs}
-          fieldGroups={incidentFieldGroup}
-          widthConfig={widthConfig}
-          requiredFields={incidentRequiredFieldsList}
-          hideSidebar={true}
-          hideTabBar={true}
-          showSettingsTab={true}
+          tabLabels={incidentTabLabels}
+          TabIcon={IncidentTabIcon}
+          fieldGroups={fieldGroups}
+          customTabs={customTabs}
+          configs={incidentSectionConfigs}
+          widthConfig={incidentWidthConfig}
           getHeaderStyle={getHeaderStyle}
-          configs={gridConfigs}
-          TabIcon={TabIcon}
-          formData={formData}
-          setFormData={setFormData}
-          mode={mode}
-          settingsConfig={settingsConfig}
-          settingsDefaults={settingsDefaults}
-          onSettingsSave={onSettingsSave}
-          saving={saving}
-          rights={rights}
-          onSave={handleSave}
-          onCancel={handleFormExit}
-          onDelete={handleDelete}
-          onModify={handleModify}
-          onNewEntry={handleAddNew}
-          onEditCancel={handleFormExit}
-          currentRecord={incidentList.length > 0 ? currentIndex + 1 : 0}
-          totalRecords={incidentList.length}
-          onPrevRecord={() => setCurrentIndex((p) => Math.max(p - 1, 0))}
-          onNextRecord={() =>
-            setCurrentIndex((p) => Math.min(p + 1, incidentList.length - 1))
-          }
-          headerActiveTab={activeTab}
-          onHeaderTabChange={handleHeaderTabChange}
+          requiredFields={m.requiredFields}
+          completedTabs={m.completedTabs}
+          hideSidebar={false}
+          hideTabBar={false}
+          showSettingsTab
+          sidebarConfig={{ hidePhoto: true, hideHeader: true }}
+          stageHistory={m.history?.stageHistory || null}
+          stageEntered={m.history?.stageEntered || null}
+          formData={m.formData}
+          savedFormData={m.savedFormData}
+          setFormData={m.setFormData}
+          mode={m.mode}
+          saving={m.saving}
+          rights={m.rights}
+          workflowConfig={m.workflowConfig}
+          currentUserRole={m.currentUserRole}
+          alwaysSignTabs={["closure"]}
+          settingsConfig={m.settingsConfig}
+          settingsDefaults={m.settingsDefaults}
+          onSettingsSave={m.onSettingsSave}
+          onSave={m.handleSave}
+          onSignedSave={m.handleSignedSave}
+          onDelete={m.handleDelete}
+          onModify={m.handleModify}
+          onNewEntry={m.handleAddNew}
+          onCancel={m.handleFormExit}
+          onEditCancel={m.handleFormExit}
+          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
+          totalRecords={m.list.length}
+          onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
+          onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
+          headerActiveTab={m.activeTab}
+          onHeaderTabChange={m.handleHeaderTabChange}
         />
-      ) : (
-        <Table
-          activeTab={activeTab}
-          showSettingsTab={true}
-          onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Incident Register"
-          data={listWithSr}
-          columns={tableColumns}
-          rowKey="Id"
-          loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full w-full">
+      <Table
+        title="Incident Register"
+        data={filteredList}
+        columns={incidentTableColumns}
+        rowKey="Id"
+        loading={m.loading}
+        activeTab={m.activeTab}
+        showSettingsTab
+        onTabChange={m.handleHeaderTabChange}
+        onRefresh={m.loadData}
+        onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onRowDoubleClick={m.handleRowSelect}
+        onDeleteMultiple={m.handleDeleteMultiple}
+        onToggleFilter={() => setShowFilter((p) => !p)}
+        showForm={showFilter}
+        formComponent={
+          <UnivarsalFilter
+            filters={filters}
+            setFilters={setFilters}
+            visibleFields={["status", "area", "severity"]}
+            options={{ ...m.groupOptions, status: STATUS_OPTIONS }}
+            onApply={() => {}}
+            onClear={clearFilter}
+          />
+        }
+      />
     </div>
   );
 }

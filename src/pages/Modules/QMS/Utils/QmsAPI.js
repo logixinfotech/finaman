@@ -45,6 +45,9 @@ export const updateDeviation = (id, data) =>
 export const deleteDeviation = (id) =>
   handleApi(() => api.delete(`/api/qms/deviations/${id}`));
 
+export const getRecordHistory = (moduleKey, recordNo) =>
+  handleApi(() => api.get(`/api/qms/record-history/${moduleKey}/${encodeURIComponent(recordNo)}`));
+
 //========================================================recall==================================================
 
 export const getRecalls = () => handleApi(() => api.get("/api/qms/recalls"));

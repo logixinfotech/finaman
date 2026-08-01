@@ -20,10 +20,12 @@ import {
   createAudit,
   updateAudit,
   deleteAudit,
+  getNextRecordNo,
 } from "./Utils/QmsAPI";
 import { widthConfig, getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 
 const initialState = {
   id: null,
@@ -130,11 +132,15 @@ export default function AuditMasterPage({ tab }) {
     [setActiveTab, setShowForm],
   );
 
-  const handleAddNew = () => {
+  const handleAddNew = async () => {
     handleAdd();
     setShowForm(true);
     setActiveTab("entry");
+    const  recordNo = await getNextRecordNo("stp");
+                    
+                    setFormData((prev) => ({ ...prev, record_no: recordNo }));
   };
+  
 
   useEffect(() => {
     if (showForm && mode === "view" && auditList.length > 0) {
@@ -253,6 +259,28 @@ export default function AuditMasterPage({ tab }) {
       onEsc: () => latest.current.handleFormExit(),
     });
   }, []);
+  const [filters, setFilters] = useState({ status: "All", audit_type: "All", area_department_audited: "" });
+const [showFilter, setShowFilter] = useState(false);
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ status: "All", audit_type: "All", area_department_audited: "" });
+}, []);
+
+const filteredAuditList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.status && filters.status !== "All") {
+      if (item.status !== filters.status) return false;
+    }
+    if (filters.audit_type && filters.audit_type !== "All") {
+      if (item.audit_type !== filters.audit_type) return false;
+    }
+    if (filters.area_department_audited) {
+      const val = String(item.area_department_audited || "").toLowerCase();
+      if (!val.includes(filters.area_department_audited.toLowerCase())) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
 
   return (
     <div className="h-full w-full">
@@ -304,19 +332,31 @@ export default function AuditMasterPage({ tab }) {
         </>
       ) : (
         <Table
-          activeTab={activeTab}
-          onRefresh={() => loadData()}
-          showSettingsTab={true}
-          onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Audit Register"
-          data={listWithSr}
-          columns={auditTableColumns}
-          rowKey="id"
-          loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+  activeTab={activeTab}
+  onRefresh={() => loadData()}
+  showSettingsTab={true}
+  onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="Audit Management"
+  data={filteredAuditList}
+  columns={auditTableColumns}
+  rowKey="id"
+  loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status", "auditType", "areaAudited"]}
+      setFilters={setFilters}
+      options={{...groupOptions,status:["Planned","Conducted","Response Submitted","Closed","Rejected"]}}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

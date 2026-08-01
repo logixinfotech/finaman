@@ -18,10 +18,12 @@ import {
   createRecall,
   updateRecall,
   deleteRecall,
+  getNextRecordNo,
 } from "./Utils/QmsAPI";
 import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 
 const initialState = {
   id: null,
@@ -133,6 +135,13 @@ export default function ProductRecallMasterPage({ tab }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+  const [filters, setFilters] = useState({ status: "All", product: "", classification: "All" });
+const [showFilter, setShowFilter] = useState(false);
+
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ status: "All", product: "", classification: "All" });
+}, []);
 
   const handleHeaderTabChange = useCallback(
     (targetTab) => {
@@ -146,10 +155,13 @@ const recallFieldGroup = useMemo(
   () => recallFieldGroups(groupOptions),
   [groupOptions]   // ✅ sahi
 );
-  const handleAddNew = () => {
+  const handleAddNew = async() => {
     handleAdd();
     setShowForm(true);
     setActiveTab("entry");
+    const  recordNo = await getNextRecordNo("recall");
+    
+    setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
   };
 
   useEffect(() => {
@@ -170,6 +182,7 @@ const recallFieldGroup = useMemo(
     handleView(row);
     setShowForm(true);
     setActiveTab("entry");
+  
   };
 
   const handleSave = async (localData) => {
@@ -269,6 +282,21 @@ const recallFieldGroup = useMemo(
       onEsc: () => latest.current.handleFormExit(),
     });
   }, []);
+  const filteredRecallList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.status && filters.status !== "All") {
+      if (item.status !== filters.status) return false;
+    }
+    if (filters.product) {
+      const product = String(item.product || "").toLowerCase();
+      if (!product.includes(filters.product.toLowerCase())) return false;
+    }
+    if (filters.classification && filters.classification !== "All") {
+      if (item.classification !== filters.classification) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
 
   return (
     <div className="h-full w-full">
@@ -312,20 +340,32 @@ const recallFieldGroup = useMemo(
           />
         </>
       ) : (
-        <Table
-          activeTab={activeTab}
-          onRefresh={() => loadData()}
-          showSettingsTab={true}
-          onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Product Recall Register"
-          data={listWithSr}
-          columns={tableColumns}
-          rowKey="id"
-          loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+      <Table
+  activeTab={activeTab}
+  onRefresh={() => loadData()}
+  showSettingsTab={true}
+  onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="Product Recall Register"
+  data={filteredRecallList}
+  columns={tableColumns}
+  rowKey="id"
+  loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status", "product", "classification"]}
+      setFilters={setFilters}
+       options={{...groupOptions,status:["Notification Sent","Recovery In Progress","Reconciliation","Initiated","Closed","Rejected"]}}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

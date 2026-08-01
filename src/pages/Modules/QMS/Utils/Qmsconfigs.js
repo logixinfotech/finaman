@@ -1,38 +1,50 @@
 // ============================================== Deviation CONFIG ==============================================
 
-export const deviationTabs = ["entry"]; // ek virtual tab (tab bar hidden rahega)
+export const deviationTabs = [
+  "open", "qa_accepted", "investigation", "impact", "capa", "closure", "audit",
+];
 
-// textarea fields poori width  
+export const deviationTabStage = {
+  open: 0, qa_accepted: 1, investigation: 2, impact: 3,
+  capa: 4, closure: 5, audit: 99,        // 99 = kabhi "completed" nahi
+};
+
+export const deviationTabLabels = {
+  open: "1. Open",
+  qa_accepted: "2. QA Accepted",
+  investigation: "3. Investigation & RCA",
+  impact: "4. Impact Assessment",
+  capa: "5. CAPA",
+  closure: "6. Closure",
+  audit: "7. Audit Trail",
+};
+
 export const deviationWidthConfig = {
   "Product": "col-span-2",
   "Description of Deviation": "col-span-4",
   "Immediate Action Taken": "col-span-4",
-  "Detailed Investig. Required": "col-span-1",
-  "Investigation Summary": "col-span-5",
-  "Root Cause Analysis Method": "col-span-1",
+  "Attachment Ref.": "col-span-2",
+  "Investigation Summary": "col-span-full",
   "Probable / Root Cause": "col-span-full",
   "Impact Assessment (Quality / Validation / Regulatory)": "col-span-full",
-
+  "Other Batches / Products Impacted": "col-span-full",
   "Corrective Action": "col-span-full",
   "Preventive Action": "col-span-full",
-  "Investig. Summary": "col-span-full",
+  "Target Date Extension Reason": "col-span-full",
   "QA Comments": "col-span-full",
-  "Other Batches / Products Impacted": "col-span-full",
 };
 
 export const getDeviationFieldGroups = (groupOptions = {}) => ({
-  entry: [
-
+  // ───────────────────────── S1 — OPEN (stage 0) ─────────────────────────
+  open: [
     [
       [
         "1. Deviation Details",
         [
           { key: "RecordNo", label: "Deviation No.", type: "text", disabled: true },
           { key: "DeviationType", label: "Deviation Type", type: "select", options: ["Planned", "Unplanned"] },
-          { key: "Classification", label: "Classification", type: "select", options: ["Minor", "Major", "Critical"] },
           { key: "OccurrenceDate", label: "Date of Occurrence", type: "date" },
           { key: "DetectionDate", label: "Date of Detection", type: "date" },
-          { key: "Priority", label: "Priority", type: "select", options: ["Low", "Medium", "High", "Critical"] },
           { key: "Stage", label: "Process Stage", type: "select", options: ["Dispensing", "Granulation", "Compression", "Coating", "Packing", "QC", "Warehouse", "Other"] },
           { key: "Department", label: "Department", type: "select", options: (groupOptions.department || []).map(g => g.label) },
           { key: "Product", label: "Product", type: "select", options: (groupOptions.product || []).map(g => g.label) },
@@ -41,77 +53,148 @@ export const getDeviationFieldGroups = (groupOptions = {}) => ({
           { key: "ReportedBy", label: "Reported / Initiated By", type: "text" },
           { key: "ReportedOn", label: "Reported On", type: "date" },
           { key: "Designation", label: "Designation", type: "select", options: (groupOptions.designation || []).map(g => g.label) },
-          { key: "Status", label: "Status", type: "select", options: ["Open", "Under Investigation", "Closed"] },
           { type: "row-break" },
           { key: "Description", label: "Description of Deviation", type: "textarea" },
           { key: "ImmediateAction", label: "Immediate Action Taken", type: "textarea" },
         ],
       ],
     ],
-
-    // Row 2 → full width
     [
       [
-        "2. Investigation Details",
+        "2. Source & Linkage",
         [
+          { key: "IncidentRef", label: "Linked Incident Ref.", type: "text" },
+          { key: "RepeatDeviation", label: "Repeat Deviation?", type: "select", options: ["Yes", "No"] },
+          { key: "AttachmentRef", label: "Attachment Ref.", type: "text" },
+        ],
+      ],
+    ],
+  ],
+
+  // ────────────────────── S2 — QA ACCEPTED (stage 1) ──────────────────────
+  qa_accepted: [
+    [
+      [
+        "3. QA Assessment",
+        [
+          { key: "Classification", label: "Classification", type: "select", options: ["Minor", "Major", "Critical"] },
+          { key: "Priority", label: "Priority", type: "select", options: ["Low", "Medium", "High", "Critical"] },
           { key: "InvestigationRequired", label: "Detailed Investig. Required", type: "select", options: ["Yes", "No"] },
+          { key: "QaNotifiedDate", label: "QA Notified On", type: "date" },
+          { key: "AcceptedBy", label: "Accepted By (QA)", type: "select", options: (groupOptions.personnel || []).map(g => g.label) },
+          { key: "AcceptedOn", label: "Accepted On", type: "date" },
+        ],
+      ],
+    ],
+  ],
+
+  // ───────────── S3 — UNDER INVESTIGATION (stage 2) — QA Investigator ─────────────
+  investigation: [
+    [
+      [
+        "4. Investigation Details",
+        [
           { key: "InvestigationStartDate", label: "Investig. Start Date", type: "date" },
           { key: "InvestigationCompletionDate", label: "Investig. Completion Date", type: "date" },
-          { key: "InvestigationSummary", label: "Investigation Summary", type: "textarea", breakAfter: true },
-
+          { key: "InvestigatedBy", label: "Investigated By", type: "select", options: (groupOptions.personnel || []).map(g => g.label) },
+          { type: "row-break" },
+          { key: "InvestigationSummary", label: "Investigation Summary", type: "textarea" },
         ],
       ],
     ],
-
-    // Row 3 → 50/50
     [
       [
-        "3. Root Cause Analysis",
+        "5. Root Cause Analysis",
         [
-
-
-          { key: "ProbableCause", label: "Probable / Root Cause", type: "textarea" },
           { key: "RcaMethod", label: "Root Cause Method", type: "select", options: ["5-Why", "Fishbone", "FMEA", "Other"] },
+          { type: "row-break" },
+          { key: "ProbableCause", label: "Probable / Root Cause", type: "textarea" },
         ],
       ],
+    ],
+  ],
+
+  // ───────────── S4 — IMPACT ASSESSED (stage 3) — QA Head ─────────────
+  impact: [
+    [
       [
-        "4. Impact Assessment",
+        "6. Impact Assessment",
         [
-          { key: "ImpactAssessment", label: "Impact Assessment (Quality / Validation / Regulatory)", type: "textarea" },
           { key: "RiskLevel", label: "Risk Level", type: "select", options: ["Low", "Medium", "High"] },
           { key: "AffectedLots", label: "Affected Lots / Batches", type: "text" },
+          { key: "BatchDisposition", label: "Batch Disposition", type: "select", options: ["Release", "Reject", "Rework", "Reprocess", "Under Review"] },
+          { type: "row-break" },
+          { key: "ImpactAssessment", label: "Impact Assessment (Quality / Validation / Regulatory)", type: "textarea" },
+          { key: "OtherBatchesImpacted", label: "Other Batches / Products Impacted", type: "textarea" },
         ],
       ],
     ],
+  ],
 
-    // Row 4 → 50/50
+  // ───────────────────── S5 — CAPA ASSIGNED (stage 4) ─────────────────────
+  capa: [
     [
       [
-        "5. CAPA (Corrective & Preventive Action)",
+        "7. CAPA (Corrective & Preventive Action)",
         [
           { key: "CapaRequired", label: "CAPA Required", type: "select", options: ["Yes", "No"] },
+          { key: "CapaRef", label: "Linked CAPA Ref.", type: "text", disabled: true },
           { key: "TargetDate", label: "Target Completion Date", type: "date" },
+          { key: "RevisedTargetDate", label: "Revised Target Date", type: "date" },
+          { type: "row-break" },
+          { key: "ExtensionReason", label: "Target Date Extension Reason", type: "textarea", showIf: (d) => !!d.RevisedTargetDate },
           { key: "CorrectiveAction", label: "Corrective Action", type: "textarea" },
-          { key: "PreventiveAction", label: "Preventive Action", type: "textarea", breakAfter: true },
-
+          { key: "PreventiveAction", label: "Preventive Action", type: "textarea" },
         ],
       ],
+    ],
+  ],
+
+  // ─────────────────── S6 — QA REVIEW → CLOSED (stage 5) ───────────────────
+  closure: [
+    [
       [
-        "6. QA Review & Closure",
+        "8. QA Review & Closure",
         [
-          { key: "ReviewedBy", label: "Reviewed By (QA)", type: "text" },
+          { key: "Status", label: "Current Stage", type: "text", disabled: true },
+          { key: "ReviewedBy", label: "Reviewed By (QA)", type: "select", options: (groupOptions.personnel || []).map(g => g.label) },
           { key: "ReviewDate", label: "Review Date", type: "date" },
           { key: "ClosureStatus", label: "Closure Status", type: "select", options: ["Open", "Closed"] },
           { key: "ClosedOn", label: "Closed On", type: "date" },
-          { key: "QaRemarks", label: "QA Comments", type: "textarea", breakAfter: true },
-
+          { key: "ClosedBy", label: "Closed By", type: "select", options: (groupOptions.personnel || []).map(g => g.label) },
+          { type: "row-break" },
+          { key: "QaRemarks", label: "QA Comments", type: "textarea" },
         ],
       ],
     ],
   ],
 });
 
-export const deviationRequiredFieldsList = ["OccurrenceDate", "Classification", "Description"];
+export const deviationSectionConfigs = {
+  "1. Deviation Details": "grid-cols-1 sm:grid-cols-4 xl:grid-cols-8",
+  "2. Source & Linkage": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-4",
+  "3. QA Assessment": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-6",
+  "4. Investigation Details": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-6",
+  "5. Root Cause Analysis": "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
+  "6. Impact Assessment": "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
+  "7. CAPA (Corrective & Preventive Action)": "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
+  "8. QA Review & Closure": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-6",
+};
+
+// stage-wise required (Status string ke hisaab se)
+export const deviationRequiredByStage = {
+  "Open": ["OccurrenceDate", "DetectionDate", "Department", "Description", "RepeatDeviation"],
+  "QA Accepted": ["Classification", "Priority", "InvestigationRequired"],
+  "Under Investigation": ["InvestigationStartDate", "InvestigationSummary", "RcaMethod", "ProbableCause"],
+  "Impact Assessed": ["RiskLevel", "ImpactAssessment", "BatchDisposition"],
+  "CAPA Assigned": ["CapaRequired", "TargetDate", "CorrectiveAction", "PreventiveAction"],
+  "QA Review": ["ReviewedBy", "ReviewDate", "ClosureStatus"],
+  "Closed": [],
+};
+
+export const getDeviationRequired = (status) =>
+  deviationRequiredByStage[status] || deviationRequiredByStage["Open"];
+ 
 
 // ============================================== PRODUCT RECALL CONFIG ==============================================
 
@@ -121,7 +204,7 @@ export const recallTabs = ["entry"]; // sirf ek "virtual" tab — tab bar dikheg
 export const recallFieldGroups = (options = {}) => ({
   entry: {
     "Recall Details": [
-      { key: "RecordNo", label: "Record Number", type: "text" },
+      { key: "RecordNo", label: "Product Recall Number", type: "text", disabled: true },
       { key: "initiation_date", label: "Recall Initiation Date", type: "date" },
       { key: "product", label: "Product", type: "select", options: options.product.map(g => g.label) || [] },
       { key: "batch_nos", label: "Batch No.(s)", type: "text" },
@@ -172,49 +255,144 @@ export const recallRequiredFieldsList = [
 
 // ============================================== Incident ==============================================
 
-export const incidentTabs = ["entry"];
+export const incidentTabs = ["reported", "review", "investigation", "closure", "audit"];
 
-export const incidentFieldGroups = (options = {}) => ({
-  entry: {
-    "Incident Details": [
-      { key: "RecordNo", label: "Record Number", type: "text" },
-      { key: "IncidentDate", label: "Date of Incident", type: "date" },
-      { key: "Area", label: "Area / Location", type: "select", options: options.area.map(g => g.label) || [] },
-      { key: "Category", label: "Category", type: "select", options: ["Equipment Failure", "Human Error", "Documentation", "Contamination", "Power Failure", "Other"] },
-      { key: "Severity", label: "Severity", type: "select", options: ["Minor", "Major", "Critical"] },
+export const incidentTabStage = {
+  reported: 0, review: 1, investigation: 2, closure: 3, audit: 99,
+};
+
+export const incidentTabLabels = {
+  reported:      "1. Reported",
+  review:        "2. QA Review",
+  investigation: "3. Investigation",
+  closure:       "4. Closure",
+  audit:         "5. Audit Trail",
+};
+
+export const incidentWidthConfig = {
+  "Incident Description": "col-span-full",
+  "Immediate Action / Containment": "col-span-full",
+  "Impact Assessment": "col-span-full",
+  "Root Cause": "col-span-full",
+  "Investigation Summary": "col-span-full",
+  "Closure Remarks": "col-span-full",
+  "Attachment Ref.": "col-span-2",
+};
+
+export const getIncidentFieldGroups = (options = {}) => ({
+  // ───────── S1 — REPORTED (stage 0) — Operator ─────────
+  reported: [
+    [
+      [
+        "1. Incident Details",
+        [
+          { key: "RecordNo", label: "Incident No.", type: "text", disabled: true },
+          { key: "IncidentDate", label: "Date of Incident", type: "date" },
+          { key: "IncidentTime", label: "Time of Incident", type: "text" },
+          { key: "Shift", label: "Shift", type: "select", options: ["A", "B", "C", "General"] },
+          { key: "Area", label: "Area / Location", type: "select", options: (options.area || []).map(g => g.label) },
+          { key: "Category", label: "Category", type: "select", options: ["Equipment Failure", "Human Error", "Documentation", "Contamination", "Power Failure", "Other"] },
+          { key: "OtherCategoryDetail", label: "Specify Other Category", type: "text", showIf: (d) => d.Category === "Other" },
+          { key: "Severity", label: "Severity", type: "select", options: ["Minor", "Major", "Critical"] },
+          { type: "row-break" },
+          { key: "Description", label: "Incident Description", type: "textarea" },
+        ],
+      ],
     ],
-    "Reporting Information": [
-      { key: "ReportedBy", label: "Reported By", type: "select", options: options.personnel.map(g => g.label) || [] },
-      { key: "WitnessedBy", label: "Witnessed By", type: "text" },
-      { key: "EquipmentInvolved", label: "Equip. / Instru. Involved", type: "select", options: options.equipment.map(g => g.label) },
-      { key: "ProductBatch", label: "Prod. / Batch Affected", type: "text" },
+    [
+      [
+        "2. Reporting Information",
+        [
+          { key: "ReportedBy", label: "Reported By", type: "select", options: (options.personnel || []).map(g => g.label) },
+          { key: "WitnessedBy", label: "Witnessed By", type: "text" },
+          { key: "EquipmentInvolved", label: "Equip. / Instru. Involved", type: "select", options: (options.equipment || []).map(g => g.label) },
+          { key: "ProductBatch", label: "Prod. / Batch Affected", type: "text" },
+          { key: "AttachmentRef", label: "Attachment Ref.", type: "text" },
+          { type: "row-break" },
+          { key: "ImmediateAction", label: "Immediate Action / Containment", type: "textarea" },
+        ],
+      ],
     ],
-    "Incident Description": [
-      { key: "Description", label: "Incident Description", type: "textarea" },
+  ],
+
+  // ───────── S2 — UNDER REVIEW (stage 1) — QA Head ─────────
+  review: [
+    [
+      [
+        "3. QA Review",
+        [
+          { key: "ReviewedBy", label: "Reviewed By (QA)", type: "select", options: (options.personnel || []).map(g => g.label) },
+          { key: "ReviewDate", label: "Review Date", type: "date" },
+          { key: "DeviationRaised", label: "Deviation Raised?", type: "select", options: ["Yes", "No"] },
+          { key: "DeviationRef", label: "Linked Deviation Ref.", type: "text", disabled: true },
+          { key: "EscalatedTo", label: "Escalated To", type: "select", options: (options.personnel || []).map(g => g.label) },
+          { type: "row-break" },
+          { key: "ImpactAssessment", label: "Impact Assessment", type: "textarea" },
+        ],
+      ],
     ],
-    "Immediate Action": [
-      { key: "ImmediateAction", label: "Immediate Action / Containment", type: "textarea" },
+  ],
+
+  // ───────── S3 — UNDER INVESTIGATION (stage 2) — QA Investigator ─────────
+  investigation: [
+    [
+      [
+        "4. Investigation",
+        [
+          { key: "InvestigatedBy", label: "Investigated By", type: "select", options: (options.personnel || []).map(g => g.label) },
+          { type: "row-break" },
+          { key: "RootCause", label: "Root Cause", type: "textarea" },
+          { key: "InvestigationSummary", label: "Investigation Summary", type: "textarea" },
+        ],
+      ],
     ],
-    "Impact & Investigation": [
-      { key: "ImpactAssessment", label: "Impact Assessment", type: "textarea" },
-      { key: "RootCause", label: "Root Cause", type: "textarea" },
-      { key: "InvestigationSummary", label: "Investigation Summary", type: "textarea" },
+  ],
+
+  // ───────── S4 — CLOSED (stage 3) — QA Head ─────────
+  closure: [
+    [
+      [
+        "5. Closure & Linked References",
+        [
+          { key: "Status", label: "Current Stage", type: "text", disabled: true },
+          { key: "CapaRef", label: "Linked CAPA Ref.", type: "text", disabled: true },
+          { key: "TargetDate", label: "Target Closure Date", type: "date" },
+          { key: "ClosedBy", label: "Closed By", type: "select", options: (options.personnel || []).map(g => g.label) },
+          { type: "row-break" },
+          { key: "ClosureRemarks", label: "Closure Remarks", type: "textarea" },
+        ],
+      ],
     ],
-    "Closure & Linked References": [
-      { key: "DeviationRaised", label: "Deviation Raised?", type: "select", options: ["Yes", "No"] },
-      { key: "DeviationRef", label: "Linked Deviation Ref.", type: "text" },
-      { key: "CapaRef", label: "Linked CAPA Ref.", type: "text" },
-      { key: "TargetDate", label: "Target Closure Date", type: "date" },
-    ],
-  },
+  ],
 });
 
-export const incidentRequiredFieldsList = [
-  "IncidentDate",
-  "Severity",
-  "Description",
-];
+export const incidentSectionConfigs = {
+  "1. Incident Details":              "grid-cols-1 sm:grid-cols-3 xl:grid-cols-6",
+  "2. Reporting Information":         "grid-cols-1 sm:grid-cols-3 xl:grid-cols-5",
+  "3. QA Review":                     "grid-cols-1 sm:grid-cols-3 xl:grid-cols-5",
+  "4. Investigation":                 "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
+  "5. Closure & Linked References":   "grid-cols-1 sm:grid-cols-3 xl:grid-cols-4",
+};
 
+export const incidentRequiredByStage = {
+  "Reported":            ["IncidentDate", "Area", "Category", "Severity", "Description", "ReportedBy", "ImmediateAction"],
+  "Under Review":        ["ImpactAssessment", "DeviationRaised", "ReviewedBy", "ReviewDate"],
+  "Under Investigation": ["RootCause", "InvestigationSummary", "InvestigatedBy"],
+  "Closed":              [],
+};
+
+export const getIncidentRequired = (status) =>
+  incidentRequiredByStage[status] || incidentRequiredByStage["Reported"];
+
+export const incidentTableColumns = [
+  { key: "Sr", label: "Sr" },
+  { key: "RecordNo", label: "Incident No." },
+  { key: "IncidentDate", label: "Date", render: (r) => (r.IncidentDate || "").slice(0, 10) },
+  { key: "Area", label: "Area / Location" },
+  { key: "Category", label: "Category" },
+  { key: "Severity", label: "Severity" },
+  { key: "Status", label: "Status" },
+];
 // ============================================== DMS ==============================================
 
 export const dmsTabs = ["entry"];
@@ -222,6 +400,7 @@ export const dmsTabs = ["entry"];
 export const getDmsFieldGroups = (options = {}) => ({
   entry: {
     "1. Document Details": [
+      { key: "RecordNo", Label: "DMS Record No.", type: "text", disabled: true },
       { key: "DocTitle", label: "Document Title", type: "text" },
       { key: "DocNo", label: "Document No.", type: "text" },
       {
@@ -333,7 +512,7 @@ export const trainingTabs = ["entry"]; // single virtual tab — tab bar hidden 
 export const trainingFieldGroups = (options = {}) => ({
   entry: {
     "Training Details": [
-      { key: "RecordNo", label: "Record Number", type: "text" },
+      { key: "RecordNo", label: "Training Number", type: "text", disabled: true },
       { key: "training_title", label: "Training Title / Topic", type: "text" },
       {
         key: "training_type",
@@ -347,7 +526,7 @@ export const trainingFieldGroups = (options = {}) => ({
         type: "select",
         options: ["Classroom", "Online", "On-the-Job", "Hybrid"],
       },
-      { key: "linked_document_ref", label: "Linked Doc. / SOP Ref.", type: "text" },
+      { key: "DocRef", label: "Linked Doc. / SOP Ref.", type: "text" },
     ],
 
     "Schedule & Faculty": [
@@ -424,6 +603,7 @@ export const trainingTableColumns = [
     label: "Scheduled Date",
     render: (r) => (r.scheduled_date || "").slice(0, 10),
   },
+  { key: "DocRef", label: "Linked DocRef." },
   { key: "training_title", label: "Title / Topic" },
   { key: "training_type", label: "Type" },
   { key: "target_department", label: "Dept." },
@@ -508,14 +688,7 @@ export const calibrationTableColumns = [
   { key: "Result", label: "Result" },
   { key: "Status", label: "Status" },
 ];
-
-
-// ============================================== ENVIRONMENTAL MONITORING CONFIG ==============================================
-// Append this block to Qmsconfigs.js (same file as trainingFieldGroups / calibrationFieldGroups)
-// ============================================== ENVIRONMENTAL MONITORING CONFIG ==============================================
-// Append this block to Qmsconfigs.js — follows the same pattern used for
-// trainingFieldGroups / calibrationFieldGroups (PascalCase keys, options-driven selects).
-
+ 
 // ============================================== ENVIRONMENTAL MONITORING CONFIG (matches qms.EnvMonitoring table) ==============================================
 
 export const environmentalMonitoringTabs = ["entry"]; // single virtual tab — tab bar hidden
@@ -620,8 +793,9 @@ export const stpTabs = ["entry"]; // single virtual tab — tab bar hidden
 export const stpFieldGroups = (options = {}) => ({
   entry: {
     "Document Details": [
+      { key: "RecordNo", label: "STP Number", type: "text", disabled: true },
       { key: "record_no", label: "STP / Document No.", type: "text" },
-      { key: "document_title", label: "Document Title", type: "text" },
+      { key: "title", label: "Document Title", type: "text" },
       {
         key: "department",
         label: "Department",
@@ -637,13 +811,13 @@ export const stpFieldGroups = (options = {}) => ({
     ],
 
     "Version Control": [
-      { key: "version_no", label: "Version No.", type: "text" },
-      { key: "date_of_issue", label: "Date of Issue", type: "date" },
-      { key: "effective_date", label: "Effective Date", type: "date" },
-      { key: "next_review_due", label: "Next Periodic Review Due", type: "date" },
-      { key: "supersedes", label: "Supersedes (Previous Version)", type: "text" },
+      { key: "version", label: "Version No.", type: "text" },
+      { key: "issue_date", label: "Date of Issue", type: "date" },
+      { key: "EffectiveDate", label: "Effective Date", type: "date" },
+      { key: "NextReviewDate", label: "Next Periodic Review Due", type: "date" },
+      { key: "Supersedes", label: "Supersedes (Previous Version)", type: "text" },
       {
-        key: "reason_for_revision",
+        key: "ReasonForRevision",
         label: "Reason for Revision",
         type: "textarea",
         fullWidth: true,
@@ -651,21 +825,21 @@ export const stpFieldGroups = (options = {}) => ({
     ],
 
     "Review & Approval": [
-      { key: "linked_change_control_ref", label: "Linked Change Control Ref.", type: "text" },
+      { key: "ChangeRef", label: "Linked Change Control Ref.", type: "text" },
       {
-        key: "prepared_by",
+        key: "PreparedBy",
         label: "Prepared By",
         type: "select",
         options: options.personnel?.map((g) => g.label) || [],
       },
       {
-        key: "reviewed_by",
+        key: "ReviewedBy",
         label: "Reviewed By",
         type: "select",
         options: options.personnel?.map((g) => g.label) || [],
       },
       {
-        key: "approved_by",
+        key: "ApprovedBy",
         label: "Approved By (QA Head)",
         type: "select",
         options: options.personnel?.map((g) => g.label) || [],
@@ -674,13 +848,13 @@ export const stpFieldGroups = (options = {}) => ({
 
     "Training & Distribution": [
       {
-        key: "training_completed_before_effective",
+        key: "TrainingDone",
         label: "Training Completed Before Effective?",
         type: "select",
         options: ["Yes", "No", "N/A"],
       },
       {
-        key: "controlled_copy_distribution",
+        key: "Distribution",
         label: "Controlled Copy Distribution",
         type: "textarea",
         fullWidth: true,
@@ -689,7 +863,7 @@ export const stpFieldGroups = (options = {}) => ({
 
     "Scope / Remarks": [
       {
-        key: "scope_remarks",
+        key: "Scope",
         label: "Scope / Remarks",
         type: "textarea",
         fullWidth: true,
@@ -698,7 +872,6 @@ export const stpFieldGroups = (options = {}) => ({
   },
 });
 
-// Grid layout overrides — full-width for the long-text sections
 export const stpGridConfigs = {
   "Reason for Revision": "col-span-full",
   "Controlled Copy Distribution": "col-span-full",
@@ -707,17 +880,17 @@ export const stpGridConfigs = {
 
 export const stpRequiredFieldsList = [
   "record_no",
-  "document_title",
-  "version_no",
+  "title",
+  "version",
 ];
 
 export const stpTableColumns = [
   { key: "Sr", label: "Sr" },
   { key: "record_no", label: "STP / Doc No." },
-  { key: "document_title", label: "Document Title" },
-  { key: "version_no", label: "Version No." },
+  { key: "title", label: "Document Title" },
+  { key: "version", label: "Version No." },
   {
-    key: "effective_date",
+    key: "EffectiveDate",
     label: "Effective Date",
     render: (r) => (r.effective_date || "").slice(0, 10),
   },
@@ -786,7 +959,7 @@ export const auditTabs = ["entry"]; // single virtual tab — tab bar hidden
 export const auditFieldGroups = (options = {}) => ({
   entry: {
     "Audit Details": [
-      { key: "record_no", label: "Record Number", type: "text", disabled: true },
+      { key: "record_no", label: "Audit Number", type: "text", disabled: true },
       {
         key: "audit_type",
         label: "Audit Type",

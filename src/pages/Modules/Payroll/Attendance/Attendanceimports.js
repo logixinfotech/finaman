@@ -17,7 +17,7 @@ import {
     OutlineButton, AvatarCell, StatusBadge,
     TableHeader, TableRow, EmptyState, LoadingState, FileChip,
     PeriodDropdowns, getStatusBadge,
-    todayDay, todayMonth, todayYear
+    todayDay, todayMonth, todayYear,  normalizeStatus,
 } from "./Attendancehelpers";
 
 const ImportIcon = (
@@ -38,6 +38,7 @@ const inputCls = "h-8 w-full text-[13px] text-center font-medium font-mono borde
 
 const AttendanceImports = ({
     employees,
+    leaveTypes = [],
     isViewMode,
     attendanceType,           // "Biometric" | "Excel"
     bioTableData, setBioTableData,
@@ -183,7 +184,7 @@ const AttendanceImports = ({
                     };
                     const empId = String(row.EmployeeID || row.ID || row.employee_id || "");
                     const empRec = employees.find(e => String(e.Actled_id) === empId || String(e.Led_code) === empId);
-                    const parsedStatus = row.Status || "PRESENT";
+                    const parsedStatus = normalizeStatus(row.Status, leaveTypes) || "PRESENT";
                     return {
                         log_id: null,
                         employee_id: empId,
@@ -247,7 +248,7 @@ const AttendanceImports = ({
                     };
                     const empId = String(row.EmployeeID || row.ID || row.employee_id || "");
                     const empRec = employees.find(e => String(e.Actled_id) === empId || String(e.Led_code) === empId);
-                    const parsedStatus = row.Status || "PRESENT";
+                    const parsedStatus = normalizeStatus(row.Status, leaveTypes) || "PRESENT";
                     return {
                         log_id: null,
                         employee_id: empId,

@@ -10,6 +10,7 @@ const initialState = {
   name: "",
   code: "",
   type: "",
+    is_basic: false, 
   taxable: "Yes",
   status: "Active",
 };
@@ -87,17 +88,14 @@ const handleSave = async (updatedData) => {
   
   const response = await performSave("income_head_id", updatedData);
   if (response?.success) {
-    const freshList = await loadList(); // ✅ return value lo
-
-    // Saved record ka ID: edit mein original ID, add mein server response se ID
+    const freshList = await loadList(); 
     const savedId = updatedData.income_head_id ?? response?.data?.income_head_id;
     const newIndex = freshList.findIndex(i => i.income_head_id === savedId);
 
     if (newIndex !== -1) {
       setCurrentIndex(newIndex);
-      handleView(freshList[newIndex]); // ✅ Server ka fresh data view mein dikhao
-    } else if (freshList.length > 0) {
-      // Fallback: naya record usually last mein hoga
+      handleView(freshList[newIndex]);  
+    } else if (freshList.length > 0) { 
       const lastIndex = freshList.length - 1;
       setCurrentIndex(lastIndex);
       handleView(freshList[lastIndex]);
@@ -116,10 +114,8 @@ const handleSave = async (updatedData) => {
       }
     }
   };
-
-  // Multiple delete (used by the Table)
-  const handleDeleteMultiple = async (selected) => {
-    // Normalize: Table may pass an array of row objects OR an array of keys
+ 
+  const handleDeleteMultiple = async (selected) => { 
     const ids = (selected || []).map((item) =>
       typeof item === "object" ? item.income_head_id : item
     );

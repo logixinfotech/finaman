@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import { useERPMode } from "../../../components/Reusable/form/useFormMode";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 import {
   trainingTabs,
   trainingFieldGroups,
@@ -20,6 +21,7 @@ import {
   createTraining,
   updateTraining,
   deleteTraining,
+  getNextRecordNo,
 } from "./Utils/QmsAPI";
 import { widthConfig, getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
@@ -37,14 +39,14 @@ const initialState = {
   scheduled_date: new Date().toISOString().slice(0, 10),
   conducted_date: "",
   venue: "",
+  DocRef: "",
   duration_hours: "",
   evaluation_method: "",
   pass_criteria: "",
   trainees_scores: "",
   effectiveness_assessment: "",
   remarks: "",
-  status: "Open",
-  // e-sign audit fields
+  status: "Open", 
   created_by: "",
   created_at: "",
   updated_by: "",
@@ -116,7 +118,13 @@ export default function TrainingMasterPage({ tab }) {
       () => trainingFieldGroups(groupOptions || []),
       [groupOptions],
     );
-  
+  const [filters, setFilters] = useState({ status: "All", target_department: "", training_type: "All" });
+const [showFilter, setShowFilter] = useState(false);
+
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ status: "All", target_department: "", training_type: "All" });
+}, []);
 
   useEffect(() => {
     loadData();
@@ -130,10 +138,13 @@ export default function TrainingMasterPage({ tab }) {
     [setActiveTab, setShowForm],
   );
 
-  const handleAddNew = () => {
+  const handleAddNew = async() => {
     handleAdd();
     setShowForm(true);
     setActiveTab("entry");
+      const  recordNo = await getNextRecordNo("training");
+        
+        setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
   };
 
   useEffect(() => {
@@ -253,6 +264,21 @@ export default function TrainingMasterPage({ tab }) {
       onEsc: () => latest.current.handleFormExit(),
     });
   }, []);
+  const filteredTrainingList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.status && filters.status !== "All") {
+      if (item.status !== filters.status) return false;
+    }
+    if (filters.target_department) {
+      const dept = String(item.target_department || "").toLowerCase();
+      if (!dept.includes(filters.target_department.toLowerCase())) return false;
+    }
+    if (filters.training_type && filters.training_type !== "All") {
+      if (item.training_type !== filters.training_type) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
 
   return (
     <div className="h-full w-full">
@@ -305,20 +331,33 @@ export default function TrainingMasterPage({ tab }) {
           )}
         </>
       ) : (
-        <Table
-          activeTab={activeTab}
-      onRefresh={() => loadData()}
-          showSettingsTab={true}
-          onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Training Register"
-          data={listWithSr}
-          columns={trainingTableColumns}
-          rowKey="id"
-          loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+      <Table
+  activeTab={activeTab}
+  onRefresh={() => loadData()}
+  showSettingsTab={true}
+  onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="Training Register"
+  data={filteredTrainingList}
+  columns={trainingTableColumns}
+  rowKey="id"
+  loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status", "department", "trainingType"]}
+      setFilters={setFilters}
+   options={{...groupOptions,status:["Planned","Conducted","Evaluated","Closed","Rejected"]}}
+
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

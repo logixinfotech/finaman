@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import ERPHeader from "../../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../../components/Reusable/input/ERPAutocomplete";
-import { useReducedMotion } from "framer-motion";
 
 const requiredFields = ["name", "code", "type"];
 const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
@@ -22,7 +22,7 @@ const IncomeHeadForm = ({
   onNextRecord,
   rights,
   activeTab = "entry",
-  onTabChange = () => {},
+  onTabChange = () => { },
   formData,
   setFormData,
 }) => {
@@ -31,7 +31,7 @@ const IncomeHeadForm = ({
   const isViewMode = mode === "view";
   const isAddMode = mode === "add";
   const isEditMode = mode === "edit";
-  const saveBtnRef =useRef(null)
+  const saveBtnRef = useRef(null)
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -44,36 +44,30 @@ const IncomeHeadForm = ({
   };
 
   const firstInputRef = useRef(null);
-  
+
   useEffect(() => {
     if (!isViewMode && firstInputRef.current) {
       firstInputRef.current.focus();
     }
   }, [isViewMode]);
 
- const getInputClass = (disabled, field) => {
-  // 1. Base styles (jo hamesha rahengi)
-  const base = "h-[35px] md:h-[30px] px-2 text-[15px] border rounded-md outline-none transition-all w-full";
-  
-  // 2. State specific styles (error ya disabled)
-  const state = disabled 
-    ? "bg-gray-100 cursor-not-allowed border-gray-200" 
-    : "bg-white";
-    
-  // 3. Border color (Default vs Error)
-  const border = errors[field] 
-    ? "border-red-500" 
-    : "border-gray-300";
+  const getInputClass = (disabled, field) => {
+    const base = "h-[35px] md:h-[30px] px-2 text-[15px] border rounded-md outline-none transition-all w-full";
+    const state = disabled
+      ? "bg-gray-100 cursor-not-allowed border-gray-200"
+      : "bg-white";
 
-  // 4. Focus style (Sirf us element par jise click kiya hai)
-  const focus = !disabled 
-    ? "focus:border-blue-50 focus:ring-1 focus:ring-[#1a56db]" 
-    : "";
+    const border = errors[field]
+      ? "border-red-500"
+      : "border-gray-300";
+    const focus = !disabled
+      ? "focus:border-blue-50 focus:ring-1 focus:ring-[#1a56db]"
+      : "";
 
-  return `${base} ${state} ${border} ${focus}`;
-};
+    return `${base} ${state} ${border} ${focus}`;
+  };
 
-  
+
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
     let newErrors = {};
@@ -88,9 +82,6 @@ const IncomeHeadForm = ({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      
-      // ✅ FOCUS LOGIC:
-      // DOM update hone ka wait karein aur fir focus karein
       requestAnimationFrame(() => {
         const el = document.querySelector(`[name="${firstEmpty}"]`);
         if (el) {
@@ -121,16 +112,16 @@ const IncomeHeadForm = ({
       e.preventDefault();
       if (index < elements.length - 1) elements[index + 1].focus();
       else {
-          saveBtnRef?.current?.focus();
+        saveBtnRef?.current?.focus();
       }
     }
-    if (e.shiftKey&&e.key === "Backspace") {
+    if (e.shiftKey && e.key === "Backspace") {
       let shouldGoBack = true;
       if (e.target.tagName === "INPUT") {
         if (e.target.value === "" || (e.target.selectionStart === 0 && e.target.selectionEnd === 0)) shouldGoBack = true;
       }
       if (e.target.dataset.auto || e.target.dataset.toggle === "status") shouldGoBack = true;
-      if (shouldGoBack ) { e.preventDefault(); elements[index - 1].focus(); }
+      if (shouldGoBack) { e.preventDefault(); elements[index - 1].focus(); }
     }
     if (e.key === " " && e.target.dataset.toggle === "status") {
       e.preventDefault();
@@ -154,18 +145,17 @@ const IncomeHeadForm = ({
         currentIndex={currentRecord}      // 👈
         totalRecords={totalRecords}        // 👈
         onPrevRecord={onPrevRecord}        // 👈
-        onNextRecord={onNextRecord}  
+        onNextRecord={onNextRecord}
       />
 
       <div className="flex-1 p-2 md:p-4 overflow-y-auto">
         <div
           id="income-form-container"
-          className="w-full bg-white max-w-[750px] mx-auto border rounded-md p-4 md:p-6"
-        > 
-          {/* Row 1: Name and Code */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="md:col-span-2 flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-              <label className="text-sm font-medium whitespace-nowrap">
+          className="w-full bg-white max-w-[750px] mx-auto border rounded-md p-3 md:p-6"
+        >
+          <div className="grid grid-cols-3 gap-2 md:gap-4 mb-3 md:mb-4">
+            <div className="col-span-2 flex flex-row items-center gap-0.5 md:gap-2">
+              <label className="text-[10px] md:text-sm font-medium whitespace-nowrap">
                 Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -179,8 +169,8 @@ const IncomeHeadForm = ({
               />
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-              <label className="text-sm font-medium whitespace-nowrap">
+            <div className="flex flex-row items-center gap-0.5 md:gap-2">
+              <label className="text-[10px] md:text-sm font-medium whitespace-nowrap">
                 Code <span className="text-red-500">*</span>
               </label>
               <input
@@ -192,12 +182,11 @@ const IncomeHeadForm = ({
                 className={getInputClass(isViewMode, "code")}
               />
             </div>
-          </div> 
-          
-          {/* Row 2: Type, Taxable, Status */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-              <label className="text-sm font-medium whitespace-nowrap mr-2">
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 md:gap-4">
+            <div className="flex flex-row items-center gap-0.5 md:gap-2">
+              <label className="text-[10px] md:text-sm font-medium whitespace-nowrap mr-2">
                 Type <span className="text-red-500">*</span>
               </label>
               <ERPAutocomplete
@@ -211,8 +200,8 @@ const IncomeHeadForm = ({
               />
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-              <label className="text-sm font-medium whitespace-nowrap">Taxable</label>
+            <div className="flex flex-row items-center gap-0.5 md:gap-2">
+              <label className="text-[10px] md:text-sm font-medium whitespace-nowrap">Taxable</label>
               <ERPAutocomplete
                 data-auto
                 value={formData.taxable ?? "Yes"}
@@ -224,8 +213,8 @@ const IncomeHeadForm = ({
               />
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-              <label className="text-sm font-medium whitespace-nowrap">Status</label>
+            <div className="flex flex-row items-center gap-0.5 md:gap-2">
+              <label className="text-[10px] md:text-sm font-medium whitespace-nowrap">Status</label>
               <ERPAutocomplete
                 value={formData.status || ""}
                 options={["Active", "Inactive"]}
@@ -234,6 +223,22 @@ const IncomeHeadForm = ({
                 onKeyDown={handleKeyDown}
                 className={getInputClass(isViewMode, "status")}
               />
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 md:gap-4 mt-3">
+              <div className="col-span-2 flex flex-row items-center gap-2">
+                <input
+                  type="checkbox"
+                  data-auto
+                  checked={!!formData.is_basic}
+                  disabled={isViewMode}
+                  onChange={(e) => handleChange("is_basic", e.target.checked)}
+                  onKeyDown={handleKeyDown}
+                  className={isViewMode ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                />
+                <label className="text-[10px] md:text-sm font-medium">
+                  Is Basic
+                </label>
+              </div>
             </div>
           </div>
         </div>

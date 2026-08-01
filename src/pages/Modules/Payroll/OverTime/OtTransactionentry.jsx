@@ -174,7 +174,7 @@ const OTTransactionForm = ({
   return (
     <>
       <ToastContainer />
-      <div style={{ fontFamily:FONT, width:"100%", height:"calc(100vh - 100px)", display:"flex", flexDirection:"column", background:"#f1f5f9", borderRadius:12, overflow:"hidden", boxShadow:"0 4px 24px rgba(0,0,0,0.08)" }}>
+      <div className="h-full sm:h-calc(100vh-100px)" style={{ fontFamily:FONT, width:"100%",  display:"flex", flexDirection:"column", background:"#f1f5f9", borderRadius:12, overflow:"hidden", boxShadow:"0 4px 24px rgba(0,0,0,0.08)" }}>
 
         <ERPHeader
           title="OT TRANSACTION"

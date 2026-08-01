@@ -7,8 +7,7 @@ import ApprovalWorkflow from "../components/Layout/DashboardComponnt/ApprovalWor
 import WorkDiarySummary from "../components/Layout/DashboardComponnt/WorkDiarySummary";
 import PayrollOverview from "../components/Layout/DashboardComponnt/PayrollOverview";
 import UpcomingEvents from "../components/Layout/DashboardComponnt/UpcomingEvents";
-import AlertsStrip from "../components/Layout/DashboardComponnt/AlertsStrip";
-import {
+ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
@@ -158,7 +157,7 @@ const RESPONSIVE_CSS = `
 `;
 
 const FinamanDashboard = () => {
-  const { data, loading, error, refetch, lastFetched } = useDashboard();
+  const { data, loading, } = useDashboard();
 
   useEffect(() => {
     // Inject responsive styles once, avoid duplicates

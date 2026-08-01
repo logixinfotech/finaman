@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import { useERPMode } from "../../../components/Reusable/form/useFormMode";
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 import {
   stpTabs,
   stpFieldGroups,
@@ -20,8 +21,9 @@ import {
   createSTP,
   updateSTP,
   deleteSTP,
+  getNextRecordNo,
 } from "./Utils/QmsAPI";
-import { widthConfig, getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
+import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
 
@@ -32,13 +34,13 @@ const initialState = {
   department: "",
   category: "",
   version_no: "",
-  date_of_issue: "",
+  issue_date: "",
   effective_date: "",
-  next_review_due: "",
+  NextReviewDue: "",
   supersedes: "",
   reason_for_revision: "",
-  linked_change_control_ref: "",
-  prepared_by: "",
+  ChangeRef: "",
+  prepared_byeeee: "",
   reviewed_by: "",
   approved_by: "",
   training_completed_before_effective: "",
@@ -112,6 +114,13 @@ export default function STPMasterPage({ tab }) {
     loadData,
     "STP Register",
   );
+  const [filters, setFilters] = useState({ status: "All", department: "", category: "All" });
+const [showFilter, setShowFilter] = useState(false);
+
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ status: "All", department: "", category: "All" });
+}, []);
   const { options: groupOptions } = useGroupOptions();
   const dmsFieldGroup = useMemo(
     () => stpFieldGroups(groupOptions || []),
@@ -130,10 +139,13 @@ export default function STPMasterPage({ tab }) {
     [setActiveTab, setShowForm],
   );
 
-  const handleAddNew = () => {
+  const handleAddNew =async () => {
     handleAdd();
     setShowForm(true);
     setActiveTab("entry");
+      const  recordNo = await getNextRecordNo("stp");
+                
+                setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
   };
 
   useEffect(() => {
@@ -253,6 +265,21 @@ export default function STPMasterPage({ tab }) {
       onEsc: () => latest.current.handleFormExit(),
     });
   }, []);
+  const filteredStpList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.status && filters.status !== "All") {
+      if (item.status !== filters.status) return false;
+    }
+    if (filters.department) {
+      const dept = String(item.department || "").toLowerCase();
+      if (!dept.includes(filters.department.toLowerCase())) return false;
+    }
+    if (filters.category && filters.category !== "All") {
+      if (item.category !== filters.category) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
 
   return (
     <div className="h-full w-full">
@@ -303,20 +330,32 @@ export default function STPMasterPage({ tab }) {
           )}
         </>
       ) : (
-        <Table
-          activeTab={activeTab}
-          onRefresh={() => loadData()}
-          showSettingsTab={true}
-          onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="STP Register"
-          data={listWithSr}
-          columns={stpTableColumns}
-          rowKey="id"
-          loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+<Table
+  activeTab={activeTab}
+  onRefresh={() => loadData()}
+  showSettingsTab={true}
+  onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  title="STP Register"
+  data={filteredStpList}
+  columns={stpTableColumns}
+  rowKey="id"
+  loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status", "department", "category"]}
+      setFilters={setFilters}
+             options={{...groupOptions,status:["Draft","Under Reviewed","Effective","Superseded","Withdrawn","Rejected"]}}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

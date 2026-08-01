@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import { useERPMode } from "../../../components/Reusable/form/useFormMode";
@@ -8,7 +8,8 @@ import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { getChangeControls, createChangeControl, updateChangeControl, deleteChangeControl, getNextRecordNo } from "./Utils/QmsAPI";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
-
+ 
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 const initialState = {
   Id: null, RecordNo: "", Status: "Open", InitiationDate: new Date().toISOString().slice(0, 10),
   Department: "", Product: "", ChangeType: "", ChangeNature: "", Classification: "", CurrentState: "",
@@ -107,7 +108,29 @@ export default function ChangeControlMasterPage({ tab }) {
     await handleEditCancel();
     if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
   };
+const [filters, setFilters] = useState({ Status: "All", Department: "", Classification: "All" });
+const [showFilter, setShowFilter] = useState(false);
 
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "All", Department: "", Classification: "All" });
+}, []);
+
+const filteredList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.Status && filters.Status !== "All") {
+      if (item.Status !== filters.Status) return false;
+    }
+    if (filters.Classification && filters.Classification !== "All") {
+      if (item.Classification !== filters.Classification) return false;
+    }
+    if (filters.Department) {
+      const val = String(item.Department || "").toLowerCase();
+      if (!val.includes(filters.Department.toLowerCase())) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
   return (
     <div className="h-full w-full">
       {showForm ? (
@@ -132,14 +155,30 @@ export default function ChangeControlMasterPage({ tab }) {
           headerActiveTab={activeTab} onHeaderTabChange={handleHeaderTabChange}
         />
       ) : (
-        <Table
-          activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Change Control" data={listWithSr} columns={changeControlTableColumns}
-          rowKey="Id" loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-        />
+       <Table
+  activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
+  onDeleteMultiple={handleDeleteMultiple}
+  onRefresh={() => loadData()}
+  title="Change Control" data={filteredList} columns={changeControlTableColumns}
+  rowKey="Id" loading={loading}
+  onAdd={rights?.add === 1 ? handleAddNew : null}
+  onRowDoubleClick={handleRowSelect}
+  onToggleFilter={() => setShowFilter((p) => !p)}
+  showForm={showFilter}
+  formComponent={
+    <UnivarsalFilter
+      filters={filters}
+      visibleFields={["status", "department", "classification"]}
+      setFilters={setFilters}
+      options={{
+        ...groupOptions,
+        status: ["Initiated", "Impact Assesment", "QA Approval", "Implementation","Effectivness Review", "Closed", "Rejected"],
+      }}
+      onApply={applyFilter}
+      onClear={clearFilter}
+    />
+  }
+/>
       )}
     </div>
   );

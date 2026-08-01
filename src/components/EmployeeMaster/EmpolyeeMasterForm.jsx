@@ -24,11 +24,7 @@ import {
 } from "./EmployeeFromValidation";
 import DocumentTable from "./DocumentTable";
 
-import {
-  fetchActiveIncomeHeads,
-  fetchActiveDeductionHeads,
-  fetchSalaryTemplates, fetchPTList
-} from "../../../src/utils/api";
+ 
 import {
   FaUser,
   FaBuilding,
@@ -50,14 +46,12 @@ import {
   FaCreditCard,
 } from "react-icons/fa";
 import { useGroupOptions } from "../../Hooks/useUserGroupOption";
-
 export const tabs = [
   "personal_and_contact",
   "organization",
   "bank_and_payroll",
   "documents",
 ];
-
 const getGridConfig = (title) => {
   const configs = {
     "Personal Information": "grid-cols-2 sm:grid-cols-3 2xl:grid-cols-5",
@@ -74,7 +68,6 @@ const getGridConfig = (title) => {
   };
   return configs[title] || "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3";
 };
-
 const TabIcon = memo(({ tab }) => {
   const baseClass = "text-[15px]";
   if (tab === "personal_and_contact")
@@ -84,14 +77,12 @@ const TabIcon = memo(({ tab }) => {
   if (tab === "documents") return <FaFileAlt className={baseClass} />;
   return <FaFileAlt className={baseClass} />;
 });
-
 const getInitials = (name) => {
   if (!name || name === "New Employee") return "NA";
   const parts = name.trim().split(" ");
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return name.substring(0, 2).toUpperCase();
 };
-
 const getHeaderStyle = (title) => {
   const t = title.toLowerCase();
   if (t.includes("personal"))
@@ -206,7 +197,6 @@ const getHeaderStyle = (title) => {
       text: "text-[#0f2137]",
       border: "border-[#fecdd3]",
     };
-
   return {
     icon: <FaFileAlt />,
     barBg: "bg-[#eef1f7]",
@@ -215,7 +205,6 @@ const getHeaderStyle = (title) => {
     border: "border-[#dde1ea]",
   };
 };
-
 const EmployeeMasterForm = forwardRef(
   (
     {
@@ -242,7 +231,6 @@ const EmployeeMasterForm = forwardRef(
     const isAddMode = mode === "add";
     const isViewMode = mode === "view";
     const isEditMode = mode === "edit";
-
     const [activeTab, setActiveTab] = useState("personal_and_contact");
     const [errors, setErrors] = useState({});
     const [attachments, setAttachments] = useState({});
@@ -253,16 +241,9 @@ const EmployeeMasterForm = forwardRef(
       grade: [],
       reporting: [],
     });
-
-    // ✅ ADDED: State to control the Salary Template Modal
-    const [showSalaryModal, setShowSalaryModal] = useState(false);
-    const [incomeHeads, setIncomeHeads] = useState([]);
-    const [deductionHeads, setDeductionHeads] = useState([]);
-    const [templates, setTemplates] = useState([]);
     const [docList, setDocList] = useState([]);
     const [countryNames, setCountryNames] = useState([]);
     const [stateNames, setStateNames] = useState([]);
-
     useImperativeHandle(ref, () => ({
       hasPendingPhoto: () => !!pendingPhotoRef.current?.forNewEmployee,
       uploadPendingPhoto: async (employeeId) => {
@@ -285,44 +266,22 @@ const EmployeeMasterForm = forwardRef(
       },
     }));
     const [emailSuggestField, setEmailSuggestField] = useState(null);
-
     useEffect(() => {
       const loadDocs = async () => {
         try {
           const res = await fetchUserGroupsByType("DOC");
           setDocList(res?.data || []);
-        } catch (e) { }
+        } catch (e) {}
       };
       loadDocs();
     }, []);
-
-    // 3. Data Load karein jab Modal khule
-    useEffect(() => {
-      if (showSalaryModal) {
-        const loadSalaryData = async () => {
-          const [inc, ded, tpl] = await Promise.all([
-            fetchActiveIncomeHeads(),
-            fetchActiveDeductionHeads(),
-            fetchSalaryTemplates(),
-          ]);
-          setIncomeHeads(inc?.data || []);
-          setDeductionHeads(ded?.data || []);
-          setTemplates(tpl?.data || []);
-        };
-        loadSalaryData();
-      }
-    }, [showSalaryModal]);
-
     const formDataRef = useRef(formData);
-
     useEffect(() => {
       formDataRef.current = formData;
     }, [formData]);
-
     const photoInputRef = useRef(null);
     const pendingPhotoRef = useRef(null);
     const prevModeRef = useRef(mode);
-
     useEffect(() => {
       const loadGroups = async () => {
         try {
@@ -331,7 +290,6 @@ const EmployeeMasterForm = forwardRef(
           const desg = await fetchUserGroupsByType("DESG");
           const grade = await fetchUserGroupsByType("GRADE");
           const reporting = await fetchUserGroupsByType("RME");
-
           setGroupOptions({
             division: div.data || [],
             department: dept.data || [],
@@ -339,27 +297,23 @@ const EmployeeMasterForm = forwardRef(
             grade: grade.data || [],
             reporting: reporting.data || [],
           });
-        } catch (err) { }
+        } catch (err) {}
       };
       loadGroups();
     }, []);
-    const {options:op}=useGroupOptions();
-    
+    const { options: op } = useGroupOptions();
 
     const getDisplayValue = useCallback(
       (field, value) => {
         if (value === null || value === undefined) return "";
-
-        // Check if the field belongs to dynamic ID-based groups
         const isGroupField = [
           "Division",
           "Department",
           "Designation",
           "Grade / Level",
           "Reporting Manager",
-          "PT state"
+          "PT state",
         ].includes(field);
-
         if (isGroupField) {
           const groupMap = {
             Division: groupOptions.division,
@@ -367,24 +321,18 @@ const EmployeeMasterForm = forwardRef(
             Designation: groupOptions.designation,
             "Grade / Level": groupOptions.grade,
             "Reporting Manager": groupOptions.reporting,
-            "PT State":op.pt
+            "PT State": op.pt,
           };
           const list = groupMap[field] || [];
-
-          // Try finding by ID
           const foundById = list.find(
             (g) => String(g.group_id) === String(value),
           );
           if (foundById) return foundById.group_name;
-
-          // Try finding by Name (If user is currently typing)
           const foundByName = list.find(
             (g) => g.group_name?.toLowerCase() === String(value).toLowerCase(),
           );
           if (foundByName) return foundByName.group_name;
         }
-
-        // For plain string selects like Nationality, Gender, etc., or ongoing typing
         return String(value);
       },
       [groupOptions],
@@ -408,7 +356,6 @@ const EmployeeMasterForm = forwardRef(
     const isAddressComplete = Boolean(
       formData["C_Address Line 1"] && formData["C_City"],
     );
-
     const completedSections = [
       isPersonalComplete,
       isContactComplete,
@@ -434,55 +381,6 @@ const EmployeeMasterForm = forwardRef(
         return Object.keys(attachments || {}).length > 0;
       return false;
     };
-
-    const [is2XL, setIs2XL] = useState(
-      typeof window !== "undefined" ? window.innerWidth >= 1536 : false,
-    );
-    useEffect(() => {
-      if (activeTab === "bank_and_payroll") {
-        const loadSalaryData = async () => {
-          const [inc, ded, tpl] = await Promise.all([
-            fetchActiveIncomeHeads(),
-            fetchActiveDeductionHeads(),
-            fetchSalaryTemplates(),
-          ]);
-          setIncomeHeads(inc?.data || []);
-          setDeductionHeads(ded?.data || []);
-          setTemplates(tpl?.data || []);
-        };
-        loadSalaryData();
-
-        // Employee ka Grade id aur name nikala
-        const currentGradeId = formData["Grade / Level"];
-        const currentGradeName = getDisplayValue(
-          "Grade / Level",
-          currentGradeId,
-        );
-
-        // 🔥 FIX: employeeName yahan andar hi calculate kar liya taaki error na aaye
-        const empName = formData["First Name"]
-          ? `${formData["First Name"]} ${formData["Last Name"] || ""}`.trim()
-          : formData.employee_name || "New Employee";
-
-        // Default Salary state set karein
-        setSalaryFormData((prev) => ({
-          ...prev,
-          employee_id: formData.employee_id,
-          employee_name: empName, // <-- Ab ye directly use ho raha hai
-          grade_id: currentGradeId,
-          grade_name: currentGradeName,
-          type: "Manual",
-          status: "Active",
-        }));
-      }
-    }, [activeTab, formData, getDisplayValue]); // 🔥 FIX: employeeName ko dependency array se hata diya
-
-    useEffect(() => {
-      const handleResize = () => setIs2XL(window.innerWidth >= 1536);
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }, []);
-
     useEffect(() => {
       setTimeout(() => {
         const container = document.getElementById(`tab-content-${activeTab}`);
@@ -504,7 +402,6 @@ const EmployeeMasterForm = forwardRef(
         })
         .catch((err) => console.error("Failed to fetch countries:", err));
     }, []);
-
     useEffect(() => {
       fetchStates()
         .then((data) => {
@@ -515,7 +412,6 @@ const EmployeeMasterForm = forwardRef(
         })
         .catch((err) => console.error("Failed to fetch states:", err));
     }, []);
-
     useEffect(() => {
       if (isAddMode) {
         setTimeout(() => {
@@ -531,7 +427,6 @@ const EmployeeMasterForm = forwardRef(
         }, 100);
       }
     }, [isAddMode]);
-
     const addressFields = fieldGroups?.personal_and_contact?.Address || [];
     const C_countryField = addressFields.find((f) => f.key === "C_Country");
     const C_stateField = addressFields.find((f) => f.key === "C_State");
@@ -542,7 +437,6 @@ const EmployeeMasterForm = forwardRef(
     if (P_countryField) P_countryField.options = countryNames;
     if (P_stateField) P_stateField.options = stateNames;
     useEffect(() => {
-      // Sirf tab clear karo jab mode VIEW/EDIT se ADD mein aaye
       if (mode === "add" && prevModeRef.current !== "add") {
         setActiveTab("personal_and_contact");
         pendingPhotoRef.current = null;
@@ -550,30 +444,12 @@ const EmployeeMasterForm = forwardRef(
       prevModeRef.current = mode;
     }, [mode]);
 
-    const [salaryFormData, setSalaryFormData] = useState({});
-
-    // Jab Modal khule, toh Employee ki ID aur default 'type' set kar dein
-    useEffect(() => {
-      if (showSalaryModal) {
-        setSalaryFormData({
-          employee_id: formData.employee_id,
-          employee_name: formData["First Name"], // ya employeeName variable
-          type: "Manual",
-          status: "Active",
-        });
-      }
-    }, [showSalaryModal, formData]);
-
     const handleChange = useCallback(
       (field, rawValue) => {
         if (!setFormData) return;
-
-        // ✅ FIX: Force rawValue to string/empty string to avoid undefined deletes
         let finalValue =
           rawValue === undefined || rawValue === null ? "" : rawValue;
         const nameStr = field.toLowerCase();
-
-        // ✅ STRICT LENGTH & CHARACTER RULES
         if (nameStr.includes("voter id")) {
           finalValue = finalValue.toString().slice(0, 10); // Only 10 digits
         }
@@ -626,11 +502,8 @@ const EmployeeMasterForm = forwardRef(
         ) {
           finalValue = finalValue.toString().toUpperCase();
         }
-
         setFormData((prev) => {
           let updated = { ...prev };
-
-          // ✅ ID vs String Logic
           if (
             [
               "Division",
@@ -638,7 +511,7 @@ const EmployeeMasterForm = forwardRef(
               "Designation",
               "Grade / Level",
               "Reporting Manager",
-              "PT State"
+              "PT State",
             ].includes(field)
           ) {
             const list =
@@ -648,24 +521,17 @@ const EmployeeMasterForm = forwardRef(
                 Designation: groupOptions.designation,
                 "Grade / Level": groupOptions.grade,
                 "Reporting Manager": groupOptions.reporting,
-                "PT State":op.pt
-              
+                "PT State": op.pt,
               }[field] || [];
-
             const selected = list.find(
               (g) =>
                 g.group_name?.toLowerCase() ===
                 String(finalValue).toLowerCase(),
             );
-
-            // If option matches, store ID. Otherwise, keep the typed string intact.
-            updated[field] = selected ? selected.group_id : finalValue
+            updated[field] = selected ? selected.group_id : finalValue;
           } else {
-            // For static lists (Nationality, Religion, Title, etc.) store text directly
             updated[field] = finalValue;
           }
-
-          // Permanent Address Logic
           if (field === "Same as Correspondence") {
             if (finalValue === true) {
               updated["P_Address Line 1"] = updated["C_Address Line 1"] || "";
@@ -685,31 +551,22 @@ const EmployeeMasterForm = forwardRef(
               updated["P_Country"] = "";
             }
           }
-
-          // Marital Status Logic
           if (field === "Marital Status" && finalValue !== "Married") {
             updated["Spouse Name"] = "";
             updated["Anniversary Date"] = "";
             updated["No. of Children"] = "";
           }
-
-          // DOL (Status Leaving Date) set hone par Status Inactive
           if (field === "Status Leaving Date" && finalValue) {
             updated["Status"] = "Inactive";
           }
-
-          // DOL clear hone par Status wapas Active
           if (field === "Status Leaving Date" && !finalValue) {
             updated["Status"] = "Active";
           }
-          // ✅ NEW — Joining Date dalne par Status Active ho jaye
           if (field === "Joining Date" && finalValue) {
             updated["Status"] = "Active";
           }
-
           return updated;
         });
-
         const err = validateSingleField(field, finalValue);
         if (err) setErrors((prev) => ({ ...prev, [field]: err }));
         else
@@ -721,16 +578,13 @@ const EmployeeMasterForm = forwardRef(
       },
       [setFormData, groupOptions],
     );
-
     const handlePhotoUpload = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
       const localUrl = URL.createObjectURL(file);
       setFormData((prev) => ({ ...prev, photo_url: localUrl }));
-
       const currentMode = prevModeRef.current; // stale closure se bachao
       if (currentMode !== "add" && formData?.employee_id) {
-        // Edit/View mode mein turant upload karo
         try {
           const fd = new FormData();
           fd.append("photo", file);
@@ -743,7 +597,6 @@ const EmployeeMasterForm = forwardRef(
           console.error("Photo upload failed:", err);
         }
       } else if (isAddMode) {
-        // Add mode mein pending store karo — employee save hone ke baad upload hogi
         pendingPhotoRef.current = { file, forNewEmployee: true };
       }
     };
@@ -755,15 +608,14 @@ const EmployeeMasterForm = forwardRef(
     ];
 
     const getInputClass = (isDisabled) =>
-      `w-full h-[28px] px-[5px] text-[12.5px] border-[1.5px] border-[#c8d2e4] rounded-[5px] bg-[#fafbfd] outline-none transition-all font-['Segoe_UI',system-ui,Arial,sans-serif] ${isDisabled
-        ? "bg-[#f0f3f8] text-[#64748b] border-[#e2e8f4] cursor-default"
-        : "text-[#0f172a] focus:border-[#1a56db] focus:bg-[#ffffff] focus:ring-[3px] focus:ring-[#1a56db]/10 hover:border-[#a0b0c8]"
+      `w-full h-[28px] px-[5px] text-[12.5px] border-[1.5px] border-[#c8d2e4] rounded-[5px] bg-[#fafbfd] outline-none transition-all font-['Segoe_UI',system-ui,Arial,sans-serif] ${
+        isDisabled
+          ? "bg-[#f0f3f8] text-[#64748b] border-[#e2e8f4] cursor-default"
+          : "text-[#0f172a] focus:border-[#1a56db] focus:bg-[#ffffff] focus:ring-[3px] focus:ring-[#1a56db]/10 hover:border-[#a0b0c8]"
       }`;
-
     const handleKeyDown = useCallback(
       (e) => {
         if (isViewMode) return;
-
         if (
           e.target.tagName.toLowerCase() === "button" ||
           e.target.tagName.toLowerCase() === "textarea" ||
@@ -771,7 +623,6 @@ const EmployeeMasterForm = forwardRef(
         ) {
           return;
         }
-
         const container = document.getElementById(`tab-content-${activeTab}`);
         if (!container) return;
 
@@ -845,22 +696,14 @@ const EmployeeMasterForm = forwardRef(
           currentData,
           validationGroups,
         );
-
         const safeErrors = validationErrors || {};
-
-        // Check if not valid OR if safeErrors has items
         if (!isValid || Object.keys(safeErrors).length > 0) {
           setErrors(safeErrors);
-
           const errorKeys = Object.keys(safeErrors);
           const firstErrorField = errorKeys.length > 0 ? errorKeys[0] : null;
-
           let targetTab = activeTab;
-
-          // 🔥 THE FIX: Find correct Tab Key dynamically to prevent Blank Screen
           if (firstErrorField) {
             let foundTab = null;
-            // Search through our fieldGroups to find exactly which tab holds the errored field
             for (const [tabKey, sections] of Object.entries(fieldGroups)) {
               for (const fields of Object.values(sections)) {
                 if (fields.some((f) => f.key === firstErrorField)) {
@@ -870,15 +713,11 @@ const EmployeeMasterForm = forwardRef(
               }
               if (foundTab) break;
             }
-
-            // Switch to the correctly identified tab
             if (foundTab && foundTab !== activeTab) {
               setActiveTab(foundTab);
               targetTab = foundTab;
             }
           }
-
-          // Wait for DOM to register the tab, then safely focus/scroll
           setTimeout(() => {
             try {
               if (firstErrorField) {
@@ -919,23 +758,11 @@ const EmployeeMasterForm = forwardRef(
 
           return;
         }
-
-        // ✅ Agar form valid hai toh aage badhein
         setErrors({});
-
-        // 🔥 MAGIC HERE: Employee data aur Salary data ko ek sath merge kar dein
-        const finalPayload = {
-          ...currentData,
-          salary_structure: salaryFormData, // Backend me jis naam se chahiye wo key rakhein
-        };
-
-        onSave(finalPayload); // Ek hi hit me dono save!
       } catch (err) {
         console.error("Save process bypassed a crash: ", err);
-        // Fallback
         onSave({
           ...(formDataRef.current || {}),
-          salary_structure: salaryFormData,
         });
       }
     }, [onSave, activeTab]);
@@ -975,12 +802,8 @@ const EmployeeMasterForm = forwardRef(
           options = groupOptions.grade.map((g) => g.group_name);
         if (field === "Reporting Manager")
           options = groupOptions.reporting.map((g) => g.group_name);
-        if(field === "PT State")
-          options=op.pt.map((g) => g.label);
-        
-
+        if (field === "PT State") options = (op?.pt || []).map((g) => g.label);
         const displayVal = getDisplayValue(field, formData[field]);
-
         return (
           <ERPAutocomplete
             options={options}
@@ -991,7 +814,6 @@ const EmployeeMasterForm = forwardRef(
           />
         );
       }
-
       if (type === "leave-selector")
         return (
           <LeaveTypeSelector
@@ -1006,7 +828,6 @@ const EmployeeMasterForm = forwardRef(
             disabled={isViewMode}
           />
         );
-
       if (type === "checkbox") {
         return (
           <div className="flex items-center h-[32px] w-full px-1">
@@ -1020,8 +841,6 @@ const EmployeeMasterForm = forwardRef(
           </div>
         );
       }
-
-      // ✅ ADDED: EMAIL SUGGESTION LOGIC
       if (type === "email") {
         const emailDomains = [
           "@gmail.com",
@@ -1030,26 +849,18 @@ const EmployeeMasterForm = forwardRef(
           "@company.com",
         ];
         const val = formData[field] || "";
-
-        // Check if we should show suggestions
         const isSuggesting = emailSuggestField === field;
         const hasAtSymbol = val.includes("@");
-
-        // Extract username and whatever prefix they typed after the '@'
         const [username, domainPrefix] = hasAtSymbol
           ? val.split("@")
           : [val, ""];
-
-        // Filter domains based on what user is typing after '@'
         const filteredDomains = hasAtSymbol
           ? emailDomains.filter(
-            (d) =>
-              d.toLowerCase().startsWith("@" + domainPrefix.toLowerCase()) &&
-              d.toLowerCase() !== "@" + domainPrefix.toLowerCase(),
-          )
+              (d) =>
+                d.toLowerCase().startsWith("@" + domainPrefix.toLowerCase()) &&
+                d.toLowerCase() !== "@" + domainPrefix.toLowerCase(),
+            )
           : [];
-
-        // Helper function to handle completing the email selection
         const selectDomain = (domain) => {
           const completedEmail = `${username}${domain}`;
           handleChange(field, completedEmail);
@@ -1057,7 +868,6 @@ const EmployeeMasterForm = forwardRef(
           if (typeof setActiveSuggestIndex === "function")
             setActiveSuggestIndex(0);
         };
-
         return (
           <div className="relative w-full">
             <input
@@ -1080,7 +890,6 @@ const EmployeeMasterForm = forwardRef(
               }}
               onKeyDown={(e) => {
                 if (!isSuggesting || filteredDomains.length === 0) return;
-
                 switch (e.key) {
                   case "ArrowDown":
                     e.preventDefault();
@@ -1090,7 +899,6 @@ const EmployeeMasterForm = forwardRef(
                       );
                     }
                     break;
-
                   case "ArrowUp":
                     e.preventDefault();
                     if (typeof setActiveSuggestIndex === "function") {
@@ -1117,8 +925,6 @@ const EmployeeMasterForm = forwardRef(
                 }
               }}
             />
-
-            {/* Dropdown for suggestions */}
             {isSuggesting &&
               hasAtSymbol &&
               filteredDomains.length > 0 &&
@@ -1140,10 +946,11 @@ const EmployeeMasterForm = forwardRef(
                           e.stopPropagation();
                           selectDomain(domain);
                         }}
-                        className={`px-2 py-0.5 text-[11px] font-medium border rounded transition-colors cursor-pointer ${isActive
-                          ? "bg-[#1a56db] text-white border-[#1a56db]"
-                          : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-[#1a56db] hover:text-white"
-                          }`}
+                        className={`px-2 py-0.5 text-[11px] font-medium border rounded transition-colors cursor-pointer ${
+                          isActive
+                            ? "bg-[#1a56db] text-white border-[#1a56db]"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-[#1a56db] hover:text-white"
+                        }`}
                         onMouseEnter={() => {
                           if (typeof setActiveSuggestIndex === "function")
                             setActiveSuggestIndex(index);
@@ -1201,25 +1008,6 @@ const EmployeeMasterForm = forwardRef(
           >
             {(fields || []).map((fieldObj, index) => {
               if (fieldObj.showIf && !fieldObj.showIf(formData)) return null;
-
-              // if (fieldObj.type === "section-divider") {
-              //   const getDividerIcon = (label) => {
-              //     const l = label.toLowerCase();
-              //     if (l.includes("education")) return <FaGraduationCap className="text-[14px]" />;
-              //     if (l.includes("family")) return <FaUsers className="text-[14px]" />;
-              //     return <FaFileAlt className="text-[14px]" />;
-              //   };
-
-              //   return (
-              //     <div key={`${fieldObj.label}-${index}`} className="col-span-full mt-2 mb-1 flex items-center gap-2.5">
-              //       <div className="flex items-center gap-1.5 text-[#64748b]">
-              //         {getDividerIcon(fieldObj.label)}
-              //         <span className="text-[11px] font-bold uppercase tracking-[0.5px]">{fieldObj.label}</span>
-              //       </div>
-              //       <div className="flex-1 h-px bg-[#dde1ea]"></div>
-              //     </div>
-              //   );
-              // }
               if (fieldObj.type === "section-divider") {
                 const getDividerIcon = (label) => {
                   const l = label.toLowerCase();
@@ -1229,9 +1017,7 @@ const EmployeeMasterForm = forwardRef(
                     return <FaUsers className="text-[14px]" />;
                   return <FaFileAlt className="text-[14px]" />;
                 };
-
                 const isPermanentDivider = fieldObj.key === "div_perm";
-
                 return (
                   <div
                     key={`${fieldObj.label}-${index}`}
@@ -1244,7 +1030,6 @@ const EmployeeMasterForm = forwardRef(
                       </span>
                     </div>
                     <div className="flex-1 h-px bg-[#dde1ea]"></div>
-
                     {isPermanentDivider && (
                       <div
                         className="flex items-center gap-1.5 bg-[#fefce8] px-2.5 py-[3px] rounded border border-[#fef08a] hover:bg-white transition-colors cursor-pointer shrink-0"
@@ -1281,13 +1066,10 @@ const EmployeeMasterForm = forwardRef(
                   </div>
                 );
               }
-
               const fieldKey = fieldObj.key;
               const label = fieldObj.label;
               const nameStr = label.toLowerCase();
-
               let colSpanClass = "col-span-1";
-
               if (
                 nameStr.includes("address line") ||
                 nameStr.includes("employee name") ||
@@ -1303,9 +1085,7 @@ const EmployeeMasterForm = forwardRef(
               ) {
                 colSpanClass = "col-span-1 sm:col-span-2";
               }
-
               const fieldClass = `flex flex-col gap-[3px] w-full ${colSpanClass}`;
-
               return (
                 <div
                   key={fieldKey}
@@ -1320,10 +1100,8 @@ const EmployeeMasterForm = forwardRef(
                       </span>
                     )}
                   </label>
-
                   <div className="w-full relative">
                     {renderField(fieldObj)}
-
                     {errors[fieldKey] && (
                       <div className="absolute left-0 top-[100%] z-50 mt-[2px]">
                         <div className="bg-[#dc2626] text-white text-[10px] px-1.5 py-[2px] rounded-[3px] shadow whitespace-nowrap font-medium">
@@ -1339,7 +1117,6 @@ const EmployeeMasterForm = forwardRef(
         </div>
       );
     };
-
     return (
       <div className="w-full h-full sm:h-[calc(100vh-100px)] bg-[#eef1f8] flex flex-col overflow-hidden font-['Segoe_UI',system-ui,Arial,sans-serif] text-[13px] text-[#0f172a] leading-[1.4]">
         <ERPHeader
@@ -1355,7 +1132,6 @@ const EmployeeMasterForm = forwardRef(
           onPrevRecord={onPrevRecord} // 👈
           onNextRecord={onNextRecord}
         />
-
         <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full h-full md:h-[calc(100vh-120px)] overflow-hidden">
           <div className="w-full md:w-[220px] bg-white border-b md:border-b-0 md:border-r border-[#dde1ea] flex flex-col overflow-y-auto overflow-x-hidden shrink-0 scrollbar-hide z-10">
             <div className="bg-[#f8fafc] border-b border-[#dde1ea] py-2.5 md:py-[18px] px-3 flex flex-row md:flex-col items-center">
@@ -1368,7 +1144,6 @@ const EmployeeMasterForm = forwardRef(
               >
                 {formData.photo_url ? (
                   <img
-                    src={formData.photo_url}
                     src={formData.photo_url}
                     className="w-full h-full"
                     alt="profile"
@@ -1488,68 +1263,51 @@ const EmployeeMasterForm = forwardRef(
                   </div>
                 </div>
               </div>
-
-              {/* ✅ ADDED: DEFINE SALARY BUTTON (Sidebar Module Trigger)
-            {!isAddMode && (
-              <div className="mt-auto pt-5 pb-2">
-                <div className="w-full h-px bg-[#dde1ea] mb-4"></div>
-                <button
-                  type="button"
-                  onClick={() => setShowSalaryModal(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-[#0f172a] hover:bg-[#1e293b] text-white px-3 py-2.5 rounded shadow-sm transition-colors duration-200 text-[12px] font-bold tracking-[0.4px]"
-                >
-                  <FaMoneyBillWave className="text-[14px] text-[#34d399]" />
-                  Define Salary
-                </button>
-              </div>
-            )} */}
             </div>
           </div>
 
           <div className="flex-1 flex flex-col min-h-0 bg-[#eef1f8] w-full">
             <div className="flex flex-wrap items-end gap-0 px-[6px] bg-white border-b-2 border-[#e1e7f2] shrink-0 w-full">
-  {tabs.map((tab) => {
-    const isActive = activeTab === tab;
-    const isCompleted = isTabComplete(tab);
-    const tabNameMap = {
-      personal_and_contact: "Personal & Contact",
-      organization: "Organization",
-      bank_and_payroll: "Bank & Payroll",
-      documents: "Documents",
-    };
-    const displayName = tabNameMap[tab] || tab;
-    return (
-      <button
-        key={tab}
-        onClick={() => setActiveTab(tab)}
-        className={`flex items-center gap-[6px] px-[12px] sm:px-[16px] pt-[10px] pb-[9px] text-[12px] font-semibold cursor-pointer border-b-2 mb-[-2px] transition-all duration-150 whitespace-nowrap outline-none ${
-          isActive
-            ? "text-[#1a56db] border-[#1a56db]"
-            : "text-[#64748b] border-transparent hover:text-[#334155] hover:border-[#c4cfe4]"
-        }`}
-      >
-        <div
-          className={`w-[20px] h-[20px] rounded-[5px] flex items-center justify-center ${
-            isActive ? "bg-[#eef3fd]" : "bg-transparent"
-          }`}
-        >
-          <TabIcon tab={tab} />
-        </div>
-        <span className="hidden sm:inline">{displayName}</span>
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab;
+                const isCompleted = isTabComplete(tab);
+                const tabNameMap = {
+                  personal_and_contact: "Personal & Contact",
+                  organization: "Organization",
+                  bank_and_payroll: "Bank & Payroll",
+                  documents: "Documents",
+                };
+                const displayName = tabNameMap[tab] || tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex items-center gap-[6px] px-[12px] sm:px-[16px] pt-[10px] pb-[9px] text-[12px] font-semibold cursor-pointer border-b-2 mb-[-2px] transition-all duration-150 whitespace-nowrap outline-none ${
+                      isActive
+                        ? "text-[#1a56db] border-[#1a56db]"
+                        : "text-[#64748b] border-transparent hover:text-[#334155] hover:border-[#c4cfe4]"
+                    }`}
+                  >
+                    <div
+                      className={`w-[20px] h-[20px] rounded-[5px] flex items-center justify-center ${
+                        isActive ? "bg-[#eef3fd]" : "bg-transparent"
+                      }`}
+                    >
+                      <TabIcon tab={tab} />
+                    </div>
+                    <span className="hidden sm:inline">{displayName}</span>
 
-        {/* Yaha change kiya hai: hamesha render hoga, bas visibility toggle hogi */}
-        <div
-          className={`hidden sm:flex w-[16px] h-[16px] rounded-[8px] bg-[#059669] text-white text-[9px] font-bold items-center justify-center ml-1 ${
-            isCompleted ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          ✓
-        </div>
-      </button>
-    );
-  })}
-</div>
-
+                    <div
+                      className={`hidden sm:flex w-[16px] h-[16px] rounded-[8px] bg-[#059669] text-white text-[9px] font-bold items-center justify-center ml-1 ${
+                        isCompleted ? "opacity-100" : "opacity-0"
+                      }`}
+                    >
+                      ✓
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
             <div
               id={`tab-content-${activeTab}`}
               className="flex-1 p-[8px] overflow-y-auto  overflow-x-hidden min-h-0 flex flex-col w-full"
@@ -1568,7 +1326,6 @@ const EmployeeMasterForm = forwardRef(
                   const entries = Object.entries(fieldGroups[activeTab] || {});
                   const leftCol = [];
                   const rightCol = [];
-
                   entries.forEach(([title, fields], index) => {
                     if (activeTab === "personal_and_contact") {
                       if (
@@ -1591,10 +1348,8 @@ const EmployeeMasterForm = forwardRef(
                       else rightCol.push([title, fields]);
                     }
                   });
-
                   return (
                     <div className="flex flex-col w-full gap-[12px] pb-4">
-                      {/* 1. Ye aapka purana Left aur Right column ka design hai */}
                       <div className="flex flex-col lg:flex-row gap-[8px] flex-1 items-stretch w-full">
                         <div className="flex-1 flex flex-col gap-[8px] min-w-0">
                           {leftCol.map((entry, index) =>
@@ -1610,31 +1365,6 @@ const EmployeeMasterForm = forwardRef(
                           </div>
                         )}
                       </div>
-
-                      {/* 2. 🔥 ADDED: Salary Master seedha form ke andar (Columns ke theek neeche) */}
-                      {/* {activeTab === "bank_and_payroll" && (
-                      <div className="w-full mt-2 bg-white border border-[#dde1ea] rounded-[6px] shadow-sm flex flex-col">
-                        <div className="px-[14px] py-[7px] border-b border-[#a7f3d0] bg-[#ecfdf5] rounded-t-[5px] flex items-center gap-2">
-                          <FaMoneyBillWave className="text-[#059669] text-[14px]" />
-                          <h3 className="text-[11.5px] font-bold uppercase tracking-[0.4px] text-[#059669]">
-                            Define Salary Structure
-                          </h3>
-                        </div>
-                        <div className="p-4">
-                          <SalaryTemplateMaster
-                            mode={mode}
-                            formData={salaryFormData}
-                            setFormData={setSalaryFormData}
-                            employees={[{ Actled_id: formData.employee_id, Led_name: employeeName }]}
-                            templates={templates}
-                            incomeHeads={incomeHeads}
-                            deductionHeads={deductionHeads}
-                            structuresList={[]}
-                            isEmbedded={true}
-                          />
-                        </div>
-                      </div>
-                    )} */}
                     </div>
                   );
                 })()
@@ -1657,8 +1387,6 @@ const EmployeeMasterForm = forwardRef(
           onEditCancel={onEditCancel}
           rights={rights}
         />
-
-        {/* ✅ ADDED: SALARY MODAL (POPUP WRAPPER) */}
       </div>
     );
   },
@@ -1895,9 +1623,16 @@ export const fieldGroups = {
         key: "Status Reason",
         label: "Reason for Leaving",
         type: "select",
-        options: ["Resigned", "Terminated", "Retired", "Contract Ended", "Absconded", "Other"],
-        showIf: (data) => !!data["Status Leaving Date"],   // sirf tab dikhe jab DOL filled ho
-      }
+        options: [
+          "Resigned",
+          "Terminated",
+          "Retired",
+          "Contract Ended",
+          "Absconded",
+          "Other",
+        ],
+        showIf: (data) => !!data["Status Leaving Date"], // sirf tab dikhe jab DOL filled ho
+      },
     ],
     "Joining & Tenure": [
       { key: "Joining Date", label: "Joining Date", type: "date" },
@@ -2002,13 +1737,6 @@ export const fieldGroups = {
         options: ["Salaried", "Non-Salaried", "Exempt"],
       },
     ],
-    // "Salary Details": [
-    //   { key: "CTC", label: "CTC (₹ per annum)", type: "text" },
-    //   { key: "Basic", label: "Basic (₹ per month)", type: "text" },
-    //   { key: "HRA", label: "HRA (₹ per month)", type: "text" },
-    //   { key: "Special Allowance", label: "Special Allowance", type: "text" },
-    //   { key: "Salary Effective Date", label: "Salary Effective Date", type: "date" }
-    // ]
   },
   documents: {
     "Document Repository": [
@@ -2018,42 +1746,3 @@ export const fieldGroups = {
     ],
   },
 };
-// {showSalaryModal && (
-//         <div className="fixed inset-0 z-[999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
-//           <div className="bg-white w-full max-w-5xl h-[85vh] rounded-[8px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-
-//             {/* Modal Header */}
-//             <div className="flex justify-between items-center p-4 border-b border-[#dde1ea] bg-[#f8fafc] shrink-0">
-//               <h2 className="font-bold text-[15px] text-[#0f2137] flex items-center gap-2 uppercase tracking-wide">
-//                 <FaMoneyBillWave className="text-[#10b981] text-[18px]" />
-//                 Define Salary - {employeeName}
-//               </h2>
-//               <button
-//                 onClick={() => setShowSalaryModal(false)}
-//                 className="text-[#64748b] hover:text-[#dc2626] hover:bg-[#fee2e2] px-3 py-1.5 rounded transition-colors text-[12px] font-bold uppercase tracking-wide flex items-center gap-1"
-//               >
-//                 ✕ Close
-//               </button>
-//             </div>
-
-//             {/* Modal Body: Rendering the imported component with same ID */}
-//             <div className="flex-1 overflow-y-auto bg-[#eef1f8]  relative">
-//               <SalaryTemplateMaster
-//                 mode="add" // ya 'edit'
-//                 formData={salaryFormData}
-//                 setFormData={setSalaryFormData}
-//                 onCancel={() => setShowSalaryModal(false)}
-
-//                 // 🔥 CRASH SE BACHANE KE LIYE DEFAULT ARRAYS 🔥
-//                 // Aapka form in arrays ke bina crash ho jayega kyunki wo map/filter karta hai
-//                 employees={[{ Actled_id: formData.employee_id, Led_name: employeeName }]}
-//                 templates={templates}
-//                 incomeHeads={incomeHeads}
-//                 deductionHeads={deductionHeads}
-//                 structuresList={[]}
-
-//               />
-//             </div>
-//           </div>
-//         </div>
-//       )}

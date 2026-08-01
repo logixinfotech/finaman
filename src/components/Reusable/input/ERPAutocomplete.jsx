@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-
 const ERPAutocomplete = ({
   value,
   onChange,
@@ -15,9 +14,7 @@ const ERPAutocomplete = ({
   const [filtered, setFiltered] = useState([]);
   const [show, setShow] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
-
   const wrapperRef = useRef(null);
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -25,13 +22,11 @@ const ERPAutocomplete = ({
         setHighlightIndex(-1);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  // Toggle dropdown when arrow icon is clicked
 const toggleDropdown = () => {
   if (disabled) return;
   if (show) {
@@ -42,87 +37,70 @@ const toggleDropdown = () => {
     setShow(true);
   }
 };
-
   const handleChange = (e) => {
     const val = e.target.value;
     onChange(val);
-
     if (!val) {
       setFiltered(options);
       setShow(true);
       return;
     } 
     const lowerVal = val.toLowerCase();
-
     const startsWithMatch = options.filter((opt) =>
       opt.toLowerCase().startsWith(lowerVal)
     );
-
     const containsMatch = options.filter(
       (opt) =>
         opt.toLowerCase().includes(lowerVal) &&
         !opt.toLowerCase().startsWith(lowerVal)
     );
-
     setFiltered([...startsWithMatch, ...containsMatch]);
     setShow(true);
     setHighlightIndex(-1);
   };
-
   const selectOption = (opt) => {
     onChange(opt);
     setShow(false);
     setHighlightIndex(-1);
   };
- 
-  const handleKey = (e) => { 
-  if (e.shiftKey&&e.key === "Backspace") {
-   
-   
-      if (onKeyDown) {
-        onKeyDown(e); // 🔥 delegate to parent navigation
-      
+  const handleKey = (e) => {
+    if (e.shiftKey && e.key === "Backspace") {
+      e.preventDefault();
+      if (onKeyDown) onKeyDown(e); // 🔥 delegate to parent navigation
       return;
     }
-  } 
-  if (!show) {
-    if (onKeyDown) onKeyDown(e);
-    return;
-  }
-
-  if (e.key === "ArrowDown") {
-    e.preventDefault();
-    setHighlightIndex((prev) =>
-      prev < filtered.length - 1 ? prev + 1 : prev
-    );
-  }
-
-  if (e.key === "ArrowUp") {
-    e.preventDefault();
-    setHighlightIndex((prev) => (prev > 0 ? prev - 1 : 0));
-  }
-
-if (e.key === "Enter") {
-    if (highlightIndex >= 0) { 
-      e.preventDefault();
-      selectOption(filtered[highlightIndex]);
-    } else if (filtered.length === 1) { 
-      e.preventDefault();
-      selectOption(filtered[0]);
-    } else { 
-      // 🔥 THE FIX: Close the dropdown before moving focus
-      setShow(false); 
-      setHighlightIndex(-1);
-      
-      if (onKeyDown) onKeyDown(e); // This moves focus to the next input
+    if (!show) {
+      if (onKeyDown) onKeyDown(e);
+      return;
     }
-  }
-
-  if (e.key === "Escape") {
-    setShow(false);
-  }
-};
-
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIndex((prev) =>
+        prev < filtered.length - 1 ? prev + 1 : prev
+      );
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    }
+    if (e.key === "Enter") {
+      if (highlightIndex >= 0) {
+        e.preventDefault();
+        selectOption(filtered[highlightIndex]);
+      } else if (filtered.length === 1) {
+        e.preventDefault();
+        selectOption(filtered[0]);
+      } else {
+        // 🔥 THE FIX: Close the dropdown before moving focus
+        setShow(false);
+        setHighlightIndex(-1);
+        if (onKeyDown) onKeyDown(e); // This moves focus to the next input
+      }
+    }
+    if (e.key === "Escape") {
+      setShow(false);
+    }
+  };
   return (
     <div ref={wrapperRef} className="relative">
       <input
@@ -137,7 +115,6 @@ if (e.key === "Enter") {
         }}
         onKeyDown={handleKey}
       />
-      {/* Dropdown arrow icon */}
 <button
   type="button"
   tabIndex={-1}
@@ -167,7 +144,6 @@ if (e.key === "Enter") {
     <polyline points="6 9 12 15 18 9" />
   </svg>
 </button>
-
       {show && (
         <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow max-h-52 overflow-auto text-xs">
           
@@ -177,7 +153,7 @@ if (e.key === "Enter") {
                 key={i}
                 className={`px-3 py-1 cursor-pointer ${
                   i === highlightIndex
-                    ? "bg-blue-100"
+                    ? "bg-blue-400 text-white"
                     : "hover:bg-gray-100"
                 }`}
                 onMouseDown={() => selectOption(opt)}

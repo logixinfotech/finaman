@@ -364,12 +364,16 @@ function WorkDiary({ tab }) {
               <motion.div
                 initial={{ x: -270 }} animate={{ x: 0 }} exit={{ x: -270 }}
                 transition={{ duration: .22, ease: "easeOut" }}
-                style={{
-                  position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 50, width: 270,
-                  background: C.surface, borderRight: `1.5px solid ${C.border}`,
-                  display: "flex", flexDirection: "column", overflow: "hidden",
-                  boxShadow: "8px 0 32px rgba(15,23,42,.14)"
-                }}>
+                 style={{
+    position: "fixed",
+    left: 0,
+    top: "env(safe-area-inset-top, 0px)",
+    bottom: "env(safe-area-inset-bottom, 0px)",
+    zIndex: 50, width: 270,
+    background: C.surface, borderRight: `1.5px solid ${C.border}`,
+    display: "flex", flexDirection: "column", overflow: "hidden",
+    boxShadow: "8px 0 32px rgba(15,23,42,.14)"
+  }}>
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: 14, borderBottom: `1px solid ${C.border}`, flexShrink: 0

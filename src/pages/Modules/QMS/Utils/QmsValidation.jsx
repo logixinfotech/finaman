@@ -41,6 +41,7 @@ export const getHeaderStyle = (title) => {
     iconBg: "bg-[#2563EB]/15 text-[#2563EB]",
     text: "text-[#2563EB]",
     border: "border-[#bae6fd]",
+    icon: "📄",
   };
 
   // ===== Recall sections =====

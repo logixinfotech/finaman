@@ -1,3 +1,4 @@
+ 
 import React, { useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
@@ -113,12 +114,12 @@ const QMSMasterForm = ({
   const getInputStyle = useCallback(
     (hasError = false) => {
       if (isViewMode) {
-        return "w-full h-[30px] px-2 text-[14px] rounded-md border outline-none transition-colors bg-[#eef1f6] text-gray-500 cursor-not-allowed border-slate-200";
+        return "w-full h-[42px] lg:h-[30px] px-3 lg:px-2 text-[15px] lg:text-[14px] rounded-xl lg:rounded-md border outline-none transition-colors bg-[#eef1f6] text-gray-500 cursor-not-allowed border-slate-200";
       }
       if (hasError) {
-        return "w-full h-[30px] px-2 text-[14px] rounded-md border outline-none transition-colors bg-white text-gray-900 border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-200";
+        return "w-full h-[42px] lg:h-[30px] px-3 lg:px-2 text-[15px] lg:text-[14px] rounded-xl lg:rounded-md border outline-none transition-colors bg-white text-gray-900 border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-200";
       }
-      return "w-full h-[30px] px-2 text-[14px] rounded-md border outline-none transition-colors bg-white text-gray-900 border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100";
+      return "w-full h-[42px] lg:h-[30px] px-3 lg:px-2 text-[15px] lg:text-[14px] rounded-xl lg:rounded-md border outline-none transition-colors bg-white text-gray-900 border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100";
     },
     [isViewMode],
   );
@@ -196,16 +197,29 @@ const QMSMasterForm = ({
         />
       ) : (
         <>
-          <div className="flex-1 p-4 overflow-y-auto min-w-[750px] mx-auto flex justify-center">
+          {/*
+            min-w-[750px] used to be unconditional, which forced a 750px-wide
+            box on phones too and caused horizontal scrolling. It's now
+            sm:min-w-[750px] so mobile is free to shrink to full width while
+            the desktop/tablet layout (>=640px) is completely unchanged.
+          */}
+          {/*
+            min-w-[750px] used to be unconditional, which forced a 750px-wide
+            box on phones too and caused horizontal scrolling. It's now
+            lg:min-w-[750px] — aligned with the same lg breakpoint where field
+            rows switch from stacked to inline — so mobile/tablet can shrink
+            to full width while desktop (>=1024px) is completely unchanged.
+          */}
+          <div className="flex-1 p-3 lg:p-4 overflow-y-auto min-w-[450px] lg:min-w-[750px] mx-auto flex justify-center">
             <div
               id="qms-master-form-container"
               ref={containerRef}
               className="w-full max-w-[850px] h-fit bg-white border border-slate-200
-                     shadow-sm rounded-md p-5 grid grid-cols-1 gap-y-4"
+                     shadow-sm rounded-2xl lg:rounded-md p-4 lg:p-5 grid grid-cols-1 gap-y-1 lg:gap-y-4"
             >
               {/* Name field — har master ke liye common */}
-              <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
-                <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-4 w-full px-1 py-3 lg:py-0 border-b border-gray-100 lg:border-0 last:border-b-0">
+                <label className="text-gray-500 text-[12px] font-semibold uppercase tracking-wide lg:text-black-800 lg:text-[15px] lg:font-normal lg:normal-case lg:tracking-normal lg:min-w-[140px] shrink-0 lg:whitespace-nowrap">
                   {nameLabel || "Name"} <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -230,8 +244,8 @@ const QMSMasterForm = ({
               {extraFields.map((f) => {
                 if (f.type === "dropdown") {
                   return (
-                    <div key={f.key} className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
-                      <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
+                    <div key={f.key} className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-4 w-full px-1 py-3 lg:py-0 border-b border-gray-100 lg:border-0 last:border-b-0">
+                      <label className="text-gray-500 text-[12px] font-semibold uppercase tracking-wide lg:text-black-800 lg:text-[15px] lg:font-normal lg:normal-case lg:tracking-normal lg:min-w-[140px] shrink-0 lg:whitespace-nowrap">
                         {f.label}
                       </label>
                       <ERPAutocomplete
@@ -249,8 +263,8 @@ const QMSMasterForm = ({
                 if (f.type === "code") {
                   // Auto-generated field — kabhi bhi manually type nahi karega, sirf display
                   return (
-                    <div key={f.key} className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
-                      <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
+                    <div key={f.key} className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-4 w-full px-1 py-3 lg:py-0 border-b border-gray-100 lg:border-0 last:border-b-0">
+                      <label className="text-gray-500 text-[12px] font-semibold uppercase tracking-wide lg:text-black-800 lg:text-[15px] lg:font-normal lg:normal-case lg:tracking-normal lg:min-w-[140px] shrink-0 lg:whitespace-nowrap">
                         {f.label}
                       </label>
                       <input
@@ -265,8 +279,8 @@ const QMSMasterForm = ({
 
                 // default: plain text (jaise Supplier Type)
                 return (
-                  <div key={f.key} className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
-                    <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
+                  <div key={f.key} className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-4 w-full px-1 py-3 lg:py-0 border-b border-gray-100 lg:border-0 last:border-b-0">
+                    <label className="text-gray-500 text-[12px] font-semibold uppercase tracking-wide lg:text-black-800 lg:text-[15px] lg:font-normal lg:normal-case lg:tracking-normal lg:min-w-[140px] shrink-0 lg:whitespace-nowrap">
                       {f.label}
                     </label>
                     <input

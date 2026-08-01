@@ -50,7 +50,7 @@ export const getAutoStatus = (dateStr, empId, existingLog, weekoffs, holidays) =
   const weekoff = isEmployeeWeekoff(dateStr, empId, weekoffs);
   if (existingLog?.in_time) {
     if (holiday) return "HOLIDAY OT";
-    if (weekoff)  return "WEEK OFF OT";
+    if (weekoff)  return "WEEKOFF OT";
     return "PRESENT";
   } else {
     if (holiday) return "HOLIDAYS";
@@ -76,7 +76,7 @@ export const STATUS_STYLE = {
   "CASUAL LEAVE":"bg-purple-400 text-white border-purple-700",
   "HOLIDAYS":   "bg-yellow-400 text-white border-yellow-600",
   "UNPAID":     "bg-slate-400 text-white border-slate-700",
-  "WEEK OFF OT":"bg-orange-600 text-white border-orange-700",
+  "WEEKOFF OT":"bg-orange-600 text-white border-orange-700",
   "HOLIDAY OT": "bg-yellow-600 text-white border-yellow-700",
 };
 export const STATUS_BADGE = {
@@ -87,7 +87,7 @@ export const STATUS_BADGE = {
   "CASUAL LEAVE":"bg-purple-100 text-purple-800 border border-purple-200",
   "HOLIDAYS":   "bg-yellow-100 text-yellow-800 border border-yellow-200",
   "UNPAID":     "bg-slate-100 text-slate-700 border border-slate-200",
-  "WEEK OFF OT":"bg-orange-100 text-orange-900 border border-orange-300",
+  "WEEKOFF OT":"bg-orange-100 text-orange-900 border border-orange-300",
   "HOLIDAY OT": "bg-yellow-100 text-yellow-900 border border-yellow-300",
   "CL":  "bg-blue-100 text-blue-800 border border-blue-200",
   "SL":  "bg-purple-100 text-purple-800 border border-purple-200",
@@ -114,11 +114,52 @@ export const statusOptions = [
   { label: "CO - Comp-Off",         value: "CO" },
   { label: "SCL - Special Casual Leave", value: "SCL" },
   { label: "WEEK OFF",              value: "WEEK OFF" },
-  { label: "WEEK OFF OT",           value: "WEEK OFF OT" },
+  { label: "WEEKOFF OT",           value: "WEEKOFF OT" },
   { label: "HOLIDAYS",              value: "HOLIDAYS" },
   { label: "HOLIDAY OT",            value: "HOLIDAY OT" },
   { label: "UNPAID",                value: "UNPAID" },
 ];
+
+
+// ── Base (non-leave) statuses — fixed ─────────────────────────────
+export const baseStatusOptions = [
+  { label: "PRESENT",     value: "PRESENT" },
+  { label: "ABSENT",      value: "ABSENT" },
+  { label: "WEEK OFF",    value: "WEEK OFF" },
+  { label: "WEEKOFF OT", value: "WEEKOFF OT" },
+  { label: "HOLIDAYS",    value: "HOLIDAYS" },
+  { label: "HOLIDAY OT",  value: "HOLIDAY OT" },
+  { label: "UNPAID",      value: "UNPAID" },
+];
+
+// Full dropdown = base + leave_types table (value hamesha leave_code)
+export const buildStatusOptions = (leaveTypes = []) => {
+  const leaveOpts = (leaveTypes || []).map(lt => ({
+    label: `${lt.leave_code} - ${lt.leave_name}`,
+    value: lt.leave_code,          // ✅ canonical value
+  }));
+  return [...baseStatusOptions, ...leaveOpts];
+};
+
+// Excel/Biometric ka text status → canonical value me normalize
+export const normalizeStatus = (raw, leaveTypes = []) => {
+  if (!raw) return "";
+  const up = raw.toString().trim().toUpperCase();
+
+  const baseMatch = baseStatusOptions.find(b => b.value === up);
+  if (baseMatch) return baseMatch.value;
+  if (up === "WO") return "WEEK OFF";
+  if (up === "HOLIDAY") return "HOLIDAYS";
+
+  // leave_code YA leave_name dono se match → leave_code return
+  const lt = (leaveTypes || []).find(l =>
+    (l.leave_code || "").toUpperCase() === up ||
+    (l.leave_name || "").toUpperCase() === up
+  );
+  if (lt) return lt.leave_code;
+
+  return up; // unknown — as-is
+};
 
 export const attendanceTypeOptions = [
   { label: "Month Entry",             value: "Manual" },

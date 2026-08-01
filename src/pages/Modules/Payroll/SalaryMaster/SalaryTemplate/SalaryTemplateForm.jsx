@@ -1,4 +1,4 @@
- 
+
 import { useCallback, useEffect, useState } from "react";
 import ERPHeader from "../../../../../components/Reusable/form/HeaderForm";
 import ERPAutocomplete from "../../../../../components/Reusable/input/ERPAutocomplete";
@@ -20,13 +20,13 @@ const SalaryTemplateForm = ({
   totalRecords,
   rights,
   activeTab = "entry",
-  onTabChange = () => {},
+  onTabChange = () => { },
   formData,
   setFormData,
   incomeHeads = [],
   deductionHeads = [],
   isEmbedded
-  ,onPrevRecord,onNextRecord
+  , onPrevRecord, onNextRecord
 }) => {
   const [errors, setErrors] = useState({});
 
@@ -36,8 +36,6 @@ const SalaryTemplateForm = ({
 
   const requiredFields = ["grade"];
   const { options } = useGroupOptions();
-
-  // Auto-focus first field on add/edit
   useEffect(() => {
     if (isAddMode || isEditMode) {
       setTimeout(() => {
@@ -95,27 +93,26 @@ const SalaryTemplateForm = ({
     );
   };
 
-    const getInputClass = (disabled, field) => {
-  // 1. Base styles (jo hamesha rahengi)
-  const base = "h-[35px] md:h-[30px] px-2 text-[15px] border rounded-md outline-none transition-all w-full";
-  
-  // 2. State specific styles (error ya disabled)
-  const state = disabled 
-    ? "bg-gray-100 cursor-not-allowed border-gray-200" 
-    : "bg-white";
-    
-  // 3. Border color (Default vs Error)
-  const border = errors[field] 
-    ? "border-red-500" 
-    : "border-gray-300";
+  const getInputClass = (disabled, field) => {
+    // 1. Base styles (jo hamesha rahengi)
+    const base = "h-[35px] md:h-[30px] px-2 text-[15px] border rounded-md outline-none transition-all w-full";
 
-  // 4. Focus style (Sirf us element par jise click kiya hai)
-  const focus = !disabled 
-    ? "focus:border-blue-50 focus:ring-1 focus:ring-[#1a56db]" 
-    : "";
+    const state = disabled
+      ? "bg-gray-100 cursor-not-allowed border-gray-200"
+      : "bg-white";
 
-  return `${base} ${state} ${border} ${focus}`;
-};
+    // 3. Border color (Default vs Error)
+    const border = errors[field]
+      ? "border-red-500"
+      : "border-gray-300";
+
+    // 4. Focus style (Sirf us element par jise click kiya hai)
+    const focus = !disabled
+      ? "focus:border-blue-50 focus:ring-1 focus:ring-[#1a56db]"
+      : "";
+
+    return `${base} ${state} ${border} ${focus}`;
+  };
   const handleValidateAndSave = useCallback(() => {
     if (isViewMode) return;
     let newErrors = {};
@@ -126,6 +123,16 @@ const SalaryTemplateForm = ({
         if (!firstEmpty) firstEmpty = field;
       }
     });
+
+    const selectedIncome = formData.incomeHeads || [];
+    const selectedDeduction = formData.deductionHeads || [];
+    const missingFormula = [...selectedIncome, ...selectedDeduction].some(
+      (h) => !h.formula_type,
+    );
+    if (missingFormula) {
+      newErrors._formula = "Selected heads mein formula type choose karo";
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setTimeout(() => {
@@ -157,7 +164,7 @@ const SalaryTemplateForm = ({
           const bRect = b.getBoundingClientRect();
 
           // 🔥 vertical priority (top to bottom)
-          if (Math.abs(aRect.top - bRect.top) > 18) { 
+          if (Math.abs(aRect.top - bRect.top) > 18) {
             return aRect.top - bRect.top;
           }
 
@@ -184,7 +191,7 @@ const SalaryTemplateForm = ({
           }
         }
       }
-      if (e.shiftKey&&e.key === "Backspace") {
+      if (e.shiftKey && e.key === "Backspace") {
         const el = e.target;
         const tag = el.tagName;
         const type = el.type;
@@ -203,8 +210,8 @@ const SalaryTemplateForm = ({
           shouldGoBack = true;
         }
 
-        if (shouldGoBack ) {
-          e.preventDefault(); 
+        if (shouldGoBack) {
+          e.preventDefault();
 
           let prevIndex = index - 1;
 
@@ -225,7 +232,7 @@ const SalaryTemplateForm = ({
                 const len = prevEl.value?.length || 0;
                 try {
                   prevEl.setSelectionRange(len, len);
-                } catch {}
+                } catch { }
               }
 
               break;
@@ -238,7 +245,7 @@ const SalaryTemplateForm = ({
     },
     [isViewMode],
   );
- 
+
 
   const selectedIncomeIds = new Set(
     (formData.incomeHeads || []).map((h) => h.income_head_id),
@@ -252,8 +259,8 @@ const SalaryTemplateForm = ({
       className="w-full max-w-[1300px] mx-auto h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col"
       style={{ fontFamily: FONT }}
     >
-    
-      {!isEmbedded&&(<ERPHeader
+
+      {!isEmbedded && (<ERPHeader
         title="SALARY TEMPLATE ENTRY"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
@@ -261,10 +268,10 @@ const SalaryTemplateForm = ({
         activeTab={activeTab}
         onTabChange={onTabChange}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
-          currentIndex={currentRecord}      // 👈
+        currentIndex={currentRecord}      // 👈
         totalRecords={totalRecords}        // 👈
         onPrevRecord={onPrevRecord}        // 👈
-        onNextRecord={onNextRecord}  
+        onNextRecord={onNextRecord}
       />)}
 
       <div className="flex-1  overflow-y-auto flex justify-start lg:justify-center items-start w-full">
@@ -272,40 +279,43 @@ const SalaryTemplateForm = ({
           id="salary-template-form-container"
           className="w-full bg-white border rounded-md p-3 sm:p-4 flex flex-col gap-4"
         >
+          {errors._formula && (
+            <div className="text-[12px] text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {errors._formula}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
               <label className="sm:w-[70px]">
                 Grade <span className="text-red-500">*</span>
               </label>
-   <ERPAutocomplete
-  data-auto
-  name="grade"
-  options={(options.grade || []).map((g) => g.label)}  // show names ✅
+              <ERPAutocomplete
+                data-auto
+                name="grade"
+                options={(options.grade || []).map((g) => g.label)}
+                value={
+                  options.grade?.find((g) => g.value === formData.grade)?.label
+                  || formData.grade
+                  || ""
+                }
 
-  // ✅ stored ID → resolve display name
-  value={
-    options.grade?.find((g) => g.value === formData.grade)?.label 
-    || formData.grade 
-    || ""
-  }
+                onChange={(selectedName) => {
+                  // ✅ picked name → find ID → store ID
+                  const matched = options.grade?.find((g) => g.label === selectedName);
+                  handleChange("grade", matched ? matched.value : selectedName);
+                }}
 
-  onChange={(selectedName) => {
-    // ✅ picked name → find ID → store ID
-    const matched = options.grade?.find((g) => g.label === selectedName);
-    handleChange("grade", matched ? matched.value : selectedName);
-  }}
-
-  onKeyDown={handleKeyDown}
-  className={`${getInputClass(isViewMode, "grade")} w-full sm:flex-1`}
-  disabled={isViewMode}
-/>
+                onKeyDown={handleKeyDown}
+                className={`${getInputClass(isViewMode, "grade")} w-full sm:flex-1`}
+                disabled={isViewMode}
+              />
             </div>
             <div className="flex items-center gap-3">
               <label className="w-[210px]">Effective From</label>
               <ERPDateInput
                 value={formData.effective_from || ""}
-onChange={(value) => handleChange("effective_from", value)}
-                disabled={isViewMode} 
+                onChange={(value) => handleChange("effective_from", value)}
+                disabled={isViewMode}
                 onKeyDown={handleKeyDown}
                 className={`${getInputClass(isViewMode, "effectiveFrom")} w-[120px] flex-1`}
               />
@@ -318,7 +328,7 @@ onChange={(value) => handleChange("effective_from", value)}
                 tabIndex={0}
                 data-auto
                 onKeyDown={(e) => {
-                  handleKeyDown(e); 
+                  handleKeyDown(e);
                   if (!isViewMode && e.key === " ") {
                     e.preventDefault();
                     handleChange(
@@ -334,14 +344,12 @@ onChange={(value) => handleChange("effective_from", value)}
                     formData.status === "Active" ? "Inactive" : "Active",
                   )
                 }
-                className={`w-[42px] h-[22px] flex items-center rounded-full p-[2px] cursor-pointer ${
-                  formData.status === "Active" ? "bg-green-500" : "bg-gray-400"
-                }`}
+                className={`w-[42px] h-[22px] flex items-center rounded-full p-[2px] cursor-pointer ${formData.status === "Active" ? "bg-green-500" : "bg-gray-400"
+                  }`}
               >
                 <div
-                  className={`h-[18px] w-[18px] bg-white rounded-full transition-all ${
-                    formData.status === "Active" ? "translate-x-[20px]" : ""
-                  }`}
+                  className={`h-[18px] w-[18px] bg-white rounded-full transition-all ${formData.status === "Active" ? "translate-x-[20px]" : ""
+                    }`}
                 />
               </div>
               <span className="text-sm ml-[18px]">
@@ -402,11 +410,10 @@ onChange={(value) => handleChange("effective_from", value)}
                       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <span
                           className={`hidden sm:inline text-xs px-2 py-0.5 rounded-full
-                           ${
-                             head.type === "Fixed"
-                               ? "bg-green-100 text-green-600"
-                               : "bg-yellow-100 text-yellow-600"
-                           }`}
+                           ${head.type === "Fixed"
+                              ? "bg-green-100 text-green-600"
+                              : "bg-yellow-100 text-yellow-600"
+                            }`}
                         >
                           {head.type.toLowerCase()}
                         </span>
@@ -428,10 +435,9 @@ onChange={(value) => handleChange("effective_from", value)}
                               onClick={(e) => e.stopPropagation()}
                               onKeyDown={handleKeyDown}
                               className={`h-[26px] px-1 text-xs border rounded transition-all w-[80px] sm:w-[90px]
-                                ${
-                                  isViewMode
-                                    ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
-                                    : "bg-white border-gray-300 focus:border-blue-500"
+                                ${isViewMode
+                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
+                                  : "bg-white border-gray-300 focus:border-blue-500"
                                 }`}
                             >
                               <option value="" disabled>
@@ -439,7 +445,8 @@ onChange={(value) => handleChange("effective_from", value)}
                               </option>
                               <option value="Fixed">Fixed</option>
                               <option value="% of Basic">% of Basic</option>
-                              <option value="% of CTC">% of CTC</option>
+                              <option value="% of CTC">% of CTC</option> 
+                              <option value="Balancing">Balancing (remainder)</option>
                             </select>
 
                             <input
@@ -447,8 +454,8 @@ onChange={(value) => handleChange("effective_from", value)}
                               type="number"
                               min="0"
                               max={selectedHead?.formula_type === "Fixed" ? undefined : 100}
-                              disabled={isViewMode}
-                              value={selectedHead?.percentage || ""}
+                              disabled={isViewMode || selectedHead?.formula_type === "Balancing"}
+                              value={selectedHead?.formula_type === "Balancing" ? "" : (selectedHead?.percentage || "")}
                               onChange={(e) =>
                                 updateHeadData(
                                   "income",
@@ -459,13 +466,16 @@ onChange={(value) => handleChange("effective_from", value)}
                               }
                               onClick={(e) => e.stopPropagation()}
                               onKeyDown={handleKeyDown}
-                              placeholder={selectedHead?.formula_type === "Fixed" ? "Amt" : "%"}
+                              placeholder={
+                                selectedHead?.formula_type === "Balancing"
+                                  ? "auto"
+                                  : selectedHead?.formula_type === "Fixed" ? "Amt" : "%"
+                              }
                               className={`w-[60px] sm:w-[80px] h-[26px] px-2 text-xs border rounded
-                                     ${
-                                       isViewMode
-                                         ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
-                                         : "bg-white border-gray-300 focus:border-blue-500"
-                                     }`}
+                                     ${isViewMode || selectedHead?.formula_type === "Balancing"
+                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
+                                  : "bg-white border-gray-300 focus:border-blue-500"
+                                }`}
                             />
                           </div>
                         )}
@@ -528,11 +538,10 @@ onChange={(value) => handleChange("effective_from", value)}
                       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <span
                           className={`hidden sm:inline text-xs px-2 py-0.5 rounded-full
-            ${
-              head.type === "Fixed"
-                ? "bg-green-100 text-green-600"
-                : "bg-blue-100 text-blue-600"
-            }`}
+            ${head.type === "Fixed"
+                              ? "bg-green-100 text-green-600"
+                              : "bg-blue-100 text-blue-600"
+                            }`}
                         >
                           {head.type.toLowerCase()}
                         </span>
@@ -554,10 +563,9 @@ onChange={(value) => handleChange("effective_from", value)}
                               onClick={(e) => e.stopPropagation()}
                               onKeyDown={handleKeyDown}
                               className={`h-[26px] px-1 text-xs border rounded transition-all w-[80px] sm:w-[90px]
-                                ${
-                                  isViewMode
-                                    ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
-                                    : "bg-white border-red-300 focus:border-blue-500"
+                                ${isViewMode
+                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
+                                  : "bg-white border-gray-300 focus:border-blue-500"
                                 }`}
                             >
                               <option value="" disabled>
@@ -587,11 +595,10 @@ onChange={(value) => handleChange("effective_from", value)}
                               onKeyDown={handleKeyDown}
                               placeholder={selectedHead?.formula_type === "Fixed" ? "Amt" : "%"}
                               className={`w-[60px] sm:w-[80px] h-[26px] px-2 text-xs border rounded transition-all
-                                      ${
-                                        isViewMode
-                                          ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
-                                          : "bg-white border-red-300 focus:border-blue-500"
-                                      }`}
+                                      ${isViewMode
+                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"
+                                  : "bg-white border-red-300 focus:border-blue-500"
+                                }`}
                             />
                           </div>
                         )}
@@ -623,3 +630,4 @@ onChange={(value) => handleChange("effective_from", value)}
 };
 
 export default SalaryTemplateForm;
+

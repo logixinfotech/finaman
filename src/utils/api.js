@@ -221,10 +221,7 @@ export const fetchSidebarMenu = async () => {
     console.error('Error fetching sidebar menu:', error.response ? error.response.data : error.message);
     throw error;
   }
-};
-
-// export const updateModuleGroups = (masmod_id, groups) =>
-//   handleApi(() => api.put(`/api/masmod/${masmod_id}/groups`, { groups }));
+}; 
 
 export const fetchMasmnuData = async (token) => {
   try {
@@ -1022,8 +1019,7 @@ export const fetchDepartmentAttendance = (month) =>
 
 
 export const fetchSalesDashboard = (params = {}) =>
-  handleApi(() => api.get("/api/sales-dashboard", { params }));
-  // params: { from_date, to_date, state, city, cust, grp, item } — all optional
+  handleApi(() => api.get("/api/sales-dashboard", { params })); 
 
 export const fetchSalesDashboardFilters = () =>
   handleApi(() => api.get("/api/sales-dashboard/filters"));
@@ -1044,4 +1040,4 @@ export const getApplSettings = (applName) =>
   handleApi(() => api.get(`/api/settings/${applName}`));
 
 export const saveApplSettings = (applName, values) =>
-  handleApi(() => api.post(`/api/settings/${applName}`, values));   // ✅ direct
+  handleApi(() => api.post(`/api/settings/${applName}`, values));    

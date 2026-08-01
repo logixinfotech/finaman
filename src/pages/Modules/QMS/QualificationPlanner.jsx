@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import { useERPMode } from "../../../components/Reusable/form/useFormMode";
@@ -8,6 +8,8 @@ import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
 import { useApplSettings } from "../../../Hooks/useApplSettings";
 import { getQualifications, createQualification, updateQualification, deleteQualification, getNextRecordNo } from "./Utils/QmsAPI";
 import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
+ 
+import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 
 const initialState = {
   Id: null, RecordNo: "", Status: "In Progress", Equipment: "", Stage: "", ProtocolNo: "", ReportNo: "",
@@ -105,7 +107,22 @@ export default function QualificationMasterPage({ tab }) {
     await handleEditCancel();
     if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
   };
+const [filters, setFilters] = useState({ Status: "All" });
+const [showFilter, setShowFilter] = useState(false);
 
+const applyFilter = useCallback(() => {}, []);
+const clearFilter = useCallback(() => {
+  setFilters({ Status: "All" });
+}, []);
+
+const filteredList = useMemo(() => {
+  return listWithSr.filter((item) => {
+    if (filters.Status && filters.Status !== "All") {
+      if (item.Status !== filters.Status) return false;
+    }
+    return true;
+  });
+}, [listWithSr, filters]);
   return (
     <div className="h-full w-full">
       {showForm ? (
@@ -137,6 +154,19 @@ export default function QualificationMasterPage({ tab }) {
           rowKey="Id" loading={loading}
           onAdd={rights?.add === 1 ? handleAddNew : null}
           onRowDoubleClick={handleRowSelect}
+          formComponent={
+  <UnivarsalFilter
+    filters={filters}
+    visibleFields={["status"]}
+    setFilters={setFilters}
+    options={{
+      ...groupOptions,
+      status: ["Planned", "In Progress", "Executed", "Approved", "Rejected"],
+    }}
+    onApply={applyFilter}
+    onClear={clearFilter}
+  />
+}
         />
       )}
     </div>

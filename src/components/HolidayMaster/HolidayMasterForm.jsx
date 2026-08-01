@@ -1,17 +1,20 @@
-import React, { useState,useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import ERPHeader from "../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../components/Reusable/form/FooterForm";
 import ERPDateInput from "../../components/Reusable/input/Date";
-import { handleERPBackspaceNavigation, handleERPEnterNavigation } from "../../utils/erpShortcuts";
+import {
+  handleERPBackspaceNavigation,
+  handleERPEnterNavigation,
+} from "../../utils/erpShortcuts";
 import { User } from "lucide-react";
 
 const HolidayMasterForm = ({
   formData = {},
   setFormData,
-   onPrevRecord,
+  onPrevRecord,
   onNextRecord,
   onSave,
-  activeTab    = "entry",
+  activeTab = "entry",
   onTabChange,
   onCancel,
   onDelete,
@@ -52,13 +55,15 @@ const HolidayMasterForm = ({
       });
     }
   };
-  const formRef=useRef(null);
-  const saveBtnRef=useRef(null);
+  const formRef = useRef(null);
+  const saveBtnRef = useRef(null);
   const getInputClass = (isDisabled, fieldName) =>
-    `w-full h-[30px] px-2 text-[16px] border rounded-md outline-none transition-colors ${errors[fieldName] ? "border-red-500" : "border-gray-300"
-    } ${isDisabled
-      ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
-      : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+    `w-full h-[30px] px-2 text-[16px] border rounded-md outline-none transition-colors ${
+      errors[fieldName] ? "border-red-500" : "border-gray-300"
+    } ${
+      isDisabled
+        ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
+        : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`;
 
   const handleValidateAndSave = useCallback(() => {
@@ -98,7 +103,9 @@ const HolidayMasterForm = ({
             targetInput = dateWrapper.querySelector("input:not([disabled])");
           }
         } else if (firstEmptyField === "purpose") {
-          targetInput = document.querySelector('input[name="purpose"]:not([disabled])');
+          targetInput = document.querySelector(
+            'input[name="purpose"]:not([disabled])',
+          );
         }
 
         if (targetInput) targetInput.focus();
@@ -118,7 +125,9 @@ const HolidayMasterForm = ({
       if (!container) return;
 
       const focusableElements = Array.from(
-        container.querySelectorAll("input:not([disabled]), textarea:not([disabled])")
+        container.querySelectorAll(
+          "input:not([disabled]), textarea:not([disabled])",
+        ),
       );
       const index = focusableElements.indexOf(e.target);
 
@@ -133,89 +142,90 @@ const HolidayMasterForm = ({
         }
       }
 
-      if (e.shiftKey&&e.key === "Backspace") {
-       
+      if (e.shiftKey && e.key === "Backspace") {
+        e.preventDefault();
+        const prevField = focusableElements[index - 1];
+        prevField.focus();
 
-        
-          e.preventDefault();
-          const prevField = focusableElements[index - 1];
-          prevField.focus();
-
-          setTimeout(() => {
-            if (prevField.setSelectionRange) {
-              const len = prevField.value?.length || 0;
-              prevField.setSelectionRange(len, len);
-            }
-          }, 0);
-        }
-      
+        setTimeout(() => {
+          if (prevField.setSelectionRange) {
+            const len = prevField.value?.length || 0;
+            prevField.setSelectionRange(len, len);
+          }
+        }, 0);
+      }
     },
-    [isViewMode, handleValidateAndSave]
+    [isViewMode, handleValidateAndSave],
   );
   //  const handleKeyDown = useCallback((e) => {
   //     handleERPEnterNavigation(e, formRef, isViewMode, saveBtnRef);
   //     handleERPBackspaceNavigation(e, formRef, isViewMode);
   //   }, [isViewMode]);
-  
 
   return (
-      <div className="w-full h-full  sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans" style={{ fontFamily: FONT }}>
-
+    <div
+      className="w-full h-full  sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      style={{ fontFamily: FONT }}
+    >
       <ERPHeader
-       activeTab={activeTab}
+        activeTab={activeTab}
         onTabChange={onTabChange}
         title="Holiday Master"
         isAddMode={isAddMode}
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
-         currentIndex={currentRecord}      // 👈
-        totalRecords={totalRecords}        // 👈
-        onPrevRecord={onPrevRecord}        // 👈
-        onNextRecord={onNextRecord}  
+        currentIndex={currentRecord} // 👈
+        totalRecords={totalRecords} // 👈
+        onPrevRecord={onPrevRecord} // 👈
+        onNextRecord={onNextRecord}
       />
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">
-        <div id="holiday-form-container" className="w-full max-w-[750px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden">
+        <div
+          id="holiday-form-container"
+          className="w-full max-w-[750px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden"
+        >
           <div className="p-3 grid grid-cols-1 gap-y-3">
             {/* DATE FIELD - Added ID wrapper for reliable focusing */}
-            <div className="flex flex-col sm:flex-row sm:gap-4 w-full">
-            <div id="date-input-wrapper" className="flex flex-col sm:flex-row items-center px-1 w-full">
-              <label className="text-black-800 text-[15px] w-[80px] shrink-0">
-                Date <span className="text-red-500">*</span>
-              </label>
-              <div className="flex-1 max-w-[120px]">
-                <ERPDateInput
-                  value={formData.date || ""}
-                  onChange={(val) => handleChange("date", val)}
-                  disabled={isViewMode}
-                  onKeyDown={handleKeyDown}
-                  className={getInputClass(isViewMode, "date")}
-                                  />
+            <div className="flex  w-full">
+              <div
+                id="date-input-wrapper"
+                className="flex flex-col sm:flex-row items-start px-1 w-full"
+              >
+                <label className="text-black-800 text-[15px] w-[80px] shrink-0">
+                  Date <span className="text-red-500">*</span>
+                </label>
+                <div className="flex-1 max-w-[130px]">
+                  <ERPDateInput
+                    value={formData.date || ""}
+                    onChange={(val) => handleChange("date", val)}
+                    disabled={isViewMode}
+                    onKeyDown={handleKeyDown}
+                    className={getInputClass(isViewMode, "date")}
+                  />
+                </div>
+              </div>
+
+              {/* PURPOSE FIELD - Added name prop */}
+              <div className="flex flex-col sm:flex-row item-start px-1 w-full">
+                <label className="text-black-800 text-[15px] w-[80px] shrink-0">
+                  Purpose <span className="text-red-500">*</span>
+                </label>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    name="purpose"
+                    value={formData.purpose || ""}
+                    disabled={isViewMode}
+                    onChange={(e) => handleChange("purpose", e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className={getInputClass(isViewMode, "purpose")}
+                    placeholder="Enter holiday purpose"
+                  />
+                </div>
               </div>
             </div>
-
-            {/* PURPOSE FIELD - Added name prop */}
-            <div className="flex flex-col sm:flex-row items-center px-1 w-full">
-              <label className="text-black-800 text-[15px] sm:w-[80px] shrink-0">
-                Purpose <span className="text-red-500">*</span>
-              </label>
-              <div className="flex-1 w-full">
-                <input
-                  type="text"
-                  name="purpose"
-                  value={formData.purpose || ""}
-                  disabled={isViewMode}
-                  onChange={(e) => handleChange("purpose", e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className={getInputClass(isViewMode, "purpose")}
-                  placeholder="Enter holiday purpose"
-                />
-              </div>
-            </div>
-            </div>
-
-            
 
             {/* REMARKS FIELD */}
             <div className="flex flex-col sm:flex-row items-start px-1 w-full">
@@ -243,7 +253,7 @@ const HolidayMasterForm = ({
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         saving={saving}
-        saveBtnRef={saveBtnRef        }
+        saveBtnRef={saveBtnRef}
         handleSubmit={handleValidateAndSave}
         onModify={onModify}
         onDelete={() => onDelete && onDelete(formData)}

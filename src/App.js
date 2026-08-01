@@ -18,6 +18,7 @@ function AppShell({
   theme,
   sidebarCollapsed,
   toggleSidebar,
+  mobtoggleSidebar,
   handleModuleClick,
   setTheme,
   menusFromBackend,
@@ -48,8 +49,6 @@ function AppShell({
   /wv/.test(navigator.userAgent) ||
   /Version\/[\d.]+/.test(navigator.userAgent);
 
-const isChrome =
-  /Chrome/.test(navigator.userAgent) && !isWebView;
 
   return ( 
    <div
@@ -69,7 +68,8 @@ const isChrome =
         onToggleSidebar={toggleSidebar}
         onOpenPage={handleOpenPageFromMenu}
         allMenus={menusFromBackend}
-        onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+        onOpenMobileSidebar={ mobtoggleSidebar}
+        
       />
 
       <div className="app-body flex-1 flex overflow-hidden">
@@ -325,6 +325,7 @@ if (module.masmod_id === 20) {
   };
 
   const toggleSidebar = () => setSidebarCollapsed((p) => !p);
+  const mobtoggleSidebar = () =>  setMobileSidebarOpen((p) => !p);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) || null;
 
@@ -350,6 +351,7 @@ if (module.masmod_id === 20) {
               theme={theme}
               sidebarCollapsed={sidebarCollapsed}
               toggleSidebar={toggleSidebar}
+              mobtoggleSidebar={mobtoggleSidebar}
               handleModuleClick={handleModuleClick}
               setTheme={setTheme}
               menusFromBackend={menusFromBackend}

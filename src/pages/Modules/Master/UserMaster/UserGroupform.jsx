@@ -198,7 +198,7 @@ const UserGroupForm = ({
         />
       ) : (
         <>
-          <div className="flex-1 p-4 overflow-y-auto min-w-[750px] mx-auto flex justify-center">
+          <div className="flex-1 p-4 overflow-y-auto min-w-[450px] lg:min-w-[750px] mx-auto flex justify-center">
             <div
               id="usergroup-form-container"
               ref={containerRef}

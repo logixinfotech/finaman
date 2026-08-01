@@ -24,9 +24,7 @@ const ERPFooter = ({
           onClick={onDelete}
           disabled={rights?.del !== 1}
         />
-      )}
-
-      {/* Only render Print if handler is provided */}
+      )} 
       {onPrint && (
         <PrintButton
           onClick={() => onPrint(formData)}
@@ -48,8 +46,7 @@ const ERPFooter = ({
         )}
 
         {isViewMode && (
-          <>
-            {/* Only render New button if handler is provided */}
+          <> 
             {onNewEntry && (
               <HeaderAddButton onClick={onNewEntry} disabled={rights?.add !== 1} />
             )}
@@ -58,9 +55,7 @@ const ERPFooter = ({
             <CancelButton onClick={onCancel} />
           </>
         )}
- {/* <button ref={saveBtnRef}>
-   Test Save
-</button> */}
+ 
         {isEditMode && (
           <>
             <UpdateButton disabled={saving} onClick={handleSubmit} isEditing={true} />

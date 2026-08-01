@@ -8,7 +8,6 @@ import {
   FaUser,
   FaSignOutAlt,
   FaMapMarkerAlt,
-  FaBars,
   FaExchangeAlt,
   FaTimes,
   FaSpinner,
@@ -20,7 +19,9 @@ import {
 import { useNotifications } from "../../theme/NotificationContext";
 import NotificationPanel from "../../pages/NotificationPanel";
 import GlobalSearch from "./GlobalSearch";
+ import { GiHamburgerMenu } from 'react-icons/gi';
 import { fetchSwitchableCompanies, switchCompany } from "../../utils/api";
+import { Hamburger } from "lucide-react";
 
 const DEFAULT_ACC_YEAR = "2024-2025";
 
@@ -183,8 +184,6 @@ function Header({
       sessionStorage.setItem("token", res.token);
       sessionStorage.setItem("user", JSON.stringify(res.user));
       sessionStorage.setItem("permissions", JSON.stringify(res.permissions));
-
-      // Full reload guarantees every tenant-scoped screen/state resets cleanly
       window.location.reload();
     } catch (err) {
       console.error("Switch company error:", err);
@@ -222,18 +221,29 @@ function Header({
     >
       {/* LEFT - mobile hamburger + brand */}
       <div className="flex items-center gap-2 md:gap-3">
-        {isMobile && (
+        {isMobile && (<>
+           <button
+            onClick={onOpenMobileSidebar}
+            className="  p-0.5 rounded-lg   hover:bg-white/20 text-white transition"
+            aria-label="Open menu"
+          >
+              <GiHamburgerMenu size={24}/>
+      
+          </button>
           <button
             onClick={onOpenMobileSidebar}
             className="  p-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
             aria-label="Open menu"
           >
+             
             <img
               src="/finaman-logo.png"
               alt="Logo"
               className="h-6 w-6 object-contain"
             />
+      
           </button>
+          </>
         )}
 
         {!isMobile && (

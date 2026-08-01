@@ -338,6 +338,7 @@ const CompanyMasterPage = ({ tab }) => {
           formData={formData}
           setFormData={setFormData}
           mode={mode}
+          formTab={formTab}
           onSave={handleSave}
           onCancel={() => setShowForm(false)}
           onDelete={handleDelete}

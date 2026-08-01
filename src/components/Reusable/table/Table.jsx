@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import TableExport from "./TableExport";
 import { HeaderAddButton, DeleteButton } from "../button/ActionButon";
@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsRight,
+  ChevronDown,
   X,
   Inbox,
   Trash2,
@@ -31,22 +32,6 @@ const DEFAULT_COL_WIDTH = 150;
 const MIN_COL_WIDTH = 50;
 const SEARCH_DEBOUNCE_MS = 400;
 
-const TBtn = ({ onClick, active, title, children, className = "" }) => (
-  <button
-    title={title}
-    onClick={onClick}
-    className={[
-      "h-8 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5",
-      "text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none",
-      active
-        ? "bg-blue-50 border-blue-400 text-blue-700"
-        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300 hover:text-slate-900",
-      className,
-    ].join(" ")}
-  >
-    {children}
-  </button>
-);
 
 const ColumnPanel = ({
   columns,
@@ -149,14 +134,71 @@ const Table = ({
   // FIX: density state — S/M/L tabs now actually work
   const [density, setDensity] = useState("M");
   const rowHeight = { M: 34, L: 42 }[density];
-  const toggleDensity = useCallback(
-    () => setDensity((d) => (d === "M" ? "L" : "M")),
-    [],
-  );
-  const isSettingsTab = activeTab === "settings";
+
   const TAB_CONFIG = showSettingsTab
     ? [...TAB_CONFIG_BASE, SETTINGS_TAB]
     : TAB_CONFIG_BASE;
+    const activeTabConfig =
+  TAB_CONFIG.find((t) => t.id === activeTab) || TAB_CONFIG[0];
+
+// ── mobile tabs dropdown state ──
+const [mobileTabsOpen, setMobileTabsOpen] = useState(false);
+const mobileTabsBtnRef = useRef(null);
+const mobileTabsMenuRef = useRef(null);
+const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
+// ── column settings dropdown (portal) ──
+const columnBtnRef = useRef(null);
+const columnMenuPanelRef = useRef(null);
+const [columnMenuPos, setColumnMenuPos] = useState({ top: 0, right: 0 });
+
+useEffect(() => {
+  if (!showColumnMenu) return;
+  const updatePos = () => {
+    if (columnBtnRef.current) {
+      const rect = columnBtnRef.current.getBoundingClientRect();
+      setColumnMenuPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  };
+  updatePos();
+  window.addEventListener("scroll", updatePos, true);
+  window.addEventListener("resize", updatePos);
+  return () => {
+    window.removeEventListener("scroll", updatePos, true);
+    window.removeEventListener("resize", updatePos);
+  };
+}, [showColumnMenu]);
+useEffect(() => {
+  if (!mobileTabsOpen) return;
+  const updatePos = () => {
+    if (mobileTabsBtnRef.current) {
+      const rect = mobileTabsBtnRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    }
+  };
+  updatePos();
+  window.addEventListener("scroll", updatePos, true);
+  window.addEventListener("resize", updatePos);
+  return () => {
+    window.removeEventListener("scroll", updatePos, true);
+    window.removeEventListener("resize", updatePos);
+  };
+}, [mobileTabsOpen]);
+
+useEffect(() => {
+  if (!mobileTabsOpen) return;
+  const handleClickOutside = (e) => {
+    const clickedBtn =
+      mobileTabsBtnRef.current && mobileTabsBtnRef.current.contains(e.target);
+    const clickedMenu =
+      mobileTabsMenuRef.current && mobileTabsMenuRef.current.contains(e.target);
+    if (!clickedBtn && !clickedMenu) setMobileTabsOpen(false);
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, [mobileTabsOpen]);
 
   // ── ERP keyboard shortcuts ──
   // NOTE: selectedRows ref so the shortcut always sees latest value
@@ -180,7 +222,7 @@ const Table = ({
           setFocusedRowIndex(0);
         }
       },
-      onExport: () => { },
+      onExport: () => {},
     });
     return () => setERPHandlers({});
   }, [onAdd, onRefresh, onDeleteMultiple]);
@@ -213,15 +255,19 @@ const Table = ({
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, sortField, sortOrder]); 
-  useEffect(() => {
-    const h = (e) => {
-      if (columnMenuRef.current && !columnMenuRef.current.contains(e.target))
-        setShowColumnMenu(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
+  }, [debouncedSearch, sortField, sortOrder]);
+useEffect(() => {
+  const h = (e) => {
+    const clickedBtn =
+      columnBtnRef.current && columnBtnRef.current.contains(e.target);
+    const clickedMenu =
+      columnMenuPanelRef.current &&
+      columnMenuPanelRef.current.contains(e.target);
+    if (!clickedBtn && !clickedMenu) setShowColumnMenu(false);
+  };
+  document.addEventListener("mousedown", h);
+  return () => document.removeEventListener("mousedown", h);
+}, []);
 
   useEffect(() => {
     tableContainerRef.current?.focus();
@@ -401,7 +447,7 @@ const Table = ({
     });
   }, []);
 
-const handleRowSelect = useCallback(
+  const handleRowSelect = useCallback(
     (type, index) => {
       const cur = serverPagination ? data : paginatedData;
       const row = cur[index];
@@ -441,14 +487,95 @@ const handleRowSelect = useCallback(
         <div className="h-[2px] w-full bg-blue-50 overflow-hidden flex-shrink-0">
           <div className="h-full bg-blue-600 w-1/2 animate-[progress_1.4s_ease-in-out_infinite] origin-left" />
         </div>
-      )} 
-     <div
-  className="relative flex items-center justify-between px-3.5 border-b border-slate-200 bg-white flex-shrink-0"
-  style={{ height: 48 }}
->
+      )}
+      <div
+        className="relative flex items-center justify-between px-3.5 border-b border-slate-200 bg-white flex-shrink-0"
+        style={{ height: 48 }}
+      >
         {/* left: title + count */}
         {!isHidden && (
-          <div className="flex items-center gap-0.5 bg-slate-100 rounded-[10px] p-[3px]">
+  <>
+    {/* Desktop segmented tabs (sm and up) */}
+    <div className="hidden sm:flex items-center gap-0.5 bg-slate-100 rounded-[10px] p-[3px]">
+      {TAB_CONFIG.map(({ id, Icon, label }) => {
+        const active = activeTab === id;
+        const isSettings = id === "settings";
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onTabChange(id)}
+            className={`
+              relative flex items-center gap-1.5 h-[30px] px-3.5 rounded-[8px]
+              text-[11.5px] transition-colors duration-200
+              ${
+                active
+                  ? "font-medium"
+                  : "text-slate-500 font-normal hover:text-slate-700"
+              }
+            `}
+            style={
+              active
+                ? { color: isSettings ? "#b45309" : "var(--icon-color)" }
+                : undefined
+            }
+          >
+            {active && (
+              <motion.span
+                layoutId="tableHeaderTabHighlight"
+                className="absolute inset-0 rounded-[4px] -z-0"
+                style={{
+                  background: "#ffffff",
+                  borderRadius:"7px",
+                  border: "1px solid rgba(15,23,42,0.08)",
+                  boxShadow:
+                    "0 1px 3px rgba(15,23,42,0.07), 0 1px 1px rgba(15,23,42,0.04)",
+                }}
+                transition={{ type: "spring", bounce: 0.18, duration: 0.4 }}
+              />
+            )}
+            <Icon size={13} className="relative z-10 shrink-0" />
+            <span className="relative z-10">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+
+    {/* Mobile dropdown (below sm) */}
+    <div className="sm:hidden shrink-0">
+      <button
+        ref={mobileTabsBtnRef}
+        type="button"
+        onClick={() => setMobileTabsOpen((v) => !v)}
+        className="flex items-center gap-1.5 h-[30px] pl-2.5 pr-2 rounded-[8px] bg-slate-100 text-[11.5px] font-medium active:scale-[0.97] transition-transform"
+        style={{ color: activeTab === "settings" ? "#b45309" : "var(--icon-color)" }}
+      >
+        <activeTabConfig.Icon size={13} className="shrink-0" />
+        <span>{activeTabConfig.label}</span>
+        <ChevronDown
+          size={13}
+          className={`shrink-0 transition-transform duration-200 ${
+            mobileTabsOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {mobileTabsOpen &&
+        createPortal(
+          <motion.div
+            ref={mobileTabsMenuRef}
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "fixed",
+              top: menuPos.top,
+              left: menuPos.left,
+              minWidth: Math.max(menuPos.width, 136),
+            }}
+            className="z-[9999] bg-white rounded-[10px] border border-slate-200 shadow-lg p-1"
+          >
             {TAB_CONFIG.map(({ id, Icon, label }) => {
               const active = activeTab === id;
               const isSettings = id === "settings";
@@ -456,119 +583,111 @@ const handleRowSelect = useCallback(
                 <button
                   key={id}
                   type="button"
-                  onClick={() => onTabChange(id)}
-                  className={`
-                relative flex items-center gap-1.5 h-[30px] px-3.5 rounded-[8px]
-                text-[11.5px] transition-colors duration-200
-                ${active
-                      ? "font-medium"
-                      : "text-slate-500 font-normal hover:text-slate-700"
-                    }
-              `}
+                  onClick={() => {
+                    onTabChange(id);
+                    setMobileTabsOpen(false);
+                  }}
+                  className={`flex items-center gap-2 w-full text-left px-2.5 py-2 rounded-[8px] text-[12px] transition-colors ${
+                    active
+                      ? "font-medium bg-slate-50"
+                      : "text-slate-500 font-normal hover:bg-slate-50"
+                  }`}
                   style={
                     active
                       ? { color: isSettings ? "#b45309" : "var(--icon-color)" }
                       : undefined
                   }
                 >
-                  {active && (
-                    <motion.span
-                      layoutId="tableHeaderTabHighlight"
-                      className="absolute inset-0 rounded-[4px] -z-0"
-                      style={{
-                        background: "#ffffff",
-                        border: "1px solid rgba(15,23,42,0.08)",
-                        boxShadow:
-                          "0 1px 3px rgba(15,23,42,0.07), 0 1px 1px rgba(15,23,42,0.04)",
-                      }}
-                      transition={{
-                        type: "spring",
-                        bounce: 0.18,
-                        duration: 0.4,
-                      }}
-                    />
-                  )}
-                  <Icon size={13} className="relative z-10 shrink-0" />
-                  <span className="relative z-10">{label}</span>
+                  <Icon size={13} className="shrink-0" />
+                  {label}
                 </button>
               );
             })}
-          </div>
-        )} 
-      {!isHidden && (<div className="absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3.5 py-2 self-stretch bg-slate-50/60 rounded-tl-xl">
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
-            <TitleIcon
-              size={12}
-              strokeWidth={2.5}
-              className="text-white"
-            />
-          </div> 
-          <div className="flex flex-col min-w-0">
-            <span className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap" style={{ fontFamily: "'Inter', 'Roboto', 'Segoe UI', system-ui, sans-serif" }} title={title}>
-              {title}
-            </span>
-          </div>
-
-        </div>
+          </motion.div>,
+          document.body
         )}
-        {isHidden && (<div className="flex items-center gap-3.5 px-4 py-2 self-stretch bg-slate-50/60 rounded-tl-xl mx-auto"
+    </div>
+  </>
+)}
+    {!isHidden && (
+  <>
+    <div className="hidden sm:flex absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-3.5 py-2 self-stretch bg-slate-50/60 rounded-tl-xl">
+      <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
+        <TitleIcon size={12} strokeWidth={2.5} className="text-white" />
+      </div>
+      <div className="flex flex-col min-w-0">
+        <span
+          className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap"
           style={{
-            background: "var(--accent-soft, #eff6ff)",
-            marginLeft: "-14px",
-            marginRight: "14px",
-            borderTopLeftRadius: "11px",
-          }}> 
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
-            <TitleIcon
-              size={12}
-              strokeWidth={2.5}
-              className="text-white"
-            />
-          </div> 
-          <div className="flex flex-col min-w-0">
-            <span className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap" title={title}>
-              {title}
-            </span>
+            fontFamily: "'Inter', 'Roboto', 'Segoe UI', system-ui, sans-serif",
+          }}
+        >
+          {title}
+        </span>
+      </div>
+    </div>
+
+    {/* Mobile compact title — hidden, since search+icons need the room; shown only if space allows via truncate */}
+  
+  </>
+)}
+        {isHidden && (
+          <div
+            className="flex items-center gap-3.5 px-4 py-2 self-stretch bg-slate-50/60 rounded-tl-xl mx-auto"
+            style={{
+              background: "var(--accent-soft, #eff6ff)",
+              marginLeft: "-14px",
+              marginRight: "14px",
+              borderTopLeftRadius: "11px",
+            }}
+          >
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
+              <TitleIcon size={12} strokeWidth={2.5} className="text-white" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span
+                className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap"
+                title={title}
+              >
+                {title}
+              </span>
+            </div>
           </div>
-
-        </div>)}
-
+        )}
 
         {/* right: controls */}
-        <div className="flex items-center gap-1.5">
-          {/* search */}
-          <div className="relative flex items-center group">
-            {loading ? (
-              <RefreshCw
-                size={12}
-                className="absolute left-2.5 text-blue-500 animate-spin pointer-events-none"
-              />
-            ) : (
-              <Search
-                size={12}
-                className="absolute left-2.5 text-slate-400 pointer-events-none group-focus-within:text-blue-500"
-              />
-            )}
-            <input
-              ref={searchRef}
-              value={searchText}
-              placeholder="Search records…"
-              onChange={(e) => {
-                setSearchText(e.target.value);
-                setPage(1);
-              }}
-              className="h-8 pl-7 pr-6 text-[11.5px] bg-slate-50 border border-slate-200 rounded-md w-[185px] outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-            />
-            {searchText && (
-              <X
-                size={12}
-                className="absolute right-2 text-slate-400 cursor-pointer hover:text-slate-700"
-                onClick={() => setSearchText("")}
-              />
-            )}
-          </div>
-
- 
+       <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar">
+  {/* search */}
+  <div className="relative flex items-center group shrink-0">
+    {loading ? (
+      <RefreshCw
+        size={12}
+        className="absolute left-2.5 text-blue-500 animate-spin pointer-events-none"
+      />
+    ) : (
+      <Search
+        size={12}
+        className="absolute left-2.5 text-slate-400 pointer-events-none group-focus-within:text-blue-500"
+      />
+    )}
+    <input
+      ref={searchRef}
+      value={searchText}
+      placeholder="Search…"
+      onChange={(e) => {
+        setSearchText(e.target.value);
+        setPage(1);
+      }}
+      className="h-8 pl-7 pr-6 text-[11.5px] bg-slate-50 border border-slate-200 rounded-md w-[110px] sm:w-[185px] outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+    />
+    {searchText && (
+      <X
+        size={12}
+        className="absolute right-2 text-slate-400 cursor-pointer hover:text-slate-700"
+        onClick={() => setSearchText("")}
+      />
+    )}
+  </div>
 
           <TableExport
             title={title}
@@ -578,63 +697,75 @@ const handleRowSelect = useCallback(
             serverPagination={serverPagination}
             onExportAll={onExportAll}
           />
-         {onImport && (
-  <button
-    onClick={onImport}
-    title="Import data"
-    className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-emerald-50 border-emerald-300 text-emerald-600 hover:bg-emerald-100"
-  >
-    <Upload size={12} />
-  </button>
-)}
-{onRefresh && (
-  <button
-    onClick={onRefresh}
-    title="Refresh (Alt+R)"
-    className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-blue-50 border-pink-300 text-pink-600 hover:bg-pink-100"
-  >
-    <RefreshCw size={12} />
-  </button>
-)}
+          {onImport && (
+            <button
+              onClick={onImport}
+              title="Import data"
+              className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-emerald-50 border-emerald-300 text-emerald-600 hover:bg-emerald-100"
+            >
+              <Upload size={12} />
+            </button>
+          )}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              title="Refresh (Alt+R)"
+              className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-pink-50 border-pink-300 text-pink-600 hover:bg-pink-100"
+            >
+              <RefreshCw size={12} />
+            </button>
+          )}
           {/* FIX: column menu — was broken because visibleColumns toggle wasn't being called correctly */}
-          <div className="relative" ref={columnMenuRef}>
-<button
-  onClick={() => setShowColumnMenu((p) => !p)}
-  title="Column settings"
-  className={`h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
-    showColumnMenu
-      ? "bg-slate-200 border-slate-400 text-slate-700"
-      : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"
-  }`}
->
-  <Settings size={12} />
-</button>
-            {showColumnMenu && (
-              <div className="absolute right-0 mt-1.5 bg-white border border-slate-200 rounded-lg shadow-lg z-[200] overflow-hidden">
-                <ColumnPanel
-                  columns={columns}
-                  visibleColumns={visibleColumns}
-                  lockedColumns={lockedColumns}
-                  onToggleVisible={toggleVisibleColumn}
-                  onToggleLock={toggleLockColumn}
-                />
-              </div>
-            )}
-          </div>
-
-       {onToggleFilter && (
+    <div className="relative shrink-0">
   <button
-    onClick={onToggleFilter}
-    title="Filters"
+    ref={columnBtnRef}
+    onClick={() => setShowColumnMenu((p) => !p)}
+    title="Column settings"
     className={`h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
-      showForm
-        ? "bg-amber-100 border-amber-400 text-amber-700"
-        : "bg-amber-50 border-amber-300 text-amber-600 hover:bg-amber-100"
+      showColumnMenu
+        ? "bg-slate-200 border-slate-400 text-slate-700"
+        : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"
     }`}
   >
-    <Filter size={12} />
+    <Settings size={12} />
   </button>
-)}
+
+  {showColumnMenu &&
+    createPortal(
+      <div
+        ref={columnMenuPanelRef}
+        style={{
+          position: "fixed",
+          top: columnMenuPos.top,
+          right: columnMenuPos.right,
+        }}
+        className="bg-white border border-slate-200 rounded-lg shadow-lg z-[9999] overflow-hidden"
+      >
+        <ColumnPanel
+          columns={columns}
+          visibleColumns={visibleColumns}
+          lockedColumns={lockedColumns}
+          onToggleVisible={toggleVisibleColumn}
+          onToggleLock={toggleLockColumn}
+        />
+      </div>,
+      document.body
+    )}
+</div>
+
+          {onToggleFilter && (
+            <button
+              onClick={onToggleFilter}
+              title="Filters"
+              className={`h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
+                showForm
+                  ? "bg-amber-100 border-amber-400 text-amber-700"
+                  : "bg-amber-50 border-amber-300 text-amber-600 hover:bg-amber-100"
+              }`}
+            >
+              <Filter size={12} />
+            </button>
+          )}
           {onAdd && <HeaderAddButton onClick={onAdd} />}
         </div>
       </div>
@@ -670,11 +801,11 @@ const handleRowSelect = useCallback(
                 const isSorted = sortField === c.key;
                 const stickyStyle = c.isFrozen
                   ? {
-                    position: "sticky",
-                    left: c.stickyLeft,
-                    zIndex: 42,
-                    boxShadow: "2px 0 4px -2px rgba(0,0,0,0.07)",
-                  }
+                      position: "sticky",
+                      left: c.stickyLeft,
+                      zIndex: 42,
+                      boxShadow: "2px 0 4px -2px rgba(0,0,0,0.07)",
+                    }
                   : {};
                 return (
                   <th
@@ -743,29 +874,29 @@ const handleRowSelect = useCallback(
 
           <tbody>
             {loading &&
-              paginatedData.length === 0 ? null : paginatedData.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={orderedColumns.length + (actions ? 1 : 0)}
-                    className="py-16 text-center"
-                  >
-                    <div className="flex flex-col items-center gap-2 text-slate-400">
-                      <Inbox size={36} strokeWidth={1} />
-                      <span className="text-[12px] font-medium">
-                        No records found
-                      </span>
-                      {debouncedSearch && (
-                        <button
-                          className="text-[11px] text-blue-500 hover:underline"
-                          onClick={() => setSearchText("")}
-                        >
-                          Clear search
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
+            paginatedData.length === 0 ? null : paginatedData.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={orderedColumns.length + (actions ? 1 : 0)}
+                  className="py-16 text-center"
+                >
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <Inbox size={36} strokeWidth={1} />
+                    <span className="text-[12px] font-medium">
+                      No records found
+                    </span>
+                    {debouncedSearch && (
+                      <button
+                        className="text-[11px] text-blue-500 hover:underline"
+                        onClick={() => setSearchText("")}
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : (
               paginatedData.map((row, index) => {
                 const rowId = row[rowKey];
                 const isSelected = selectedRows.includes(rowId);
