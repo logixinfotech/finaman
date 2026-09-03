@@ -200,6 +200,22 @@ const PageRegistry = {
     PreventiveMain: React.lazy(() => import("./Modules/QMS/PreventiveMaintenance.jsx")),
     CAPA: React.lazy(() => import("./Modules/QMS/CAPA.jsx")),
     ChangeControl: React.lazy(() => import("./Modules/QMS/ChangeControl.jsx")),
+    marketcomplaint: React.lazy(() => import("./Modules/QMS/MarketComplaint.jsx")),
+    RiskAssessment: React.lazy(() => import("./Modules/QMS/RiskAssessment.jsx")),
+    TrendingGraphs: React.lazy(() => import("./Modules/QMS/TrendingGraphs.jsx")),
+    KPIDashboard: React.lazy(() => import("./Modules/QMS/Kpidashboard.jsx")),
+    ComplianceScore: React.lazy(() => import("./Modules/QMS/ComplianceScore.jsx")),
+    OOS: React.lazy(() => import("./Modules/QMS/OOS.jsx")),
+    OOT: React.lazy(() => import("./Modules/QMS/OOT.jsx")),
+
+
+
+    
+
+
+
+    
+
 
 
 

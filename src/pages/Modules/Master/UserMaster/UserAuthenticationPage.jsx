@@ -106,9 +106,8 @@ const UserAuthenticationPage = ({ tab }) => {
           rights={rights}
  
           currentRecord={list.length > 0 ? currentIndex + 1 : 0}
-          totalRecords={list.length}
-          onNextRecord={()  => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
-          onPrevRecord={()  => setCurrentIndex(p => Math.max(p - 1, 0))}
+          totalRecords={list.length} 
+ 
           onFirstRecord={()  => setCurrentIndex(0)}
           onLastRecord={()  => setCurrentIndex(list.length - 1)} 
           onModify={handleModify}

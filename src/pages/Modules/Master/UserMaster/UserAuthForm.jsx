@@ -1,15 +1,17 @@
- 
-import { useEffect, useState } from "react";
-import { confirmDelete, showToast } from "../../../../components/Reusable/alert";
+// pages/Modules/Master/UserMaster/UserAuthForm.jsx
+import { useEffect, useState,useCallback } from "react";
+import {   showToast } from "../../../../components/Reusable/alert";
 import {
   fetchMenuMasterList,
   fetchUserPermissions,
   saveUserPermissions,
 } from "../../../../utils/api";
 import * as FaIcons from "react-icons/fa";
-import ERPHeader  from "../../../../components/Reusable/form/HeaderForm";
-import ERPFooter  from "../../../../components/Reusable/form/FooterForm";
-import ERPSettings from "../../../../components/Reusable/ERPSettings"; 
+import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
+import ERPFooter from "../../../../components/Reusable/form/FooterForm";
+import ERPSettings from "../../../../components/Reusable/ERPSettings";
+import WorkflowRolesModal from "./WorkflowRolesModal";
+import { resolveWorkflowModuleKey } from "../../../../constant/qmsWorkflowMenuMap";
 
 const menuColors = [
   ["#22c55e", "#4ade80"],
@@ -30,8 +32,10 @@ const PERMISSIONS = [
   { key: "Mail",      label: "Mail",   icon: "FaEnvelope",  color: "text-purple-600" },
 ];
 
+// 9 permission columns + Workflow column
 const gridLayout =
-  "grid grid-cols-[1.5fr_repeat(9,1fr)] items-center px-4 py-2 border-b"; 
+  "grid grid-cols-[1.5fr_repeat(9,1fr)_110px] items-center px-4 py-2 border-b";
+
 const getIcon = (name, colorClass) => {
   const Icon = FaIcons[name];
   return Icon ? <Icon size={12} className={colorClass} /> : null;
@@ -44,38 +48,40 @@ function getMenuColor(name = "") {
   }
   const [c1, c2] = menuColors[Math.abs(hash % menuColors.length)];
   return `linear-gradient(135deg, ${c1}, ${c2})`;
-} 
+}
+
 const UserAuthForm = ({
-  selectedUser, 
-  mode        = "view",
+  selectedUser,
+  mode = "view",
   saving,
-  rights, 
-  
+  rights,
   currentRecord,
   totalRecords,
   onNextRecord,
   onPrevRecord,
   onFirstRecord,
-  onLastRecord,
-  /* actions */
+  onLastRecord, 
   onModify,
   onEditCancel,
   onCancel,
   /* tabs */
-  activeTab   = "entry",
+  activeTab = "entry",
   onTabChange,
 }) => {
-  const [modules,       setModules]       = useState({});
-  const [expanded,      setExpanded]      = useState({});
-  const [confirmState,  setConfirmState]  = useState(null);
-  const [loading,       setLoading]       = useState(false);
+  const [modules,      setModules]      = useState({});
+  const [expanded,     setExpanded]     = useState({});
+  const [confirmState, setConfirmState] = useState(null);
+  const [loading,      setLoading]      = useState(false);
+  const [wfModal,      setWfModal]      = useState(null);   // { moduleKey, label }
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
-  const isSettings = activeTab === "settings"; 
+  const isSettings = activeTab === "settings";
+  const closeWfModal = useCallback(() => setWfModal(null), []);
   useEffect(() => {
     if (selectedUser?.userma_id) loadData();
-  }, [selectedUser?.userma_id]); 
+  }, [selectedUser?.userma_id]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -87,16 +93,17 @@ const UserAuthForm = ({
       const merged = menuData.map((row, index) => {
         const found = existing.find(e => {
           const eId   = e.Masmnu_id ?? e.masmnu_id ?? e.masmnuid;
-          const rowId = row.masmnuid  ?? row.masmnu_id;
+          const rowId = row.masmnuid ?? row.masmnu_id;
           return String(eId) === String(rowId);
         });
 
         const rowData = {
           ...row,
-          row_id:    found?.masusr_id || `NEW_${index}`,
-          menu_name: row.bar_name,
-          icon_name: row.icon_name,
-          isReport:  row.pad_name?.toLowerCase().includes("report"),
+          row_id:      found?.masusr_id || `NEW_${index}`,
+          menu_name:   row.bar_name,
+          icon_name:   row.icon_name,
+          isReport:    row.pad_name?.toLowerCase().includes("report"),
+          wfModuleKey: resolveWorkflowModuleKey(row),   // QMS workflow module key, or null
         };
 
         PERMISSIONS.forEach(p => {
@@ -125,7 +132,7 @@ const UserAuthForm = ({
         grouped[modName].push(m);
       });
 
-      setModules(grouped); 
+      setModules(grouped);
       const firstKey = Object.keys(grouped)[0];
       if (firstKey) setExpanded({ [firstKey]: true });
 
@@ -134,9 +141,10 @@ const UserAuthForm = ({
     } finally {
       setLoading(false);
     }
-  }; 
+  };
+
   const toggle = (module, row_id, permission) => {
-    if (isViewMode) return; // respect view mode
+    if (isViewMode) return;
     setModules(prev => ({
       ...prev,
       [module]: prev[module].map(row => {
@@ -151,7 +159,8 @@ const UserAuthForm = ({
         return updatedRow;
       }),
     }));
-  }; 
+  };
+
   const handleDaysChange = (module, row_id, dayKey, value) => {
     if (isViewMode) return;
     setModules(prev => ({
@@ -162,7 +171,8 @@ const UserAuthForm = ({
           : row
       ),
     }));
-  }; 
+  };
+
   const applyBulk = (value) => {
     const { module, permission } = confirmState;
     setModules(prev => ({
@@ -184,25 +194,25 @@ const UserAuthForm = ({
     }));
     setConfirmState(null);
   };
- 
+
   const handleFinalSave = () => {
     const flatData = Object.values(modules).flat().map(row => ({
-      masmnu_id:  parseInt(row.masmnuid || row.masmnu_id),
-      masmod_id:  parseInt(row.masmodid || row.masmod_id),
-      masusr_id:  selectedUser.userma_id,
-      add_right:  row.Add_right ? 1 : 0,
-      mod_right:  row.Mod_right ? 1 : 0,
-      del_right:  row.Del_right ? 1 : 0,
-      prt_right:  row.Prt_right ? 1 : 0,
-      pdf:        row.Pdf       ? 1 : 0,
-      excel:      row.Excel     ? 1 : 0,
-      word:       row.Word      ? 1 : 0,
-      sms:        row.Sms       ? 1 : 0,
-      mail:       row.Mail      ? 1 : 0,
-      add_days:   parseInt(row.Add_days) || 0,
-      mod_days:   parseInt(row.Mod_days) || 0,
-      del_days:   parseInt(row.Del_days) || 0,
-      it_type:    row.isReport ? "REPORT" : "ENTRY",
+      masmnu_id: parseInt(row.masmnuid || row.masmnu_id),
+      masmod_id: parseInt(row.masmodid || row.masmod_id),
+      masusr_id: selectedUser.userma_id,
+      add_right: row.Add_right ? 1 : 0,
+      mod_right: row.Mod_right ? 1 : 0,
+      del_right: row.Del_right ? 1 : 0,
+      prt_right: row.Prt_right ? 1 : 0,
+      pdf:       row.Pdf       ? 1 : 0,
+      excel:     row.Excel     ? 1 : 0,
+      word:      row.Word      ? 1 : 0,
+      sms:       row.Sms       ? 1 : 0,
+      mail:      row.Mail      ? 1 : 0,
+      add_days:  parseInt(row.Add_days) || 0,
+      mod_days:  parseInt(row.Mod_days) || 0,
+      del_days:  parseInt(row.Del_days) || 0,
+      it_type:   row.isReport ? "REPORT" : "ENTRY",
     }));
 
     saveUserPermissions({ userma_id: selectedUser.userma_id, permissions: flatData })
@@ -210,7 +220,8 @@ const UserAuthForm = ({
         if (res.success) showToast({ icon: "success", title: "Permissions Saved Successfully!" });
       })
       .catch(err => console.error("Save Error:", err));
-  }; 
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-[calc(100vh-100px)] overflow-hidden">
 
@@ -221,10 +232,10 @@ const UserAuthForm = ({
         isViewMode={isViewMode}
         activeTab={activeTab}
         onTabChange={onTabChange}
-         currentIndex={currentRecord}      // 👈
-        totalRecords={totalRecords}        // 👈
-        onPrevRecord={onPrevRecord}        // 👈
-        onNextRecord={onNextRecord}  
+        currentIndex={currentRecord}
+        totalRecords={totalRecords}
+        onPrevRecord={onPrevRecord}
+        onNextRecord={onNextRecord}
         rightContent={
           isSettings
             ? null
@@ -232,8 +243,9 @@ const UserAuthForm = ({
               ? `${selectedUser.user_name}  (${currentRecord} / ${totalRecords})`
               : `${currentRecord} / ${totalRecords}`
         }
-      /> 
-      {isSettings ? ( 
+      />
+
+      {isSettings ? (
         <ERPSettings
           applName="User Authentication Master"
           onCancel={() => onTabChange("entry")}
@@ -242,11 +254,10 @@ const UserAuthForm = ({
             onTabChange("entry");
           }}
         />
-
-      ) : ( 
+      ) : (
         <>
           <div className="flex flex-col flex-1 bg-gray-50 min-h-0">
- 
+
             <div className="flex-1 overflow-y-auto space-y-3">
               {loading ? (
                 <div className="text-center py-10 text-gray-400 font-medium text-sm">
@@ -263,9 +274,9 @@ const UserAuthForm = ({
                     <div
                       className="px-4 py-2.5 font-semibold cursor-pointer flex items-center justify-between transition-all duration-200 hover:brightness-95"
                       style={{
-                        background:  "linear-gradient(135deg, #e0f2fe, #bae6fd)",
-                        color:       "#1e3a5f",
-                        borderLeft:  "4px solid #0284c7",
+                        background: "linear-gradient(135deg, #e0f2fe, #bae6fd)",
+                        color:      "#1e3a5f",
+                        borderLeft: "4px solid #0284c7",
                       }}
                       onClick={() =>
                         setExpanded(p => ({ ...p, [module]: !p[module] }))
@@ -286,10 +297,10 @@ const UserAuthForm = ({
 
                     {expanded[module] && (
                       <div className="overflow-x-auto">
-                        <div className="min-w-[1100px]"> 
-                          <div
-                            className={`${gridLayout} font-semibold bg-gray-50 text-gray-500 text-[11px]`}
-                          >
+                        <div className="min-w-[1210px]">
+
+                          {/* column headers */}
+                          <div className={`${gridLayout} font-semibold bg-gray-50 text-gray-500 text-[11px]`}>
                             <div className="text-left pl-1">Menu Name</div>
                             {PERMISSIONS.map(p => (
                               <div
@@ -305,7 +316,13 @@ const UserAuthForm = ({
                                 <span>{p.label}</span>
                               </div>
                             ))}
-                          </div> 
+                            <div className="flex justify-center items-center gap-1">
+                              <FaIcons.FaProjectDiagram size={11} className="text-indigo-600" />
+                              <span>Workflow</span>
+                            </div>
+                          </div>
+
+                          {/* rows */}
                           {modules[module].map(row => (
                             <div
                               key={row.row_id}
@@ -329,7 +346,8 @@ const UserAuthForm = ({
                                     </span>
                                   )}
                                 </div>
-                              </div> 
+                              </div>
+
                               {PERMISSIONS.map(p => {
                                 const isEntryRight = ["Add_right", "Mod_right", "Del_right"].includes(p.key);
                                 const disabled     = row.isReport && isEntryRight;
@@ -343,7 +361,7 @@ const UserAuthForm = ({
                                     {disabled ? (
                                       <span className="text-gray-200 text-xs">—</span>
                                     ) : (
-                                      <> 
+                                      <>
                                         <div
                                           onClick={() => toggle(module, row.row_id, p)}
                                           className={`w-8 h-4 flex items-center rounded-full transition-colors duration-200 ${
@@ -357,7 +375,7 @@ const UserAuthForm = ({
                                               isOn ? "translate-x-4" : "translate-x-1"
                                             }`}
                                           />
-                                        </div> 
+                                        </div>
                                         {p.hasDays && isOn && (
                                           <input
                                             type="number"
@@ -382,6 +400,25 @@ const UserAuthForm = ({
                                   </div>
                                 );
                               })}
+
+                              {/* workflow cell */}
+                              <div className="flex justify-center">
+                                {row.wfModuleKey ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setWfModal({ moduleKey: row.wfModuleKey, label: row.menu_name })
+                                    }
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-gray-300 text-[10.5px] font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                                    title={`Set stage roles for ${row.menu_name}`}
+                                  >
+                                    <FaIcons.FaProjectDiagram size={9} />
+                                    Set
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-200 text-xs">—</span>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -391,7 +428,8 @@ const UserAuthForm = ({
                 ))
               )}
             </div>
-          </div> 
+          </div>
+
           <ERPFooter
             isViewMode={isViewMode}
             isEditMode={isEditMode}
@@ -400,7 +438,7 @@ const UserAuthForm = ({
             onModify={onModify}
             onCancel={onCancel}
             onEditCancel={onEditCancel}
-            rights={rights} 
+            rights={rights}
             currentRecord={currentRecord}
             totalRecords={totalRecords}
             onNextRecord={onNextRecord}
@@ -409,7 +447,17 @@ const UserAuthForm = ({
             onLastRecord={onLastRecord}
           />
         </>
-      )} 
+      )}
+
+      {/* ── QMS workflow roles modal ── */}
+         {wfModal && (
+        <WorkflowRolesModal
+          moduleKey={wfModal.moduleKey}
+          moduleLabel={wfModal.label}
+          onClose={closeWfModal}
+        />
+      )}    
+
       {confirmState && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white p-5 rounded-xl shadow-2xl w-80 border border-gray-100">

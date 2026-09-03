@@ -3,10 +3,12 @@ import { Bar } from "react-chartjs-2";
 import { Calendar, TrendingUp, TrendingDown, Inbox } from "lucide-react";
 import { buildPeriodSeries, periodLabel, inrS } from "../../../../utils/helpers";
 
-const TABS = [
+const PERIOD_TAB = [
   { key: "W", label: "Weekly" },
   { key: "M", label: "Monthly" },
-  { key: "Y", label: "Yearly" },
+  { key: "Q", label: "Quarterly" },
+  { key: "F", label: "FY" },
+  { key: "Y", label: "Calendar Yr" },
 ];
 
 const TOOLTIP_STYLE = {
@@ -53,7 +55,7 @@ export default function PeriodReport({ rows }) {
           <h4 className="text-[13px] font-bold tracking-tight text-slate-700">Period Report</h4>
         </div>
         <div className="flex rounded-lg bg-slate-100 p-1">
-          {TABS.map((t) => (
+          {PERIOD_TAB.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}

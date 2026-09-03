@@ -1,178 +1,202 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { FaBalanceScale, FaVial, FaClipboardCheck, FaHistory } from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
-import { useERPMode } from "../../../components/Reusable/form/useFormMode";
-import { calibrationTabs, calibrationFieldGroups, calibrationRequiredFieldsList, calibrationTableColumns, calibrationWidthConfig } from "./Utils/Qmsconfigs";
-import { confirmDelete, showToast, alertError } from "../../../components/Reusable/alert";
-import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
-import { useApplSettings } from "../../../Hooks/useApplSettings";
-import { getCalibrations, createCalibration, updateCalibration, deleteCalibration, getNextRecordNo } from "./Utils/QmsAPI";
-import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
-const initialState = {
-  Id: null, RecordNo: "", Status: "Calibrated", Instrument: "", InstrumentCode: "", Location: "",
-  CalibrationType: "", Agency: "", AcceptanceCriteria: "", FrequencyMonths: "", LastCalibrated: "",
-  AsFound: "", AsLeft: "", OutOfCalibrationImpact: "", CalibratedBy: "", ReviewedBy: "",
-  CertificateNo: "", Traceability: "", Result: "", Remarks: "",
+import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
+import { getHeaderStyle } from "./Utils/QmsValidation";
+import { useQmsModule } from "./Utils/useQmsModule";
+import {
+  calibrationTabs, calibrationTabStage, calibrationTabLabels,
+  getCalibrationFieldGroups, getCalibrationRequired,
+  calibrationWidthConfig, calibrationSectionConfigs, calibrationTableColumns,
+} from "./Utils/Qmsconfigs";
+import { getCalibrations, createCalibration, updateCalibration, deleteCalibration, } from "./Utils/QmsAPI";
+import { useRefOptions } from "./Utils/useRefOptions";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+// ── module-level constants (component ke bahar — stable references) ──
+const API = {
+  list: getCalibrations, create: createCalibration,
+  update: updateCalibration, remove: deleteCalibration,
 };
 
-const configs = { "1. Calibration Details": "grid-cols-1 sm:grid-cols-4" };
+const initialState = {
+  Id: null, RecordNo: "", Status: "Due",
+  Instrument: "", InstrumentCode: "", Location: "",
+  CalibrationType: "", Agency: "", AcceptanceCriteria: "",
+  FrequencyMonths: "", DueDate: "",
+  CalibrationDate: "", CalibratedBy: "", AsFound: "", AsLeft: "",
+  CertificateNo: "", Traceability: "", CertificateAttachment: "",
+  OutOfCalibrationImpact: "",
+  ReviewedBy: "", VerifiedOn: "", Result: "",
+  LastCalibrated: "", NextDue: "",
+  DeviationRef: "", CapaRef: "", ClosedBy: "", Remarks: "",
+};
+
+const CAL_TAB_ICON = {
+  details: FaBalanceScale,
+  execution: FaVial,
+  review: FaClipboardCheck,
+  audit: FaHistory,
+};
+function CalibrationTabIcon({ tab }) {
+  const Icon = CAL_TAB_ICON[tab];
+  return Icon ? <Icon /> : <span>•</span>;
+}
+
+const STATUS_OPTIONS = ["Due", "Performed", "Under Review", "Closed", "Rejected"];
+
+const EMPTY_FILTERS = { Status: "All", Instrument: "", CalibrationType: "All" };
 
 export default function CalibrationMasterPage({ tab }) {
-  
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(tab?.appl_name || "Calibration");
-const { options: groupOptions } = useGroupOptions();
-const fieldGroups = calibrationFieldGroups(groupOptions);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getCalibrations();
-      setList(Array.isArray(res?.data) ? res.data : []);
-    } catch (err) { alertError("Load Error", "Failed to load calibration records"); }
-    finally { setLoading(false); }
-  }, []);
-
-  const {
-    mode, formData, setFormData, saving, handleView, handleAdd, handleModify, performSave,
-    rights, showForm, setShowForm, activeTab, setActiveTab, handleEditCancel, isDirty,
-  } = useERPMode(initialState, (data) => data.Id ? updateCalibration(data.Id, data) : createCalibration(data), loadData, "Calibration");
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const handleHeaderTabChange = useCallback((t) => { setActiveTab(t); setShowForm(t !== "search"); }, [setActiveTab, setShowForm]);
-
-  const handleAddNew = async () => {
-    handleAdd();
-    setShowForm(true);
-    setActiveTab("entry");
-    const recordNo = await getNextRecordNo("calibration");
-    setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
-  };
-
-  useEffect(() => {
-    if (showForm && mode === "view" && list.length > 0) setFormData(list[currentIndex]);
-  }, [currentIndex, list, showForm, mode, setFormData]);
-
-  const listWithSr = list.map((item, i) => ({ ...item, Sr: i + 1 }));
-
-  const handleRowSelect = (row) => {
-    const idx = list.findIndex((i) => i.Id === row.Id);
-    if (idx !== -1) setCurrentIndex(idx);
-    handleView(row);
-    setShowForm(true);
-    setActiveTab("entry");
-  };
-
-  const handleSave = async (localData) => {
-    const dataToSave = { ...localData, Id: localData.Id ?? null };
-    if (mode === "add") dataToSave.RecordNo = "";
-    const response = await performSave("Id", dataToSave);
-    if (response?.success) { showToast({ icon: "success", title: "Saved Successfully" }); await loadData(); }
-  };
-
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({ title: `Delete Calibration "${row.RecordNo || row.Id}"?` });
-    if (!confirmed) return;
-    await deleteCalibration(row.Id);
-    showToast({ icon: "success", title: "Deleted" });
-    setShowForm(false); setActiveTab("search");
-    await loadData();
-  };
-
-  const handleDeleteMultiple = async (selected) => {
-  const ids = (selected || []).map((item) => (typeof item === "object" ? item.Id : item));
-  if (ids.length === 0) return;
-  const confirmed = await confirmDelete({ title: `Delete ${ids.length} calibration record(s)?` });
-  if (!confirmed) return;
-  try {
-    const results = await Promise.all(ids.map((id) => deleteCalibration(id)));
-    const failed = results.filter((r) => !r?.success).length;
-    showToast({
-      icon: failed === 0 ? "success" : "warning",
-      title: failed === 0 ? `${ids.length} deleted` : `${ids.length - failed} deleted, ${failed} failed`,
-    });
-    setShowForm(false);
-    setActiveTab("search");
-    await loadData();
-  } catch (err) {
-    alertError("Delete Error", "Failed to delete some calibration records");
-  }
-};
-
-  const handleFormExit = async () => {
-    const wasDirty = isDirty;
-    await handleEditCancel();
-    if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
-  };
-const [filters, setFilters] = useState({ Status: "All" });
-const [showFilter, setShowFilter] = useState(false);
-
-const applyFilter = useCallback(() => {}, []);
-const clearFilter = useCallback(() => {
-  setFilters({ Status: "All" });
-}, []);
-
-const filteredList = useMemo(() => {
-  return listWithSr.filter((item) => {
-    if (filters.Status && filters.Status !== "All") {
-      if (item.Status !== filters.Status) return false;
-    }
-    return true;
+  const m = useQmsModule({
+    moduleKey: "calibration",
+    title: "Calibration",
+    applName: tab?.appl_name || "Calibration",
+    initialState,
+    tabs: calibrationTabs,
+    tabStage: calibrationTabStage,
+    getRequired: getCalibrationRequired,
+    api: API,
   });
-}, [listWithSr, filters]);
-  return (
-    <div className="h-full w-full">
-      {showForm ? (
+
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/calibration',   // ✅ moduleKey 'calibration' se match
+    applName: 'calibration',
+    emailEndpoint: '/api/qms-print/calibration',
+    shareLinkEndpoint: '/api/qms-print/calibration',
+  });
+
+  const customTabs = useMemo(
+    () => ({ audit: <RecordAuditPanel history={m.history} /> }),
+    [m.history]
+  );
+
+  // ── filters ──
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
+  const refOpts = useRefOptions(["capa"]);
+
+  const fieldGroups = useMemo(
+    () => getCalibrationFieldGroups({ ...m.groupOptions, refOpts }),
+    [m.groupOptions, refOpts]
+  );
+  const filteredList = useMemo(() => {
+    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
+    return m.list
+      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Due" }))
+      .filter((it) =>
+        (filters.Status === "All" || it.Status === filters.Status) &&
+        (filters.CalibrationType === "All" || it.CalibrationType === filters.CalibrationType) &&
+        (!filters.Instrument || has(it.Instrument, filters.Instrument))
+      );
+  }, [m.list, filters]);
+
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `Calibration-${m.formData?.Id}`,
+      contextLabel: m.formData?.Instrument,
+    }).catch((err) => console.error('Print open failed:', err));
+  }, [m.formData, printWorkflow]);
+
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Calibration Certificate" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
+
+  if (m.showForm) {
+    return (
+      <div className="h-full w-full">
         <ERPFormBuilder
           title="Instrument Calibration"
           tabs={calibrationTabs}
-          fieldGroups={fieldGroups} 
+          tabLabels={calibrationTabLabels}
+          TabIcon={CalibrationTabIcon}
+          fieldGroups={fieldGroups}
+          customTabs={customTabs}
+          configs={calibrationSectionConfigs}
           widthConfig={calibrationWidthConfig}
-          requiredFields={calibrationRequiredFieldsList}
-          hideSidebar hideTabBar showSettingsTab
           getHeaderStyle={getHeaderStyle}
-          configs={configs}
-          TabIcon={TabIcon}
-          formData={formData} setFormData={setFormData} mode={mode}
-          settingsConfig={settingsConfig} settingsDefaults={settingsDefaults} onSettingsSave={onSettingsSave}
-          saving={saving} rights={rights}
-          onSave={handleSave} onCancel={handleFormExit} onDelete={handleDelete}
-          onModify={handleModify} onNewEntry={handleAddNew} onEditCancel={handleFormExit}
-          currentRecord={list.length > 0 ? currentIndex + 1 : 0} totalRecords={list.length}
-          onPrevRecord={() => setCurrentIndex((p) => Math.max(p - 1, 0))}
-          onNextRecord={() => setCurrentIndex((p) => Math.min(p + 1, list.length - 1))}
-          headerActiveTab={activeTab} onHeaderTabChange={handleHeaderTabChange}
+          requiredFields={m.requiredFields}
+          completedTabs={m.completedTabs}
+          hideSidebar={false}
+          hideTabBar={false}
+          showSettingsTab
+          sidebarConfig={{ hidePhoto: true, hideHeader: true }}
+          stageHistory={m.history?.stageHistory || null}
+          formData={m.formData}
+          savedFormData={m.savedFormData}
+          setFormData={m.setFormData}
+          mode={m.mode}
+          saving={m.saving}
+          rights={m.rights}
+          workflowConfig={m.workflowConfig}
+          currentUserRole={m.currentUserRole}
+          alwaysSignTabs={["review"]}
+          settingsConfig={m.settingsConfig}
+          settingsDefaults={m.settingsDefaults}
+          onSettingsSave={m.onSettingsSave}
+          onSave={m.handleSave}
+             onSaveDraft={m.handleSaveDraft}
+          onSignedSave={m.handleSignedSave}
+          onDelete={m.handleDelete}
+          onModify={m.handleModify}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
+          onNewEntry={m.handleAddNewGuarded}
+          onCancel={m.handleTabExit}
+          onEditCancel={m.handleFormExit}
+          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
+          totalRecords={m.list.length}
+          onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
+          onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
+          headerActiveTab={m.activeTab}
+          onHeaderTabChange={m.handleHeaderTabChange}
+          moduleKey="calibration"
         />
-      ) : (
-       <Table
-  activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-  onDeleteMultiple={handleDeleteMultiple}
-  title="Instrument Calibration" data={filteredList} columns={calibrationTableColumns}
-  rowKey="Id" loading={loading}
-  onRefresh={()=>loadData()}
-  onAdd={rights?.add === 1 ? handleAddNew : null}
-  onRowDoubleClick={handleRowSelect}
-  onToggleFilter={() => setShowFilter((p) => !p)}
-  showForm={showFilter}
-  formComponent={
-    <UnivarsalFilter
-      filters={filters}
-      visibleFields={["status"]}
-      setFilters={setFilters}
-      options={{
-        ...groupOptions,
-        status: ["Scheduled", "Out of Service", "Calibrated", "Rejected"],
-      }}
-      onApply={applyFilter}
-      onClear={clearFilter}
-    />
+      </div>
+    );
   }
-/>
-      )}
+
+  return (
+    <div className="h-full w-full">
+      <Table
+        title="Instrument Calibration"
+        data={filteredList}
+        columns={calibrationTableColumns}
+        rowKey="Id"
+        loading={m.loading}
+        activeTab={m.activeTab}
+        showSettingsTab
+        onTabChange={m.handleHeaderTabChange}
+        onRefresh={m.loadData}
+        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
+        onRowDoubleClick={m.handleRowSelect}
+        onDeleteMultiple={m.handleDeleteMultiple}
+        onToggleFilter={() => setShowFilter((p) => !p)}
+        showForm={showFilter}
+        formComponent={
+          <UnivarsalFilter
+            filters={filters}
+            setFilters={setFilters}
+            setShowFilter={setShowFilter}   // ✅ add kiya
+            visibleFields={["status", "instrument", "calibrationType"]}
+            options={{
+              ...m.groupOptions,
+              status: STATUS_OPTIONS,
+              calibrationType: ["Internal", "External (Agency)"],
+            }}
+            onApply={() => { }}
+            onClear={clearFilter}
+          />
+        }
+      />
     </div>
   );
 }

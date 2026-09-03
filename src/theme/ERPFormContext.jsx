@@ -20,7 +20,7 @@ export function ERPFormProvider({ children, ...props }) {
   const {
     title, configs, getHeaderStyle, TabIcon, getInitials = (str = "") => str.trim().split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "—",
     sidebarName, sidebarSub, sidebarConfig = {}, completedTabs = [],
-    tabs = [], fieldGroups = {}, customTabs = {},
+    tabs = [], fieldGroups = {}, customTabs = {}, tabLabels = {},
     formData = {}, setFormData,
     requiredFields = [], widthConfig = {},
     mode, saving, rights, canPrint,
@@ -34,10 +34,13 @@ export function ERPFormProvider({ children, ...props }) {
     workflowConfig = null,
     currentUserRole = null,
     onSignedSave = null,
-    alwaysSignTabs = [],       // 🆕 in tabs pe role match na ho tab bhi sign maango
-    stageHistory = null,       // 🆕 (req #3 ke liye) 
-    stageEntered = null,
+    onSaveDraft = null, 
+    alwaysSignTabs = [],       
+    stageHistory = null,      
+    rightSidebarConfig = null, 
      savedFormData = null,
+     moduleKey = null,   
+     recordHistory = null,
   } = props;
 
   const isViewMode = mode === "view";
@@ -99,9 +102,46 @@ export function ERPFormProvider({ children, ...props }) {
       setErrors((prev) => { const c = { ...prev }; delete c[field]; return c; });
     }
   }, [setFormData, errors, cleanAndSliceField, validateSingleField]);
+// ── 🆕 SAVE DRAFT (auto + manual) ───────────────────────────────────
+const [draftStatus, setDraftStatus] = useState(null); // null | 'saving' | 'saved'
+const [savingDraft, setSavingDraft] = useState(false);  // button ke liye separate loading
+const draftTimerRef = useRef(null);
+const skipNextAutoSaveRef = useRef(true);
 
- // ── 🆕 WORKFLOW SECTION ACCESS ────────────────────────────────────────
-// ── 🆕 WORKFLOW SECTION ACCESS ────────────────────────────────────────
+useEffect(() => {
+  skipNextAutoSaveRef.current = true;
+  setDraftStatus(null);
+}, [mode, formData.Id]);
+
+const runSaveDraft = useCallback(async () => {
+  if (!onSaveDraft) return;
+  try {
+    setDraftStatus('saving');
+    await onSaveDraft(formDataRef.current);
+    if (isMounted.current) setDraftStatus('saved');
+  } catch (err) {
+    console.error('Save draft failed:', err);
+    if (isMounted.current) setDraftStatus(null);
+  }
+}, [onSaveDraft]);
+
+// auto-save — 5 sec debounce
+// useEffect(() => {
+//   if (skipNextAutoSaveRef.current) { skipNextAutoSaveRef.current = false; return; }
+//   if (!onSaveDraft || isViewMode || !(isAddMode || isEditMode)) return;
+//   if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+//   draftTimerRef.current = setTimeout(runSaveDraft, 5000);
+//   return () => clearTimeout(draftTimerRef.current);
+// }, [formData, onSaveDraft, isViewMode, isAddMode, isEditMode, runSaveDraft]);
+
+// manual button — turant save, timer cancel
+const handleSaveDraftClick = useCallback(async () => {
+  if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+  setSavingDraft(true);
+  await runSaveDraft();
+  setSavingDraft(false);
+}, [runSaveDraft]);
+// ─────────────────────────────────────────────────────────────────
   const norm = (v) => String(v ?? '').trim().toLowerCase();
 
   const currentStage = workflowConfig?.wf
@@ -120,11 +160,9 @@ export function ERPFormProvider({ children, ...props }) {
   const hasVal = (src, k) => String(src?.[k] ?? '').trim() !== '';
 
  const isRecordClosed = !!workflowConfig?.closedStates?.includes(formData?.Status);
+ 
 
-  const workflowSidebarData = workflowConfig?.wf
-    ? { stages: workflowConfig.wf, currentStage, isClosed: isRecordClosed }
-    : null;
-
+ 
   // LOCK ke liye — sirf SAVED data dekho, live typing nahi.
   // requiredKeys khali ho to section kabhi apne aap lock na ho.
 const isSecSaved = useCallback((sec) => {
@@ -161,24 +199,34 @@ const isSecSaved = useCallback((sec) => {
   );
 const sectionAccess = useMemo(() => {
     if (!workflowConfig?.sections?.length) return null;
+
+    // is stage me kitne alag role hain?
+    const rolesAtStage = new Set(
+      (workflowConfig.sections || [])
+        .filter((s) => s.stage === currentStage)
+        .map((s) => norm(Array.isArray(s.role) ? s.role[0] : s.role))
+    );
+    const multiRoleStage = rolesAtStage.size > 1;
+
     const map = {};
     workflowConfig.sections.forEach((sec) => {
       const isPast   = sec.stage < currentStage;
       const isActive = sec.stage === currentStage;
       const mine     = matchRole(sec.role);
-      const saved    = isSecSaved(sec);          // DB me bhara hua hai?
+      const saved    = isSecSaved(sec);
 
       let state;
-      if (isPast)                  state = 'done';       // ✓ sign ho chuka
-      else if (isActive && saved)  state = 'done';       // ✓ is dept ne bhar diya
-      else if (isActive && mine)   state = 'editable';   // ✏ Your turn
-      else if (isActive)           state = 'pending';    // ⏳ doosre dept ka turn
-      else                         state = 'locked';     // 🔒 aane wala stage
+      if (isPast)                state = 'done';
+      // lock sirf tab jab stage me DO role hon aur doosre ka intezaar ho
+      else if (isActive && saved && multiRoleStage && !isStageComplete) state = 'done';
+      else if (isActive && mine) state = 'editable';
+      else if (isActive)         state = 'pending';
+      else                       state = 'locked';
 
       map[sec.key] = { state, role: sec.role };
     });
     return map;
-  }, [workflowConfig, currentStage, matchRole, isSecSaved]);
+  }, [workflowConfig, currentStage, matchRole, isSecSaved, isStageComplete]);
 
  
 // sirf apne editable sections ke required keys — locked section ke fields
@@ -190,12 +238,65 @@ const sectionAccess = useMemo(() => {
     return [...new Set(mine.flatMap((s) => s.requiredKeys || []))];
   }, [workflowConfig, currentStageSections, matchRole, requiredFields]);
 
-  const nextStage =
-    workflowConfig?.wf && currentStage >= 0 && currentStage + 1 < workflowConfig.wf.length
-      ? workflowConfig.wf[currentStage + 1]
-      : null;
+// 🆕 skip rules ke hisaab se agla stage
+  const shouldSkipStage = useCallback((idx) => {
+    const rule = workflowConfig?.stageSkip?.[idx];
+    if (!rule) return false;
+    return norm(formData?.[rule.field]) === norm(rule.equals);
+  }, [workflowConfig, formData]);
+
+  const nextStage = useMemo(() => {
+    if (!workflowConfig?.wf || currentStage < 0) return null;
+    const lastIdx = workflowConfig.wf.length - 1;
+    let i = currentStage + 1;
+    while (i < lastIdx && shouldSkipStage(i)) i++;
+    return i <= lastIdx ? workflowConfig.wf[i] : null;
+  }, [workflowConfig, currentStage, shouldSkipStage]);
+
+  // sidebar ke liye — kaunse stage skip ho rahe hain
+const skippedStages = useMemo(() => {
+    if (!workflowConfig?.wf) return [];
+    return workflowConfig.wf.map((_, i) => i).filter((i) => shouldSkipStage(i));
+  }, [workflowConfig, shouldSkipStage]);
+
+  // 🆕 skippedStages ke BAAD — TDZ error se bachne ke liye
+  const workflowSidebarData = workflowConfig?.wf
+    ? { stages: workflowConfig.wf, currentStage, isClosed: isRecordClosed, skippedStages }
+    : null;
+
+// stage index -> us stage ke roles (sidebar me "Pending — QA Head" dikhane ke liye)
+  const stageRoles = useMemo(() => {
+    const map = {};
+    (workflowConfig?.sections || []).forEach((sec) => {
+      if (!map[sec.stage]) map[sec.stage] = [];
+      const roles = Array.isArray(sec.role) ? sec.role : [sec.role];
+      roles.forEach((r) => { if (r && !map[sec.stage].includes(r)) map[sec.stage].push(r); });
+    });
+    return map;
+  }, [workflowConfig]);
 
   const isMyTurn = currentStageSections.some((sec) => matchRole(sec.role));
+
+ // 1. compute
+  const canReject = useMemo(() => {
+    if (!workflowConfig || isAddMode || isRecordClosed) return false;
+    if (workflowConfig.allowReject === false) return false;
+    if (String(formData?.Status || '').toLowerCase() === 'rejected') return false;
+    const allowed = workflowConfig.rejectableStages;
+    if (allowed && !allowed.includes(currentStage)) return false;
+    return isMyTurn;
+  }, [workflowConfig, isAddMode, isRecordClosed, currentStage, isMyTurn, formData?.Status]);
+
+    // 🆕 naya record sirf stage 0 ka role bana sakta hai
+  const canAddNew = useMemo(() => {
+    if (!workflowConfig?.sections?.length) return true;   // masters — hamesha allowed
+    if (isAdminRole) return true;
+    const stage0Roles = workflowConfig.sections
+      .filter((s) => s.stage === 0)
+      .flatMap((s) => (Array.isArray(s.role) ? s.role : [s.role]))
+      .map(norm);
+    return stage0Roles.includes(norm(currentUserRole));
+  }, [workflowConfig, isAdminRole, currentUserRole]);
 
   // sectionTitle -> fields[] (dono fieldGroups formats handle)
   const sectionFieldMap = useMemo(() => {
@@ -213,8 +314,9 @@ const sectionAccess = useMemo(() => {
 const completionPercentage = useMemo(() => {
     if (isRecordClosed) return 100;
 
-    const keys = currentStageSections.length
-      ? [...new Set(currentStageSections.flatMap((sec) =>
+    const allSections = workflowConfig?.sections || [];
+    const keys = allSections.length
+      ? [...new Set(allSections.flatMap((sec) =>
           (sectionFieldMap[sec.key] || [])
             .filter((f) => f.key && !f.disabled
               && f.type !== 'row-break' && f.type !== 'section-divider'
@@ -226,7 +328,7 @@ const completionPercentage = useMemo(() => {
     if (!keys.length) return 0;
     const filled = keys.filter((k) => hasVal(formData, k)).length;
     return Math.round((filled / keys.length) * 100);
-  }, [isRecordClosed, currentStageSections, sectionFieldMap, requiredFields, formData]);
+  }, [isRecordClosed, workflowConfig, sectionFieldMap, requiredFields, formData]);
   // ────────────────────────────────────────────────────────────────────
 
   const handleFileChange = useCallback((e) => {
@@ -257,30 +359,30 @@ const completionPercentage = useMemo(() => {
   const metaValue = useMemo(() => ({
     title, configs, getHeaderStyle, TabIcon, getInitials,
     sidebarName, sidebarSub, sidebarConfig, completedTabs,
-    tabs, fieldGroups, customTabs, requiredFields, widthConfig,
+    tabs, tabLabels, fieldGroups, customTabs, requiredFields, widthConfig,
     mode, isViewMode, isAddMode, isEditMode, saving, rights, canPrint,
     onSave, onCancel, onDelete, onModify, onNewEntry, onPrint, onEditCancel,
     currentRecord, totalRecords, onPrevRecord, onNextRecord,
-    showSettingsTab, hideSidebar, hideTabBar,
+    showSettingsTab, hideSidebar, hideTabBar,skippedStages,
     activeTab, setActiveTab, effectiveHeaderTab, handleHeaderTabChange,
     settingsConfig, settingsDefaults, onSettingsSave,
     saveBtnRef, scrollContainerRef, fileInputRef, isMounted, skipAutoFocusRef,
     handleFileChange, validateForm,
-    sectionAccess, workflowSidebarData, nextStage, isMyTurn, onSignedSave, completionPercentage, alwaysSignTabs, stageHistory, 
-    isStageComplete, stagePendingSections, currentStage, savedFormData,isRecordClosed ,myRequiredKeys, stageEntered,  
+    sectionAccess, workflowSidebarData, nextStage, isMyTurn, canReject, onSignedSave, completionPercentage, alwaysSignTabs, stageHistory, 
+    isStageComplete, stagePendingSections, currentStage, savedFormData,isRecordClosed ,myRequiredKeys, stageRoles,  draftStatus, savingDraft, handleSaveDraftClick, rightSidebarConfig, moduleKey,recordHistory, canAddNew,
   }), [
     title, configs, getHeaderStyle, TabIcon, getInitials,
     sidebarName, sidebarSub, sidebarConfig, completedTabs,
-    tabs, fieldGroups, customTabs, requiredFields, widthConfig,
+    tabs, tabLabels, fieldGroups, customTabs, requiredFields, widthConfig,
     mode, isViewMode, isAddMode, isEditMode, saving, rights, canPrint,
     onSave, onCancel, onDelete, onModify, onNewEntry, onPrint, onEditCancel,
     currentRecord, totalRecords, onPrevRecord, onNextRecord,
-    showSettingsTab, hideSidebar, hideTabBar,
+    showSettingsTab, hideSidebar, hideTabBar, skippedStages,
     activeTab, setActiveTab, effectiveHeaderTab, handleHeaderTabChange,
     settingsConfig, settingsDefaults, onSettingsSave,
     handleFileChange, validateForm,
-    sectionAccess, workflowSidebarData, nextStage, isMyTurn, onSignedSave, completionPercentage, alwaysSignTabs, stageHistory, 
-    isStageComplete, stagePendingSections, currentStage, savedFormData,isRecordClosed ,myRequiredKeys, stageEntered,  
+    sectionAccess, workflowSidebarData, nextStage, isMyTurn, canReject, onSignedSave, completionPercentage, alwaysSignTabs, stageHistory, 
+    isStageComplete, stagePendingSections, currentStage, savedFormData,isRecordClosed ,myRequiredKeys, stageRoles, draftStatus, savingDraft, handleSaveDraftClick,  rightSidebarConfig, moduleKey, recordHistory, canAddNew,
 
   ]);
   const dataValue = useMemo(() => ({

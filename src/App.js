@@ -14,6 +14,7 @@ import { useNotifications } from "./theme/NotificationContext";
 import NotificationToast from "./components/Layout/Notification/NotificationToast";
 import { startGlobalAutocompleteGuard } from "./utils/disableGlobalAutocomplete"; 
 import 'primeicons/primeicons.css';
+import{AuthProvider, useAuth} from "./theme/AuthContext";
 function AppShell({
   theme,
   sidebarCollapsed,
@@ -124,9 +125,8 @@ style={{
 } 
 function App() {
   const navigate = useNavigate(); 
-  const [isAuthenticated, setIsAuthenticated] = useState(() =>
-    !!sessionStorage.getItem("token")
-  );
+ const { isAuthenticated } = useAuth(); 
+   const { token } = useAuth();
   const [theme, setTheme] = useState(
     () => localStorage.getItem("finaman-theme") || "theme-light"
   );
@@ -171,29 +171,26 @@ function App() {
 
   // ── Auth guard ──────────────────────────────────────────────────────────
 useEffect(() => {
-  const publicPaths = ["/quotation-rate"]; // yahan future public routes bhi add kar sakti ho
+  const publicPaths = ["/quotation-rate"];  
   const isPublicPath = publicPaths.some((p) => window.location.pathname.startsWith(p));
 
   if (!isAuthenticated && !isPublicPath) {
     navigate("/login", { replace: true });
   }
 }, [isAuthenticated, navigate]);
-  // ── Load menus ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const loadMenus = async () => {
-      try {
-        const token = sessionStorage.getItem("token");
-        if (!token) return;
-        const data = await fetchMasmnuData(token);
-        setMenusFromBackend(data || []);
-        syncMenusToContext(data || []);
-        console.log("[Menus synced to context]", data?.length, "items");
-      } catch (error) {
-        console.error("Error loading menus:", error);
-      }
-    };
-    if (isAuthenticated) loadMenus();
-  }, [isAuthenticated, syncMenusToContext]);
+useEffect(() => {
+  const loadMenus = async () => {
+    try {
+      if (!token) return;
+      const data = await fetchMasmnuData(token);
+      setMenusFromBackend(data || []);
+      syncMenusToContext(data || []);
+    } catch (error) {
+      console.error("Error loading menus:", error);
+    }
+  };
+  if (isAuthenticated) loadMenus();
+}, [isAuthenticated, token, syncMenusToContext]);
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
@@ -332,16 +329,16 @@ if (module.masmod_id === 20) {
   // ── Routes ──────────────────────────────────────────────────────────────
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? (
-            <Navigate to="/app" replace />
-          ) : (
-            <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />
-          )
-        }
-      />
+ <Route
+  path="/login"
+  element={
+    isAuthenticated ? (
+      <Navigate to="/app" replace />
+    ) : (
+      <LoginPage onLoginSuccess={() => {}} />  
+    )
+  }
+/>
 
       <Route
         path="/app"

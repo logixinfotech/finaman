@@ -1,7 +1,6 @@
- 
 import { useState, useEffect } from "react";
 import { Filter, X } from "lucide-react";
-import ERPAutocomplete from "../input/ERPAutocomplete"; // Path cross check kar lein
+import ERPAutocomplete from "../input/ERPAutocomplete";  
 import ERPDate from "../input/Date";
 
 const MONTHS = [
@@ -21,14 +20,16 @@ const MONTHS = [
 
 const getLastDay = (year, month) => new Date(year, month, 0).getDate();
 const pad = (n) => String(n).padStart(2, "0");
-
+ 
+ 
 const GenericFilter = ({
   filters,
+  setShowFilter,
   setFilters,
   onApply,
   onClear,
-  visibleFields = [], // Example: ["filterType", "employee", "department", "status", "module", "menu", "application", "itemType"]
-  options = { employees: [], department: [], modules: [],area: [] }, // Hooks data passed from parent
+  visibleFields = [],  
+  options = { employees: [], department: [], modules: [],area: [] },  
 }) => {
   const today = new Date();
 
@@ -51,6 +52,9 @@ const GenericFilter = ({
   const [monthText, setMonthText] = useState(
     init.month ? MONTHS.find((m) => m.value === init.month)?.label : ""
   );
+ 
+   const toggle=() => setShowFilter((p) => !p);
+    
 
   // Sync component internal updates when incoming filters change globally
   useEffect(() => {
@@ -120,7 +124,7 @@ const GenericFilter = ({
               value={filterType}
               options={["Month Wise", "Custom Date Range"]}
               onChange={(val) => setFilterType(val)}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm border h-[20px] border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -139,7 +143,7 @@ const GenericFilter = ({
                 const selected = MONTHS.find((m) => m.label === typedValue);
                 setSelectedMonth(selected?.value || "");
               }}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -154,7 +158,7 @@ const GenericFilter = ({
               <ERPDate
                 value={draft.from_date || ""}
                 onChange={(e) => setDraft((prev) => ({ ...prev, from_date: e }))}
-                className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
@@ -165,7 +169,7 @@ const GenericFilter = ({
               <ERPDate
                 value={draft.to_date || ""}
                 onChange={(e) => setDraft((prev) => ({ ...prev, to_date: e }))}
-                className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </>
@@ -188,7 +192,7 @@ const GenericFilter = ({
                   employee_name: selectedValue || "",
                 }));
               }}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -213,7 +217,7 @@ const GenericFilter = ({
                     department: selectedValue || "",           // 👈 STP ke liye
                 }));
               }}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -233,7 +237,7 @@ const GenericFilter = ({
           : ["Active", "Inactive", "All"]   // 👈 default fallback
       }
       onChange={(val) => setDraft((prev) => ({ ...prev, Status: val, status: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -253,7 +257,7 @@ const GenericFilter = ({
           Area: selectedValue || "",
         }));
       }}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -267,7 +271,7 @@ const GenericFilter = ({
       value={draft.Severity || "All"}
       options={["All", "Low", "Medium", "High", "Critical"]}
       onChange={(val) => setDraft((prev) => ({ ...prev, Severity: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -288,7 +292,7 @@ const GenericFilter = ({
           product: selectedValue || "",
         }));
       }}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -303,7 +307,7 @@ const GenericFilter = ({
       value={draft.classification || "All"}
       options={["All", "Class I", "Class II", "Class III"]}
       onChange={(val) => setDraft((prev) => ({ ...prev, classification: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -317,7 +321,7 @@ const GenericFilter = ({
       value={draft.DocType || "All"}
       options={["All", "SOP", "Policy", "Form", "Manual", "Work Instruction"]}
       onChange={(val) => setDraft((prev) => ({ ...prev, DocType: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -331,7 +335,7 @@ const GenericFilter = ({
       value={draft.training_type || "All"}
       options={["All", "Induction", "On-the-Job", "Refresher", "SOP", "GMP"]}
       onChange={(val) => setDraft((prev) => ({ ...prev, training_type: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -345,7 +349,7 @@ const GenericFilter = ({
       value={draft.MonitoringType || "All"}
       options={["All", "Air", "Surface", "Personnel", "Water"]}
       onChange={(val) => setDraft((prev) => ({ ...prev, MonitoringType: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -359,7 +363,7 @@ const GenericFilter = ({
       value={draft.category || "All"}
       options={["All", "Manufacturing", "QC", "QA", "Engineering", "Warehouse"]}
       onChange={(val) => setDraft((prev) => ({ ...prev, category: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -373,7 +377,7 @@ const GenericFilter = ({
       value={draft.audit_type || "All"}
       options={["All", "Internal", "External", "Regulatory", "Supplier"]}
       onChange={(val) => setDraft((prev) => ({ ...prev, audit_type: val }))}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -397,7 +401,7 @@ const GenericFilter = ({
           area_department_audited: selectedValue || "",
         }));
       }}
-      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
     />
   </div>
 )}
@@ -414,7 +418,7 @@ const GenericFilter = ({
               onChange={(selectedValue) => {
                 setDraft((prev) => ({ ...prev, mod_name: selectedValue || "" }));
               }}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -430,7 +434,7 @@ const GenericFilter = ({
               placeholder="Menu name"
               value={draft.pad_name || ""}
               onChange={(e) => setDraft((prev) => ({ ...prev, pad_name: e.target.value }))}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -446,7 +450,7 @@ const GenericFilter = ({
               placeholder="Application"
               value={draft.appl_name || ""}
               onChange={(e) => setDraft((prev) => ({ ...prev, appl_name: e.target.value }))}
-              className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -462,7 +466,7 @@ const GenericFilter = ({
               placeholder="F / R"
               value={draft.item_type || ""}
               onChange={(e) => setDraft((prev) => ({ ...prev, item_type: e.target.value }))}
-              className="w-full text-sm text-center border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full h-[30px] text-sm text-center border border-gray-300 rounded-md px-3 py-2 bg-transparent outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
         )}
@@ -478,6 +482,7 @@ const GenericFilter = ({
           </button>
           <button
             onClick={handleClear}
+            onDoubleClick={toggle}
             className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-3 py-1 rounded-md border border-gray-300 transition duration-150 ease-in-out shadow-sm h-[28px]"
           >
             <X size={10} />

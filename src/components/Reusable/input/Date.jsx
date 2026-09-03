@@ -194,7 +194,7 @@ const ERPDateInput = forwardRef(({
       />
 
       {/* ✅ ADDED: Calendar icon button */}
-      {!disabled && (
+     
         <button
           type="button"
           tabIndex={-1}
@@ -203,7 +203,7 @@ const ERPDateInput = forwardRef(({
         >
           <FaRegCalendarAlt className="text-[13px]" />
         </button>
-      )}
+   
 
       {/* ✅ ADDED: Hidden native date input jo actual picker kholega */}
       <input

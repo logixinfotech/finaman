@@ -1,79 +1,17 @@
-/**
- * pages/NOTIFICATIONS_PAGE.jsx
- * ═══════════════════════════════════════════════════════════════
- * Bug fixes applied:
- *
- * 1. KEYBOARD NAV HANGS
- *    - flatList is now useMemo so its reference only changes when
- *      filtered data actually changes (not every render)
- *    - keyboard handler uses a ref (flatListRef) so it always sees
- *      the latest list without needing it in the dependency array
- *    - itemRefs cleared when filter changes so indices stay in sync
- *
- * 2. STICKY HEADER BROKEN
- *    - Removed `sticky top-0` — it doesn't work inside
- *      overflow:hidden parents. flex-shrink-0 already pins it.
- *
- * 3. ANIMATEPRESENCE IN WRONG PLACE
- *    - Moved AnimatePresence to wrap NotifItem directly so
- *      individual item exit animations fire correctly
- *
- * 4. globalIdx / itemRefs OUT OF SYNC
- *    - Replaced render-local globalIdx with flatList.indexOf(n)
- *      so refs always match the memoized list indices
- *    - itemRefs.current = [] cleared on filter/search change
- *
- * 5. layout + hover:scale CONFLICT
- *    - Removed hover:scale-[1.005] from motion.div with layout prop
- *    - Replaced with CSS box-shadow hover (no layout reflow)
- *
- * 6. SEARCH DEBOUNCE
- *    - 200ms debounce on search so large lists don't jank
- * ═══════════════════════════════════════════════════════════════
- */
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, CheckCheck, Trash2, RefreshCw, CheckCircle2,
-  Info, AlertTriangle, XCircle, CircleCheck,
+  Undo2,
 } from "lucide-react";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { useNotifications, CATEGORIES, PRIORITIES } from "../theme/NotificationContext";
-
-dayjs.extend(relativeTime);
-
-// ─── Helpers ─────────────────────────────────────────────────
-function groupByDay(list) {
-  const groups = { Today: [], Yesterday: [], Earlier: [] };
-  const today     = dayjs().startOf("day");
-  const yesterday = today.subtract(1, "day");
-  list.forEach(n => {
-    const d = dayjs(n.created_at);
-    if (d.isSame(today, "day"))          groups.Today.push(n);
-    else if (d.isSame(yesterday, "day")) groups.Yesterday.push(n);
-    else                                  groups.Earlier.push(n);
-  });
-  return groups;
-}
-
-function resolveMenu(action_url, menusFromBackend) {
-  if (!action_url || !menusFromBackend?.length) return null;
-  return menusFromBackend.find(
-    m => m.appl_name?.trim() === action_url?.trim()
-  ) || null;
-}
-
-// ─── Type config ──────────────────────────────────────────────
-const TYPE_CONFIG = {
-  info:    { Icon: Info,          bgCls: "bg-blue-100",   textCls: "text-blue-500",   border: "#3b82f6" },
-  warning: { Icon: AlertTriangle, bgCls: "bg-yellow-100", textCls: "text-yellow-500", border: "#f59e0b" },
-  error:   { Icon: XCircle,       bgCls: "bg-red-100",    textCls: "text-red-500",    border: "#ef4444" },
-  success: { Icon: CircleCheck,   bgCls: "bg-green-100",  textCls: "text-green-500",  border: "#22c55e" },
-  default: { Icon: Bell,          bgCls: "bg-gray-100",   textCls: "text-gray-500",   border: "#9ca3af" },
-};
-const getTC = (type) => TYPE_CONFIG[type] || TYPE_CONFIG.default;
+import {
+  getNotificationTypeConfig,
+  resolveNotificationMenu,
+  useNotificationFilters,
+  useUndoableAction,
+  useRelativeTime,
+} from "../components/Layout/Notification/useNotificationTime";
 
 // ─── Single row ───────────────────────────────────────────────
 const NotifItem = ({
@@ -85,11 +23,12 @@ const NotifItem = ({
   const cat      = CATEGORIES[n.category] || CATEGORIES.system;
   const pri      = PRIORITIES[n.priority]  || PRIORITIES.low;
   const resolved = useMemo(
-    () => resolveMenu(n.action_url, menusFromBackend),
+    () => resolveNotificationMenu(n.action_url, menusFromBackend),
     [n.action_url, menusFromBackend]
   );
-  const tc       = getTC(n.type);
+  const tc       = getNotificationTypeConfig(n.type);
   const IconComp = tc.Icon;
+  const timeLabel = useRelativeTime(n.created_at);
 
   const navigateToPage = useCallback((e) => {
     e.stopPropagation();
@@ -120,8 +59,8 @@ const NotifItem = ({
       onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
     >
       {/* Type icon */}
-      <div className={`w-9 h-9 flex items-center justify-center rounded-full flex-shrink-0 mt-0.5 ${tc.bgCls}`}>
-        <IconComp className={`w-5 h-5 ${tc.textCls}`} />
+      <div className={`w-9 h-9 flex items-center justify-center rounded-full flex-shrink-0 mt-0.5 ${tc.bg}`}>
+        <IconComp className={`w-5 h-5 ${tc.text}`} />
       </div>
 
       {/* Body */}
@@ -137,14 +76,15 @@ const NotifItem = ({
               New
             </span>
           )}
+          {/* FIX 7: 9px badges bumped to 11px minimum for legibility */}
           <span
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded border flex-shrink-0"
+            className="text-[11px] font-semibold px-1.5 py-0.5 rounded border flex-shrink-0"
             style={{ color: pri.color, borderColor: pri.color + "40", background: pri.color + "10" }}
           >
             {pri.label}
           </span>
           <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+            className="text-[11px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
             style={{ color: cat.color, background: cat.bg }}
           >
             {cat.label}
@@ -173,9 +113,7 @@ const NotifItem = ({
 
         {/* Meta row */}
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-          <span className="text-xs text-gray-500">
-            {dayjs(n.created_at).fromNow()}
-          </span>
+          <span className="text-xs text-gray-500">{timeLabel}</span>
           {resolved && (
             <button
               onClick={navigateToPage}
@@ -186,7 +124,7 @@ const NotifItem = ({
               → {resolved.bar_name}
             </button>
           )}
-          <span className="text-[10px] text-gray-400">
+          <span className="text-[11px] text-gray-400">
             {expanded ? "↑ collapse" : "↓ details"}
           </span>
         </div>
@@ -205,6 +143,7 @@ const NotifItem = ({
         )}
         <button
           onClick={e => { e.stopPropagation(); onDismiss(n.id); }}
+          aria-label="Dismiss notification"
           className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-gray-400 hover:text-gray-700 text-xs"
         >
           ✕
@@ -223,18 +162,59 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
     clearAll, fetchNotifications,
   } = useNotifications();
 
-  const [readFilter,  setReadFilter]  = useState("all");
-  const [catFilter,   setCatFilter]   = useState("all");
-  const [activeIdx,   setActiveIdx]   = useState(0);
-  const [searchText,  setSearchText]  = useState("");
-  const [searchQuery, setSearchQuery] = useState(""); // FIX 6: debounced
-  const [newestId,    setNewestId]    = useState(null);
+  // FIX 8: shared filter/search/group state (was duplicated per-file, now
+  // imported from hooks/useRelativeTime — see useNotificationFilters)
+  const {
+    readFilter, setReadFilter,
+    catFilter, setCatFilter,
+    searchText, setSearchText,
+    searchQuery, clearSearch,
+    groups,
+  } = useNotificationFilters(notifications);
 
-  // FIX 6: debounce search input
-  useEffect(() => {
-    const t = setTimeout(() => setSearchQuery(searchText), 200);
-    return () => clearTimeout(t);
-  }, [searchText]);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [newestId,  setNewestId]  = useState(null);
+
+  // FIX 9: aria-live announcer for new/unread arrivals — screen readers
+  // get told when something new comes in, sighted users still see the ring
+  const [announceText, setAnnounceText] = useState("");
+
+  // FIX 10: dismiss now goes through an undo window instead of being instant
+  const { pending: pendingDismiss, run: runDismiss, undo: undoDismiss } =
+    useUndoableAction(dismissById, { delayMs: 5000 });
+  const [hiddenIds, setHiddenIds] = useState(() => new Set());
+
+  const handleDismiss = useCallback((id) => {
+    setHiddenIds(prev => new Set(prev).add(id));
+    const item = notifications.find(n => n.id === id);
+    runDismiss(id, item?.title || "Notification", id);
+  }, [notifications, runDismiss]);
+
+  const handleUndoDismiss = useCallback(() => {
+    if (!pendingDismiss) return;
+    setHiddenIds(prev => {
+      const next = new Set(prev);
+      next.delete(pendingDismiss.key);
+      return next;
+    });
+    undoDismiss();
+  }, [pendingDismiss, undoDismiss]);
+
+  // FIX 11: Clear All needs a second click within 3s to actually fire —
+  // protects against an accidental wipe of the whole notification list
+  const [clearArmed, setClearArmed] = useState(false);
+  const clearArmTimeout = useRef(null);
+  const handleClearAll = useCallback(() => {
+    if (!clearArmed) {
+      setClearArmed(true);
+      clearArmTimeout.current = setTimeout(() => setClearArmed(false), 3000);
+      return;
+    }
+    clearTimeout(clearArmTimeout.current);
+    setClearArmed(false);
+    clearAll();
+  }, [clearArmed, clearAll]);
+  useEffect(() => () => clearTimeout(clearArmTimeout.current), []);
 
   // FIX 4: itemRefs as a plain ref (not state), cleared on filter change
   const itemRefsMap = useRef({});
@@ -243,6 +223,15 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
   // FIX 1: stable ref to flatList so keyboard handler never goes stale
   const flatListRef = useRef([]);
 
+  // Keep activeIdx in a ref too, so the Enter-key handler always reads the
+  // current selection instead of the value captured when the listener was
+  // first registered (this was a latent bug in the original — the effect
+  // only registers once since its deps are just [markAsRead, markAllAsRead],
+  // so a plain closure over `activeIdx` would freeze at whatever it was on
+  // mount).
+  const activeIdxRef = useRef(0);
+  useEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
+
   // Track newest
   const prevLength = useRef(notifications.length);
   useEffect(() => {
@@ -250,28 +239,12 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
       const newest = notifications[0];
       if (newest && !newest.is_read) {
         setNewestId(newest.id);
+        setAnnounceText(`New notification: ${newest.title}`);
         setTimeout(() => setNewestId(null), 5000);
       }
     }
     prevLength.current = notifications.length;
   }, [notifications]);
-
-  // FIX 1: memoize filtered list — only recalculates when data/filters change
-  const filtered = useMemo(() => notifications.filter(n => {
-    const r = readFilter === "all" ? true : readFilter === "unread" ? !n.is_read : n.is_read;
-    const c = catFilter  === "all" ? true : n.category === catFilter;
-    const s = !searchQuery ||
-      n.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.message?.toLowerCase().includes(searchQuery.toLowerCase());
-    return r && c && s;
-  }), [notifications, readFilter, catFilter, searchQuery]);
-
-  // FIX 1: memoize groups and flatList — stable references
-  const groups   = useMemo(() => groupByDay(filtered), [filtered]);
-  const flatList = useMemo(() => Object.values(groups).flat(), [groups]);
-
-  // FIX 1: keep flatListRef in sync
-  useEffect(() => { flatListRef.current = flatList; }, [flatList]);
 
   // FIX 4: clear refs when filter changes so indices stay in sync
   useEffect(() => {
@@ -289,7 +262,6 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
         e.preventDefault();
         setActiveIdx(i => {
           const next = Math.min(i + 1, list.length - 1);
-          // FIX 1+4: scroll using the stable ref map
           setTimeout(() => {
             itemRefsMap.current[list[next]?.id]?.scrollIntoView({
               block: "nearest", behavior: "smooth",
@@ -313,7 +285,7 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
       }
 
       if (e.key === "Enter") {
-        const n = list[activeIdx];  // activeIdx read from closure is fine here
+        const n = list[activeIdxRef.current];
         if (n && !n.is_read) markAsRead(n.id);
       }
       if (e.key === "r" || e.key === "R") markAllAsRead();
@@ -321,13 +293,7 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-    // FIX 1: only markAsRead/markAllAsRead in deps — not flatList or activeIdx
-    // flatList is read via flatListRef, activeIdx is read directly (stable in handler)
   }, [markAsRead, markAllAsRead]);
-
-  // Keep activeIdx in a ref too so the keyboard handler can read it
-  const activeIdxRef = useRef(0);
-  useEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
 
   const activeCats = useMemo(
     () => [...new Set(notifications.map(n => n.category))].filter(c => CATEGORIES[c]),
@@ -342,10 +308,57 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
 
   const accentColor = "var(--sidebar-top-bg, #1e3a5f)";
 
+  // FIX 12: pull unread error/warning items out of the day groups into a
+  // "Needs attention" section pinned at the top, so a critical item from
+  // an hour ago doesn't sit buried under 40 read updates from Today.
+  // Grounded in `n.type` (info/warning/error/success), which already
+  // exists on every notification — not a new priority field.
+  const attentionCount = useMemo(
+    () => notifications.filter(n => !n.is_read && (n.type === "error" || n.type === "warning")).length,
+    [notifications]
+  );
+
+  const catCounts = useMemo(() => {
+    const map = {};
+    notifications.forEach(n => {
+      if (!n.is_read) map[n.category] = (map[n.category] || 0) + 1;
+    });
+    return map;
+  }, [notifications]);
+
+  const sections = useMemo(() => {
+    const attention = [];
+    const rest = { Today: [], Yesterday: [], Earlier: [] };
+    for (const [label, items] of Object.entries(groups)) {
+      for (const n of items) {
+        if (hiddenIds.has(n.id)) continue;
+        if (!n.is_read && (n.type === "error" || n.type === "warning")) attention.push(n);
+        else rest[label].push(n);
+      }
+    }
+    const out = {};
+    if (attention.length) out["Needs attention"] = attention;
+    for (const [label, items] of Object.entries(rest)) {
+      if (items.length) out[label] = items;
+    }
+    return out;
+  }, [groups, hiddenIds]);
+  const sectionsFlat = useMemo(() => Object.values(sections).flat(), [sections]);
+
+  // FIX 1: keep flatListRef in sync — now sourced from `sections` so
+  // keyboard nav order matches what's actually on screen, attention
+  // section included.
+  useEffect(() => { flatListRef.current = sectionsFlat; }, [sectionsFlat]);
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-gray-50">
 
-      {/* ══ HEADER — FIX 2: no sticky (doesn't work in overflow:hidden) ═ */}
+      {/* FIX 9: visually-hidden live region for screen readers */}
+      <div aria-live="polite" role="status" className="sr-only">
+        {announceText}
+      </div>
+
+      {/* ══ HEADER ═ */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -360,7 +373,11 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
             Notifications
           </h2>
           <p className="text-xs text-gray-400 hidden sm:block ml-1">
-            {loading ? "Refreshing…" : unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+            {loading
+              ? "Refreshing…"
+              : unreadCount > 0
+              ? `${unreadCount} unread${attentionCount > 0 ? ` · ${attentionCount} need attention` : ""}`
+              : "All caught up"}
           </p>
         </div>
 
@@ -373,9 +390,13 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
             className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-semibold shadow transition">
             <CheckCheck size={13} /> Mark All Read
           </button>
-          <button onClick={clearAll}
-            className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold shadow transition">
-            <Trash2 size={13} /> Clear All
+          <button
+            onClick={handleClearAll}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold shadow transition text-white ${
+              clearArmed ? "bg-red-700 animate-pulse" : "bg-red-500 hover:bg-red-600"
+            }`}
+          >
+            <Trash2 size={13} /> {clearArmed ? "Confirm clear?" : "Clear All"}
           </button>
         </div>
       </div>
@@ -393,7 +414,7 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
               }}>
               {t.label}
               {t.count > 0 && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                <span className="text-[11px] px-1.5 py-0.5 rounded-full font-bold"
                   style={{
                     background: readFilter === t.key ? "rgba(255,255,255,0.25)" : "#e5e7eb",
                     color:      readFilter === t.key ? "#fff"                   : "#6b7280",
@@ -416,7 +437,7 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
             onBlur={e => e.target.style.borderColor = "#e5e7eb"}
           />
           {searchText && (
-            <button onClick={() => { setSearchText(""); setSearchQuery(""); }}
+            <button onClick={clearSearch}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">
               ✕
             </button>
@@ -434,7 +455,7 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
           ].map(t => (
             <button key={t.key}
               onClick={() => setCatFilter(t.key)}
-              className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wide transition-all"
+              className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wide transition-all"
               style={{
                 background:  catFilter === t.key ? accentColor : "transparent",
                 borderColor: catFilter === t.key ? accentColor : "#e5e7eb",
@@ -442,6 +463,17 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
               }}>
               {t.icon && <span>{t.icon}</span>}
               {t.label}
+              {catCounts[t.key] > 0 && (
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded-full font-bold normal-case tracking-normal"
+                  style={{
+                    background: catFilter === t.key ? "rgba(255,255,255,0.25)" : "#fee2e2",
+                    color:      catFilter === t.key ? "#fff"                   : "#b91c1c",
+                  }}
+                >
+                  {catCounts[t.key]}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -450,8 +482,8 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
       {/* ══ KEYBOARD HINTS ════════════════════════════════════ */}
       <div className="flex-shrink-0 flex items-center gap-4 px-5 py-1.5 bg-gray-50 border-b border-gray-100">
         {[["↑↓", "Navigate"], ["Enter", "Mark read"], ["R", "Read all"]].map(([key, label]) => (
-          <span key={key} className="flex items-center gap-1 text-[10px] text-gray-400">
-            <kbd className="px-1.5 py-0.5 rounded text-[9px] font-mono border border-gray-200 bg-white text-gray-500">
+          <span key={key} className="flex items-center gap-1 text-[11px] text-gray-400">
+            <kbd className="px-1.5 py-0.5 rounded text-[11px] font-mono border border-gray-200 bg-white text-gray-500">
               {key}
             </kbd>
             {label}
@@ -459,13 +491,13 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
         ))}
       </div>
 
-      {/* ══ LIST — FIX 1+3+4: stable scroll container ═════════ */}
+      {/* ══ LIST ═════════════════════════════════════════════ */}
       <div
         ref={scrollContainer}
         className="flex-1 overflow-y-auto min-h-0 py-4"
         style={{ scrollbarWidth: "thin" }}
       >
-        {!flatList.length ? (
+        {!sectionsFlat.length ? (
           <div className="flex flex-col items-center justify-center h-48 mx-5 bg-white rounded-lg border border-gray-100">
             <Bell size={32} className="mb-3 text-gray-300" />
             <p className="text-sm font-medium text-gray-400">
@@ -478,18 +510,20 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
           </div>
         ) : (
           <div className="space-y-5 px-5">
-            {Object.entries(groups).map(([label, items]) =>
+            {Object.entries(sections).map(([label, items]) =>
               items.length > 0 && (
                 <div key={label}>
-                  <h3 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">
+                  <h3
+                    className={`text-xs font-semibold mb-2 uppercase tracking-wider ${
+                      label === "Needs attention" ? "text-red-600" : "text-gray-500"
+                    }`}
+                  >
                     {label}
                   </h3>
-                  {/* FIX 3: AnimatePresence wraps items directly */}
                   <div className="space-y-2">
                     <AnimatePresence mode="popLayout">
-                      {items.map((n, i) => {
-                        // FIX 4: use flatList index keyed by n.id — stable across renders
-                        const idx = flatList.indexOf(n);
+                      {items.map((n) => {
+                        const idx = sectionsFlat.indexOf(n);
                         return (
                           <div
                             key={n.id}
@@ -497,13 +531,12 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
                           >
                             <NotifItem
                               n={n}
-                              index={i}
                               isActive={idx === activeIdx}
                               isNewest={n.id === newestId}
                               onRead={markAsRead}
-                              onDismiss={dismissById}
+                              onDismiss={handleDismiss}
                               onOpenPage={onOpenPage}
-                              menusFromBackend={menusFromBackend} 
+                              menusFromBackend={menusFromBackend}
                               itemRef={el => {
                                 if (el) itemRefsMap.current[n.id] = el;
                                 else delete itemRefsMap.current[n.id];
@@ -520,6 +553,26 @@ const NOTIFICATIONS_PAGE = ({ tab, module, onOpenPage }) => {
           </div>
         )}
       </div>
+
+      {/* FIX 10: undo-dismiss toast */}
+      <AnimatePresence>
+        {pendingDismiss && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className="flex-shrink-0 mx-5 mb-4 flex items-center justify-between gap-3 bg-gray-800 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg"
+          >
+            <span>Notification dismissed</span>
+            <button
+              onClick={handleUndoDismiss}
+              className="flex items-center gap-1 font-semibold text-green-300 hover:text-green-200"
+            >
+              <Undo2 size={13} /> Undo
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

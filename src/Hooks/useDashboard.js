@@ -8,7 +8,7 @@ export const useDashboard = () => {
   const [lastFetched, setLastFetched] = useState(null);
 
   const fetchSummary = useCallback(async () => {
-    console.log("\n[useDashboard] ▶ fetchSummary called");
+    // console.log("\n[useDashboard] ▶ fetchSummary called");
     setLoading(true);
     setError(null);
 
@@ -35,7 +35,7 @@ export const useDashboard = () => {
 
       setData(res.data);
       setLastFetched(new Date());
-      console.log("[useDashboard] ✅ State updated successfully");
+      // console.log("[useDashboard] ✅ State updated successfully");
 
     } catch (err) {
       console.error("[useDashboard] ❌ EXCEPTION:", err);
@@ -43,14 +43,14 @@ export const useDashboard = () => {
       setError(err.message);
     } finally {
       setLoading(false);
-      console.log("[useDashboard] fetchSummary done — loading: false\n");
+      // console.log("[useDashboard] fetchSummary done — loading: false\n");
     }
   }, []);
 
   useEffect(() => { 
     fetchSummary();
     const interval = setInterval(() => {
-      console.log("[useDashboard] Auto-refresh triggered (5 min)");
+      // console.log("[useDashboard] Auto-refresh triggered (5 min)");
       fetchSummary();
     }, 5 * 60 * 1000);
     return () => { 

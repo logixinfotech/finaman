@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import "./Footer.css";
-
+import { useAuth } from "../../theme/AuthContext";
 function Footer({ activeModule }) {
 
   const [dateTime, setDateTime] = useState("");
-
+const { user } = useAuth();
    const [companyInfo, setCompanyInfo] = useState({
       name: "Demo Company Private Limited",
       loc: "Uttar Pradesh",
@@ -14,7 +14,7 @@ function Footer({ activeModule }) {
   const appVersion = "v1.0.0";
 
   useEffect(() => {
-    const user = JSON.parse(sessionStorage.getItem("user"));
+ 
     if (user) {
 
       if (user.com_name || user.com_code) {

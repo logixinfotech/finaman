@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback, memo } from "react";
 import { fetchSidebarMenu } from "../../utils/api";
 import DynamicIcon from "./DynamicIcon";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
-
+import { useAuth } from "../../theme/AuthContext";
 function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
   const [modules, setModules] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+      const { token } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
       setLoading(true);
 
       try {
-        const token = sessionStorage.getItem("token");
+      
         if (!token) throw new Error("No token found");
 
         const data = await fetchSidebarMenu(token);

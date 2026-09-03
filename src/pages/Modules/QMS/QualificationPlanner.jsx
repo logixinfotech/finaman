@@ -1,174 +1,214 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import {
+  FaCogs, FaStamp, FaVial, FaFileContract,
+  FaFlagCheckered, FaHistory,
+} from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
-import { useERPMode } from "../../../components/Reusable/form/useFormMode";
-import { qualificationTabs, qualificationFieldGroups, qualificationRequiredFieldsList, qualificationTableColumns, qualificationWidthConfig } from "./Utils/Qmsconfigs";
-import { confirmDelete, showToast, alertError } from "../../../components/Reusable/alert";
-import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
-import { useApplSettings } from "../../../Hooks/useApplSettings";
-import { getQualifications, createQualification, updateQualification, deleteQualification, getNextRecordNo } from "./Utils/QmsAPI";
-import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
- 
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
-
-const initialState = {
-  Id: null, RecordNo: "", Status: "In Progress", Equipment: "", Stage: "", ProtocolNo: "", ReportNo: "",
-  PlannedDate: "", ExecutedDate: "", AcceptanceCriteria: "", TestsPerformed: "", Observations: "",
-  DeviationRef: "", Result: "", PreparedBy: "", ApprovedBy: "", NextRequalDue: "", Remarks: "",
+import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
+import { getHeaderStyle } from "./Utils/QmsValidation";
+import { useQmsModule } from "./Utils/useQmsModule";
+import { useRefOptions } from "./Utils/useRefOptions";
+import {
+  qualificationTabs, qualificationTabStage, qualificationTabLabels,
+  getQualificationFieldGroups, getQualificationRequired,
+  qualificationWidthConfig, qualificationSectionConfigs, qualificationTableColumns,
+} from "./Utils/Qmsconfigs";
+import {
+  getQualifications, createQualification, updateQualification, deleteQualification,
+} from "./Utils/QmsAPI";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+// ── module-level constants (component ke bahar — stable references) ──
+const API = {
+  list: getQualifications, create: createQualification,
+  update: updateQualification, remove: deleteQualification,
 };
 
-const configs = { "Qualification Details": "grid-cols-1 sm:grid-cols-4" };
+const initialState = {
+  Id: null, RecordNo: "", Status: "Planned",
+  Equipment: "", Stage: "", ProtocolNo: "",
+  PlannedDate: new Date().toISOString().slice(0, 10), PlannedBy: "",
+  VendorName: "", AttachmentRef: "", AcceptanceCriteria: "",
+  ProtocolApprovedBy: "", ProtocolApprovalDate: "",
+  ExecutedDate: "", WitnessedBy: "", DeviationRef: "",
+  TestsPerformed: "", Observations: "",
+  ReportNo: "", ReportDate: "", Result: "",
+  PreparedBy: "", ApprovedBy: "", ApprovalDate: "", CapaRef: "",
+  NextRequalDue: "", ClosedBy: "", Remarks: "",
+};
+
+const QLF_TAB_ICON = {
+  details: FaCogs,
+  protocol: FaStamp,
+  execution: FaVial,
+  report: FaFileContract,
+  closure: FaFlagCheckered,
+  audit: FaHistory,
+};
+function QualificationTabIcon({ tab }) {
+  const Icon = QLF_TAB_ICON[tab];
+  return Icon ? <Icon /> : <span>•</span>;
+}
+
+const STATUS_OPTIONS = [
+  "Planned", "Protocol Approved", "Executed", "Report Approved",
+  "Pending Closure", "Closed", "Rejected",
+];
+
+const EMPTY_FILTERS = { Status: "All", Equipment: "", Stage: "All" };
 
 export default function QualificationMasterPage({ tab }) {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(tab?.appl_name || "Qualification");
-  const { options: groupOptions } = useGroupOptions();
-  const fieldGroups = qualificationFieldGroups(groupOptions);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getQualifications();
-      setList(Array.isArray(res?.data) ? res.data : []);
-    } catch (err) { alertError("Load Error", "Failed to load qualification records"); }
-    finally { setLoading(false); }
-  }, []);
-
-  const {
-    mode, formData, setFormData, saving, handleView, handleAdd, handleModify, performSave,
-    rights, showForm, setShowForm, activeTab, setActiveTab, handleEditCancel, isDirty,
-  } = useERPMode(initialState, (data) => data.Id ? updateQualification(data.Id, data) : createQualification(data), loadData, "Qualification");
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const handleHeaderTabChange = useCallback((t) => { setActiveTab(t); setShowForm(t !== "search"); }, [setActiveTab, setShowForm]);
-
-  const handleAddNew = async () => {
-    handleAdd();
-    setShowForm(true);
-    setActiveTab("entry");
-    const recordNo = await getNextRecordNo("qualification");
-    setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
-  };
-
-  useEffect(() => {
-    if (showForm && mode === "view" && list.length > 0) setFormData(list[currentIndex]);
-  }, [currentIndex, list, showForm, mode, setFormData]);
-
-  const listWithSr = list.map((item, i) => ({ ...item, Sr: i + 1 }));
-
-  const handleRowSelect = (row) => {
-    const idx = list.findIndex((i) => i.Id === row.Id);
-    if (idx !== -1) setCurrentIndex(idx);
-    handleView(row);
-    setShowForm(true);
-    setActiveTab("entry");
-  };
-
-  const handleSave = async (localData) => {
-    const dataToSave = { ...localData, Id: localData.Id ?? null };
-    if (mode === "add") dataToSave.RecordNo = "";
-    const response = await performSave("Id", dataToSave);
-    if (response?.success) { showToast({ icon: "success", title: "Saved Successfully" }); await loadData(); }
-  };
-
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({ title: `Delete Qualification "${row.RecordNo || row.Id}"?` });
-    if (!confirmed) return;
-    await deleteQualification(row.Id);
-    showToast({ icon: "success", title: "Deleted" });
-    setShowForm(false); setActiveTab("search");
-    await loadData();
-  };
-
-  const handleDeleteMultiple = async (selected) => {
-    const ids = (selected || []).map((item) => (typeof item === "object" ? item.Id : item));
-    if (ids.length === 0) return;
-    const confirmed = await confirmDelete({ title: `Delete ${ids.length} qualification record(s)?` });
-    if (!confirmed) return;
-    try {
-      const results = await Promise.all(ids.map((id) => deleteQualification(id)));
-      const failed = results.filter((r) => !r?.success).length;
-      showToast({
-        icon: failed === 0 ? "success" : "warning",
-        title: failed === 0 ? `${ids.length} deleted` : `${ids.length - failed} deleted, ${failed} failed`,
-      });
-      setShowForm(false); setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete some qualification records");
-    }
-  };
-
-  const handleFormExit = async () => {
-    const wasDirty = isDirty;
-    await handleEditCancel();
-    if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
-  };
-const [filters, setFilters] = useState({ Status: "All" });
-const [showFilter, setShowFilter] = useState(false);
-
-const applyFilter = useCallback(() => {}, []);
-const clearFilter = useCallback(() => {
-  setFilters({ Status: "All" });
-}, []);
-
-const filteredList = useMemo(() => {
-  return listWithSr.filter((item) => {
-    if (filters.Status && filters.Status !== "All") {
-      if (item.Status !== filters.Status) return false;
-    }
-    return true;
+  const m = useQmsModule({
+    moduleKey: "qualification",
+    title: "Qualification",
+    applName: tab?.appl_name || "Qualification",
+    initialState,
+    tabs: qualificationTabs,
+    tabStage: qualificationTabStage,
+    getRequired: getQualificationRequired,
+    api: API,
   });
-}, [listWithSr, filters]);
-  return (
-    <div className="h-full w-full">
-      {showForm ? (
+
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/qualification',   // ✅ moduleKey 'qualification' se match
+    applName: 'qualification',
+    emailEndpoint: '/api/qms-print/qualification',
+    shareLinkEndpoint: '/api/qms-print/qualification',
+  });
+
+  const refOpts = useRefOptions(["capa"]);
+
+  const fieldGroups = useMemo(
+    () => getQualificationFieldGroups({ ...m.groupOptions, refOpts }),   // 🆕 refOpts add kiya
+    [m.groupOptions, refOpts]
+  );
+
+  const customTabs = useMemo(
+    () => ({ audit: <RecordAuditPanel history={m.history} /> }),
+    [m.history]
+  );
+
+  // ── filters ──
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
+
+  const filteredList = useMemo(() => {
+    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
+    return m.list
+      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Planned" }))
+      .filter((it) =>
+        (filters.Status === "All" || it.Status === filters.Status) &&
+        (filters.Stage === "All" || it.Stage === filters.Stage) &&
+        (!filters.Equipment || has(it.Equipment, filters.Equipment))
+      );
+  }, [m.list, filters]);
+
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `Qualification-${m.formData?.Id}`,
+      contextLabel: m.formData?.Equipment,
+    }).catch((err) => console.error('Print open failed:', err));
+  }, [m.formData, printWorkflow]);
+
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Qualification Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
+
+  if (m.showForm) {
+    return (
+      <div className="h-full w-full">
         <ERPFormBuilder
           title="Qualification Planner"
           tabs={qualificationTabs}
+          tabLabels={qualificationTabLabels}
+          TabIcon={QualificationTabIcon}
           fieldGroups={fieldGroups}
+          customTabs={customTabs}
+          configs={qualificationSectionConfigs}
           widthConfig={qualificationWidthConfig}
-          requiredFields={qualificationRequiredFieldsList}
-          hideSidebar hideTabBar showSettingsTab
           getHeaderStyle={getHeaderStyle}
-          configs={configs}
-          TabIcon={TabIcon}
-          formData={formData} setFormData={setFormData} mode={mode}
-          settingsConfig={settingsConfig} settingsDefaults={settingsDefaults} onSettingsSave={onSettingsSave}
-          saving={saving} rights={rights}
-          onSave={handleSave} onCancel={handleFormExit} onDelete={handleDelete}
-          onModify={handleModify} onNewEntry={handleAddNew} onEditCancel={handleFormExit}
-          currentRecord={list.length > 0 ? currentIndex + 1 : 0} totalRecords={list.length}
-          onPrevRecord={() => setCurrentIndex((p) => Math.max(p - 1, 0))}
-          onNextRecord={() => setCurrentIndex((p) => Math.min(p + 1, list.length - 1))}
-          headerActiveTab={activeTab} onHeaderTabChange={handleHeaderTabChange}
+          requiredFields={m.requiredFields}
+          completedTabs={m.completedTabs}
+          hideSidebar={false}
+          hideTabBar={false}
+          showSettingsTab
+          sidebarConfig={{ hidePhoto: true, hideHeader: true }}
+          stageHistory={m.history?.stageHistory || null}
+          formData={m.formData}
+          savedFormData={m.savedFormData}
+          setFormData={m.setFormData}
+          mode={m.mode}
+          saving={m.saving}
+          rights={m.rights}
+          workflowConfig={m.workflowConfig}
+          currentUserRole={m.currentUserRole}
+          alwaysSignTabs={["closure"]}
+          settingsConfig={m.settingsConfig}
+          settingsDefaults={m.settingsDefaults}
+          onSettingsSave={m.onSettingsSave}
+          onSave={m.handleSave}
+             onSaveDraft={m.handleSaveDraft}
+          onSignedSave={m.handleSignedSave}
+          onDelete={m.handleDelete}
+          onModify={m.handleModify}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
+          onNewEntry={m.handleAddNewGuarded}
+          onCancel={m.handleTabExit }
+          onEditCancel={m.handleFormExit}
+          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
+          totalRecords={m.list.length}
+          onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
+          onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
+          headerActiveTab={m.activeTab}
+          onHeaderTabChange={m.handleHeaderTabChange}
+          moduleKey="qualification" 
         />
-      ) : (
-        <Table
-          activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-          onDeleteMultiple={handleDeleteMultiple}
-          title="Qualification Planner" data={listWithSr} columns={qualificationTableColumns}
-          rowKey="Id" loading={loading}
-          onAdd={rights?.add === 1 ? handleAddNew : null}
-          onRowDoubleClick={handleRowSelect}
-          formComponent={
-  <UnivarsalFilter
-    filters={filters}
-    visibleFields={["status"]}
-    setFilters={setFilters}
-    options={{
-      ...groupOptions,
-      status: ["Planned", "In Progress", "Executed", "Approved", "Rejected"],
-    }}
-    onApply={applyFilter}
-    onClear={clearFilter}
-  />
-}
-        />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full w-full">
+      <Table
+        title="Qualification Planner"
+        data={filteredList}
+        columns={qualificationTableColumns}
+        rowKey="Id"
+        loading={m.loading}
+        activeTab={m.activeTab}
+        showSettingsTab
+        onTabChange={m.handleHeaderTabChange}
+        onRefresh={m.loadData}
+        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
+        onRowDoubleClick={m.handleRowSelect}
+        onDeleteMultiple={m.handleDeleteMultiple}
+        onToggleFilter={() => setShowFilter((p) => !p)}
+        showForm={showFilter}
+        formComponent={
+          <UnivarsalFilter
+            filters={filters}
+            setFilters={setFilters}
+            setShowFilter={setShowFilter}   // ✅ add kiya
+            visibleFields={["status", "equipment", "stage"]}
+            options={{
+              ...m.groupOptions,
+              status: STATUS_OPTIONS,
+              stage: ["DQ (Design)", "IQ (Installation)", "OQ (Operational)", "PQ (Performance)", "Re-Qualification"],
+            }}
+            onApply={() => {}}
+            onClear={clearFilter}
+          />
+        }
+      />
     </div>
   );
 }

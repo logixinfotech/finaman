@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { getPendingRequests } from "../../../utils/api";
-
+import { useAuth } from "../../../theme/AuthContext";
 const REQ_KEYS = {
   id: ["id", "transaction_id", "request_id", "approval_id"],
   employeeName: ["employee_name", "emp_name", "name", "Led_name"],
+  
   // every possible field name the API might use to say WHICH module this row came from
   requestType: [
     "request_type", "type", "category", "approval_type",
@@ -115,26 +116,18 @@ const getInitials = (name) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-// pull the current logged-in user's id so we know whose approvals to fetch
-const getCurrentApproverId = () => {
-  try {
-    const user = JSON.parse(sessionStorage.getItem("user") || "{}");
-    return user.user_id || user.id || user.employee_id || user.Actled_id || null;
-  } catch {
-    return null;
-  }
-};
 
 const ApprovalWorkflow = ({ onManageAllClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rawRequests, setRawRequests] = useState([]);
+  const { user } = useAuth();
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const approverId = getCurrentApproverId();
+      const approverId = user?.user_id || user?.id || user?.employee_id || user?.Actled_id || null;
       if (!approverId) {
         setError(true);
         return;
@@ -147,19 +140,15 @@ const ApprovalWorkflow = ({ onManageAllClick }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);  
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
   const APPROVALS = useMemo(() => {
     const today = new Date();
     return rawRequests.map((r) => {
-      const name = pick(r, REQ_KEYS.employeeName) || "Unknown";
-
-      // ✅ FIX: actually use the category detector + its detail formatter
-      // instead of the raw, un-mapped backend value.
+      const name = pick(r, REQ_KEYS.employeeName) || "Unknown"; 
       const category = detectCategory(r);
       const detail = detectDetail(r, category);
       const meta = CATEGORY_META[category] || CATEGORY_META.Request;
@@ -182,8 +171,8 @@ const ApprovalWorkflow = ({ onManageAllClick }) => {
         id: pick(r, REQ_KEYS.id) ?? `${name}-${category}`,
         initials: getInitials(name),
         name,
-        category,               // "Leave Request" / "OT Claim" / "Regularization" / ...
-        detail,                 // "3 days" / "₹1,200" / null
+        category,             
+        detail, 
         categoryIcon: meta.icon,
         categoryColor: meta.color,
         categoryBg: meta.bg,
@@ -239,10 +228,7 @@ const ApprovalWorkflow = ({ onManageAllClick }) => {
             <div
               key={a.id}
               style={{ ...styles.item, borderBottom: i < APPROVALS.length - 1 ? "0.5px solid rgba(0,0,0,0.07)" : "none" }}
-            >
-              {/* ✅ category icon badge — this is what was missing.
-                   Shows an icon + color per request TYPE (leave/OT/etc),
-                   separate from the status badge on the right. */}
+            > 
               <div style={{ ...styles.categoryIcon, background: a.categoryBg, color: a.categoryColor }}>
                 <i className={a.categoryIcon}></i>
               </div>

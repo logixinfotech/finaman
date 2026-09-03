@@ -7,6 +7,7 @@ import {
   Minus, X as CloseIcon, ShieldCheck
 } from "lucide-react";
 import { authenticateUser, selectCompany } from "../../utils/api";
+import { useAuth } from "../../theme/AuthContext";
 
 const errorVariant = {
   hidden: { opacity: 0, height: 0, marginBottom: 0 },
@@ -70,6 +71,7 @@ function AuthIllustration() {
 }
 
 function LoginPage({ onLoginSuccess }) {
+   const { login } = useAuth();
   const [step, setStep] = useState("credentials");
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -152,13 +154,11 @@ function LoginPage({ onLoginSuccess }) {
         return;
       }
 
-      const token = res?.token;
-      if (!token) throw new Error("No token received from server");
+const token = res?.token;
+if (!token) throw new Error("No token received from server");
 
-      sessionStorage.setItem("token", token);
-      sessionStorage.setItem("user", JSON.stringify(res.user));
-      sessionStorage.setItem("permissions", JSON.stringify(res.permissions));
-      onLoginSuccess();
+login(token, res.user, res.permissions);
+onLoginSuccess();
 
     } catch (err) {
       console.error("Login Component Error:", err);
@@ -189,16 +189,14 @@ function LoginPage({ onLoginSuccess }) {
     setSelecting(company.com_id);
     setError("");
     try {
-      const res = await selectCompany({
-        preAuthToken: preToken,
-        com_id: company.com_id,
-      });
-      if (!res.success) throw new Error(res.message || "Company selection failed");
+const res = await selectCompany({
+  preAuthToken: preToken,
+  com_id: company.com_id,
+});
+if (!res.success) throw new Error(res.message || "Company selection failed");
 
-      sessionStorage.setItem("token", res.token);
-      sessionStorage.setItem("user", JSON.stringify(res.user));
-      sessionStorage.setItem("permissions", JSON.stringify(res.permissions));
-      onLoginSuccess();
+login(res.token, res.user, res.permissions);
+onLoginSuccess();
 
     } catch (err) {
       setError(err.response?.data?.message || "Failed to select company. Please try again.");

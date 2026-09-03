@@ -193,13 +193,7 @@ if (e.altKey || e.ctrlKey) {
     currentHandlers.onDuplicateRecord && currentHandlers.onDuplicateRecord();
     return;
   } 
-if (
-  e.key === "Backspace" &&
-  currentHandlers.onBackspaceNavigation
-) {
-  handleBackspaceNavigation(e);
-  return;
-} 
+ 
   // NAYA
   if (e.key === "Enter") {
     if (e.target.closest("[data-dropdown-open='true']") || e.target?.tagName?.toLowerCase() === "textarea") {

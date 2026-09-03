@@ -307,23 +307,59 @@ useEffect(() => {
     const map = Object.fromEntries(columns.map((c) => [c.key, c]));
     return columnOrder.map((k) => map[k]).filter(Boolean);
   }, [columnOrder, columns]);
+// naya helper — file me useMemo se upar, ya component ke bahar add karo
+const guessColWidth = (c) => {
+  const key = (c.key || "").toLowerCase();
+  const label = (c.label || "").toLowerCase();
+  const text = key + " " + label;
 
-  const memoizedColumns = useMemo(() => {
-    let leftOffset = 0;
-    return orderedColumns.map((c) => {
-      if (!visibleColumns[c.key]) return null;
-      const width = columnWidths[c.key] || DEFAULT_COL_WIDTH;
-      const isFrozen = lockedColumns.includes(c.key);
-      const col = {
-        ...c,
-        width,
-        isFrozen,
-        stickyLeft: isFrozen ? leftOffset : null,
-      };
-      if (isFrozen) leftOffset += width;
-      return col;
-    });
-  }, [orderedColumns, visibleColumns, columnWidths, lockedColumns]);
+  if (/(^|_)(sr|s\.?no|sno|srno|slno|#)($|_)/.test(text) || text.includes("sr") || text.includes("s.no"))
+    return 40;
+  if (/(^|_)id($|_)/.test(text)) return 80;
+  if (text.includes("status") || text.includes("active")) return 90;
+  if (text.includes("record no.") || text.includes("active")) return 90;
+  if (text.includes("date") || text.includes("time")) return 110;
+  if (text.includes("amount") || text.includes("qty") || text.includes("price") || text.includes("rate"))
+    return 100;
+  if (text.includes("email")) return 200;
+  if (text.includes("address") || text.includes("description") || text.includes("remark") || text.includes("note"))
+    return 240;
+  if (text.includes("name")) return 160;
+  return DEFAULT_COL_WIDTH; // fallback
+};
+const memoizedColumns = useMemo(() => {
+  let leftOffset = 0;
+  return orderedColumns.map((c) => {
+    if (!visibleColumns[c.key]) return null;
+    // FIX: pehle apna defined width, warna smart guess, warna default
+    const width = columnWidths[c.key] ?? c.width ?? guessColWidth(c);
+    const isFrozen = lockedColumns.includes(c.key);
+    const col = {
+      ...c,
+      width,
+      isFrozen,
+      stickyLeft: isFrozen ? leftOffset : null,
+    };
+    if (isFrozen) leftOffset += width;
+    return col;
+  });
+}, [orderedColumns, visibleColumns, columnWidths, lockedColumns]);
+  // const memoizedColumns = useMemo(() => {
+  //   let leftOffset = 0;
+  //   return orderedColumns.map((c) => {
+  //     if (!visibleColumns[c.key]) return null;
+  //     const width = columnWidths[c.key] || DEFAULT_COL_WIDTH;
+  //     const isFrozen = lockedColumns.includes(c.key);
+  //     const col = {
+  //       ...c,
+  //       width,
+  //       isFrozen,
+  //       stickyLeft: isFrozen ? leftOffset : null,
+  //     };
+  //     if (isFrozen) leftOffset += width;
+  //     return col;
+  //   });
+  // }, [orderedColumns, visibleColumns, columnWidths, lockedColumns]);
 
   // ── keyboard navigation (AFTER paginatedData) ──
   useEffect(() => {
@@ -402,26 +438,28 @@ useEffect(() => {
   }, []);
 
   const startResize = useCallback(
-    (e, key) => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startW = columnWidths[key] || DEFAULT_COL_WIDTH;
-      const onMove = (ev) =>
-        requestAnimationFrame(() =>
-          setColumnWidths((p) => ({
-            ...p,
-            [key]: Math.max(startW + (ev.clientX - startX), MIN_COL_WIDTH),
-          })),
-        );
-      const onUp = () => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-    },
-    [columnWidths],
-  );
+  (e, key) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const col = columns.find((c) => c.key === key);
+    // FIX: resize base width bhi column-specific ho
+   const startW = columnWidths[key] ?? col?.width ?? guessColWidth(col);
+    const onMove = (ev) =>
+      requestAnimationFrame(() =>
+        setColumnWidths((p) => ({
+          ...p,
+          [key]: Math.max(startW + (ev.clientX - startX), MIN_COL_WIDTH),
+        })),
+      );
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  },
+  [columnWidths, columns],
+);
 
   const toggleVisibleColumn = useCallback(
     (key) => setVisibleColumns((p) => ({ ...p, [key]: !p[key] })),

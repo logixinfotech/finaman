@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   FaBell,
   FaMoon,
@@ -20,9 +20,8 @@ import { useNotifications } from "../../theme/NotificationContext";
 import NotificationPanel from "../../pages/NotificationPanel";
 import GlobalSearch from "./GlobalSearch";
  import { GiHamburgerMenu } from 'react-icons/gi';
-import { fetchSwitchableCompanies, switchCompany } from "../../utils/api";
-import { Hamburger } from "lucide-react";
-
+import { fetchSwitchableCompanies, switchCompany } from "../../utils/api"; 
+import { useAuth } from "../../theme/AuthContext";
 const DEFAULT_ACC_YEAR = "2024-2025";
 
 function Header({
@@ -53,7 +52,7 @@ function Header({
   const [switchError, setSwitchError] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [currentComId, setCurrentComId] = useState(null);
-
+const { user, login } = useAuth();
   const searchRef = useRef(null);
   const rowRefs = useRef([]);
   const srNoBodyRef = useRef(null);
@@ -72,7 +71,7 @@ function Header({
   }, []);
 
   useEffect(() => {
-    const user = JSON.parse(sessionStorage.getItem("user"));
+   
     if (user) {
       setUsername(user.user_name || user.username || user.user_id || "User");
       setCurrentComId(user.com_id || user.selected_company_id || null);
@@ -171,6 +170,7 @@ function Header({
     setSwitchSearch("");
   };
 
+
   const handleCompanySwitch = async (company) => {
     if (switching) return;
     if (String(company.com_id) === String(currentComId)) return;
@@ -181,9 +181,8 @@ function Header({
       const res = await switchCompany(company.com_id);
       if (!res.success) throw new Error(res.message || "Failed to switch company.");
 
-      sessionStorage.setItem("token", res.token);
-      sessionStorage.setItem("user", JSON.stringify(res.user));
-      sessionStorage.setItem("permissions", JSON.stringify(res.permissions));
+      login(res.token, res.user, res.permissions);    
+
       window.location.reload();
     } catch (err) {
       console.error("Switch company error:", err);
@@ -218,8 +217,7 @@ function Header({
     <header
       className="relative z-[500] h-[44px] w-full flex items-center justify-between px-3 md:px-5 shadow-md border-b-2 border-blue-700"
       style={{ background: "var(--sidebar-top-bg)" }}
-    >
-      {/* LEFT - mobile hamburger + brand */}
+    > 
       <div className="flex items-center gap-2 md:gap-3">
         {isMobile && (<>
            <button

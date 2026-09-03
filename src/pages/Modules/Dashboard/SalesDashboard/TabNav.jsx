@@ -6,8 +6,19 @@ import ParetoChart from "./ParetoChart";
 import CombinedCustomerView from "./CombinedCustomerView";
 import CustomerDrillModal from "./CustomerDrillModal";
 import { TopBarChart, GroupMixChart } from "./ChartCards";
-
+import RepeatOrderAnalysis from "./RepeatOrderAnalysis";
+import CustomerRecency from "./CustomerRecency";
+import OrderFrequencyDistribution from "./OrderFrequencyDistribution";
+import DailyOrderTrend from "./DailyOrderTrend";
+import CancelledReducedOrders from "./CancelledReducedOrders";
+import DormantLostCustomers from "./DormantLostCustomers";
+import OrderStatus from "./OrderStatus";
+import FulfillmentByCustomer from "./FulfillmentByCustomer";
+import PendingQtyByCustomer from "./PendingQtyByCustomer";
+import CustomerWisePendingOrders from "./CustomerWisePendingOrders";
 import LazySection from "./LazySection";
+import GenericAnalysis from "./GenericAnalysis";
+import PendingOrderAlerts from "./PendingOrderAlerts";
 
 import { summarizeOrders, ordersOf, buildAOV } from "../../../../utils/orderHelpers";
 
@@ -78,7 +89,7 @@ function PlaceholderInsights() {
  function CustomerSalesTab({ rows, hist, refDate, loading, filters, setFilters }) {
   const summary = useMemo(() => summarizeOrders(rows), [rows]);
   const ords = useMemo(() => ordersOf(rows), [rows]);
-  const aov = useMemo(() => buildAOV(rows, 10), [rows]);
+const aov = useMemo(() => buildAOV(rows, 10, ords), [rows, ords]);
   const [abcMap, setAbcMap] = useState({});
   const [selectedCustId, setSelectedCustId] = useState(null);
 
@@ -103,6 +114,11 @@ function PlaceholderInsights() {
           <TopBarChart title="Top Products by Value" rows={rows} keyFn={(r) => r.item} valFn={(r) => r.amt} n={8} />
           <GroupMixChart rows={rows} />
           <GroupMixChart rows={rows} keyFn={(r) => r.pay || "Not Specified"} title="Payment Terms Mix" />
+        </div>
+      </LazySection>
+            <LazySection minHeight={420}>
+        <div className="mb-5">
+          <GenericAnalysis rows={rows} />
         </div>
       </LazySection>
 
@@ -136,40 +152,41 @@ function PlaceholderInsights() {
     </div>
   );
 }
-function OrderPatternTab({ filters }) {
+function OrderPatternTab({ filters, rows, hist, refDate, loading }) {
   return (
     <div>
-      <PlaceholderKpiStrip n={4} />
-      <PlaceholderInsights />
+       
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-6">
-        <PlaceholderCard title="⏱️ Customer Recency — 30/60/90 Days" height={360} />
-        <PlaceholderCard title="🔁 Repeat Order Analysis" height={360} />
+        <CustomerRecency hist={hist} refDate={refDate} />
+        <RepeatOrderAnalysis rows={rows} />
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 mb-6">
-        <PlaceholderCard title="📊 Order Frequency Distribution" />
-        <PlaceholderCard title="📈 Daily Order Trend" />
-        <PlaceholderCard title="❌ Cancelled / Reduced Orders" />
+        <OrderFrequencyDistribution rows={rows} />
+        <DailyOrderTrend rows={rows} />
+        <CancelledReducedOrders rows={rows} />
       </div>
-      <PlaceholderCard title="💤 Dormant / Lost Customer List" height={400} />
+      <DormantLostCustomers hist={hist} refDate={refDate} />
     </div>
   );
 }
 
 /* ============ TAB: FULFILLMENT (6.3) ============ */
-function FulfillmentTab({ filters }) {
+function FulfillmentTab({ filters, rows, refDate, loading }) {
   return (
     <div>
-      <PlaceholderKpiStrip n={4} />
-      <PlaceholderInsights />
+      <LazySection minHeight={420}>
+        <div className="mb-5">
+          <PendingOrderAlerts rows={rows} refDate={refDate} />
+        </div>
+      </LazySection>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 mb-6">
-        <PlaceholderCard title="🎯 Order Status" />
-        <PlaceholderCard title="✅ Fulfillment % by Customer" />
-        <PlaceholderCard title="⏳ Pending Qty by Customer" />
+        <OrderStatus rows={rows} />
+        <FulfillmentByCustomer rows={rows} />
+        <PendingQtyByCustomer rows={rows} />
       </div>
-      <PlaceholderCard title="🚨 Customer-wise Pending Orders" height={420} />
+      <CustomerWisePendingOrders rows={rows} refDate={refDate} />
     </div>
   );
 }
-
 export { TABS, TabNav, CustomerSalesTab, OrderPatternTab, FulfillmentTab };
 export default TabNav;

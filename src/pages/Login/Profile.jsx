@@ -7,12 +7,12 @@ import {
   ArrowLeftRight, Search, X as CloseIcon, Loader2, AlertCircle
 } from "lucide-react";
 import { fetchUserProfile, fetchSwitchableCompanies, switchCompany } from "../../utils/api";
-
+import { useAuth } from "../../theme/AuthContext";
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
- 
+  const { user: authUser, login } = useAuth();     
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [companiesLoading, setCompaniesLoading] = useState(false);
@@ -77,7 +77,7 @@ const ProfilePage = () => {
 
   const handleSwitch = async (company) => {
     if (switching) return;
-    if (String(company.com_id) === String(user?.com_id)) return; // already active
+      if (String(company.com_id) === String(authUser?.com_id)) return; 
 
     setSwitching(company.com_id);
     setSwitchError("");
@@ -85,9 +85,7 @@ const ProfilePage = () => {
       const res = await switchCompany(company.com_id);
       if (!res.success) throw new Error(res.message || "Failed to switch company.");
 
-      sessionStorage.setItem("token", res.token);
-      sessionStorage.setItem("user", JSON.stringify(res.user));
-      sessionStorage.setItem("permissions", JSON.stringify(res.permissions));
+      login(res.token, res.user, res.permissions);  
 
       // Full reload guarantees every tenant-scoped screen/state resets cleanly
       window.location.reload();

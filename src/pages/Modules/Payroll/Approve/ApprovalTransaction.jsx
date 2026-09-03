@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { getPendingRequests, getAllApprovalTransactions, approvalAction } from "../../../../utils/api";
 import { showToast } from "../../../../components/Reusable/alert";
-
+import { useAuth } from "../../../../theme/AuthContext";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const initials = (name = "") =>
   name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -493,6 +493,7 @@ const getTabFiltered = (list, tab) => {
   return list;
 };
 // ── Main component ────────────────────────────────────────────────────────────
+
 const ApprovalTransaction = ({ tab }) => {
   const [allRequests, setAllRequests] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -500,10 +501,9 @@ const ApprovalTransaction = ({ tab }) => {
   const [activeTab, setActiveTab] = useState("Pending");
   const [remark, setRemark] = useState("");
   const [acting, setActing] = useState(null);
-const currentUser = JSON.parse(sessionStorage.getItem("user") || "{}");
-const approverId = currentUser.user_id;   
+  const { user: currentUser } = useAuth();
+  const approverId = currentUser?.user_id;   // ✅ optional chaining add ki, kyunki AuthContext me default {} hai
   const filteredList = getTabFiltered(allRequests, activeTab);
-
 
   const currentIndex = selected
     ? filteredList.findIndex(r =>

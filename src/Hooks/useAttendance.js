@@ -1,8 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchDepartmentAttendance } from "../utils/api";
-
-// ^ path apne actual api.js location ke hisaab se adjust karo
-
+import { fetchDepartmentAttendance } from "../utils/api"; 
 export const useDepartmentAttendance = (month) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);

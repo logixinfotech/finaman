@@ -1,8 +1,6 @@
-
- import Swal from "sweetalert2";
-import axios from "axios"; 
+ 
 import { handleApi } from "../../../../utils/apiHandler";
-import{ api} from "../../../../utils/api";
+import { api } from "../../../../utils/api";
 
 export const getAuditTrail = (filters = {}) => {
   const params = new URLSearchParams();
@@ -21,27 +19,31 @@ const DATE_KEYS = [
   "InvestigationStartDate", "InvestigationCompletionDate",
   "TargetDate", "ReviewDate", "ClosedOn",
 ];
- 
+
 const normalizeDeviation = (row) => {
   const out = { ...row };
   DATE_KEYS.forEach((k) => {
-    if (out[k]) out[k] = String(out[k]).slice(0, 10);  
+    if (out[k]) out[k] = String(out[k]).slice(0, 10);
   });
   return out;
 };
- 
+
 export const getDeviations = async () => {
   const res = await handleApi(() => api.get("/api/qms/deviations"));
   const data = Array.isArray(res?.data) ? res.data : [];
   return { ...res, data: data.map(normalizeDeviation) };
 };
- 
+
+// 🆕 ek record ki poori detail — lines ke saath
+export const getDeviation = (id) =>
+  handleApi(() => api.get(`/api/qms/deviations/${id}`));
+
 export const createDeviation = (data) =>
   handleApi(() => api.post("/api/qms/deviations", data));
- 
+
 export const updateDeviation = (id, data) =>
   handleApi(() => api.put(`/api/qms/deviations/${id}`, data));
- 
+
 export const deleteDeviation = (id) =>
   handleApi(() => api.delete(`/api/qms/deviations/${id}`));
 
@@ -65,11 +67,11 @@ export const deleteIncident = (id) => handleApi(() => api.delete(`/api/qms/incid
 
 //============================================== Master ============================================================
 
-export const getMasters   = (type)            => handleApi(() => api.get(`/api/qms/masters/${type}`));
-export const createMaster = (type, data)      => handleApi(() => api.post(`/api/qms/masters/${type}`, data));
-export const updateMaster = (type, id, data)  => handleApi(() => api.put(`/api/qms/masters/${type}/${id}`, data));
-export const deleteMaster = (type, id)        => handleApi(() => api.delete(`/api/qms/masters/${type}/${id}`));
- 
+export const getMasters = (type) => handleApi(() => api.get(`/api/qms/masters/${type}`));
+export const createMaster = (type, data) => handleApi(() => api.post(`/api/qms/masters/${type}`, data));
+export const updateMaster = (type, id, data) => handleApi(() => api.put(`/api/qms/masters/${type}/${id}`, data));
+export const deleteMaster = (type, id) => handleApi(() => api.delete(`/api/qms/masters/${type}/${id}`));
+
 // QMS FORMS ke dropdown ke liye — sirf ACTIVE, {value:id, label:name}
 export const getMasterOptions = async (type) => {
   const res = await getMasters(type);
@@ -78,7 +80,7 @@ export const getMasterOptions = async (type) => {
     .filter((r) => r.is_active === 1 || r.is_active === true)
     .map((r) => ({ value: r.id, label: r.name }));
 };
- 
+
 //============================================== Training ============================================================
 
 export const getTrainings = () => handleApi(() => api.get("/api/qms/trainings"));
@@ -119,10 +121,6 @@ export const deleteEnvironmentalMonitoring = (id) =>
   handleApi(() => api.delete(`/api/qms/environmental/${id}`));
 
 
-
-
-
-
 //============================================== STP Register ============================================================
 export const getSTPs = () => handleApi(() => api.get("/api/qms/stp"));
 export const getSTP = (id) => handleApi(() => api.get(`/api/qms/stp/${id}`));
@@ -155,6 +153,7 @@ export const deletePmRecord = (id) => handleApi(() => api.delete(`/api/qms/preve
 //============================================== CAPA ============================================================
 
 export const getCapas = () => handleApi(() => api.get("/api/qms/capas"));
+export const getCapa = (id) => handleApi(() => api.get(`/api/qms/capas/${id}`));
 export const createCapa = (data) => handleApi(() => api.post("/api/qms/capas", data));
 export const updateCapa = (id, data) => handleApi(() => api.put(`/api/qms/capas/${id}`, data));
 export const deleteCapa = (id) => handleApi(() => api.delete(`/api/qms/capas/${id}`));
@@ -162,6 +161,7 @@ export const deleteCapa = (id) => handleApi(() => api.delete(`/api/qms/capas/${i
 //============================================== Change Controls ============================================================
 
 export const getChangeControls = () => handleApi(() => api.get("/api/qms/change-controls"));
+export const getChangeControl = (id) => handleApi(() => api.get(`/api/qms/change-controls/${id}`));
 export const createChangeControl = (data) => handleApi(() => api.post("/api/qms/change-controls", data));
 export const updateChangeControl = (id, data) => handleApi(() => api.put(`/api/qms/change-controls/${id}`, data));
 export const deleteChangeControl = (id) => handleApi(() => api.delete(`/api/qms/change-controls/${id}`));
@@ -169,8 +169,106 @@ export const deleteChangeControl = (id) => handleApi(() => api.delete(`/api/qms/
 
 //========================================================workflow==================================================
 export const getWorkflowConfig = () => handleApi(() => api.get("/api/qms/workflow-config"));
-export const advanceState = (module, id, newStatus, typedName) =>
-  handleApi(() => api.patch(`/api/qms/${module}/${id}/advance-state`, { newStatus, typedName }));
+
+export const advanceState = (module, id, newStatus, typedName, reason) =>
+  handleApi(() => api.patch(`/api/qms/${module}/${id}/advance-state`, { newStatus, typedName, reason }));
 export const getEsignatures = (module, id) => handleApi(() => api.get(`/api/qms/${module}/${id}/esignatures`));
- export const createLinkedCapa = (module, id, problemStatement) =>
+export const createLinkedCapa = (module, id, problemStatement) =>
   handleApi(() => api.post(`/api/qms/${module}/${id}/create-linked-capa`, { problemStatement }));
+
+export const getRefOptions = (module) =>
+  handleApi(() => api.get(`/api/qms/ref-options/${module}`));
+
+
+//============================================== Attachments ============================================================
+
+export const getAttachments = (moduleKey, recordId) =>
+  handleApi(() => api.get(`/api/qms/attachments/${moduleKey}/${recordId}`));
+
+export const uploadAttachment = (moduleKey, recordId, file, recordNo) => {
+  const fd = new FormData();
+  if (recordNo) fd.append("recordNo", recordNo);   // pehle text
+  fd.append("file", file);                          // baad me file
+  return handleApi(() => api.post(`/api/qms/attachments/${moduleKey}/${recordId}`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }));
+};
+
+export const deleteAttachment = (id) =>
+  handleApi(() => api.delete(`/api/qms/attachments/${id}`));
+
+export const fetchAttachmentBlob = (id) =>
+  api.get(`/api/qms/attachments/${id}/download`, { responseType: "blob" });
+
+//============================================== Market Complaint ============================================================
+
+export const getComplaints = () => handleApi(() => api.get("/api/qms/complaints"));
+export const getComplaint = (id) => handleApi(() => api.get(`/api/qms/complaints/${id}`));
+export const createComplaint = (data) => handleApi(() => api.post("/api/qms/complaints", data));
+export const updateComplaint = (id, data) => handleApi(() => api.put(`/api/qms/complaints/${id}`, data));
+export const deleteComplaint = (id) => handleApi(() => api.delete(`/api/qms/complaints/${id}`));
+
+//============================================== Risk Assessment ============================================================
+
+export const getRisks = () => handleApi(() => api.get("/api/qms/risks"));
+export const getRisk = (id) => handleApi(() => api.get(`/api/qms/risks/${id}`));
+export const createRisk = (data) => handleApi(() => api.post("/api/qms/risks", data));
+export const updateRisk = (id, data) => handleApi(() => api.put(`/api/qms/risks/${id}`, data));
+export const deleteRisk = (id) => handleApi(() => api.delete(`/api/qms/risks/${id}`));
+
+//============================================== Trends / Analytics =========================================================
+
+export const getTrendModules = () => handleApi(() => api.get("/api/qms/trend-modules"));
+
+export const getTrends = (moduleKey, from, to) => {
+  const p = new URLSearchParams();
+  if (from) p.append("from", from);
+  if (to) p.append("to", to);
+  return handleApi(() => api.get(`/api/qms/trends/${moduleKey}?${p.toString()}`));
+};
+
+//============================================== Kpi Dashboard =========================================================
+
+export const getKpiDashboard = (from, to) => {
+  const p = new URLSearchParams();
+  if (from) p.append("from", from);
+  if (to) p.append("to", to);
+  return handleApi(() => api.get(`/api/qms/kpi-dashboard?${p.toString()}`));
+};
+
+//============================================== Compliance Score ======================================================
+
+export const getComplianceScore = (from, to) => {
+  const p = new URLSearchParams();
+  if (from) p.append("from", from);
+  if (to) p.append("to", to);
+  return handleApi(() => api.get(`/api/qms/compliance-score?${p.toString()}`));
+};
+
+//============================================== OOS — OUT OF SPECIFICATION ==================================================================
+
+export const getOoss = () => handleApi(() => api.get("/api/qms/oos"));
+export const getOos = (id) => handleApi(() => api.get(`/api/qms/oos/${id}`));
+export const createOos = (data) => handleApi(() => api.post("/api/qms/oos", data));
+export const updateOos = (id, data) => handleApi(() => api.put(`/api/qms/oos/${id}`, data));
+export const deleteOos = (id) => handleApi(() => api.delete(`/api/qms/oos/${id}`));
+
+//============================================== OOT — OUT OF TREND ==================================================================
+
+export const getOots = () => handleApi(() => api.get("/api/qms/oot"));
+export const createOot = (data) => handleApi(() => api.post("/api/qms/oot", data));
+export const updateOot = (id, data) => handleApi(() => api.put(`/api/qms/oot/${id}`, data));
+export const deleteOot = (id) => handleApi(() => api.delete(`/api/qms/oot/${id}`));
+
+
+export const getWorkflowRoleOptions = () =>
+  handleApi(() => api.get("/api/qms/workflow-roles/options"));
+
+export const getWorkflowRoles = (moduleKey) =>
+  handleApi(() => api.get(`/api/qms/workflow-roles/${moduleKey}`));
+
+export const saveWorkflowRoles = (moduleKey, sections) =>
+  handleApi(() => api.put(`/api/qms/workflow-roles/${moduleKey}`, { sections }));
+
+export const resetWorkflowRoles = (moduleKey) =>
+  handleApi(() => api.delete(`/api/qms/workflow-roles/${moduleKey}`));

@@ -3,6 +3,7 @@ import CompanyMasterForm from "./CompanyMasterEntry";
 import CompanyMasterFilterForm from "./CompanyMasterList";
 import Table from "../../../../components/Reusable/table/Table";
 import ERPPrintPreview from "../../../../components/Reusable/ERPPrintPreview";
+
 import {
   showToast,
   alertError,
@@ -16,7 +17,7 @@ import {
 } from "../../../../utils/api";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
-
+import { usePrintWorkflow } from "../../../../Hooks/usePrintWorkflow";
 const initialState = {
   company_id: null,
   company_name: "",
@@ -74,40 +75,6 @@ const initialState = {
   company_status: "Active",
   logo: "",
 };
-const companyPrintSections = [
-  {
-    type: "fields",
-    title: "Basic Information",
-    fields: [
-      { label: "Company Name", key: "company_name" },
-      { label: "Trade Name", key: "trade_name" },
-      { label: "Business Type", key: "business_type" },
-      { label: "Registration No", key: "registration_number" },
-      { label: "CIN No", key: "cin_number" },
-    ],
-  },
-  {
-    type: "fields",
-    title: "Contact Information",
-    fields: [
-      { label: "Phone", key: "phone_number" },
-      { label: "Email", key: "email_address" },
-      { label: "Address", key: "business_address" },
-      { label: "City", key: "city" },
-      { label: "PIN Code", key: "postal_code" },
-    ],
-  },
-  {
-    type: "fields",
-    title: "Tax & Bank Details",
-    fields: [
-      { label: "GSTIN", key: "gstin_number" },
-      { label: "PAN", key: "pan_number" },
-      { label: "Bank Name", key: "bank_name" },
-      { label: "A/C Number", key: "bank_account_number" },
-    ],
-  },
-];
 
 const columns = [
   { key: "company_name", label: "Company Name" },
@@ -120,9 +87,9 @@ const columns = [
   {
     key: "company_status",
     label: "Status",
-     render: (row) => (
+    render: (row) => (
       <span
-        className={`px-2 py-1 text-xs rounded ${  row.company_status === "Active"
+        className={`px-2 py-1 text-xs rounded ${row.company_status === "Active"
           ? "bg-green-100 text-green-700"
           : "bg-red-100 text-red-600"
           }`}
@@ -142,9 +109,13 @@ const CompanyMasterPage = ({ tab }) => {
   const [pageSize, setPageSize] = useState(100);
   const [filters, setFilters] = useState({});
   const [showFilter, setShowFilter] = useState(false);
-  const [formTab, setFormTab] = useState("basic");
-  const [showPreview, setShowPreview] = useState(false);
-  const [printData, setPrintData] = useState(null);
+  const [formTab, setFormTab] = useState("basic"); 
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/print/company_master',
+    applName: 'company_master',
+    emailEndpoint: '/api/print/company_master',
+    shareLinkEndpoint: '/api/print/company_master',
+  });
   const {
     mode,
     formData,
@@ -267,26 +238,15 @@ const CompanyMasterPage = ({ tab }) => {
     [formData, setShowForm, loadCompanyList, filters, page, pageSize],
   );
 
-  // const handleDelete = async (row) => {
-  //   const confirm = await confirmDelete({ title: `Delete "${row.employee_name}"?` });
-  //   if (confirm) {
-  //     const res = await deleteCompany(row.employee_id);
-  //     if (res?.data?.success) {
-  //       await loadCompanyList();
-  //       showToast({ icon: "success", title: "Deleted" });
-  //       // loadEmployees();
-  //       setShowForm(false);
-  //     }
-  //   }
-  // };
+  const handlePrint = useCallback((row) => {
+    const id = row?.company_id ?? formData?.company_id;
+    printWorkflow.openPrintFor(id, {
+      fileName: formData?.company_name,
+      contextLabel: formData?.company_name,
+    });
+  }, [formData, printWorkflow]);
 
-  const handlePrint = useCallback(
-    (row) => {
-      setPrintData(row ?? formData);
-      setShowPreview(true);
-    },
-    [formData],
-  );
+
 
   const handleSearch = useCallback((searchTerm) => {
     setFilters((prev) => ({ ...prev, company_name: searchTerm }));
@@ -305,7 +265,6 @@ const CompanyMasterPage = ({ tab }) => {
   const handlePageChange = useCallback((newPage, newPageSize) => {
     setPageSize(newPageSize);
     setPage(newPage);
-    // No need to manually call loadCompanyList here; the useEffect handles it
   }, []);
 
   useEffect(() => {
@@ -323,16 +282,8 @@ const CompanyMasterPage = ({ tab }) => {
   const currentRecord = totalRecords > 0 ? currentIndex + 1 : 0;
   return (
     <div className="h-full">
-      {showPreview ? (
-        <ERPPrintPreview
-          title="Company Details"
-          data={printData}
-          sections={companyPrintSections}
-          logo="/finaman-logo.png"
-          defaultTemplate="detail"
-          watermark="DRAFT"
-          onBack={() => setShowPreview(false)}
-        />
+      {printWorkflow.isOpen ? (
+        <ERPPrintPreview title="Company Master" {...printWorkflow.printProps} />
       ) : showForm ? (
         <CompanyMasterForm
           formData={formData}
@@ -362,8 +313,8 @@ const CompanyMasterPage = ({ tab }) => {
       ) : (
         <Table
           title="Company Master"
-          activeTab="search" 
-             onTabChange={handleTabChange}
+          activeTab="search"
+          onTabChange={handleTabChange}
           data={list}
           columns={columns}
           rowKey="company_id"

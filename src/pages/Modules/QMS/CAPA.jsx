@@ -1,180 +1,213 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import {
+  FaClipboardList, FaSearch, FaTasks, FaSpinner,
+  FaCheckDouble, FaChartLine, FaHistory,
+} from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
-import { useERPMode } from "../../../components/Reusable/form/useFormMode";
-import { capaTabs, capaFieldGroups, capaRequiredFieldsList, capaTableColumns, capaWidthConfig } from "./Utils/Qmsconfigs";
-import { confirmDelete, showToast, alertError } from "../../../components/Reusable/alert";
-import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
-import { useApplSettings } from "../../../Hooks/useApplSettings";
-import { getCapas, createCapa, updateCapa, deleteCapa, getNextRecordNo } from "./Utils/QmsAPI";
-import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
-
-const initialState = {
-  Id: null, RecordNo: "", Status: "Open", InitiationDate: new Date().toISOString().slice(0, 10),
-  SourceType: "", SourceRef: "", CapaType: "", Department: "", ProblemStatement: "", RcaMethod: "",
-  RootCause: "", Correction: "", CorrectiveAction: "", PreventiveAction: "", ResponsiblePerson: "",
-  TargetDate: "", ImplementationEvidence: "", ImplementationDate: "", EffectivenessCriteria: "",
-  EffectivenessDueDate: "", EffectivenessResult: "",
+import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
+import { getHeaderStyle } from "./Utils/QmsValidation";
+import { useQmsModule } from "./Utils/useQmsModule";
+import { useRefOptions } from "./Utils/useRefOptions";
+import {
+  capaTabs, capaTabStage, capaTabLabels,
+  getCapaFieldGroups, getCapaRequired,
+  capaWidthConfig, capaSectionConfigs, capaTableColumns,
+} from "./Utils/Qmsconfigs";
+import { getCapas, getCapa, createCapa, updateCapa, deleteCapa } from "./Utils/QmsAPI";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+// ── module-level constants (component ke bahar — stable references) ──
+const API = {
+  list: getCapas, getOne: getCapa,
+  create: createCapa, update: updateCapa, remove: deleteCapa,
 };
 
-const configs = { "CAPA Details": "grid-cols-1 sm:grid-cols-4" };
+const initialState = {
+  Id: null, RecordNo: "", Status: "Open",
+  InitiationDate: new Date().toISOString().slice(0, 10),
+  SourceType: "", SourceRef: "", SourceId: null,
+  CapaType: "", Department: "", Priority: "", Owner: "", AttachmentRef: "",
+  RcaMethod: "", ProblemStatement: "", RootCause: "",
+  RcaCompletedBy: "", RcaDate: "",
+  Correction: "", CorrectiveAction: "", PreventiveAction: "",
+  ResponsiblePerson: "", TargetDate: "",
+  ApprovedBy: "", ApprovalDate: "", RejectionReason: "",
+  RevisedTargetDate: "", ExtensionReason: "", ProgressRemarks: "",
+  ImplementationEvidence: "", ImplementationDate: "",
+  VerifiedBy: "", VerificationDate: "",
+  ChangeControlRef: "", DmsRef: "", TrainingRef: "",
+  EffectivenessCriteria: "", EffectivenessDueDate: "",
+  EffectivenessResult: "", EffectivenessReviewedBy: "",
+  ClosedBy: "", ClosureRemarks: "",
+    InitiatedBy: "", ProposedBy: "", ProposedOn: "",
+  Investigation: "",
+  CorrectiveTargetDate: "", PreventiveTargetDate: "",
+  CaInitiatedBy: "", CaInitiatedOn: "", CaVerifiedQaBy: "", CaVerifiedQaOn: "",
+  CaDeptHeadBy: "", CaDeptHeadOn: "",
+  PaInitiatedBy: "", PaInitiatedOn: "", PaVerifiedQaBy: "", PaVerifiedQaOn: "",
+  PaDeptHeadBy: "", PaDeptHeadOn: "",
+  ApprovalStatus: "",
+  EvaluationReview: "", EffectivenessRequired: "",
+  EvalDeptHeadBy: "", EvalDeptHeadOn: "", EvalQaHeadBy: "", EvalQaHeadOn: "",
+  EffVerificationRequired: "", EffReasonIfNotRequired: "",
+  EffReasonSignBy: "", EffReasonSignOn: "",
+  EffDeptHeadComment: "", EffDeptHeadBy: "", EffDeptHeadOn: "",
+  EffQaHeadComment: "", EffQaHeadBy: "", EffQaHeadOn: "",
+  InvestigationRefIfNotEffective: "", NewCapaNo: "", CommentsIfNotEffective: "",
+  NotEffectiveSignBy: "", NotEffectiveSignOn: "",
+  ClosingDate: "",
+  extensions: [],
+};
+
+const CAPA_TAB_ICON = {
+  details: FaClipboardList,
+  rca: FaSearch,
+  plan: FaTasks,
+  progress: FaSpinner,
+  verification: FaCheckDouble,
+  effectiveness: FaChartLine,
+  audit: FaHistory,
+};
+function CapaTabIcon({ tab }) {
+  const Icon = CAPA_TAB_ICON[tab];
+  return Icon ? <Icon /> : <span>•</span>;
+}
+
+const STATUS_OPTIONS = [
+  "Open", "RCA Pending", "Plan Pending", "Action In Progress",
+  "Verification Pending", "Effectiveness Check", "Closed", "Rejected",
+];
+
+const EMPTY_FILTERS = { Status: "All", Department: "", SourceType: "All" };
 
 export default function CapaMasterPage({ tab }) {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(tab?.appl_name || "CAPA");
-  const { options: groupOptions } = useGroupOptions();
-  const fieldGroups = capaFieldGroups(groupOptions);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getCapas();
-      setList(Array.isArray(res?.data) ? res.data : []);
-    } catch (err) { alertError("Load Error", "Failed to load CAPA records"); }
-    finally { setLoading(false); }
-  }, []);
-
-  const {
-    mode, formData, setFormData, saving, handleView, handleAdd, handleModify, performSave,
-    rights, showForm, setShowForm, activeTab, setActiveTab, handleEditCancel, isDirty,
-  } = useERPMode(initialState, (data) => data.Id ? updateCapa(data.Id, data) : createCapa(data), loadData, "CAPA");
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const handleHeaderTabChange = useCallback((t) => { setActiveTab(t); setShowForm(t !== "search"); }, [setActiveTab, setShowForm]);
-
-  const handleAddNew = async () => {
-    handleAdd();
-    setShowForm(true);
-    setActiveTab("entry");
-    const recordNo = await getNextRecordNo("capa");
-    setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
-  };
-
-  useEffect(() => {
-    if (showForm && mode === "view" && list.length > 0) setFormData(list[currentIndex]);
-  }, [currentIndex, list, showForm, mode, setFormData]);
-
-  const listWithSr = list.map((item, i) => ({ ...item, Sr: i + 1 }));
-
-  const handleRowSelect = (row) => {
-    const idx = list.findIndex((i) => i.Id === row.Id);
-    if (idx !== -1) setCurrentIndex(idx);
-    handleView(row);
-    setShowForm(true);
-    setActiveTab("entry");
-  };
-
-  const handleSave = async (localData) => {
-    const dataToSave = { ...localData, Id: localData.Id ?? null };
-    if (mode === "add") dataToSave.RecordNo = "";
-    const response = await performSave("Id", dataToSave);
-    if (response?.success) { showToast({ icon: "success", title: "Saved Successfully" }); await loadData(); }
-  };
-
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({ title: `Delete CAPA "${row.RecordNo || row.Id}"?` });
-    if (!confirmed) return;
-    await deleteCapa(row.Id);
-    showToast({ icon: "success", title: "Deleted" });
-    setShowForm(false); setActiveTab("search");
-    await loadData();
-  };
-
-  const handleDeleteMultiple = async (selected) => {
-    const ids = (selected || []).map((item) => (typeof item === "object" ? item.Id : item));
-    if (ids.length === 0) return;
-    const confirmed = await confirmDelete({ title: `Delete ${ids.length} CAPA record(s)?` });
-    if (!confirmed) return;
-    try {
-      const results = await Promise.all(ids.map((id) => deleteCapa(id)));
-      const failed = results.filter((r) => !r?.success).length;
-      showToast({
-        icon: failed === 0 ? "success" : "warning",
-        title: failed === 0 ? `${ids.length} deleted` : `${ids.length - failed} deleted, ${failed} failed`,
-      });
-      setShowForm(false); setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete some CAPA records");
-    }
-  };
-
-  const handleFormExit = async () => {
-    const wasDirty = isDirty;
-    await handleEditCancel();
-    if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
-  };
-  const [filters, setFilters] = useState({ Status: "All Status" });
-const [showFilter, setShowFilter] = useState(false);
-
-const applyFilter = useCallback(() => {}, []);
-
-const clearFilter = useCallback(() => {
-  setFilters({ Status: "All Status" });
-}, []);
-
-const filteredList = useMemo(() => {
-  return listWithSr.filter((item) => {
-    if (filters.Status && filters.Status !== "All Status") {
-      if (item.Status !== filters.Status) return false;
-    }
-    return true;
+  const m = useQmsModule({
+    moduleKey: "capa",
+    title: "CAPA",
+    applName: tab?.appl_name || "CAPA",
+    initialState,
+    tabs: capaTabs,
+    tabStage: capaTabStage,
+    getRequired: getCapaRequired,
+    api: API,
   });
-}, [listWithSr, filters]);
 
-  return (
-    <div className="h-full w-full">
-      {showForm ? (
+  const refOpts = useRefOptions(["changecontrol", "dms", "training", "deviation", "incident", "audit", "capa"]);   // 🆕
+
+  const fieldGroups = useMemo(
+    () => getCapaFieldGroups({ ...m.groupOptions, refOpts }),   // 🆕
+    [m.groupOptions, refOpts]
+  );
+
+  const customTabs = useMemo(
+    () => ({ audit: <RecordAuditPanel history={m.history} /> }),
+    [m.history]
+  );
+
+  // ── filters ──
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
+
+  const filteredList = useMemo(() => {
+    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
+    return m.list
+      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Open" }))
+      .filter((it) =>
+        (filters.Status === "All" || it.Status === filters.Status) &&
+        (filters.SourceType === "All" || it.SourceType === filters.SourceType) &&
+        (!filters.Department || has(it.Department, filters.Department))
+      );
+  }, [m.list, filters]);
+
+  if (m.showForm) {
+    return (
+      <div className="h-full w-full">
         <ERPFormBuilder
           title="CAPA"
           tabs={capaTabs}
+          tabLabels={capaTabLabels}
+          TabIcon={CapaTabIcon}
           fieldGroups={fieldGroups}
+          customTabs={customTabs}
+          configs={capaSectionConfigs}
           widthConfig={capaWidthConfig}
-          requiredFields={capaRequiredFieldsList}
-          hideSidebar hideTabBar showSettingsTab
           getHeaderStyle={getHeaderStyle}
-          configs={configs}
-          TabIcon={TabIcon}
-          formData={formData} setFormData={setFormData} mode={mode}
-          settingsConfig={settingsConfig} settingsDefaults={settingsDefaults} onSettingsSave={onSettingsSave}
-          saving={saving} rights={rights}
-          onSave={handleSave} onCancel={handleFormExit} onDelete={handleDelete}
-          onModify={handleModify} onNewEntry={handleAddNew} onEditCancel={handleFormExit}
-          currentRecord={list.length > 0 ? currentIndex + 1 : 0} totalRecords={list.length}
-          onPrevRecord={() => setCurrentIndex((p) => Math.max(p - 1, 0))}
-          onNextRecord={() => setCurrentIndex((p) => Math.min(p + 1, list.length - 1))}
-          headerActiveTab={activeTab} onHeaderTabChange={handleHeaderTabChange}
+          requiredFields={m.requiredFields}
+          completedTabs={m.completedTabs}
+          hideSidebar={false}
+          hideTabBar={false}
+          showSettingsTab
+          sidebarConfig={{ hidePhoto: true, hideHeader: true }}
+          stageHistory={m.history?.stageHistory || null}
+          formData={m.formData}
+          savedFormData={m.savedFormData}
+          setFormData={m.setFormData}
+          mode={m.mode}
+          saving={m.saving}
+          rights={m.rights}
+          workflowConfig={m.workflowConfig}
+          currentUserRole={m.currentUserRole}
+          alwaysSignTabs={["effectiveness"]}
+          settingsConfig={m.settingsConfig}
+          settingsDefaults={m.settingsDefaults}
+          onSettingsSave={m.onSettingsSave}
+          onSave={m.handleSave}
+             onSaveDraft={m.handleSaveDraft}
+          onSignedSave={m.handleSignedSave}
+          onDelete={m.handleDelete}
+          onModify={m.handleModify}
+          onNewEntry={m.handleAddNewGuarded}
+          onCancel={m.handleTabExit}
+          onEditCancel={m.handleFormExit}
+          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
+          totalRecords={m.list.length}
+          onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
+          onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
+          headerActiveTab={m.activeTab}
+          onHeaderTabChange={m.handleHeaderTabChange}
+          moduleKey="capa"
         />
-      ) : (
-       <Table
-  activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-  onDeleteMultiple={handleDeleteMultiple}
-  title="CAPA" data={filteredList} columns={capaTableColumns}
-  rowKey="Id" loading={loading}
-  onAdd={rights?.add === 1 ? handleAddNew : null}
-  onRowDoubleClick={handleRowSelect}
-   onRefresh={() => loadData()}
-  onToggleFilter={() => setShowFilter((p) => !p)}
-  showForm={showFilter}
-  formComponent={
-    <UnivarsalFilter
-      filters={filters}
-        visibleFields={["status", "capaType", "department"]}
-      setFilters={setFilters}
-      options={{
-        ...groupOptions,
-        status: [ "Open", "Investigation", "Action In Progress", "Effectiveness Check", "Closed", "Rejected"],
-      }}
-      onApply={applyFilter}
-      onClear={clearFilter}
-    />
+      </div>
+    );
   }
-/>
-      )}
+
+  return (
+    <div className="h-full w-full">
+      <Table
+        title="CAPA"
+        data={filteredList}
+        columns={capaTableColumns}
+        rowKey="Id"
+        loading={m.loading}
+        activeTab={m.activeTab}
+        showSettingsTab
+        onTabChange={m.handleHeaderTabChange}
+        onRefresh={m.loadData}
+        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
+        onRowDoubleClick={m.handleRowSelect}
+        onDeleteMultiple={m.handleDeleteMultiple}
+        onToggleFilter={() => setShowFilter((p) => !p)}
+        showForm={showFilter}
+        formComponent={
+          <UnivarsalFilter
+            filters={filters}
+            setFilters={setFilters}
+            setShowFilter={setShowFilter}
+            visibleFields={["status", "department", "sourceType"]}
+            options={{
+              ...m.groupOptions,
+              status: STATUS_OPTIONS,
+              sourceType: ["Deviation", "Incident", "Complaint", "Audit Finding", "Change Control", "OOS/OOT", "Management Review", "CAPA"],
+            }}
+            onApply={() => { }}
+            onClear={clearFilter}
+          />
+        }
+      />
     </div>
   );
 }

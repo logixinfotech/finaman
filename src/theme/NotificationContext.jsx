@@ -49,23 +49,56 @@ export const NotificationProvider = ({ children }) => {
   const setMenusFromBackend = useCallback((data) => {
     setMenusFromBackendRaw(data);
   }, []); 
-  const fetchNotifications = useCallback(async () => {
-    if (!sessionStorage.getItem("token")) return;
-    try {
-      setLoading(true);
-      const res  = await getNotifications({ pageSize: 100 });
-      if (!isMounted.current) return;
-      const body = res?.data;
-      if (Array.isArray(body))  setNotifications(body);
-      else if (body?.success)   setNotifications(body.data || []);
-    } catch (err) {
-      if (err?.response?.status !== 401)
-        console.error("[Notifications] Fetch error:", err.message);
-    } finally {
-      if (isMounted.current) setLoading(false);
-    }
-  }, []);
+  // const fetchNotifications = useCallback(async () => {
+  //   if (!localStorage.getItem("token")) return;
+  //   try {
+  //     setLoading(true);
+  //     const res  = await getNotifications({ pageSize: 100 });
+  //     if (!isMounted.current) return;
+  //     const body = res?.data;
+  //     if (Array.isArray(body))  setNotifications(body);
+  //     else if (body?.success)   setNotifications(body.data || []);
+  //   } catch (err) {
+  //     if (err?.response?.status !== 401)
+  //       console.error("[Notifications] Fetch error:", err.message);
+  //   } finally {
+  //     if (isMounted.current) setLoading(false);
+  //   }
+  // }, []);
+const fetchNotifications = useCallback(async () => {
+  if (!localStorage.getItem("token")) return;
+  try {
+    setLoading(true);
+    const res  = await getNotifications({ pageSize: 100 });
+    if (!isMounted.current) return;
+    const body = res?.data;
+    let newList = null;
+    if (Array.isArray(body))  newList = body;
+    else if (body?.success)   newList = body.data || [];
 
+    if (newList) {
+      setNotifications(prev => {
+        // pehli fetch pe compare skip (initial load pe sound na baje)
+        const prevIds = new Set(prev.map(n => n.id));
+        const freshUnread = newList.filter(n => !n.is_read && !prevIds.has(n.id));
+
+        if (prev.length > 0 && freshUnread.length > 0 && !muted) {
+          setToastQueue(q => [...q, ...freshUnread]);
+          if (soundEnabled && audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(() => {});
+          }
+        }
+        return newList;
+      });
+    }
+  } catch (err) {
+    if (err?.response?.status !== 401)
+      console.error("[Notifications] Fetch error:", err.message);
+  } finally {
+    if (isMounted.current) setLoading(false);
+  }
+}, [muted, soundEnabled]);
   useEffect(() => {
     isMounted.current = true;
     fetchNotifications();
@@ -130,7 +163,7 @@ export const NotificationProvider = ({ children }) => {
       dismissById, clearAll, addNotification,
       consumeToast, toggleMute, toggleSound,
     }}>
-      <audio ref={audioRef} src="/notifysound.mp3" preload="auto" />
+      <audio ref={audioRef} src="/notify.mp3" preload="auto" />
       {children}
     </NotificationContext.Provider>
   );

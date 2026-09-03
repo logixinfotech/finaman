@@ -1,884 +1,615 @@
-/**
- * ERPPrintPreview — Responsive, scrollable, device-friendly
- *
- * FIXES vs previous version:
- *  - No fixed height / no height:100% — component is natural flow, parent just renders it
- *  - Paper width is fluid: max-width 860px, 100% otherwise — no horizontal cut-off
- *  - Toolbar wraps on small screens (flex-wrap)
- *  - Template switcher scrolls horizontally on mobile
- *  - All grids collapse to 1-col on narrow viewports via CSS vars
- *  - Entire page scrolls normally — no inner scroll trap
- *  - Print-only styles hide the chrome shell, paper prints clean A4
- */
-
-import React, { useRef, useState, useCallback } from "react";
-import { QRCodeCanvas } from "qrcode.react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
-  Printer, Download, ArrowLeft,
-  FileText, Receipt, List, Award, LayoutGrid, Columns2,
-  Clock, Ban, AlertTriangle, Copy as CopyIcon, CheckCircle
+  ArrowLeft, Download, Printer, ZoomIn, ZoomOut, Maximize2, Minimize2,
+  FileText, LoaderCircle, AlertTriangle, RefreshCw, ShieldCheck,
+  ChevronDown, ChevronLeft, ChevronRight, ExternalLink, MoreVertical,
+  PanelTop, Building2, Share2, Mail, Link2, Check,
 } from "lucide-react";
-import { useReactToPrint } from "react-to-print";
-
-/* ─── FONTS ─────────────────────────────────────────────── */
-const Fonts = () => (
+ 
+const Styles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    .erp-preview-root {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      --erp-accent:   #2563eb;
-      --erp-shell:    #111827;
-      --erp-toolbar:  #1f2937;
-      --erp-border:   #374151;
-      --erp-muted:    #6b7280;
-      --erp-paper:    #ffffff;
-      --erp-ink1:     #0f172a;
-      --erp-ink2:     #334155;
-      --erp-ink3:     #64748b;
-      --erp-ink4:     #94a3b8;
-      --erp-rule:     #e2e8f0;
-      --erp-tHead:    #f1f5f9;
-      --erp-tAlt:     #f8fafc;
-      --erp-tBorder:  #e2e8f0;
-      --erp-mono:     'JetBrains Mono', monospace;
-      box-sizing: border-box;
-    }
-    .erp-preview-root *, .erp-preview-root *::before, .erp-preview-root *::after {
-      box-sizing: inherit;
-      font-family: inherit;
-    }
-    .erp-mono { font-family: var(--erp-mono) !important; }
+    .rpv-root { font-family:'Plus Jakarta Sans',sans-serif; width:100%; height:100%; min-height:100vh;
+      background:#f4f6f9; display:flex; flex-direction:column; color:#0f172a; }
+    .rpv-root *, .rpv-root *::before, .rpv-root *::after { box-sizing:border-box; }
 
-    /* ── Toolbar ── */
-    .erp-toolbar {
-      background: var(--erp-toolbar);
-      border-bottom: 1px solid var(--erp-border);
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .erp-toolbar-left  { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .erp-toolbar-mid   { display: flex; align-items: center; overflow-x: auto; gap: 2px; background: #111827; border-radius: 8px; border: 1px solid var(--erp-border); padding: 3px; max-width: 100%; scrollbar-width: none; }
-    .erp-toolbar-mid::-webkit-scrollbar { display: none; }
-    .erp-toolbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    /* ---------- single-row toolbar ---------- */
+    .rpv-topbar { display:flex; align-items:center; gap:10px; padding:10px 16px;
+      background:#ffffff; border-bottom:1px solid #e5e9f0; position:sticky; top:0; z-index:50;
+      box-shadow:0 1px 2px rgba(15,23,42,.03); }
+    .rpv-left { display:flex; align-items:center; gap:10px; min-width:0; flex:1 1 auto; }
+    .rpv-icon-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px;
+      border:1px solid transparent; background:transparent; color:#64748b; cursor:pointer; transition:all .15s; flex-shrink:0; }
+    .rpv-icon-btn:hover { background:#f1f5f9; color:#334155; }
+    .rpv-icon-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .rpv-icon-btn.active { background:#eef2ff; color:#4f46e5; }
+    .rpv-icon-btn.spin-on-hover:hover svg { animation: rpv-spin .6s linear; }
 
-    /* Tab buttons */
-    .erp-tab {
-      display: flex; align-items: center; gap: 5px;
-      padding: 5px 11px; border-radius: 6px; border: none; cursor: pointer;
-      font-size: 11px; font-weight: 500; white-space: nowrap;
-      background: transparent; color: #6b7280;
-      transition: background 0.15s, color 0.15s;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .erp-tab:hover  { background: #1f2937; color: #d1d5db; }
-    .erp-tab.active { background: #1f2937; color: #f1f5f9; font-weight: 600; box-shadow: inset 0 0 0 1px #374151; }
+    .rpv-doc-icon { width:34px; height:34px; border-radius:8px; background:#eef2ff; border:1px solid #e0e7ff;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#4f46e5; }
+    .rpv-title-block { min-width:0; }
+    .rpv-title-row { display:flex; align-items:center; gap:8px; }
+    .rpv-title { font-size:14px; font-weight:600; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
+    .rpv-status-chip { display:flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; padding:2px 7px;
+      border-radius:999px; white-space:nowrap; text-transform:uppercase; letter-spacing:.02em; }
+    .rpv-status-chip.signed { background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; }
+    .rpv-status-chip.draft { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+    .rpv-subtitle { font-size:11.5px; color:#94a3b8; margin-top:1px; display:flex; align-items:center; gap:5px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:360px; }
+    .rpv-subtitle b { color:#64748b; font-weight:500; }
 
-    /* Toolbar icon btn */
-    .erp-icon-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 34px; height: 34px; border-radius: 7px;
-      border: 1px solid var(--erp-border); background: transparent;
-      color: #9ca3af; cursor: pointer; transition: all 0.15s;
-    }
-    .erp-icon-btn:hover { background: #374151; color: #e5e7eb; }
+    /* Template dropdown — compact, inline in the same row */
+    .rpv-tpl-select-wrap { position:relative; flex-shrink:0; }
+    .rpv-tpl-select { appearance:none; background:#f8fafc; border:1px solid #e2e8f0;
+      color:#334155; font-size:12.5px; font-weight:500; padding:7px 28px 7px 11px; border-radius:8px; cursor:pointer;
+      max-width:160px; text-overflow:ellipsis; }
+    .rpv-tpl-select:hover { border-color:#c7d2fe; }
+    .rpv-tpl-chevron { position:absolute; right:8px; top:50%; transform:translateY(-50%); pointer-events:none; color:#94a3b8; }
 
-    /* Action buttons */
-    .erp-btn-ghost {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 14px; border-radius: 7px;
-      border: 1px solid var(--erp-border); background: transparent;
-      color: #9ca3af; font-size: 11.5px; font-weight: 500; cursor: pointer;
-      transition: all 0.15s; white-space: nowrap;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .erp-btn-ghost:hover { background: #374151; color: #e5e7eb; border-color: #4b5563; }
+    .rpv-zoom-cluster { display:flex; align-items:center; gap:1px; background:#f8fafc;
+      border:1px solid #e2e8f0; border-radius:8px; padding:2px; flex-shrink:0; }
+    .rpv-zoom-pct { font-size:11.5px; font-weight:600; color:#475569; width:44px; text-align:center; font-family:'JetBrains Mono',monospace; cursor:pointer; }
+    .rpv-fit-btn { font-size:11px; font-weight:600; color:#475569; padding:0 8px; height:28px; border-radius:6px; cursor:pointer; }
+    .rpv-fit-btn.active { background:#4f46e5; color:#fff; }
 
-    .erp-btn-primary {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 16px; border-radius: 7px; border: none;
-      background: var(--erp-accent); color: #fff;
-      font-size: 11.5px; font-weight: 600; cursor: pointer;
-      transition: opacity 0.15s; white-space: nowrap;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .erp-btn-primary:hover { opacity: 0.88; }
+    .rpv-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+    .rpv-divider { width:1px; height:20px; background:#e5e9f0; margin:0 2px; }
+    .rpv-btn-ghost { display:flex; align-items:center; gap:6px; padding:7px 12px; border-radius:8px;
+      border:1px solid #e2e8f0; background:#fff; color:#334155; font-size:12.5px;
+      font-weight:500; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .rpv-btn-ghost:hover { background:#f8fafc; border-color:#cbd5e1; }
+    .rpv-btn-ghost.active { background:#eef2ff; border-color:#c7d2fe; color:#4f46e5; }
+    .rpv-btn-primary { display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:none;
+      background:#4f46e5; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .rpv-btn-primary:hover { background:#4338ca; }
+    .rpv-btn-primary:disabled, .rpv-btn-ghost:disabled { opacity:.4; cursor:not-allowed; }
 
-    /* ── Canvas (bg behind paper) ── */
-    .erp-canvas {
-      background: #0f1117;
-      padding: 24px 16px 48px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+    /* Overflow menu (desktop "more" + full mobile menu) */
+    .rpv-menu-wrap { position:relative; }
+    .rpv-menu { position:absolute; right:0; top:calc(100% + 6px); background:#fff; border:1px solid #e5e9f0;
+      border-radius:10px; box-shadow:0 12px 32px rgba(15,23,42,.12); padding:6px; min-width:190px; z-index:60; }
+    .rpv-menu-item { display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:7px; font-size:13px;
+      color:#334155; cursor:pointer; white-space:nowrap; }
+    .rpv-menu-item:hover { background:#f1f5f9; }
+    .rpv-menu-item:disabled { opacity:.4; cursor:not-allowed; }
+    .rpv-menu-sep { height:1px; background:#eef1f5; margin:5px 2px; }
+    .rpv-mobile-only, .rpv-mobile-only-sep { display:none; }
 
-    /* ── Paper shell ── */
-    .erp-paper-shell {
-      width: 100%;
-      max-width: 860px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3);
-      border-radius: 3px;
-    }
+    /* Email modal */
+    .rpv-modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center;
+      justify-content:center; z-index:100; }
+    .rpv-modal { background:#fff; border-radius:12px; padding:20px; width:380px; max-width:90vw;
+      box-shadow:0 20px 60px rgba(15,23,42,.25); }
+    .rpv-modal h3 { font-size:14.5px; font-weight:600; margin:0 0 14px; color:#0f172a; }
+    .rpv-modal-input, .rpv-modal-textarea { width:100%; padding:8px 11px; border:1px solid #e2e8f0; border-radius:7px;
+      font-size:13px; margin-bottom:10px; font-family:inherit; color:#0f172a; }
+    .rpv-modal-input:focus, .rpv-modal-textarea:focus { outline:none; border-color:#a5b4fc; }
+    .rpv-modal-textarea { resize:vertical; }
+    .rpv-modal-msg { font-size:12px; margin-bottom:8px; }
+    .rpv-modal-msg.error { color:#dc2626; }
+    .rpv-modal-msg.success { color:#059669; display:flex; align-items:center; gap:5px; }
+    .rpv-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:2px; }
 
-    /* ── The white A4 paper ── */
-    .erp-paper {
-      background: var(--erp-paper);
-      width: 100%;
-      padding: 36px 40px;
-      position: relative;
-    }
-    @media (max-width: 600px) {
-      .erp-paper { padding: 20px 16px; }
-    }
+    /* ---------- document canvas ---------- */
+    .rpv-stage { flex:1; display:flex; align-items:flex-start; justify-content:center; padding:28px 16px 24px; overflow:auto;
+      background-image:radial-gradient(circle at 1px 1px, rgba(15,23,42,0.045) 1px, transparent 0); background-size:20px 20px; }
+    .rpv-page-shell { background:#fff; border-radius:4px; box-shadow:0 1px 3px rgba(15,23,42,.06),0 12px 32px rgba(15,23,42,.10);
+      border:1px solid #e5e9f0; transition:width .2s ease; overflow:hidden; flex-shrink:0; }
+    .rpv-page-shell iframe { width:100%; height:100%; border:none; display:block; }
 
-    /* ── Document: header band ── */
-    .erp-doc-header-band {
-      background: var(--erp-ink1);
-      margin: -36px -40px 0;
-      padding: 20px 40px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-    }
-    @media (max-width: 600px) {
-      .erp-doc-header-band { margin: -20px -16px 0; padding: 16px 16px 14px; }
-    }
+    .rpv-skel-doc { width:620px; max-width:90vw; aspect-ratio:1/1.4142; background:#fff; border:1px solid #e5e9f0;
+      border-radius:4px; box-shadow:0 12px 32px rgba(15,23,42,.08); padding:40px; position:relative; overflow:hidden; }
+    .rpv-skel-line { height:11px; background:#eef1f5; border-radius:4px; margin-bottom:14px; }
+    .rpv-skel-shimmer { position:absolute; inset:0; background:linear-gradient(100deg, transparent 30%, rgba(15,23,42,.035) 50%, transparent 70%);
+      background-size:200% 100%; animation:rpv-shimmer 1.6s infinite; }
+    @keyframes rpv-shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+    .rpv-loading-caption { display:flex; align-items:center; gap:9px; justify-content:center; margin-top:16px; color:#94a3b8; font-size:13px; }
+    .rpv-spin { animation:rpv-spin .9s linear infinite; color:#4f46e5; }
+    @keyframes rpv-spin { to{ transform:rotate(360deg);} }
 
-    .erp-doc-meta-strip {
-      background: #f8fafc;
-      border-bottom: 1px solid var(--erp-rule);
-      margin: 0 -40px;
-      padding: 9px 40px;
-      display: flex;
-      gap: 28px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    @media (max-width: 600px) {
-      .erp-doc-meta-strip { margin: 0 -16px; padding: 8px 16px; gap: 16px; }
-    }
+    .rpv-error-card { width:400px; max-width:90vw; background:#fff; border:1px solid #fecaca; border-radius:12px;
+      padding:26px 22px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px;
+      box-shadow:0 12px 32px rgba(15,23,42,.08); }
+    .rpv-error-icon { width:42px; height:42px; border-radius:50%; background:#fef2f2; display:flex;
+      align-items:center; justify-content:center; color:#dc2626; margin-bottom:2px; }
+    .rpv-error-title { font-size:14px; font-weight:600; color:#991b1b; }
+    .rpv-error-msg { font-size:12.5px; color:#64748b; line-height:1.6; }
+    .rpv-error-actions { display:flex; gap:8px; margin-top:6px; }
 
-    /* ── Field grid — collapses on mobile ── */
-    .erp-field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 36px; }
-    .erp-field-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); column-gap: 28px; }
-    @media (max-width: 680px) {
-      .erp-field-grid-2 { grid-template-columns: 1fr; }
-      .erp-field-grid-3 { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 420px) {
-      .erp-field-grid-3 { grid-template-columns: 1fr; }
-    }
+    /* ---------- status footer (replaces the old floating pill) ---------- */
+    .rpv-footer { display:flex; align-items:center; justify-content:center; gap:16px; padding:8px 16px;
+      background:#fff; border-top:1px solid #e5e9f0; font-size:11.5px; color:#94a3b8; flex-wrap:wrap; }
+    .rpv-page-nav { display:flex; align-items:center; gap:4px; font-family:'JetBrains Mono',monospace; color:#475569; }
+    .rpv-page-nav-input { width:32px; text-align:center; border:1px solid #e2e8f0; border-radius:5px; font-size:11.5px;
+      font-family:'JetBrains Mono',monospace; color:#334155; padding:2px 0; }
+    .rpv-footer-sep { width:1px; height:14px; background:#e5e9f0; }
+    .rpv-kbd { display:none; align-items:center; gap:12px; }
+    .rpv-kbd kbd { background:#f1f5f9; border:1px solid #e2e8f0; padding:1px 5px; border-radius:4px; font-family:'JetBrains Mono',monospace; color:#64748b; }
 
-    .erp-field-row {
-      display: flex; justify-content: space-between; align-items: baseline;
-      border-bottom: 1px solid var(--erp-rule);
-      padding: 6px 0; gap: 8px;
-    }
+    @media (min-width:900px) { .rpv-kbd { display:flex; } }
 
-    /* ── Table — horizontal scroll on mobile ── */
-    .erp-table-wrap { overflow-x: auto; width: 100%; }
-    .erp-table {
-      width: 100%; border-collapse: collapse;
-      font-size: 11.5px; min-width: 400px;
-    }
-
-    /* ── Invoice two-col splits to single on mobile ── */
-    .erp-invoice-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 22px;
-    }
-    @media (max-width: 560px) {
-      .erp-invoice-grid { grid-template-columns: 1fr; }
-    }
-
-    /* ── Two-column template ── */
-    .erp-two-col-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 0;
-    }
-    @media (max-width: 560px) {
-      .erp-two-col-grid { grid-template-columns: 1fr; }
-      .erp-two-col-right { border-left: none !important; padding-left: 0 !important; border-top: 1px dashed var(--erp-rule); padding-top: 12px; }
-    }
-
-    /* ── Signature block ── */
-    .erp-sig-grid {
-      display: grid; gap: 24px; margin-top: 44px;
-    }
-
-    /* ── Status badge ── */
-    .erp-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 700;
-      letter-spacing: 0.07em; text-transform: uppercase;
-    }
-
-    /* ── Watermark pill in toolbar ── */
-    .erp-wm-pill {
-      display: flex; align-items: center; gap: 5px;
-      padding: 4px 10px; border-radius: 5px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
-    }
-
-    /* ── Totals panel ── */
-    .erp-totals-panel {
-      display: flex; justify-content: flex-end; margin-bottom: 24px;
-    }
-    @media (max-width: 480px) {
-      .erp-totals-panel { justify-content: stretch; }
-      .erp-totals-inner { width: 100% !important; }
-    }
-
-    /* ── Section heading ── */
-    .erp-section-head {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 12px; margin-top: 6px;
-    }
-
-    /* ── Doc title in toolbar ── */
-    .erp-toolbar-title {
-      font-size: 12.5px; font-weight: 600; color: #e2e8f0;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      max-width: 180px;
-    }
-    @media (max-width: 480px) { .erp-toolbar-title { max-width: 110px; } }
-
-    /* ── Print media ── */
-    @media print {
-      .erp-preview-root { background: #fff !important; }
-      .erp-toolbar      { display: none !important; }
-      .erp-canvas       { padding: 0 !important; background: #fff !important; }
-      .erp-paper-shell  { box-shadow: none !important; max-width: 100% !important; }
-      .erp-paper        { padding: 0 !important; }
-      .erp-doc-header-band { margin: 0 !important; }
-      .erp-doc-meta-strip  { margin: 0 !important; }
-      @page { size: A4; margin: 12mm 14mm; }
-      table  { page-break-inside: auto; }
-      tr     { page-break-inside: avoid; }
-      thead  { display: table-header-group; }
-      tfoot  { display: table-footer-group; }
+    /* ---------- responsive ---------- */
+    @media (max-width:768px) {
+      .rpv-title { max-width:120px; }
+      .rpv-subtitle { max-width:150px; }
+      .rpv-tpl-select-wrap, .rpv-zoom-cluster, .rpv-divider,
+      .rpv-desktop-only { display:none !important; }
+      .rpv-btn-ghost span, .rpv-btn-primary span { display:none; }
+      .rpv-btn-ghost, .rpv-btn-primary { padding:8px; }
+      .rpv-topbar { padding:8px 10px; }
+      .rpv-mobile-only { display:flex !important; }
+      .rpv-mobile-only-sep { display:block !important; }
     }
   `}</style>
 );
 
-/* ─── HELPERS ──────────────────────────────────────────── */
-const TEMPLATES = [
-  { id:"detail",  label:"Detail",   Icon:FileText,   desc:"Full master record" },
-  { id:"invoice", label:"Invoice",  Icon:Receipt,    desc:"Header + line items + totals" },
-  { id:"list",    label:"Register", Icon:List,       desc:"Multi-row table report" },
-  { id:"letter",  label:"Letter",   Icon:Award,      desc:"Letter / Certificate" },
-  { id:"compact", label:"Compact",  Icon:LayoutGrid, desc:"Dense 3-col layout" },
-  { id:"twoCol",  label:"2-Col",    Icon:Columns2,   desc:"Side-by-side comparison" },
-];
+const A4_RATIO = 1 / 1.4142;
 
-const val = (data, key) => {
-  const v = data?.[key];
-  return (v !== undefined && v !== null && v !== "") ? v : "—";
-};
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 5) return 'just now';
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return new Date(ts).toLocaleTimeString();
+}
 
-/* ─── SHARED DOC PARTS ─────────────────────────────────── */
-
-const SectionHead = ({ title }) => (
-  <div className="erp-section-head">
-    <span style={{ fontSize:9.5, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--erp-ink3)", whiteSpace:"nowrap" }}>
-      {title}
-    </span>
-    <div style={{ flex:1, height:1, background:"var(--erp-rule)" }} />
-  </div>
-);
-
-const FieldGrid = ({ fields = [], data, cols = 2 }) => {
-  const cls = cols === 3 ? "erp-field-grid-3" : "erp-field-grid-2";
-  const gridClass = cols === 1 ? "" : cls;
-  return (
-    <div className={gridClass} style={{ marginBottom:18, ...(cols === 1 ? { display:"grid", gridTemplateColumns:"1fr" } : {}) }}>
-      {fields.map((f, i) => (
-        <div key={i} className="erp-field-row">
-          <span style={{ fontSize:11.5, color:"var(--erp-ink3)", flexShrink:0 }}>{f.label}</span>
-          <span style={{ fontSize:11.5, fontWeight:500, color:"var(--erp-ink1)", textAlign:"right", wordBreak:"break-all", ...(f.mono ? { fontFamily:"var(--erp-mono)", fontSize:10.5 } : {}) }}>
-            {f.render ? f.render(data) : val(data, f.key)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const DataTable = ({ columns = [], rows = [], showTotals, totalFields }) => (
-  <div className="erp-table-wrap">
-    <table className="erp-table">
-      <thead>
-        <tr style={{ background:"var(--erp-tHead)" }}>
-          {columns.map((c, i) => (
-            <th key={i} style={{ border:"1px solid var(--erp-tBorder)", padding:"8px 10px", textAlign:c.align||"left", fontWeight:600, color:"var(--erp-ink2)", fontSize:10.5, textTransform:"uppercase", letterSpacing:"0.04em" }}>
-              {c.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 && (
-          <tr><td colSpan={columns.length} style={{ textAlign:"center", padding:24, color:"var(--erp-ink4)", border:"1px solid var(--erp-tBorder)", fontStyle:"italic", fontSize:12 }}>No records found</td></tr>
-        )}
-        {rows.map((row, ri) => (
-          <tr key={ri} style={{ background: ri%2===0 ? "#fff" : "var(--erp-tAlt)" }}>
-            {columns.map((c, ci) => (
-              <td key={ci} style={{ border:"1px solid var(--erp-tBorder)", padding:"6px 10px", textAlign:c.align||"left", color:"var(--erp-ink2)", ...(c.mono ? { fontFamily:"var(--erp-mono)", fontSize:10.5 } : {}) }}>
-                {c.render ? c.render(row, ri) : row?.[c.key] ?? "—"}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-      {showTotals && totalFields && (
-        <tfoot>
-          <tr style={{ background:"#e8edf5" }}>
-            {columns.map((c, i) => {
-              const tf = totalFields.find(t => t.key === c.key);
-              return (
-                <td key={i} style={{ border:"1px solid #cbd5e1", padding:"8px 10px", fontWeight:700, fontSize:11.5, color:"var(--erp-ink1)", textAlign:c.align||"left", fontFamily: tf ? "var(--erp-mono)" : undefined }}>
-                  {i===0 ? "TOTAL" : tf ? tf.value : ""}
-                </td>
-              );
-            })}
-          </tr>
-        </tfoot>
-      )}
-    </table>
-  </div>
-);
-
-const SignatureBlock = ({ signatories = ["Prepared By", "Checked By", "Authorised By"] }) => (
-  <div className="erp-sig-grid" style={{ gridTemplateColumns:`repeat(${signatories.length}, 1fr)` }}>
-    {signatories.map((name, i) => (
-      <div key={i} style={{ textAlign:"center" }}>
-        <div style={{ height:32 }} />
-        <div style={{ borderTop:"1.5px solid var(--erp-ink1)", paddingTop:8, fontSize:10.5, color:"var(--erp-ink3)", fontWeight:500 }}>{name}</div>
-        <div style={{ fontSize:9, color:"var(--erp-ink4)", marginTop:2 }}>Signature &amp; Date</div>
-      </div>
-    ))}
-  </div>
-);
-
-const Watermark = ({ text }) => {
-  const C = { DRAFT:"#f59e0b", CANCELLED:"#ef4444", COPY:"#2563eb", VOID:"#64748b" };
-  const c = C[text?.toUpperCase()] || "#64748b";
-  return (
-    <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <span style={{ fontSize:"min(18vw, 110px)", fontWeight:800, color:c, opacity:0.07, transform:"rotate(-28deg)", textTransform:"uppercase", whiteSpace:"nowrap", userSelect:"none", letterSpacing:"0.06em" }}>
-        {text}
-      </span>
-    </div>
-  );
-};
-
-const DocHeader = ({ title, data, logo, showQR=true, docNumber, docDate, status }) => {
-  const S = { active:{bg:"#d1fae5",txt:"#065f46",dot:"#10b981"}, draft:{bg:"#fef3c7",txt:"#92400e",dot:"#f59e0b"}, cancelled:{bg:"#fee2e2",txt:"#991b1b",dot:"#ef4444"} };
-  const s = S[status?.toLowerCase()];
-  return (
-    <div style={{ marginBottom:22 }}>
-      <div className="erp-doc-header-band">
-        <div style={{ display:"flex", alignItems:"center", gap:14, minWidth:0 }}>
-          {logo && <img src={logo} alt="" style={{ height:38, objectFit:"contain", filter:"brightness(0) invert(1)", opacity:.9, flexShrink:0 }} />}
-          <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:17, fontWeight:700, color:"#f1f5f9", letterSpacing:"-0.02em", lineHeight:1.2 }}>{title}</div>
-            {data?.company_name && <div style={{ fontSize:11, color:"#94a3b8", marginTop:3 }}>{data.company_name}</div>}
-          </div>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-          {s && (
-            <span className="erp-badge" style={{ background:`${s.dot}22`, border:`1px solid ${s.dot}55`, color:s.dot }}>
-              <span style={{ width:5, height:5, borderRadius:"50%", background:s.dot, display:"inline-block" }} />
-              {status}
-            </span>
-          )}
-          {showQR && (
-            <div style={{ background:"#fff", padding:5, borderRadius:4, flexShrink:0 }}>
-              <QRCodeCanvas value={data?.company_id||data?.id||"ERP"} size={48} fgColor="#0f172a" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="erp-doc-meta-strip">
-        {data?.company_name && (
-          <div>
-            <div style={{ fontSize:8.5, color:"var(--erp-ink4)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em" }}>Organisation</div>
-            <div style={{ fontSize:11.5, fontWeight:500, color:"var(--erp-ink2)", marginTop:1 }}>{data.company_name}</div>
-          </div>
-        )}
-        {docNumber && (
-          <div>
-            <div style={{ fontSize:8.5, color:"var(--erp-ink4)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em" }}>Document No.</div>
-            <div className="erp-mono" style={{ fontSize:11.5, fontWeight:500, color:"var(--erp-ink1)", marginTop:1 }}>{docNumber}</div>
-          </div>
-        )}
-        {docDate && (
-          <div>
-            <div style={{ fontSize:8.5, color:"var(--erp-ink4)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em" }}>Date</div>
-            <div style={{ fontSize:11.5, fontWeight:500, color:"var(--erp-ink2)", marginTop:1 }}>{docDate}</div>
-          </div>
-        )}
-        {data?.branch && (
-          <div>
-            <div style={{ fontSize:8.5, color:"var(--erp-ink4)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em" }}>Branch</div>
-            <div style={{ fontSize:11.5, fontWeight:500, color:"var(--erp-ink2)", marginTop:1 }}>{data.branch}</div>
-          </div>
-        )}
-        <div style={{ marginLeft:"auto", fontSize:9, color:"var(--erp-ink4)", whiteSpace:"nowrap" }}>
-          {new Date().toLocaleString("en-IN")}
-        </div>
-      </div>
-
-      <div style={{ height:20 }} />
-    </div>
-  );
-};
-
-const DocFooter = ({ note }) => (
-  <div style={{ borderTop:"1px solid var(--erp-rule)", marginTop:28, paddingTop:10, display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
-    <span style={{ fontSize:9, color:"var(--erp-ink4)" }}>{note||"System generated document — ERP"}</span>
-    <span className="erp-mono" style={{ fontSize:9, color:"var(--erp-ink4)" }}>{new Date().toISOString().slice(0,19).replace("T"," ")} UTC</span>
-  </div>
-);
-
-/* ─── TEMPLATES ─────────────────────────────────────────── */
-
-const TemplateDetail = ({ title, data, sections, logo, watermark, docNumber, docDate, status }) => {
-  const autoCols = f => f?.length > 9 ? 3 : f?.length > 4 ? 2 : 1;
-  return (
-    <div style={{ position:"relative" }}>
-      {watermark && <Watermark text={watermark} />}
-      <div style={{ position:"relative", zIndex:1 }}>
-        <DocHeader title={title} data={data} logo={logo} docNumber={docNumber} docDate={docDate} status={status} />
-        {sections.map((sec, i) => {
-          if (sec.type === "custom") return <div key={i}>{sec.render(data)}</div>;
-          if (sec.type === "table") return (
-            <div key={i} style={{ marginBottom:22 }}>
-              <SectionHead title={sec.title} />
-              <DataTable columns={sec.columns} rows={data?.[sec.dataKey]||[]} showTotals={sec.showTotals} totalFields={sec.totalFields} />
-            </div>
-          );
-          return (
-            <div key={i} style={{ marginBottom:6 }}>
-              <SectionHead title={sec.title} />
-              <FieldGrid fields={sec.fields} data={data} cols={sec.columns||autoCols(sec.fields)} />
-            </div>
-          );
-        })}
-        <SignatureBlock />
-        <DocFooter />
-      </div>
-    </div>
-  );
-};
-
-const TemplateInvoice = ({ title, data, sections, logo, watermark, docNumber, docDate, status }) => {
-  const hdr  = sections.find(s => s.type==="fields" && s.position!=="receiver");
-  const recv = sections.find(s => s.position==="receiver");
-  const tbl  = sections.find(s => s.type==="table");
-  const tots = sections.find(s => s.type==="totals");
-  return (
-    <div style={{ position:"relative" }}>
-      {watermark && <Watermark text={watermark} />}
-      <div style={{ position:"relative", zIndex:1 }}>
-        <DocHeader title={title} data={data} logo={logo} docNumber={docNumber} docDate={docDate} status={status} showQR />
-        <div className="erp-invoice-grid">
-          {hdr && <div><SectionHead title={hdr.title} /><FieldGrid fields={hdr.fields} data={data} cols={1} /></div>}
-          {recv && (
-            <div style={{ background:"#f8fafc", border:"1px solid var(--erp-tBorder)", borderLeft:"3px solid var(--erp-accent)", borderRadius:7, padding:"13px 15px" }}>
-              <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--erp-ink4)", marginBottom:9 }}>{recv.title}</div>
-              {recv.fields.map((f, i) => (
-                <div key={i} style={{ fontSize: i===0?13:11.5, fontWeight: i===0?600:400, color: i===0?"var(--erp-ink1)":"var(--erp-ink2)", marginBottom:3 }}>
-                  {val(data, f.key)}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        {tbl && <div style={{ marginBottom:18 }}><SectionHead title={tbl.title||"Line Items"} /><DataTable columns={tbl.columns} rows={data?.[tbl.dataKey]||[]} showTotals={tbl.showTotals} totalFields={tbl.totalFields} /></div>}
-        {tots && (
-          <div className="erp-totals-panel">
-            <div className="erp-totals-inner" style={{ width:300, border:"1px solid var(--erp-tBorder)", borderRadius:7, overflow:"hidden" }}>
-              {tots.rows.map((row, i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 15px", background: row.bold?"var(--erp-ink1)": i%2===0?"#fff":"var(--erp-tAlt)", color: row.bold?"#f8fafc":"var(--erp-ink2)", fontWeight: row.bold?700:400, fontSize:12, borderBottom: row.bold?"none":"1px solid var(--erp-tBorder)" }}>
-                  <span>{row.label}</span>
-                  <span className="erp-mono" style={{ fontSize: row.bold?13:11.5 }}>{row.render ? row.render(data) : val(data, row.key)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {data?.terms && (
-          <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:7, padding:"10px 14px", marginBottom:18 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:"#92400e", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5 }}>Terms &amp; Conditions</div>
-            <div style={{ fontSize:11, color:"#78350f", lineHeight:1.7 }}>{data.terms}</div>
-          </div>
-        )}
-        <SignatureBlock signatories={["Prepared By","Checked By","Authorised Signatory"]} />
-        <DocFooter note="E.&O.E. — Computer generated document." />
-      </div>
-    </div>
-  );
-};
-
-const TemplateList = ({ title, data, sections, logo, watermark, docNumber, docDate }) => {
-  const tbl = sections.find(s => s.type==="table");
-  const rows = (tbl && data?.[tbl.dataKey]) || (Array.isArray(data) ? data : []);
-  return (
-    <div style={{ position:"relative" }}>
-      {watermark && <Watermark text={watermark} />}
-      <div style={{ position:"relative", zIndex:1 }}>
-        <DocHeader title={title} data={data} logo={logo} showQR={false} docNumber={docNumber} docDate={docDate} />
-        {data?.dateRange && (
-          <div style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:20, padding:"4px 13px", marginBottom:14 }}>
-            <Clock size={11} color="#2563eb" />
-            <span style={{ fontSize:11, color:"#1d4ed8", fontWeight:500 }}>Period: {data.dateRange}</span>
-          </div>
-        )}
-        {tbl && <DataTable columns={tbl.columns} rows={rows} showTotals={tbl.showTotals} totalFields={tbl.totalFields} />}
-        <div style={{ marginTop:12 }}>
-          <span style={{ fontSize:10, color:"var(--erp-ink3)", background:"#f1f5f9", borderRadius:4, padding:"3px 9px", fontWeight:500 }}>
-            {rows.length} record{rows.length!==1?"s":""}
-          </span>
-        </div>
-        <DocFooter />
-      </div>
-    </div>
-  );
-};
-
-const TemplateLetter = ({ title, data, sections, logo, watermark }) => {
-  const body = sections.find(s => s.type==="letter_body");
-  const sig  = sections.find(s => s.type==="signature");
-  return (
-    <div style={{ position:"relative" }}>
-      {watermark && <Watermark text={watermark} />}
-      <div style={{ position:"relative", zIndex:1 }}>
-        <div style={{ textAlign:"center", borderBottom:"2px solid var(--erp-ink1)", paddingBottom:18, marginBottom:24 }}>
-          {logo && <img src={logo} alt="" style={{ height:48, objectFit:"contain", display:"block", margin:"0 auto 10px" }} />}
-          <div style={{ fontSize:16, fontWeight:700, color:"var(--erp-ink1)" }}>{data?.company_name}</div>
-          {data?.company_address && <div style={{ fontSize:11, color:"var(--erp-ink3)", marginTop:3, lineHeight:1.6 }}>{data.company_address}</div>}
-          {data?.company_gstin && <div className="erp-mono" style={{ fontSize:10, color:"var(--erp-ink4)", marginTop:3 }}>GSTIN: {data.company_gstin}</div>}
-        </div>
-        <div style={{ textAlign:"right", marginBottom:18, fontSize:12, color:"var(--erp-ink2)" }}>
-          Date: <strong>{data?.date || new Date().toLocaleDateString("en-IN")}</strong>
-        </div>
-        <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:12, fontWeight:600, color:"var(--erp-ink1)", marginBottom:4 }}>To,</div>
-          {sections.filter(s=>s.type==="addressee").flatMap(s=>s.fields.map((f,j)=>(
-            <div key={j} style={{ fontSize:12, color:"var(--erp-ink2)", marginBottom:2, lineHeight:1.6 }}>{val(data,f.key)}</div>
-          )))}
-        </div>
-        <div style={{ fontSize:13, fontWeight:700, color:"var(--erp-ink1)", margin:"18px 0 14px", borderBottom:"2px solid var(--erp-ink1)", paddingBottom:5, display:"inline-block" }}>
-          Sub: {title}
-        </div>
-        {body && (
-          <div style={{ fontSize:12.5, color:"var(--erp-ink2)", lineHeight:2, whiteSpace:"pre-line", marginBottom:18 }}>
-            {body.render ? body.render(data) : val(data, body.key)}
-          </div>
-        )}
-        <div style={{ fontSize:12, color:"var(--erp-ink2)", marginTop:24, marginBottom:4 }}>Yours faithfully,</div>
-        <div style={{ fontSize:13, fontWeight:600, color:"var(--erp-ink1)", marginBottom:2 }}>{data?.company_name}</div>
-        <SignatureBlock signatories={sig?.signatories||["Authorised Signatory"]} />
-        <DocFooter />
-      </div>
-    </div>
-  );
-};
-
-const TemplateCompact = ({ title, data, sections, logo, watermark, docNumber, docDate, status }) => (
-  <div style={{ position:"relative" }}>
-    {watermark && <Watermark text={watermark} />}
-    <div style={{ position:"relative", zIndex:1 }}>
-      <DocHeader title={title} data={data} logo={logo} showQR={false} docNumber={docNumber} docDate={docDate} status={status} />
-      {sections.map((sec, i) => (
-        <div key={i} style={{ marginBottom:14 }}>
-          <SectionHead title={sec.title} />
-          {sec.type==="table"
-            ? <DataTable columns={sec.columns} rows={data?.[sec.dataKey]||[]} />
-            : <FieldGrid fields={sec.fields} data={data} cols={3} />
-          }
-        </div>
-      ))}
-      <DocFooter />
-    </div>
-  </div>
-);
-
-const TemplateTwoColumn = ({ title, data, sections, logo, watermark, docNumber, docDate, status }) => {
-  const mid   = Math.ceil(sections.length/2);
-  const left  = sections.filter((s,i) => s.side==="left"  || (!s.side && i < mid));
-  const right = sections.filter((s,i) => s.side==="right" || (!s.side && i >= mid));
-  return (
-    <div style={{ position:"relative" }}>
-      {watermark && <Watermark text={watermark} />}
-      <div style={{ position:"relative", zIndex:1 }}>
-        <DocHeader title={title} data={data} logo={logo} docNumber={docNumber} docDate={docDate} status={status} showQR />
-        <div className="erp-two-col-grid">
-          <div style={{ paddingRight:22 }}>
-            {left.map((sec,i)=>(
-              <div key={i} style={{ marginBottom:14 }}>
-                <SectionHead title={sec.title} />
-                {sec.type==="table"
-                  ? <DataTable columns={sec.columns} rows={data?.[sec.dataKey]||[]} />
-                  : <FieldGrid fields={sec.fields} data={data} cols={1} />}
-              </div>
-            ))}
-          </div>
-          <div className="erp-two-col-right" style={{ paddingLeft:22, borderLeft:"1px dashed var(--erp-tBorder)" }}>
-            {right.map((sec,i)=>(
-              <div key={i} style={{ marginBottom:14 }}>
-                <SectionHead title={sec.title} />
-                {sec.type==="table"
-                  ? <DataTable columns={sec.columns} rows={data?.[sec.dataKey]||[]} />
-                  : <FieldGrid fields={sec.fields} data={data} cols={1} />}
-              </div>
-            ))}
-          </div>
-        </div>
-        <SignatureBlock />
-        <DocFooter />
-      </div>
-    </div>
-  );
-};
-
-const TMPL = { detail:TemplateDetail, invoice:TemplateInvoice, list:TemplateList, letter:TemplateLetter, compact:TemplateCompact, twoCol:TemplateTwoColumn };
-
-/* ─── MAIN EXPORT ───────────────────────────────────────── */
-
-/**
- * ERPPrintPreview
- *
- * Props:
- *  title              string    — document title shown in header + toolbar
- *  data               object    — flat data object (all field values)
- *  sections           array     — section config (see examples below)
- *  logo               string    — image URL shown in doc header
- *  onBack             fn        — back button callback
- *  defaultTemplate    string    — "detail"|"invoice"|"list"|"letter"|"compact"|"twoCol"
- *  allowedTemplates   string[]  — limit which tabs appear (omit = all)
- *  watermark          string    — "DRAFT"|"CANCELLED"|"COPY"|"VOID"
- *  status             string    — "active"|"draft"|"cancelled"  → badge in header
- *  docNumber          string    — shown in toolbar + doc meta strip
- *  docDate            string    — shown in doc meta strip
- *  onTemplateChange   fn        — (id) => void
- */
 const ERPPrintPreview = ({
   title = "Document",
-  data = {},
-  sections = [],
+  pdfUrl = null,
+  loading = false,
+  error = null,
   onBack,
-  logo,
-  defaultTemplate = "detail",
-  allowedTemplates,
-  watermark,
-  status,
-  docNumber,
-  docDate,
-  onTemplateChange,
+  fileName,
+  generatedAt = null,
+  onRegenerate = null, 
+  templates = [],                 // [{ id, name, isDefault }]
+  selectedTemplateId = null,
+  onTemplateChange = null, 
+  signedAvailable = false,
+  isSigned = false,
+  onToggleSigned = null, 
+  contextLabel = null,            // e.g. company name
+ 
+  pageCount = null,
+ 
+  onEmail = null,          // async ({ to, subject, message }) => void
+  onGetShareLink = null,   // async () => string (share URL)
 }) => {
-  const printRef = useRef();
-  const [active, setActive] = useState(defaultTemplate);
+  const [zoom, setZoom] = useState(100);
+  const [fitWidth, setFitWidth] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [ago, setAgo] = useState('');
+  const [page, setPage] = useState(1);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailMsg, setEmailMsg] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+  const rootRef = useRef(null);
+  const frameRef = useRef(null);
+  const stageRef = useRef(null);
+  const menuRef = useRef(null);
+  const shareRef = useRef(null);
 
-  const visible = allowedTemplates
-    ? TEMPLATES.filter(t => allowedTemplates.includes(t.id))
-    : TEMPLATES;
+  const canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `${title}_${docNumber || Date.now()}`,
-  });
+  const zoomIn = () => { setFitWidth(false); setZoom(z => Math.min(200, z + 10)); };
+  const zoomOut = () => { setFitWidth(false); setZoom(z => Math.max(50, z - 10)); };
+  const resetZoom = () => { setFitWidth(false); setZoom(100); };
 
-  const switchTemplate = useCallback(id => {
-    setActive(id);
-    onTemplateChange?.(id);
-  }, [onTemplateChange]);
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) { rootRef.current?.requestFullscreen?.(); setFullscreen(true); }
+    else { document.exitFullscreen?.(); setFullscreen(false); }
+  };
+  useEffect(() => {
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
 
-  const ActiveTmpl = TMPL[active] || TemplateDetail;
+  // Close overflow menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [menuOpen]);
 
-  const wmColors = { DRAFT:"#f59e0b", CANCELLED:"#ef4444", COPY:"#60a5fa", VOID:"#94a3b8" };
-  const wmC = wmColors[watermark?.toUpperCase()];
+  // Close share dropdown on outside click
+  useEffect(() => {
+    if (!shareOpen) return;
+    const onClick = (e) => { if (shareRef.current && !shareRef.current.contains(e.target)) setShareOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [shareOpen]);
+
+  useEffect(() => {
+    if (!generatedAt) return;
+    setAgo(timeAgo(generatedAt));
+    const t = setInterval(() => setAgo(timeAgo(generatedAt)), 5000);
+    return () => clearInterval(t);
+  }, [generatedAt]);
+
+  useEffect(() => { setPage(1); }, [pdfUrl]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => { 
+      if (!e.key) return; 
+      const tag = e.target?.tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable;
+      if (emailModalOpen || isTyping) return;
+
+      if (e.key === 'Escape' && onBack) { onBack(); return; }
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key === 'p') { e.preventDefault(); handlePrint(); return; }
+      if (ctrl && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomIn(); return; }
+      if (ctrl && e.key === '-') { e.preventDefault(); zoomOut(); return; }
+      if (ctrl && e.key === '0') { e.preventDefault(); resetZoom(); return; }
+      if (e.key.toLowerCase() === 'r' && onRegenerate) { onRegenerate(); return; }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onBack, onRegenerate, pdfUrl, emailModalOpen]);
+
+  const handleDownload = () => {
+    if (!pdfUrl) return;
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = `${fileName || title}${isSigned ? '_signed' : ''}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+  const handlePrint = () => frameRef.current?.contentWindow?.print();
+  const handleOpenNewTab = () => { if (pdfUrl) window.open(pdfUrl, '_blank'); };
+
+  const handleNativeShare = async () => {
+    if (!pdfUrl) return;
+    try {
+      const res = await fetch(pdfUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `${fileName || title}.pdf`, { type: 'application/pdf' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title });
+      } else {
+        await navigator.share({ title, url: pdfUrl });
+      }
+    } catch { /* user cancelled — ignore */ }
+    setShareOpen(false);
+    setMenuOpen(false);
+  };
+
+  const handleWhatsApp = async () => {
+    if (!onGetShareLink) return;
+    try {
+      const url = await onGetShareLink();
+      window.open(`https://wa.me/?text=${encodeURIComponent(`${title}: ${url}`)}`, '_blank');
+    } catch { /* silently fail, ya toast dikhao */ }
+    setShareOpen(false);
+    setMenuOpen(false);
+  };
+
+  const handleCopyLink = async () => {
+    if (!onGetShareLink) return;
+    try {
+      const url = await onGetShareLink();
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
+
+  const handleSendEmail = async () => {
+    if (!onEmail || !emailTo) return;
+    setEmailSending(true);
+    setEmailError('');
+    try {
+      await onEmail({ to: emailTo, subject: title, message: emailMsg });
+      setEmailSent(true);
+      setTimeout(() => {
+        setEmailModalOpen(false);
+        setEmailSent(false);
+        setEmailTo('');
+        setEmailMsg('');
+      }, 1200);
+    } catch (e) {
+      setEmailError(e?.response?.data?.message || 'Could not send email.');
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const baseWidth = 680;
+  const stageWidth = fitWidth ? (stageRef.current?.clientWidth ? Math.min(stageRef.current.clientWidth - 64, 900) : baseWidth) : null;
+  const pageWidth = fitWidth ? (stageWidth || baseWidth) : baseWidth * (zoom / 100);
+  const pageHeight = pageWidth / A4_RATIO;
+  const srcWithParams = pdfUrl ? `${pdfUrl}#toolbar=0&navpanes=0&statusbar=0&view=FitH&page=${page}` : null;
+
+  const selectedTemplateName = useMemo(
+    () => templates.find(t => t.id === selectedTemplateId)?.name || (templates[0]?.name ?? null),
+    [templates, selectedTemplateId]
+  );
+
+  const goPrevPage = () => setPage(p => Math.max(1, p - 1));
+  const goNextPage = () => setPage(p => (pageCount ? Math.min(pageCount, p + 1) : p + 1));
 
   return (
-    <div className="erp-preview-root" style={{ width:"100%", background:"#0f1117" }}>
-      <Fonts />
+    <div className="rpv-root" ref={rootRef}>
+      <Styles />
 
-      {/* ── STICKY TOOLBAR ── */}
-      <div className="erp-toolbar">
-
-        {/* Left: back + title */}
-        <div className="erp-toolbar-left">
+      <div className="rpv-topbar">
+        <div className="rpv-left">
           {onBack && (
-            <button className="erp-icon-btn" onClick={onBack} title="Back">
+            <button className="rpv-icon-btn" onClick={onBack} title="Back (Esc)">
               <ArrowLeft size={16} />
             </button>
           )}
-          <div style={{ width:1, height:20, background:"var(--erp-border)" }} />
-          <div>
-            <div className="erp-toolbar-title">{title}</div>
-            {docNumber && (
-              <div className="erp-mono" style={{ fontSize:9.5, color:"#4b5563", marginTop:1 }}>{docNumber}</div>
+          <div className="rpv-doc-icon"><FileText size={16} /></div>
+          <div className="rpv-title-block">
+            <div className="rpv-title-row">
+              <span className="rpv-title">{title}</span>
+              {pdfUrl && !loading && signedAvailable && (
+                <span className={`rpv-status-chip ${isSigned ? 'signed' : 'draft'}`}>
+                  <ShieldCheck size={10} /> {isSigned ? 'Signed' : 'Draft'}
+                </span>
+              )}
+            </div>
+            <div className="rpv-subtitle">
+              {loading ? 'Generating…' : pdfUrl ? (
+                <>
+                  {contextLabel && <><Building2 size={11} /><b>{contextLabel}</b></>}
+                  {contextLabel && selectedTemplateName && <span>·</span>}
+                  {selectedTemplateName && <span>{selectedTemplateName}</span>}
+                  {generatedAt && <><span>·</span><span>{ago}</span></>}
+                </>
+              ) : 'Preview'}
+            </div>
+          </div>
+        </div>
+
+        {templates.length > 1 && onTemplateChange && (
+          <div className="rpv-tpl-select-wrap">
+            <select
+              className="rpv-tpl-select"
+              value={selectedTemplateId ?? ''}
+              onChange={(e) => onTemplateChange(Number(e.target.value))}
+              disabled={loading}
+              title="Choose which saved template to print with"
+            >
+              {templates.map(t => (
+                <option key={t.id} value={t.id}>{t.name}{t.isDefault ? ' (Default)' : ''}</option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="rpv-tpl-chevron" />
+          </div>
+        )}
+
+        <div className="rpv-zoom-cluster">
+          <button className="rpv-icon-btn" style={{ width: 28, height: 28 }} onClick={zoomOut} disabled={!pdfUrl || (!fitWidth && zoom <= 50)} title="Zoom out (Ctrl -)"><ZoomOut size={13} /></button>
+          <span className="rpv-zoom-pct" onClick={resetZoom} title="Click to reset to 100%">{fitWidth ? 'Fit' : `${zoom}%`}</span>
+          <button className="rpv-icon-btn" style={{ width: 28, height: 28 }} onClick={zoomIn} disabled={!pdfUrl || (!fitWidth && zoom >= 200)} title="Zoom in (Ctrl +)"><ZoomIn size={13} /></button>
+          <div className="rpv-divider" style={{ margin: '0 1px' }} />
+          <button className={`rpv-fit-btn${fitWidth ? ' active' : ''}`} onClick={() => setFitWidth(f => !f)} disabled={!pdfUrl} title="Fit page to window width">
+            Fit
+          </button>
+        </div>
+
+        <div className="rpv-right">
+          {signedAvailable && onToggleSigned && (
+            <button
+              className={`rpv-btn-ghost rpv-desktop-only${isSigned ? ' active' : ''}`}
+              onClick={() => onToggleSigned(!isSigned)}
+              disabled={loading}
+              title={isSigned ? 'Currently generating a digitally signed copy' : 'Generate a digitally signed copy (DSC)'}
+            >
+              <ShieldCheck size={14} /> <span>{isSigned ? 'Signed' : 'Sign'}</span>
+            </button>
+          )}
+          {onRegenerate && (
+            <button className="rpv-icon-btn spin-on-hover rpv-desktop-only" onClick={onRegenerate} disabled={loading} title="Regenerate (R)">
+              <RefreshCw size={15} />
+            </button>
+          )}
+          <div className="rpv-divider rpv-desktop-only" />
+
+          {(onEmail || onGetShareLink) && (
+            <div className="rpv-menu-wrap rpv-desktop-only" ref={shareRef}>
+              <button className="rpv-btn-ghost" onClick={() => setShareOpen(v => !v)} disabled={!pdfUrl}>
+                <Share2 size={14} /> <span>Share</span>
+              </button>
+              {shareOpen && (
+                <div className="rpv-menu" style={{ minWidth: 190 }}>
+                  {canNativeShare && (
+                    <div className="rpv-menu-item" onClick={handleNativeShare}>
+                      <Share2 size={14} /> Share via…
+                    </div>
+                  )}
+                  {onEmail && (
+                    <div className="rpv-menu-item" onClick={() => { setEmailModalOpen(true); setShareOpen(false); }}>
+                      <Mail size={14} /> Email
+                    </div>
+                  )}
+                  {onGetShareLink && (
+                    <div className="rpv-menu-item" onClick={handleWhatsApp}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.07-1.33A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg> WhatsApp
+                    </div>
+                  )}
+                  {onGetShareLink && (
+                    <div className="rpv-menu-item" onClick={handleCopyLink}>
+                      {linkCopied ? <Check size={14} color="#059669" /> : <Link2 size={14} />}
+                      {linkCopied ? 'Copied!' : 'Copy link'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button className="rpv-btn-ghost" onClick={handleDownload} disabled={!pdfUrl}>
+            <Download size={14} /> <span>Download</span>
+          </button>
+          <button className="rpv-btn-primary" onClick={handlePrint} disabled={!pdfUrl}>
+            <Printer size={14} /> <span>Print</span>
+          </button>
+
+          {/* Overflow menu — holds secondary actions on desktop AND the collapsed set on mobile */}
+          <div className="rpv-menu-wrap" ref={menuRef}>
+            <button className="rpv-icon-btn" onClick={() => setMenuOpen(o => !o)} title="More options">
+              <MoreVertical size={16} />
+            </button>
+            {menuOpen && (
+              <div className="rpv-menu">
+                {signedAvailable && onToggleSigned && (
+                  <div className="rpv-menu-item" onClick={() => { onToggleSigned(!isSigned); setMenuOpen(false); }}>
+                    <ShieldCheck size={14} /> {isSigned ? 'Signed copy on' : 'Sign this copy'}
+                  </div>
+                )}
+                {onRegenerate && (
+                  <div className="rpv-menu-item" onClick={() => { onRegenerate(); setMenuOpen(false); }}>
+                    <RefreshCw size={14} /> Regenerate
+                  </div>
+                )}
+                {(onEmail || onGetShareLink) && <div className="rpv-menu-sep rpv-mobile-only-sep" />}
+                {onEmail && (
+                  <div className="rpv-menu-item rpv-mobile-only" onClick={() => { setEmailModalOpen(true); setMenuOpen(false); }}>
+                    <Mail size={14} /> Email
+                  </div>
+                )}
+                {onGetShareLink && (
+                  <div className="rpv-menu-item rpv-mobile-only" onClick={handleWhatsApp}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.07-1.33A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg> WhatsApp
+                  </div>
+                )}
+                {onGetShareLink && (
+                  <div className="rpv-menu-item rpv-mobile-only" onClick={handleCopyLink}>
+                    {linkCopied ? <Check size={14} color="#059669" /> : <Link2 size={14} />}
+                    {linkCopied ? 'Copied!' : 'Copy link'}
+                  </div>
+                )}
+                <div className="rpv-menu-item" onClick={() => { handleOpenNewTab(); setMenuOpen(false); }}>
+                  <ExternalLink size={14} /> Open in new tab
+                </div>
+                <div className="rpv-menu-item" onClick={() => { toggleFullscreen(); setMenuOpen(false); }}>
+                  {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />} {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                </div>
+                <div className="rpv-menu-sep" />
+                <div className="rpv-menu-item" onClick={() => { window.open(`${pdfUrl}#toolbar=1`, '_blank'); setMenuOpen(false); }}>
+                  <PanelTop size={14} /> Open with PDF toolbar
+                </div>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Mid: template switcher — scrolls horizontally on mobile */}
-        <div className="erp-toolbar-mid">
-          {visible.map(t => {
-            const { Icon } = t;
-            const isA = t.id === active;
-            return (
-              <button key={t.id} className={`erp-tab${isA?" active":""}`} onClick={() => switchTemplate(t.id)} title={t.desc}>
-                <Icon size={11} />{t.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right: badges + actions */}
-        <div className="erp-toolbar-right">
-          {watermark && wmC && (
-            <div className="erp-wm-pill" style={{ background:`${wmC}18`, border:`1px solid ${wmC}55`, color:wmC }}>
-              {watermark==="CANCELLED" ? <Ban size={10}/> : <AlertTriangle size={10}/>}
-              {watermark}
-            </div>
-          )}
-          <button className="erp-btn-ghost" onClick={handlePrint}>
-            <Download size={13} />
-            <span className="hide-sm">PDF</span>
-          </button>
-          <button className="erp-btn-primary" onClick={handlePrint}>
-            <Printer size={13} /> Print
-          </button>
-        </div>
       </div>
 
-      {/* ── CANVAS ── */}
-      <div className="erp-canvas">
-        <div className="erp-paper-shell">
-          <div className="erp-paper" ref={printRef}>
-            <ActiveTmpl
-              title={title}
-              data={data}
-              sections={sections}
-              logo={logo}
-              watermark={watermark}
-              status={status}
-              docNumber={docNumber}
-              docDate={docDate}
+      <div className="rpv-stage" ref={stageRef}>
+        {loading && (
+          <div>
+            <div className="rpv-skel-doc">
+              <div className="rpv-skel-shimmer" />
+              <div className="rpv-skel-line" style={{ width: '55%', height: 18, marginBottom: 22 }} />
+              <div className="rpv-skel-line" style={{ width: '80%' }} />
+              <div className="rpv-skel-line" style={{ width: '65%' }} />
+              <div className="rpv-skel-line" style={{ width: '90%' }} />
+              <div className="rpv-skel-line" style={{ width: '40%', marginTop: 28 }} />
+              <div className="rpv-skel-line" style={{ width: '70%' }} />
+              <div className="rpv-skel-line" style={{ width: '55%' }} />
+            </div>
+            <div className="rpv-loading-caption">
+              <LoaderCircle size={15} className="rpv-spin" />
+              <span>Generating your document…</span>
+            </div>
+          </div>
+        )}
+
+        {error && !loading && (
+          <div className="rpv-error-card">
+            <div className="rpv-error-icon"><AlertTriangle size={20} /></div>
+            <div className="rpv-error-title">Couldn't generate this document</div>
+            <div className="rpv-error-msg">{error}</div>
+            <div className="rpv-error-actions">
+              {onRegenerate && (
+                <button className="rpv-btn-primary" onClick={onRegenerate}><RefreshCw size={13} /> <span>Retry</span></button>
+              )}
+              <button className="rpv-btn-ghost" onClick={onBack}><ArrowLeft size={13} /> <span>Go back</span></button>
+            </div>
+          </div>
+        )}
+
+        {pdfUrl && !loading && !error && (
+          <div className="rpv-page-shell" style={{ width: pageWidth, height: pageHeight }}>
+            <iframe ref={frameRef} src={srcWithParams} title={title} />
+          </div>
+        )}
+      </div>
+
+      {pdfUrl && !loading && !error && (
+        <div className="rpv-footer">
+          <div className="rpv-page-nav">
+            <button className="rpv-icon-btn" style={{ width: 24, height: 24 }} onClick={goPrevPage} disabled={page <= 1} title="Previous page">
+              <ChevronLeft size={13} />
+            </button>
+            <input
+              className="rpv-page-nav-input"
+              value={page}
+              onChange={(e) => {
+                const v = Number(e.target.value.replace(/\D/g, '')) || 1;
+                setPage(pageCount ? Math.min(pageCount, Math.max(1, v)) : Math.max(1, v));
+              }}
             />
+            <span>/ {pageCount ?? '—'}</span>
+            <button className="rpv-icon-btn" style={{ width: 24, height: 24 }} onClick={goNextPage} disabled={pageCount ? page >= pageCount : false} title="Next page">
+              <ChevronRight size={13} />
+            </button>
+          </div>
+          <div className="rpv-footer-sep" />
+          <div className="rpv-kbd">
+            <span><kbd>Esc</kbd> Back</span>
+            <span><kbd>Ctrl</kbd>+<kbd>P</kbd> Print</span>
+            <span><kbd>R</kbd> Regenerate</span>
+            <span><kbd>Ctrl</kbd>+<kbd>+/-</kbd> Zoom</span>
           </div>
         </div>
-      </div>
+      )}
+
+      {emailModalOpen && (
+        <div className="rpv-modal-backdrop" onClick={() => !emailSending && setEmailModalOpen(false)}>
+          <div className="rpv-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Email document</h3>
+            <input
+              type="email"
+              className="rpv-modal-input"
+              placeholder="recipient@company.com"
+              value={emailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
+            />
+            <textarea
+              className="rpv-modal-textarea"
+              placeholder="Message (optional)"
+              value={emailMsg}
+              onChange={(e) => setEmailMsg(e.target.value)}
+              rows={3}
+            />
+            {emailError && <div className="rpv-modal-msg error">{emailError}</div>}
+            {emailSent && <div className="rpv-modal-msg success"><Check size={13} /> Email sent successfully</div>}
+            <div className="rpv-modal-actions">
+              <button className="rpv-btn-ghost" onClick={() => setEmailModalOpen(false)} disabled={emailSending}>Cancel</button>
+              <button className="rpv-btn-primary" disabled={!emailTo || emailSending} onClick={handleSendEmail}>
+                {emailSending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default ERPPrintPreview;
-
-
-/* ═══════════════════════════════════════════════════════════
-   USAGE EXAMPLES
-═══════════════════════════════════════════════════════════
-
-─── Company Master (Detail) ────────────────────────────────
-<ERPPrintPreview
-  title="Company Master"
-  data={companyRecord}
-  logo="/finaman-logo.png"
-  defaultTemplate="detail"
-  allowedTemplates={["detail","compact","twoCol"]}
-  status="active"
-  docNumber="COM-2024-001"
-  docDate="27 Apr 2025"
-  sections={[
-    { type:"fields", title:"Basic Information", fields:[
-      { label:"Company Name",   key:"company_name" },
-      { label:"Trade Name",     key:"trade_name" },
-      { label:"Business Type",  key:"business_type" },
-      { label:"Reg. No.",       key:"registration_number", mono:true },
-      { label:"CIN No.",        key:"cin_number",          mono:true },
-    ]},
-    { type:"fields", title:"Tax & Compliance", columns:2, fields:[
-      { label:"GSTIN",  key:"gstin_number", mono:true },
-      { label:"PAN",    key:"pan_number",   mono:true },
-      { label:"TAN",    key:"tan_number",   mono:true },
-    ]},
-    { type:"fields", title:"Bank Details", fields:[
-      { label:"Bank Name",   key:"bank_name" },
-      { label:"Account No.", key:"bank_account_number", mono:true },
-      { label:"IFSC Code",   key:"ifsc_code",           mono:true },
-    ]},
-  ]}
-  onBack={() => setShowPreview(false)}
-/>
-
-─── Tax Invoice (Invoice) ──────────────────────────────────
-<ERPPrintPreview
-  title="Tax Invoice"
-  data={invoiceData}
-  logo="/finaman-logo.png"
-  defaultTemplate="invoice"
-  watermark={invoiceData.status==="draft" ? "DRAFT" : undefined}
-  status={invoiceData.status}
-  docNumber={invoiceData.invoice_number}
-  docDate={invoiceData.invoice_date}
-  sections={[
-    { type:"fields", title:"Invoice Details", fields:[
-      { label:"Invoice No.",   key:"invoice_number", mono:true },
-      { label:"Invoice Date",  key:"invoice_date" },
-      { label:"Due Date",      key:"due_date" },
-      { label:"Payment Terms", key:"payment_terms" },
-    ]},
-    { type:"fields", title:"Bill To", position:"receiver", fields:[
-      { key:"customer_name" },
-      { key:"customer_address" },
-      { key:"customer_gstin" },
-    ]},
-    { type:"table", title:"Line Items", dataKey:"line_items",
-      showTotals:true, totalFields:[{ key:"amount", value:"₹1,23,456" }],
-      columns:[
-        { key:"sno",         label:"#",    align:"center" },
-        { key:"description", label:"Description" },
-        { key:"qty",         label:"Qty",  align:"right", mono:true },
-        { key:"rate",        label:"Rate", align:"right", mono:true },
-        { key:"amount",      label:"Amt",  align:"right", mono:true },
-      ]},
-    { type:"totals", rows:[
-      { label:"Subtotal",    key:"subtotal" },
-      { label:"CGST (9%)",   key:"cgst" },
-      { label:"SGST (9%)",   key:"sgst" },
-      { label:"Grand Total", key:"grand_total", bold:true },
-    ]},
-  ]}
-  onBack={() => setShowPreview(false)}
-/>
-
-─── Stock Register (List) ──────────────────────────────────
-<ERPPrintPreview
-  title="Stock Movement Register"
-  data={{ company_name:"ACME Ltd", dateRange:"Apr 2024 – Mar 2025", items:stockRows }}
-  defaultTemplate="list"
-  sections={[{ type:"table", dataKey:"items", showTotals:true,
-    totalFields:[{ key:"closing", value:"4,250" }],
-    columns:[
-      { key:"item_code", label:"Code",    mono:true },
-      { key:"item_name", label:"Item" },
-      { key:"opening",   label:"Open",   align:"right", mono:true },
-      { key:"inward",    label:"In",     align:"right", mono:true },
-      { key:"outward",   label:"Out",    align:"right", mono:true },
-      { key:"closing",   label:"Close",  align:"right", mono:true },
-    ]
-  }]}
-  onBack={() => setShowPreview(false)}
-/>
-*/

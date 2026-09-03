@@ -1,371 +1,213 @@
-// Matches [FINAMANQMS].[qms].[DMS] columns exactly
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import {
+  FaFileAlt, FaSearch, FaStamp, FaChalkboardTeacher,
+  FaCheckCircle, FaArchive, FaHistory,
+} from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
-import { useERPMode } from "../../../components/Reusable/form/useFormMode";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
+import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
+import { getHeaderStyle } from "./Utils/QmsValidation";
+import { useQmsModule } from "./Utils/useQmsModule";
+import { useRefOptions } from "./Utils/useRefOptions";
 import {
-  dmsTabs,
-  getDmsFieldGroups,
-  dmsRequiredFieldsList,
-  dmsWidthConfig,
-  dmsSectionConfigs,
-  dmsTableColumns,
+  dmsTabs, dmsTabStage, dmsTabLabels,
+  getDmsFieldGroups, getDmsRequired,
+  dmsWidthConfig, dmsSectionConfigs, dmsTableColumns,
 } from "./Utils/Qmsconfigs";
-import {
-  confirmDelete,
-  showToast,
-  alertError,
-} from "../../../components/Reusable/alert";
-import { setERPHandlers } from "../../../utils/erpShortcuts"; // BUGFIX: was missing — keyboard shortcuts were dead
-import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation"; // shared icon/style helper — reuse or fork as DmsValidation
-import { useApplSettings } from "../../../Hooks/useApplSettings";
-import {
-  getDmsRecords,
-  createDmsRecord,
-  updateDmsRecord,
-  deleteDmsRecord,
-  getNextRecordNo,
-} from "./Utils/QmsAPI";
-import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
-
-const initialState = {
-  Id: null,
-  RecordNo: "",
-  Status: "Open",
-  DocTitle: "",
-  DocNo: "",
-  DocType: "",
-  Department: "",
-  Version: "",
-  Supersedes: "",
-  ChangeRef: "",
-  ReasonForRevision: "",
-  IssueDate: new Date().toISOString().slice(0, 10),
-  EffectiveDate: "",
-  ReviewDate: "",
-  PreparedBy: "",
-  ReviewedBy: "",
-  ApprovedBy: "",
-  TrainingRequired: "",
-  TrainingRef: "",
-  Distribution: "",
-  CreatedBy: "",
-  CreatedAt: "",
-  UpdatedBy: "",
-  UpdatedAt: "",
-  ClosedAt: "",
+import { getDmsRecords, createDmsRecord, updateDmsRecord, deleteDmsRecord, } from "./Utils/QmsAPI";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+// ── module-level constants (component ke bahar — stable references) ──
+const API = {
+  list: getDmsRecords, create: createDmsRecord,
+  update: updateDmsRecord, remove: deleteDmsRecord,
 };
 
-export default function DocumentMasterPage({ tab }) {
-  const [docList, setDocList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(
-    tab?.appl_name || "DMS",
-  );
+const initialState = {
+  Id: null, RecordNo: "", Status: "Draft",
+  DocNo: "", DocTitle: "", DocType: "", Department: "",
+  Version: "", Supersedes: "", ChangeRef: "", CapaRef: "",
+  PreparedBy: "", PreparedOn: "", AttachmentRef: "",
+  ReasonForRevision: "",
+  ReviewedBy: "", ReviewedOn: "",
+  ApprovedBy: "", ApprovedOn: "", IssueDate: "",
+  TrainingRequired: "", TrainingRef: "", TrainingCompletedOn: "",
+  EffectiveDate: "", ReviewDate: "", Distribution: "",
+  ObsoleteDate: "", RetentionPeriod: "", SupersededByRef: "", RetrievedCopies: "",
+};
 
-  const { options: groupOptions } = useGroupOptions();
-  const dmsFieldGroup = useMemo(
-    () => getDmsFieldGroups(groupOptions || []),
-    [groupOptions],
-  );
+const DMS_TAB_ICON = {
+  details: FaFileAlt,
+  review: FaSearch,
+  approval: FaStamp,
+  training: FaChalkboardTeacher,
+  effective: FaCheckCircle,
+  withdrawal: FaArchive,
+  audit: FaHistory,
+};
+function DmsTabIcon({ tab }) {
+  const Icon = DMS_TAB_ICON[tab];
+  return Icon ? <Icon /> : <span>•</span>;
+}
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getDmsRecords();
-      const arr = Array.isArray(res)
-        ? res
-        : Array.isArray(res?.data)
-          ? res.data
-          : [];
-      setDocList(arr);
-    } catch (err) {
-      console.error(err);
-      alertError("Load Error", "Failed to load document records");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+const STATUS_OPTIONS = [
+  "Draft", "Under Review", "Pending Approval", "Training Pending",
+  "Pending Effective", "Effective", "Obsolete",
+];
 
-  const {
-    mode,
-    formData,
-    setFormData,
-    saving,
-    canPrint, // BUGFIX: was missing, never reached ERPFormBuilder
-    handleView,
-    handleAdd,
-    handleModify,
-    performSave,
-    rights,
-    showForm,
-    setShowForm,
-    activeTab,
-    setActiveTab,
-    handleEditCancel,
-    isDirty,
-  } = useERPMode(
+const EMPTY_FILTERS = { Status: "All", Department: "", DocType: "All" };
+
+export default function DmsMasterPage({ tab }) {
+  const m = useQmsModule({
+    moduleKey: "dms",
+    title: "DMS",
+    applName: tab?.appl_name || "DMS",
     initialState,
-    async (data) => {
-      // e-sign stamp: attributable + contemporaneous (ALCOA+)
-      const now = new Date().toISOString();
-      const currentUser = "H"; // TODO: replace with logged-in user context
-      const stamped = data.Id
-        ? { ...data, UpdatedBy: currentUser, UpdatedAt: now }
-        : { ...data, CreatedBy: currentUser, CreatedAt: now };
-      return data.Id
-        ? await updateDmsRecord(data.Id, stamped)
-        : await createDmsRecord(stamped);
-    },
-    loadData,
-    "DMS",
-  );
-const [filters, setFilters] = useState({ Status: "All", Department: "", DocType: "All" });
-const [showFilter, setShowFilter] = useState(false);
-
-const applyFilter = useCallback(() => {}, []);
-const clearFilter = useCallback(() => {
-  setFilters({ Status: "All", Department: "", DocType: "All" });
-}, []);
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleHeaderTabChange = useCallback(
-    (targetTab) => {
-      setActiveTab(targetTab);
-      setShowForm(targetTab !== "search");
-    },
-    [setActiveTab, setShowForm],
-  );
-
-  const handleAddNew =async () => {
-    handleAdd();
-    setShowForm(true);
-    setActiveTab("entry");
-  const  recordNo = await getNextRecordNo("dms");
-        
-        setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
-    
-  };
-
-  useEffect(() => {
-    if (showForm && mode === "view" && docList.length > 0) {
-      setFormData(docList[currentIndex]);
-    }
-  }, [currentIndex, docList, showForm, mode, setFormData]);
-
-  const listWithSr = docList.map((item, index) => ({
-    ...item,
-    Sr: index + 1,
-    Status: item.Status || "Open",
-  }));
-
-  const handleRowSelect = (row) => {
-    const index = docList.findIndex((item) => item.Id === row.Id);
-    if (index !== -1) setCurrentIndex(index);
-    handleView(row);
-    setShowForm(true);
-    setActiveTab("entry");
-  };
-
-  const handleSave = async (localData) => {
-    // BUGFIX: required-field validation was missing entirely (Training and
-    // Recall both enforce this before saving).
-    const missing = dmsRequiredFieldsList.find(
-      (f) => !localData[f] || String(localData[f]).trim() === "",
-    );
-    if (missing) {
-      showToast({ icon: "error", title: "Please fill all required fields" });
-      return;
-    }
-    const dataToSave = { ...localData, Id: localData.Id ?? null };
-    const response = await performSave("Id", dataToSave);
-    if (response && response.success) {
-      showToast({ icon: "success", title: "Saved & e-Signed Successfully" });
-      await loadData();
-      const savedId = response.data?.Id;
-      setDocList((prev) => {
-        const idx = prev.findIndex((item) => item.Id === savedId);
-        if (idx !== -1) setCurrentIndex(idx);
-        return prev;
-      });
-    }
-  };
-
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({
-      title: 'Delete Document "' + (row.DocNo || row.Id) + '"?',
-    });
-    if (!confirmed) return;
-    try {
-      await deleteDmsRecord(row.Id);
-      showToast({ icon: "success", title: "Deleted" });
-      setShowForm(false);
-      setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete document record");
-    }
-  };
-
-  const handleDeleteMultiple = async (selected) => {
-    const ids = (selected || []).map((item) =>
-      typeof item === "object" ? item.Id : item,
-    );
-    if (ids.length === 0) return;
-    const confirmed = await confirmDelete({
-      title: `Delete ${ids.length} document record(s)?`,
-    });
-    if (!confirmed) return;
-    try {
-      const results = await Promise.all(ids.map((id) => deleteDmsRecord(id)));
-      const failed = results.filter((r) => !r?.success).length;
-      showToast({
-        icon: failed === 0 ? "success" : "warning",
-        title:
-          failed === 0
-            ? `${ids.length} deleted`
-            : `${ids.length - failed} deleted, ${failed} failed`,
-      });
-      setShowForm(false);
-      setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete some document records");
-    }
-  };
-
-  const handleFormExit = async () => {
-    const wasDirty = isDirty;
-    await handleEditCancel();
-    if (!wasDirty) {
-      setShowForm(false);
-      setActiveTab("search");
-      setFormData(initialState);
-    }
-  };
-
-  // BUGFIX: replaced the dangling unused formDataRef with the same
-  // "latest" ref + setERPHandlers wiring used in Training/Recall, so
-  // keyboard shortcuts (next/prev record, new, save, esc) actually work.
-  const latest = useRef({});
-  latest.current = {
-    formData,
-    docList,
-    handleSave,
-    handleAddNew,
-    handleFormExit,
-  };
-  console.log(tab.icon_name);
-
-  useEffect(() => {
-    setERPHandlers({
-      onNextRecord: () =>
-        setCurrentIndex((p) => Math.min(p + 1, latest.current.docList.length - 1)),
-      onPrevRecord: () => setCurrentIndex((p) => Math.max(p - 1, 0)),
-      onNew: () => latest.current.handleAddNew(),
-      onSave: () => latest.current.handleSave(latest.current.formData),
-      onEsc: () => latest.current.handleFormExit(),
-    });
-  }, []);
-  const filteredDocList = useMemo(() => {
-  return listWithSr.filter((item) => {
-    if (filters.Status && filters.Status !== "All") {
-      if (item.Status !== filters.Status) return false;
-    }
-    if (filters.Department) {
-      const dept = String(item.Department || "").toLowerCase();
-      if (!dept.includes(filters.Department.toLowerCase())) return false;
-    }
-    if (filters.DocType && filters.DocType !== "All") {
-      if (item.DocType !== filters.DocType) return false;
-    }
-    return true;
+    tabs: dmsTabs,
+    tabStage: dmsTabStage,
+    getRequired: getDmsRequired,
+    api: API,
   });
-}, [listWithSr, filters]);
+
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/dms',   // ✅ moduleKey 'dms' se match
+    applName: 'dms',
+    emailEndpoint: '/api/qms-print/dms',
+    shareLinkEndpoint: '/api/qms-print/dms',
+  });
+
+  const refOpts = useRefOptions(["changecontrol", "capa", "training"]);
+
+  const fieldGroups = useMemo(
+    () => getDmsFieldGroups({ ...m.groupOptions, refOpts }),
+    [m.groupOptions, refOpts]
+  );
+
+  const customTabs = useMemo(
+    () => ({ audit: <RecordAuditPanel history={m.history} /> }),
+    [m.history]
+  );
+
+  // ── filters ──
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
+
+  const filteredList = useMemo(() => {
+    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
+    return m.list
+      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Draft" }))
+      .filter((it) =>
+        (filters.Status === "All" || it.Status === filters.Status) &&
+        (filters.DocType === "All" || it.DocType === filters.DocType) &&
+        (!filters.Department || has(it.Department, filters.Department))
+      );
+  }, [m.list, filters]);
+
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `DMS-${m.formData?.Id}`,
+      contextLabel: m.formData?.Department,
+    }).catch((err) => console.error('Print open failed:', err));
+  }, [m.formData, printWorkflow]);
+
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Document Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
+
+  if (m.showForm) {
+    return (
+      <div className="h-full w-full">
+        <ERPFormBuilder
+          title="DMS"
+          tabs={dmsTabs}
+          tabLabels={dmsTabLabels}
+          TabIcon={DmsTabIcon}
+          fieldGroups={fieldGroups}
+          customTabs={customTabs}
+          configs={dmsSectionConfigs}
+          widthConfig={dmsWidthConfig}
+          getHeaderStyle={getHeaderStyle}
+          requiredFields={m.requiredFields}
+          completedTabs={m.completedTabs}
+          hideSidebar={false}
+          hideTabBar={false}
+          showSettingsTab
+          sidebarConfig={{ hidePhoto: true, hideHeader: true }}
+          stageHistory={m.history?.stageHistory || null}
+          formData={m.formData}
+          savedFormData={m.savedFormData}
+          setFormData={m.setFormData}
+          mode={m.mode}
+          saving={m.saving}
+          rights={m.rights}
+          workflowConfig={m.workflowConfig}
+          currentUserRole={m.currentUserRole}
+          alwaysSignTabs={["withdrawal"]}
+          settingsConfig={m.settingsConfig}
+          settingsDefaults={m.settingsDefaults}
+          onSettingsSave={m.onSettingsSave}
+          onSave={m.handleSave}
+          onSaveDraft={m.handleSaveDraft}
+          onSignedSave={m.handleSignedSave}
+          onDelete={m.handleDelete}
+          onModify={m.handleModify}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
+          onNewEntry={m.handleAddNewGuarded}
+          onCancel={m.handleTabExit}
+          onEditCancel={m.handleFormExit}
+          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
+          totalRecords={m.list.length}
+          onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
+          onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
+          headerActiveTab={m.activeTab}
+          onHeaderTabChange={m.handleHeaderTabChange}
+          moduleKey="dms"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full">
-      {showForm ? (
-        <>
-          <ERPFormBuilder
-            title="Document Management"
-            tabs={dmsTabs}
-            fieldGroups={dmsFieldGroup}
-            widthConfig={dmsWidthConfig}
-            requiredFields={dmsRequiredFieldsList}
-            hideSidebar={true}
-            hideTabBar={true}
-            showSettingsTab={true}
-            getHeaderStyle={getHeaderStyle}
-            configs={dmsSectionConfigs}
-            TabIcon={TabIcon}
-            formData={formData}
-            setFormData={setFormData}
-            mode={mode}
-            canPrint={canPrint}
-            settingsConfig={settingsConfig}
-            settingsDefaults={settingsDefaults}
-            onSettingsSave={onSettingsSave}
-            saving={saving}
-            rights={rights}
-            onSave={handleSave}
-            onCancel={handleFormExit}
-            onDelete={handleDelete}
-            onModify={handleModify}
-            onNewEntry={handleAddNew}
-            onEditCancel={handleFormExit}
-            currentRecord={docList.length > 0 ? currentIndex + 1 : 0}
-            totalRecords={docList.length}
-            onPrevRecord={() => setCurrentIndex((p) => Math.max(p - 1, 0))}
-            onNextRecord={() =>
-              setCurrentIndex((p) => Math.min(p + 1, docList.length - 1))
-            }
-            headerActiveTab={activeTab}
-            onHeaderTabChange={handleHeaderTabChange}
-            // NOTE: if ERPFormBuilder/ERPFooter supports a save-button label prop,
-            // wire it here e.g. saveButtonLabel="Save & e-Sign"
+      <Table
+        title="Document Master"
+        data={filteredList}
+        columns={dmsTableColumns}
+        rowKey="Id"
+        loading={m.loading}
+        activeTab={m.activeTab}
+        showSettingsTab
+        onTabChange={m.handleHeaderTabChange}
+        onRefresh={m.loadData}
+        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
+        onRowDoubleClick={m.handleRowSelect}
+        onDeleteMultiple={m.handleDeleteMultiple}
+        onToggleFilter={() => setShowFilter((p) => !p)}
+        showForm={showFilter}
+        formComponent={
+          <UnivarsalFilter
+            filters={filters}
+            setShowFilter={setShowFilter}   // ✅ add kiya
+            setFilters={setFilters}
+            visibleFields={["status", "department", "docType"]}
+            options={{
+              ...m.groupOptions,
+              status: STATUS_OPTIONS,
+              docType: ["SOP", "Policy", "Work Instruction", "Form", "Specification", "Manual", "Protocol"],
+            }}
+            onApply={() => { }}
+            onClear={clearFilter}
           />
-          {mode !== "view" && (
-            <p className="text-xs text-gray-500 px-4 pb-2">
-              On save, record is electronically signed as{" "}
-              <strong>{formData.CreatedBy || formData.UpdatedBy || "H"}</strong>{" "}
-              with timestamp (ALCOA+: attributable, contemporaneous).
-            </p>
-          )}
-        </>
-      ) : (
-       <Table
-  activeTab={activeTab}
-  onRefresh={() => loadData()}
-  showSettingsTab={true}
-  onTabChange={handleHeaderTabChange}
-  onDeleteMultiple={handleDeleteMultiple}
-  title="Document Management"
-  data={filteredDocList}
-  tab={tab}
-  columns={dmsTableColumns}
-  rowKey="id"
-  loading={loading}
-  onAdd={rights?.add === 1 ? handleAddNew : null}
-  onRowDoubleClick={handleRowSelect}
-  onToggleFilter={() => setShowFilter((p) => !p)}
-  showForm={showFilter}
-  formComponent={
-    <UnivarsalFilter
-      filters={filters}
-      visibleFields={["status", "department", "docType"]}
-      setFilters={setFilters}
-       options={{...groupOptions,status:["Draft","Under Review","Effective","Approved","Superseded","Rejected"]}}
-      onApply={applyFilter}
-      onClear={clearFilter}
-    />
-  }
-/>
-      )}
+        }
+      />
     </div>
   );
 }

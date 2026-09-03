@@ -1,9 +1,10 @@
 import React, { useEffect, useState, Suspense, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import "./Dashboard.css"; 
+import "./Dashboard.css";
 import TabBar from "./TabBar";
 import PageRegistry from "../../pages/PageRegistry";
 import * as FaIcons from "react-icons/fa";
+import { TabProvider } from "../../theme/TabContext";
 import {
   FaRegWindowMaximize,
   FaStar,
@@ -18,7 +19,7 @@ import {
 } from "react-icons/fa";
 import FinamanDashboard from "../../pages/FinamanDashboard";
 import RecentActivity from "./RecentActivity";
-import { fetchMasmnuData, fetchMasgrpList } from "../../utils/api";
+import { fetchMasmnuData, fetchMasgrpList } from "../../utils/api"; import { useAuth } from "../../theme/AuthContext";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -53,7 +54,7 @@ function Dashboard({
       return [];
     }
   });
- const [collapsedGroups, setCollapsedGroups] = useState(() => {
+  const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem("collapsedMenuGroups") || "[]");
       return new Set(Array.isArray(raw) ? raw : []);
@@ -64,11 +65,11 @@ function Dashboard({
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 768
   );
-
+  const { token } = useAuth();
   const searchInputRef = useRef(null);
   const constraintsRef = useRef(null);
 
-   const toggleGroup = useCallback((key) => {
+  const toggleGroup = useCallback((key) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
@@ -91,12 +92,12 @@ function Dashboard({
   }, [activeModule?.masmod_id]);
   // ─────────────────────────────────────────────────────────────────────────────
 
-useEffect(() => {
+  useEffect(() => {
     const loadMenus = async () => {
       if (!activeModule) { setMenus([]); setGroups([]); return; }
       setLoading(true);
       try {
-        const token = sessionStorage.getItem("token");
+
         const [menuData, grpData] = await Promise.all([
           fetchMasmnuData(token),
           fetchMasgrpList({ masmod_id: activeModule.masmod_id }),
@@ -132,13 +133,17 @@ useEffect(() => {
       prev.includes(activeTab.id) ? prev : [...prev, activeTab.id]
     );
   }, [activeTab]);
- 
+
   const handleCloseTab = useCallback(
     (tabId) => {
+      const idx = tabs.findIndex((t) => t.id === tabId);
       setLoadedTabs((prev) => prev.filter((id) => id !== tabId));
       onCloseTab(tabId);
+      if (activeTab?.id === tabId && idx > 0) {
+        onChangeActiveTab(tabs[idx - 1].id);
+      }
     },
-    [onCloseTab]
+    [tabs, activeTab, onCloseTab, onChangeActiveTab]
   );
 
   const getIcon = (m) => {
@@ -171,14 +176,14 @@ useEffect(() => {
       n = Math.floor(n / 26) - 1;
     }
     return result;
-  } 
+  }
   function alphabetToIndex(str) {
     let n = 0;
     for (let i = 0; i < str.length; i++) {
       n = n * 26 + (str.charCodeAt(i) - 64); // 'A' = 65 -> 1
     }
     return n - 1;
-  } 
+  }
   const toggleFavourite = useCallback((id) => {
     const sid = String(id);
     setFavourites((prev) => {
@@ -221,8 +226,8 @@ useEffect(() => {
     () => [...reports].sort((a, b) => isFav(b.masmnu_id) - isFav(a.masmnu_id)),
     [reports, isFav]
   );
-  
-const groupBy = useCallback((arr, padType) => {
+
+  const groupBy = useCallback((arr, padType) => {
     const map = new Map();
 
     groups
@@ -231,7 +236,7 @@ const groupBy = useCallback((arr, padType) => {
       .forEach((g) => map.set(g.grp_name, { icon: g.icon_name, items: [] }));   // 👈
 
     arr.forEach((m) => {
-      const g = groups.find((x) => x.grp_id=== m.grp_id);
+      const g = groups.find((x) => x.grp_id === m.grp_id);
       const name = g ? g.grp_name : "General";
       if (!map.has(name)) map.set(name, { icon: g?.icon_name || null, items: [] });  // 👈
       map.get(name).items.push(m);
@@ -241,8 +246,8 @@ const groupBy = useCallback((arr, padType) => {
       .filter((x) => x.items.length > 0);
   }, [groups]);
 
-  const entryGroups  = useMemo(() => groupBy(sortedEntries, "1"), [sortedEntries, groupBy]);
-  const reportGroups = useMemo(() => groupBy(sortedReports, "2"), [sortedReports, groupBy]); 
+  const entryGroups = useMemo(() => groupBy(sortedEntries, "1"), [sortedEntries, groupBy]);
+  const reportGroups = useMemo(() => groupBy(sortedReports, "2"), [sortedReports, groupBy]);
   const shortcutMenus = useMemo(
     () => [
       ...entryGroups.flatMap((g) => g.items),
@@ -375,7 +380,7 @@ const groupBy = useCallback((arr, padType) => {
     </motion.div>
   );
 
-const renderGroupedSection = (groups, baseOffset, sectionKey) => {
+  const renderGroupedSection = (groups, baseOffset, sectionKey) => {
     let running = baseOffset;
     return groups.map(({ group, icon, items }) => {          // 👈 icon
       const start = running;
@@ -386,7 +391,7 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
 
       return (
         <div key={key} className="menu-group-block">
-         <button
+          <button
             type="button"
             className={`menu-group-title ${isCollapsed ? "is-collapsed" : ""}`}
             onClick={() => toggleGroup(key)}
@@ -400,7 +405,7 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
             </span>
           </button>
 
-   <AnimatePresence initial={false}>
+          <AnimatePresence initial={false}>
             {!isCollapsed && (
               <motion.div
                 key="body"
@@ -439,7 +444,7 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
           <FaSearch className="search-icon" />
           <input
             ref={searchInputRef}
-            
+
             type="text"
             placeholder="Search menus..."
             value={searchQuery}
@@ -490,10 +495,10 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
                 <span>Entries</span>
                 {/* <span className="section-count">{sortedEntries.length}</span> */}
               </div>
-             {sortedEntries.length === 0 ? (
+              {sortedEntries.length === 0 ? (
                 <EmptyState title="No entries" subtitle="No entry menus in this module." />
               ) : (
-                   renderGroupedSection(entryGroups, 0, "E")       // 👈 replace
+                renderGroupedSection(entryGroups, 0, "E")       // 👈 replace
               )}
             </section>
 
@@ -503,10 +508,10 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
                 <span>Reports</span>
                 {/* <span className="section-count">{sortedReports.length}</span> */}
               </div>
-             {sortedReports.length === 0 ? (
+              {sortedReports.length === 0 ? (
                 <EmptyState title="No reports" subtitle="No report menus in this module." />
               ) : (
-                 renderGroupedSection(reportGroups, sortedEntries.length, "R")  // 👈 replace
+                renderGroupedSection(reportGroups, sortedEntries.length, "R")  // 👈 replace
               )}
             </section>
           </div>
@@ -514,23 +519,23 @@ const renderGroupedSection = (groups, baseOffset, sectionKey) => {
       </div>
     </motion.div>
   );
-// ── Ctrl+F focuses the dashboard menu search ────────────────────────────
-useEffect(() => {
-  const handleCtrlF = (e) => {
-    // Ctrl+F (Windows/Linux) or Cmd+F (Mac)
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-      // only hijack when a module dashboard is actually showing
-      if (activeTab?.type !== "module") return;
-      if (!searchInputRef.current) return;
-      e.preventDefault();          // stop the browser's native Find bar
-      searchInputRef.current.focus();
-      searchInputRef.current.select(); // select existing text so user can retype
-    }
-  };
+  // ── Ctrl+F focuses the dashboard menu search ────────────────────────────
+  useEffect(() => {
+    const handleCtrlF = (e) => {
+      // Ctrl+F (Windows/Linux) or Cmd+F (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        // only hijack when a module dashboard is actually showing
+        if (activeTab?.type !== "module") return;
+        if (!searchInputRef.current) return;
+        e.preventDefault();          // stop the browser's native Find bar
+        searchInputRef.current.focus();
+        searchInputRef.current.select(); // select existing text so user can retype
+      }
+    };
 
-  window.addEventListener("keydown", handleCtrlF);
-  return () => window.removeEventListener("keydown", handleCtrlF);
-}, [activeTab]);
+    window.addEventListener("keydown", handleCtrlF);
+    return () => window.removeEventListener("keydown", handleCtrlF);
+  }, [activeTab]);
   // Single source of truth for the activity panel inner content
   const activityContent = (
     <>
@@ -574,7 +579,7 @@ useEffect(() => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ height: "100%" }} 
+                style={{ height: "100%" }}
               >
                 <FinamanDashboard />
               </motion.div>
@@ -601,7 +606,9 @@ useEffect(() => {
                     ) : (
                       <Suspense fallback={<div className="p-5 animate-pulse">Loading...</div>}>
                         {Component ? (
-                          <Component tab={tab} module={tab.module} onOpenPage={onOpenPage} />
+                          <TabProvider closeTab={() => handleCloseTab(tab.id)}>
+                            <Component tab={tab} module={tab.module} onOpenPage={onOpenPage} />
+                          </TabProvider>
                         ) : (
                           <div className="module-dev-placeholder">
                             <FaIcons.FaTools className="dev-icon" />
@@ -626,7 +633,7 @@ useEffect(() => {
           >
             {isActivityOpen ? <FaChevronRight size={14} /> : <FaHistory size={16} />}
           </motion.div>
-        </div> 
+        </div>
         {isMobile ? (
           <AnimatePresence>
             {isActivityOpen && (

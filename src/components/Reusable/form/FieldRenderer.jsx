@@ -1,6 +1,7 @@
-import React,{useState, useEffect} from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import ERPDateInput from "../input/Date";
 import ERPAutocomplete from "../input/ERPAutocomplete";
+import MultiSelectField from "../../../pages/Modules/QMS/Components/MultiSelectField";
 
 
 const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData }) => {
@@ -10,7 +11,7 @@ const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData }) => {
   const dependsOnValue = fieldObj.dependsOn ? (formData?.[fieldObj.dependsOn] ?? "") : "__READY__";
 
   useEffect(() => {
-    if (!fieldObj.fetchOptions) return; 
+    if (!fieldObj.fetchOptions) return;
     if (fieldObj.dependsOn && !dependsOnValue) {
       setOptions([]);
       return;
@@ -37,11 +38,10 @@ const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData }) => {
     return () => { cancelled = true; };
   }, [dependsOnValue]);
 
-  const baseClass = `w-full h-[32px] px-2 text-[16px] border border-gray-300 rounded-md outline-none transition-all ${
-    disabled
+  const baseClass = `w-full h-[32px] px-2 text-[16px] border border-gray-300 rounded-md outline-none transition-all ${disabled
       ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
       : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
-  }`;
+    }`;
 
   return (
     <select
@@ -58,7 +58,33 @@ const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData }) => {
       ))}
     </select>
   );
-}; 
+};
+
+const AutoGrowTextarea = ({ value, onChange, disabled, onKeyDown }) => {
+  const ref = useRef(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, 60)}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className={`w-full px-2 py-1.5 text-[13px] border rounded-md outline-none transition-all resize-y overflow-hidden ${disabled
+          ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
+          : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+        }`}
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      onKeyDown={onKeyDown}
+      style={{ minHeight: "60px" }}
+    />
+  );
+};
 
 const FieldRenderer = ({
   fieldObj,
@@ -74,10 +100,9 @@ const FieldRenderer = ({
   const { type = "text" } = fieldObj;
 
   const getInputClass = (disabled) =>
-    `w-full h-[28px] px-2 text-[13px] border rounded-md outline-none transition-all ${
-      disabled
-        ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
-        : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+    `w-full h-[28px] px-2 text-[13px] border rounded-md outline-none transition-all ${disabled
+      ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
+      : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
     }`;
 
   const baseClass = getInputClass(disabled);
@@ -97,7 +122,7 @@ const FieldRenderer = ({
     case "date":
       return (
         <ERPDateInput
-          value={value || ""}
+          value={value ?? ""}
           onChange={onChange}
           minDate={minDate}
           minDateLabel={minDateLabel}
@@ -111,10 +136,20 @@ const FieldRenderer = ({
       return (
         <ERPAutocomplete
           options={fieldObj.options || []}
-          value={value || ""}
+          value={value ?? ""}
           onChange={onChange}
           disabled={disabled}
           className={baseClass}
+        />
+      );
+
+    case "multiselect":
+      return (
+        <MultiSelectField
+          options={fieldObj.options || []}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
         />
       );
 
@@ -132,26 +167,20 @@ const FieldRenderer = ({
         </div>
       );
 
-    case "textarea":
-      return (
-        <textarea
-          className={`w-full px-2 py-1.5 text-[13px] border rounded-md outline-none transition-all min-h-[60px] resize-y ${
-            disabled
-              ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
-              : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-          }`}
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          onKeyDown={onKeyDown}
-        />
-      );
+    case "textarea": {
+      return <AutoGrowTextarea
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        onKeyDown={onKeyDown}
+      />;
+    }
 
     default:
       return (
         <input
           className={baseClass}
-          value={value || ""}
+          value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           onKeyDown={onKeyDown}

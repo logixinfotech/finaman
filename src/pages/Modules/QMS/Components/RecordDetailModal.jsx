@@ -3,17 +3,11 @@ import WorkflowProgressBar from "./WorkflowProgressBar";
 import ESignDialog from "./ESignDialog";
 import { advanceState, getEsignatures, getAuditTrail, createLinkedCapa } from "../Utils/QmsAPI";
 import { showToast, alertError } from "../../../../components/Reusable/alert"; 
-  function getCurrentUser() {
-  try {
-    return JSON.parse(sessionStorage.getItem("user") || "{}");
-  } catch {
-    return {};
-  }
-}
+ import { useAuth } from "../../../../theme/AuthContext";
 export default function RecordDetailModal({ moduleKey, record, wfConfig, onClose, onStatusChanged }) {
-  const user = getCurrentUser();
+ 
   const cfg = wfConfig?.[moduleKey];
-
+  const { user } = useAuth();  
   const [esignatures, setEsignatures] = useState(null);
   const [auditHist, setAuditHist] = useState(null);
   const [pendingAction, setPendingAction] = useState(null); // { newStatus, meaning }

@@ -1,16 +1,19 @@
 import { useState } from "react";
 
-export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCancel }) {
+export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCancel, requireReason = false, reasonLabel = "Reason", }) {
   const [typedName, setTypedName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [reason, setReason] = useState("");
+
+  const canConfirm = typedName.trim() && (!requireReason || reason.trim());
 
   const handleConfirm = async () => {
-    if (!typedName.trim()) return;
+    if (!canConfirm) return;                                    // 🆕
     setBusy(true);
     setError("");
     try {
-      await onConfirm(typedName.trim());
+      await onConfirm(typedName.trim(), reason.trim());          // 🆕 reason bhejo
     } catch (err) {
       setError(err?.message || "Signature failed");
     } finally {
@@ -36,9 +39,23 @@ export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCanc
           <span className="text-[11px] text-slate-400 uppercase tracking-wide">Signing as</span>
           <div className="text-[13px] font-semibold text-slate-700">{signingAsLabel}</div>
         </div>
+        {requireReason && (
+          <div className="mb-3">
+            <label className="text-[11px] font-semibold text-[#334155] block mb-1">
+              {reasonLabel} <span className="text-[#dc2626]">*</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="Why is this record being rejected?"
+              className="w-full px-2 py-1.5 text-[12px] border-[1.5px] border-[#c8d2e4] rounded-[5px] bg-[#fafbfd] outline-none focus:border-[#1a56db] resize-none"
+            />
+          </div>
+        )}
 
         <label className="text-[11px] text-slate-500 mb-1 block">
-          Type your full name to confirm this signature
+         Enter your password to confirm
         </label>
         <input
           autoFocus
@@ -53,10 +70,12 @@ export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCanc
           <p className="text-[11.5px] text-red-500 mt-2">✕ {error}</p>
         )}
 
+
+
         <div className="flex gap-2 mt-4">
           <button
             onClick={handleConfirm}
-            disabled={!typedName.trim() || busy}
+            disabled={!canConfirm || busy}                       // 🆕
             className="flex-1 h-9 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12.5px] font-semibold rounded-md transition-colors"
           >
             {busy ? "Signing…" : "✓ Confirm Signature"}

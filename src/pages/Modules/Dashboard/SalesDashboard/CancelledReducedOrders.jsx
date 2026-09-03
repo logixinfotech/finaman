@@ -1,0 +1,44 @@
+import { useMemo } from "react";
+import { inrS } from "../../../../utils/helpers";
+
+// NOTE: `r.status` is a GUESS. The app already has an `orderStatus` filter
+// (FiltersBar / applyOrderFilters) — check orderHelpers.js for the real field
+// name it filters on and swap it in below.
+export default function CancelledReducedOrders({ rows }) {
+  const data = useMemo(() => {
+    const flagged = (rows || []).filter((r) => {
+      const s = (r.status || "").toLowerCase();
+      return s.includes("cancel") || s.includes("reduc");
+    });
+    const cancelled = flagged.filter((r) => (r.status || "").toLowerCase().includes("cancel"));
+    const reduced = flagged.filter((r) => (r.status || "").toLowerCase().includes("reduc"));
+    const lostAmt = flagged.reduce((s, r) => s + (r.amt || 0), 0);
+    return { cancelled, reduced, lostAmt, flagged };
+  }, [rows]);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">❌ Cancelled / Reduced Orders</h4>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="rounded-lg bg-rose-50 p-3">
+          <p className="text-[11px] font-semibold text-rose-700">Cancelled</p>
+          <p className="text-xl font-extrabold text-rose-800">{data.cancelled.length}</p>
+        </div>
+        <div className="rounded-lg bg-amber-50 p-3">
+          <p className="text-[11px] font-semibold text-amber-700">Reduced</p>
+          <p className="text-xl font-extrabold text-amber-800">{data.reduced.length}</p>
+        </div>
+      </div>
+      <p className="text-[11px] text-slate-500 mb-2">Value impacted: {inrS(data.lostAmt)}</p>
+      <div className="max-h-40 overflow-y-auto divide-y divide-slate-100">
+        {data.flagged.slice(0, 20).map((r, i) => (
+          <div key={i} className="flex items-center justify-between py-1.5 text-[11px]">
+            <span className="truncate text-slate-600">{r.cust} — {r.item}</span>
+            <span className="text-slate-400">{inrS(r.amt)}</span>
+          </div>
+        ))}
+        {!data.flagged.length && <p className="py-4 text-center text-xs text-slate-400">No cancelled/reduced orders in this range.</p>}
+      </div>
+    </div>
+  );
+}

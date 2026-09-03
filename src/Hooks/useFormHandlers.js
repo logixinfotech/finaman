@@ -3,8 +3,105 @@ import { useCallback } from "react";
 import { useERPFormMeta , useERPFormData} from "../theme/ERPFormContext"; 
 
 // ── Enter / Shift+Backspace field navigation ──
+// export function useFieldNavigation() {
+//   const { activeTab, isViewMode, tabs, setActiveTab, saveBtnRef } = useERPFormMeta();
+
+//   return useCallback((e) => {
+//     if (isViewMode) return;
+//     const targetTag = e.target.tagName.toLowerCase();
+
+//     if (e.key === "Enter") {
+//       if (targetTag === 'button' || e.target.type === 'file') return;
+//       if (targetTag === 'textarea' && e.shiftKey) return;
+//       e.preventDefault();
+
+//       const container = document.getElementById(`tab-content-${activeTab}`);
+//       if (!container) return;
+//       const fieldContainers = Array.from(container.querySelectorAll('[id^="field-container-"]'));
+//       const currentContainer = e.target.closest('[id^="field-container-"]');
+//       if (!currentContainer) return;
+
+//       const currentIndex = fieldContainers.indexOf(currentContainer);
+//       if (currentIndex > -1 && currentIndex < fieldContainers.length - 1) {
+//         const nextInput = fieldContainers[currentIndex + 1].querySelector(
+//           'input:not([disabled]):not([type="hidden"]):not([type="file"]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
+//         );
+//         if (nextInput) setTimeout(() => nextInput.focus(), 10);
+//       } else if (currentIndex === fieldContainers.length - 1) {
+//         const currentTabIndex = tabs.indexOf(activeTab);
+//         if (currentTabIndex > -1 && currentTabIndex < tabs.length - 1) {
+//           setActiveTab(tabs[currentTabIndex + 1]);
+//         } else {
+//           setTimeout(() => saveBtnRef?.current?.focus(), 10);
+//         }
+//       }
+//     }
+
+//     if (e.key === "Backspace" && e.shiftKey) {
+//       e.preventDefault();
+//       const container = document.getElementById(`tab-content-${activeTab}`);
+//       if (!container) return;
+//       const fieldContainers = Array.from(container.querySelectorAll('[id^="field-container-"]'));
+//       const currentContainer = e.target.closest('[id^="field-container-"]');
+//       if (!currentContainer) return;
+
+//       const currentIndex = fieldContainers.indexOf(currentContainer);
+//       if (currentIndex > 0) {
+//         const prevInput = fieldContainers[currentIndex - 1].querySelector(
+//           'input:not([disabled]):not([type="hidden"]):not([type="file"]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
+//         );
+//         if (prevInput) {
+//           setTimeout(() => {
+//             prevInput.focus();
+//             if (prevInput.setSelectionRange && prevInput.value) {
+//               const len = prevInput.value.length;
+//               prevInput.setSelectionRange(len, len);
+//             }
+//           }, 10);
+//         }
+//       } else if (currentIndex === 0) {
+//         const currentTabIndex = tabs.indexOf(activeTab);
+//         if (currentTabIndex > 0) {
+//           const prevTabName = tabs[currentTabIndex - 1];
+//           setActiveTab(prevTabName);
+//           setTimeout(() => {
+//             const prevTabContainer = document.getElementById(`tab-content-${prevTabName}`);
+//             if (!prevTabContainer) return;
+//             const prevTabFields = Array.from(prevTabContainer.querySelectorAll('[id^="field-container-"]'));
+//             if (prevTabFields.length > 0) {
+//               const lastInput = prevTabFields[prevTabFields.length - 1].querySelector(
+//                 'input:not([disabled]):not([type="hidden"]):not([type="file"]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
+//               );
+//               lastInput?.focus();
+//             }
+//           }, 50);
+//         }
+//       }
+//     }
+//   }, [activeTab, isViewMode, tabs, setActiveTab, saveBtnRef]);
+// }
 export function useFieldNavigation() {
-  const { activeTab, isViewMode, tabs, setActiveTab, saveBtnRef } = useERPFormMeta();
+  const { activeTab, isViewMode, tabs, setActiveTab, saveBtnRef, fieldGroups, sectionAccess, customTabs } = useERPFormMeta();
+  const handleSave = useFormSaveHandler();
+
+  const getTabSectionTitles = useCallback((tab) => {
+    const group = fieldGroups?.[tab];
+    if (!group) return [];
+    if (Array.isArray(group)) {
+      return group.flatMap((row) => row.map(([secTitle]) => secTitle));
+    }
+    return Object.keys(group);
+  }, [fieldGroups]);
+
+  // 🆕 sirf real fillable form-field tabs hi navigation me count honge —
+  // Audit Trail / log / custom-rendered tabs skip
+  const isNavigableTab = useCallback((tab) => {
+    if (customTabs?.[tab]) return false; // custom tab (Audit Trail etc.) — kabhi navigate/save-trigger nahi hoga
+    if (!sectionAccess) return true;
+    const titles = getTabSectionTitles(tab);
+    if (!titles.length) return true; // fieldGroups wala normal tab hai bas access-info nahi mila
+    return titles.some((t) => sectionAccess[t]?.state === 'editable');
+  }, [sectionAccess, getTabSectionTitles, customTabs]);
 
   return useCallback((e) => {
     if (isViewMode) return;
@@ -29,15 +126,18 @@ export function useFieldNavigation() {
         if (nextInput) setTimeout(() => nextInput.focus(), 10);
       } else if (currentIndex === fieldContainers.length - 1) {
         const currentTabIndex = tabs.indexOf(activeTab);
-        if (currentTabIndex > -1 && currentTabIndex < tabs.length - 1) {
-          setActiveTab(tabs[currentTabIndex + 1]);
+        let nextIdx = currentTabIndex + 1;
+        while (nextIdx < tabs.length && !isNavigableTab(tabs[nextIdx])) nextIdx++;
+
+        if (nextIdx < tabs.length) {
+          setActiveTab(tabs[nextIdx]);
         } else {
-          setTimeout(() => saveBtnRef?.current?.focus(), 10);
+         setTimeout(() => saveBtnRef?.current?.focus(), 10); 
         }
       }
     }
 
-    if (e.key === "Backspace" && e.shiftKey) {
+    if ( e.shiftKey && e.key === "Backspace" ) {
       e.preventDefault();
       const container = document.getElementById(`tab-content-${activeTab}`);
       if (!container) return;
@@ -61,8 +161,11 @@ export function useFieldNavigation() {
         }
       } else if (currentIndex === 0) {
         const currentTabIndex = tabs.indexOf(activeTab);
-        if (currentTabIndex > 0) {
-          const prevTabName = tabs[currentTabIndex - 1];
+        let prevIdx = currentTabIndex - 1;
+        while (prevIdx >= 0 && !isNavigableTab(tabs[prevIdx])) prevIdx--;
+
+        if (prevIdx >= 0) {
+          const prevTabName = tabs[prevIdx];
           setActiveTab(prevTabName);
           setTimeout(() => {
             const prevTabContainer = document.getElementById(`tab-content-${prevTabName}`);
@@ -78,7 +181,7 @@ export function useFieldNavigation() {
         }
       }
     }
-  }, [activeTab, isViewMode, tabs, setActiveTab, saveBtnRef]);
+  }, [activeTab, isViewMode, tabs, setActiveTab, saveBtnRef, isNavigableTab, handleSave]);
 }
 
 // ── Save + validation + error-focus ──

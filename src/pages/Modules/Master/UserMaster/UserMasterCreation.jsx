@@ -37,8 +37,7 @@ const baseColumns = [
                 const response = await updateUser(row.user_id, { ...row, [key]: newValue });
                 if (response.success) {
                     showToast({ icon: "success", title: "Updated successfully" });
-                    return true; // Signal to table that save was successful
-                }
+                    return true;       }
             } catch (error) {
                 alertError("Update Failed", error.message);
                 return false;
@@ -108,19 +107,15 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
             alertError("Validation Error", "Please fill all required fields marked with *");
             return;
         }
-        console.log("MODE:", mode, "| isEditMode:", isEditMode, "| user_id:", formData.user_id);
+       
 
         const response = await performSave("user_id", formData);
 
-        if (response?.success) {
-
-            // 🔥 Reload latest data
+        if (response?.success) { 
             const data = await fetchUsers();
             const finalData = Array.isArray(data) ? data : data?.data || [];
 
-            setList(finalData);
-
-            // 🔥 Find same saved record again
+            setList(finalData); 
             const savedIndex = finalData.findIndex(
                 item => item.user_id === formData.user_id
             );
@@ -138,8 +133,7 @@ const UserMasterPage = ({ tab, onOpenPage }) => {
             });
         } else if (response?.message?.toLowerCase().includes("already exists")) {
             // 👇 ADD THIS
-            alertError("Duplicate User ID", `User ID "${formData.user_id}" already exists. Please choose a different ID.`);
-            // Focus back on user_id field
+            alertError("Duplicate User ID", `User ID "${formData.user_id}" already exists. Please choose a different ID.`); 
             setTimeout(() => {
                 const el = document.querySelector('[name="user_id"]');
                 if (el) { el.focus(); el.select(); }

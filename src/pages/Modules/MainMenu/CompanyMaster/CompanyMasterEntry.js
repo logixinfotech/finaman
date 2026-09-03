@@ -28,8 +28,7 @@ const CompanyMasterEntry = ({
   rights,
   saving,
   canPrint,
-  formTab,
-  
+  formTab,  
     headerActiveTab, 
   onFormTabChange,
   onHeaderTabChange,

@@ -57,13 +57,14 @@ export function applyNonDateFilters(rows, f) {
       (!item || (r.item || "").toUpperCase().includes(item))
   );
 }
-
+ 
 // ---------- invoice grouping ----------
 export function invoiceRows(rows) {
   const m = {};
   rows.forEach((r) => {
-    const k = r.inv;
-    m[k] = m[k] || { inv: r.inv, dt: r.dt, cust: r.cust, city: r.city, amt: 0, gst: 0 };
+    const k = r.invKey || r.inv;          // BILINV_KEY = true unique key
+    if (!k) return;
+    m[k] = m[k] || { invKey: k, inv: r.inv, dt: r.dt, cust: r.cust, city: r.city, amt: 0, gst: 0 };
     m[k].amt += r.amt || 0;
     m[k].gst += r.gst || 0;
   });
@@ -103,15 +104,35 @@ export function sumRange(rows, a, b) {
   return { amt, inv: inv.size };
 }
 
-// ---------- period report (weekly / monthly / yearly) ----------
+// ---------- period report (weekly / monthly / quarterly / yearly / FY) ----------
+// Indian FY: April–March. Multi-tenant hai isliye constant, hardcode nahi.
+export const FY_START_MONTH = 4;
+
+export function fyOf(iso) {
+  const y = +iso.slice(0, 4);
+  const m = +iso.slice(5, 7);
+  return m >= FY_START_MONTH ? y : y - 1; // 2026-03 → FY 2025, 2026-04 → FY 2026
+}
+
 export function periodKey(dt, tab) {
   if (!dt) return null;
-  if (tab === "Y") return dt.slice(0, 4);
+  if (tab === "F") return String(fyOf(dt));                          // FY
+  if (tab === "Y") return dt.slice(0, 4);                            // calendar year
+  if (tab === "Q") {                                                 // calendar quarter
+    const m = +dt.slice(5, 7);
+    return dt.slice(0, 4) + "-Q" + (Math.floor((m - 1) / 3) + 1);
+  }
   if (tab === "M") return dt.slice(0, 7);
-  return isoOf(monday(toD(dt)));
+  return isoOf(monday(toD(dt)));                                     // week
 }
+
 export function periodLabel(k, tab) {
+  if (tab === "F") return `FY ${k}-${String(+k + 1).slice(2)}`;      // FY 2026-27
   if (tab === "Y") return k;
+  if (tab === "Q") {
+    const [y, q] = k.split("-");
+    return `${q} ${y}`;                                              // Q2 2026
+  }
   if (tab === "M") {
     const [y, m] = k.split("-");
     return MN[+m - 1] + " " + y;
@@ -145,7 +166,7 @@ export function summarize(rows) {
   const gst = rows.reduce((s, r) => s + (r.gst || 0), 0);
   const qty = rows.reduce((s, r) => s + (r.qty || 0), 0);
   const invAmt = rows.reduce((s, r) => s + (r.invAmt || 0), 0);
-  const nInv = new Set(rows.map((r) => r.inv)).size;
+   const nInv = new Set(rows.map((r) => r.invKey || r.inv)).size;
   const nCust = new Set(rows.map((r) => r.cust)).size;
   const nCity = new Set(rows.map((r) => r.city)).size;
   const nState = new Set(rows.map((r) => r.state)).size;

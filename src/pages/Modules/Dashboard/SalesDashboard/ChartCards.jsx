@@ -55,7 +55,7 @@ export function CardShell({ title, icon: Icon, accent = "indigo", children, clas
 
 // Horizontal bar for Top Cities / Top Customers / Top Products / Qty
 export function TopBarChart({ title, rows, keyFn, valFn, n = 10, height = 280, valueFormatter, accent = "indigo", icon = TrendingUp }) {
-  const entries = useMemo(() => topN(by(rows, keyFn, valFn), n), [rows]);
+const entries = useMemo(() => topN(by(rows, keyFn, valFn), n), [rows, keyFn, valFn, n]);
   const fmt = valueFormatter || inrS; // default stays ₹ — every existing call site is unaffected
   const a = ACCENTS[accent] || ACCENTS.indigo;
   const data = {
@@ -72,11 +72,11 @@ const options = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { display: false },   // ← yahan bhi
-    tooltip: { ...TOOLTIP_STYLE, callbacks: { label: (ctx) => inrS(ctx.parsed.y) } },
+    legend: { display: false },
+    tooltip: { ...TOOLTIP_STYLE, callbacks: { label: (ctx) => fmt(ctx.parsed.y) } },
   },
   scales: {
-    y: { ticks: { callback: (v) => inrS(v), font: { size: 10.5 }, color: "#94a3b8" }, grid: { color: "#f1f5f9" } },
+    y: { ticks: { callback: (v) => fmt(v), font: { size: 10.5 }, color: "#94a3b8" }, grid: { color: "#f1f5f9" } },
     x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { size: 10 }, color: "#94a3b8" } },
   },
 };

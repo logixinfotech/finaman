@@ -307,7 +307,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
     if (!file) return;
     if (file._saved && file._view_url) {
       // Token ke saath fetch karo
-      const token = sessionStorage.getItem("token");
+      const token = localStorage.getItem("token");
       const res = await fetch(file._view_url, {
         headers: { Authorization: `Bearer ${token}` }
       });

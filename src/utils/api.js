@@ -13,19 +13,17 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   if (user.database) {
     config.headers["x-tenant-db"] = user.database;
   }
-
-  console.log("Tenant DB =>", config.headers["x-tenant-db"]);
 
   return config;
 });
@@ -33,19 +31,19 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const isAuthRoute = error.config?.url?.includes("/api/authenticate"); 
+    const isAuthRoute = error.config?.url?.includes("/api/authenticate");
     if (error.response?.status === 401 && !isAuthRoute) {
-      sessionStorage.clear();
+      localStorage.clear();
 
       await Swal.fire({
-        icon:               "warning",
-        title:              "Session Expired",
-        text:               "You have been logged in from another device.",
-        confirmButtonText:  "Go to Login",
+        icon: "warning",
+        title: "Session Expired",
+        text: "You have been logged in from another device.",
+        confirmButtonText: "Go to Login",
         confirmButtonColor: "#3085d6",
       });
 
-      window.location.href = "/login";
+      window.location.href = "/login"; // full reload — AuthContext fresh state se re-init hoga
     }
 
     return Promise.reject(error);
@@ -76,7 +74,7 @@ export const logoutUser = async () => {
   } catch (error) {
     console.error("Logout API error:", error.message);
   } finally {
-    sessionStorage.clear();
+    localStorage.clear();
     window.location.href = "/login";
   }
 };
@@ -478,7 +476,7 @@ export const deleteEmployeeDocument = (empId, docId) =>
   handleApi(() => api.delete(`/api/employee/actled/${empId}/documents/${docId}`));
 
 export const viewEmployeeDocument = (empId, docId) => {
-  const token = sessionStorage.getItem("token");
+  const token = localStorage.getItem("token");
   return `${config.apiUrl}/api/employee/actled/${empId}/documents/${docId}/view?token=${token}`;
 };
 
@@ -1033,6 +1031,14 @@ export const fetchOrderDashboardFilters = () =>
 
 export const fetchOrderDashboardHistory = () =>
   handleApi(() => api.get("/api/order-dashboard/history"));
+export const fetchSalesSummary = (params = {}) =>
+  handleApi(() => api.get("/api/sales-dashboard/summary", { params }));
+
+export const fetchSalesTrend = (params = {}) =>
+  handleApi(() => api.get("/api/sales-dashboard/trend", { params }));
+
+export const fetchSalesKpis = (params = {}) =>
+  handleApi(() => api.get("/api/sales-dashboard/kpis", { params }));
 
   
  // ─────────────────────────────────────────── Setting ───────────────────────────────────────────

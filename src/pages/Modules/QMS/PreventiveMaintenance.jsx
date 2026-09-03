@@ -1,179 +1,202 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { FaTools, FaWrench, FaClipboardCheck, FaHistory } from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
-import { useERPMode } from "../../../components/Reusable/form/useFormMode";
-import { pmTabs, pmFieldGroups, pmRequiredFieldsList, pmTableColumns, pmWidthConfig } from "./Utils/Qmsconfigs";
-import { confirmDelete, showToast, alertError } from "../../../components/Reusable/alert";
-import { getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
-import { useApplSettings } from "../../../Hooks/useApplSettings";
-import { getPmRecords, createPmRecord, updatePmRecord, deletePmRecord, getNextRecordNo } from "./Utils/QmsAPI";
-import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
-import { useMemo } from "react"; // pehli line ko update karo:
- 
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
-
-const initialState = {
-  Id: null, RecordNo: "", Status: "Active", EquipmentName: "", EquipmentId: "", Location: "", PmType: "",
-  MaintenanceType: "", FrequencyMonths: "", LastPM: "", NextDue: "", Downtime: "", Checklist: "",
-  SparesUsed: "", LastResult: "", RequalificationTriggered: "", PerformedBy: "", VerifiedBy: "", Remarks: "",
+import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
+import { getHeaderStyle } from "./Utils/QmsValidation";
+import { useQmsModule } from "./Utils/useQmsModule";
+import {
+  pmTabs, pmTabStage, pmTabLabels,
+  getPmFieldGroups, getPmRequired,
+  pmWidthConfig, pmSectionConfigs, pmTableColumns,
+} from "./Utils/Qmsconfigs";
+import {
+  getPmRecords, createPmRecord, updatePmRecord, deletePmRecord,
+} from "./Utils/QmsAPI";
+import { useRefOptions } from "./Utils/useRefOptions";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx"; 
+const API = {
+  list: getPmRecords, create: createPmRecord,
+  update: updatePmRecord, remove: deletePmRecord,
 };
 
-const configs = { "PM Details": "grid-cols-1 sm:grid-cols-4" };
+const initialState = {
+  Id: null, RecordNo: "", Status: "Due",
+  EquipmentName: "", EquipmentId: "", Location: "",
+  PmType: "", MaintenanceType: "", FrequencyMonths: "",
+  DueDate: "", WorkOrderNo: "", AttachmentRef: "",
+  PmDate: "", PerformedBy: "", Downtime: "", SparesUsed: "",
+  BreakdownDate: "", BreakdownCause: "", Checklist: "",
+  LastResult: "", RequalificationTriggered: "", QualificationRef: "",
+  VerifiedBy: "", VerifiedOn: "", LastPM: "", NextDue: "",
+  DeviationRef: "", CapaRef: "", ClosedBy: "", Remarks: "",
+};
+
+const PM_TAB_ICON = {
+  details: FaTools,
+  execution: FaWrench,
+  review: FaClipboardCheck,
+  audit: FaHistory,
+};
+function PmTabIcon({ tab }) {
+  const Icon = PM_TAB_ICON[tab];
+  return Icon ? <Icon /> : <span>•</span>;
+}
+
+const STATUS_OPTIONS = ["Due", "Performed", "Under Review", "Closed", "Rejected"];
+
+const EMPTY_FILTERS = { Status: "All", EquipmentName: "", MaintenanceType: "All" };
 
 export default function PreventiveMaintenanceMasterPage({ tab }) {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(tab?.appl_name || "PreventiveMaintenance");
-  const { options: groupOptions } = useGroupOptions();
-  const fieldGroups = pmFieldGroups(groupOptions);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getPmRecords();
-      setList(Array.isArray(res?.data) ? res.data : []);
-    } catch (err) { alertError("Load Error", "Failed to load PM records"); }
-    finally { setLoading(false); }
-  }, []);
-
-  const {
-    mode, formData, setFormData, saving, handleView, handleAdd, handleModify, performSave,
-    rights, showForm, setShowForm, activeTab, setActiveTab, handleEditCancel, isDirty,
-  } = useERPMode(initialState, (data) => data.Id ? updatePmRecord(data.Id, data) : createPmRecord(data), loadData, "PreventiveMaintenance");
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const handleHeaderTabChange = useCallback((t) => { setActiveTab(t); setShowForm(t !== "search"); }, [setActiveTab, setShowForm]);
-
-  const handleAddNew = async () => {
-    handleAdd();
-    setShowForm(true);
-    setActiveTab("entry");
-    const recordNo = await getNextRecordNo("pm");
-    setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
-  };
-
-  useEffect(() => {
-    if (showForm && mode === "view" && list.length > 0) setFormData(list[currentIndex]);
-  }, [currentIndex, list, showForm, mode, setFormData]);
-
-  const listWithSr = list.map((item, i) => ({ ...item, Sr: i + 1 }));
-
-  const handleRowSelect = (row) => {
-    const idx = list.findIndex((i) => i.Id === row.Id);
-    if (idx !== -1) setCurrentIndex(idx);
-    handleView(row);
-    setShowForm(true);
-    setActiveTab("entry");
-  };
-
-  const handleSave = async (localData) => {
-    const dataToSave = { ...localData, Id: localData.Id ?? null };
-    if (mode === "add") dataToSave.RecordNo = "";
-    const response = await performSave("Id", dataToSave);
-    if (response?.success) { showToast({ icon: "success", title: "Saved Successfully" }); await loadData(); }
-  };
-
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({ title: `Delete PM Record "${row.RecordNo || row.Id}"?` });
-    if (!confirmed) return;
-    await deletePmRecord(row.Id);
-    showToast({ icon: "success", title: "Deleted" });
-    setShowForm(false); setActiveTab("search");
-    await loadData();
-  };
-
-  const handleDeleteMultiple = async (selected) => {
-    const ids = (selected || []).map((item) => (typeof item === "object" ? item.Id : item));
-    if (ids.length === 0) return;
-    const confirmed = await confirmDelete({ title: `Delete ${ids.length} PM record(s)?` });
-    if (!confirmed) return;
-    try {
-      const results = await Promise.all(ids.map((id) => deletePmRecord(id)));
-      const failed = results.filter((r) => !r?.success).length;
-      showToast({
-        icon: failed === 0 ? "success" : "warning",
-        title: failed === 0 ? `${ids.length} deleted` : `${ids.length - failed} deleted, ${failed} failed`,
-      });
-      setShowForm(false); setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete some PM records");
-    }
-  };
-
-  const handleFormExit = async () => {
-    const wasDirty = isDirty;
-    await handleEditCancel();
-    if (!wasDirty) { setShowForm(false); setActiveTab("search"); setFormData(initialState); }
-  };
-  const [filters, setFilters] = useState({ Status: "All" });
-const [showFilter, setShowFilter] = useState(false);
-
-const applyFilter = useCallback(() => {}, []);
-const clearFilter = useCallback(() => {
-  setFilters({ Status: "All" });
-}, []);
-
-const filteredList = useMemo(() => {
-  return listWithSr.filter((item) => {
-    if (filters.Status && filters.Status !== "All") {
-      if (item.Status !== filters.Status) return false;
-    }
-    return true;
+  const m = useQmsModule({
+    moduleKey: "pm",
+    title: "Preventive Maintenance",
+    applName: tab?.appl_name || "PreventiveMaintenance",
+    initialState,
+    tabs: pmTabs,
+    tabStage: pmTabStage,
+    getRequired: getPmRequired,
+    api: API,
   });
-}, [listWithSr, filters]);
 
-  return (
-    <div className="h-full w-full">
-      {showForm ? (
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/pm',  
+    applName: 'pm',
+    emailEndpoint: '/api/qms-print/pm',
+    shareLinkEndpoint: '/api/qms-print/pm',
+  });
+
+  const refOpts = useRefOptions(["capa"]);
+
+  const fieldGroups = useMemo(
+    () => getPmFieldGroups({ ...m.groupOptions, refOpts }),   
+    [m.groupOptions, refOpts]
+  );
+  const customTabs = useMemo(
+    () => ({ audit: <RecordAuditPanel history={m.history} /> }),
+    [m.history]
+  );
+
+  // ── filters ──
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
+
+  const filteredList = useMemo(() => {
+    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
+    return m.list
+      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Due" }))
+      .filter((it) =>
+        (filters.Status === "All" || it.Status === filters.Status) &&
+        (filters.MaintenanceType === "All" || it.MaintenanceType === filters.MaintenanceType) &&
+        (!filters.EquipmentName || has(it.EquipmentName, filters.EquipmentName))
+      );
+  }, [m.list, filters]);
+
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `PM-${m.formData?.Id}`,
+      contextLabel: m.formData?.EquipmentName,
+    }).catch((err) => console.error('Print open failed:', err));
+  }, [m.formData, printWorkflow]);
+
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Preventive Maintenance Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
+
+  if (m.showForm) {
+    return (
+      <div className="h-full w-full">
         <ERPFormBuilder
           title="Preventive Maintenance"
           tabs={pmTabs}
+          tabLabels={pmTabLabels}
+          TabIcon={PmTabIcon}
           fieldGroups={fieldGroups}
+          customTabs={customTabs}
+          configs={pmSectionConfigs}
           widthConfig={pmWidthConfig}
-          requiredFields={pmRequiredFieldsList}
-          hideSidebar hideTabBar showSettingsTab
           getHeaderStyle={getHeaderStyle}
-          configs={configs}
-          TabIcon={TabIcon}
-          formData={formData} setFormData={setFormData} mode={mode}
-          settingsConfig={settingsConfig} settingsDefaults={settingsDefaults} onSettingsSave={onSettingsSave}
-          saving={saving} rights={rights}
-          onSave={handleSave} onCancel={handleFormExit} onDelete={handleDelete}
-          onModify={handleModify} onNewEntry={handleAddNew} onEditCancel={handleFormExit}
-          currentRecord={list.length > 0 ? currentIndex + 1 : 0} totalRecords={list.length}
-          onPrevRecord={() => setCurrentIndex((p) => Math.max(p - 1, 0))}
-          onNextRecord={() => setCurrentIndex((p) => Math.min(p + 1, list.length - 1))}
-          headerActiveTab={activeTab} onHeaderTabChange={handleHeaderTabChange}
+          requiredFields={m.requiredFields}
+          completedTabs={m.completedTabs}
+          hideSidebar={false}
+          hideTabBar={false}
+          showSettingsTab
+          sidebarConfig={{ hidePhoto: true, hideHeader: true }}
+          stageHistory={m.history?.stageHistory || null}
+          formData={m.formData}
+          savedFormData={m.savedFormData}
+          setFormData={m.setFormData}
+          mode={m.mode}
+          saving={m.saving}
+          rights={m.rights}
+          workflowConfig={m.workflowConfig}
+          currentUserRole={m.currentUserRole}
+          alwaysSignTabs={["review"]}
+          settingsConfig={m.settingsConfig}
+          settingsDefaults={m.settingsDefaults}
+          onSettingsSave={m.onSettingsSave}
+          onSave={m.handleSave}
+             onSaveDraft={m.handleSaveDraft}
+          onSignedSave={m.handleSignedSave}
+          onDelete={m.handleDelete}
+          onModify={m.handleModify}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
+          onNewEntry={m.handleAddNewGuarded}
+          onCancel={m.handleTabExit }
+          onEditCancel={m.handleFormExit}
+          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
+          totalRecords={m.list.length}
+          onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
+          onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
+          headerActiveTab={m.activeTab}
+          onHeaderTabChange={m.handleHeaderTabChange}
+          moduleKey="pm" 
         />
-      ) : (
-        <Table
-  activeTab={activeTab} showSettingsTab onTabChange={handleHeaderTabChange}
-  onDeleteMultiple={handleDeleteMultiple}
-  title="Preventive Maintenance" data={filteredList} columns={pmTableColumns}
-  rowKey="Id" loading={loading}
-  onRefresh={()=>loadData()}
-  onAdd={rights?.add === 1 ? handleAddNew : null}
-  onRowDoubleClick={handleRowSelect}
-  onToggleFilter={() => setShowFilter((p) => !p)}
-  showForm={showFilter}
-  formComponent={
-    <UnivarsalFilter
-      filters={filters}
-      visibleFields={["status"]}
-      setFilters={setFilters}
-      options={{
-        ...groupOptions,
-        status: ["Active","Retired", "Rejected"],
-      }}
-      onApply={applyFilter}
-      onClear={clearFilter}
-    />
-  }
-/>
-      )}
+      </div>
+    );
+  } 
+  return (
+    <div className="h-full w-full">
+      <Table
+        title="Preventive Maintenance"
+        data={filteredList}
+        columns={pmTableColumns}
+        rowKey="Id"
+        loading={m.loading}
+        activeTab={m.activeTab}
+        showSettingsTab
+        onTabChange={m.handleHeaderTabChange}
+        onRefresh={m.loadData}
+        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
+        onRowDoubleClick={m.handleRowSelect}
+        onDeleteMultiple={m.handleDeleteMultiple}
+        onToggleFilter={() => setShowFilter((p) => !p)}
+        showForm={showFilter}
+        formComponent={
+          <UnivarsalFilter
+            filters={filters}
+            setFilters={setFilters}
+            setShowFilter={setShowFilter} 
+            visibleFields={["status", "equipment", "maintenanceType"]}
+            options={{
+              ...m.groupOptions,
+              status: STATUS_OPTIONS,
+              maintenanceType: ["Preventive", "Predictive", "Breakdown"],
+            }}
+            onApply={() => { }}
+            onClear={clearFilter}
+          />
+        }
+      />
     </div>
   );
 }

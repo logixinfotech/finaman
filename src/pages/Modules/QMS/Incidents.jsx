@@ -6,18 +6,18 @@ import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter
 import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
 import { getHeaderStyle } from "./Utils/QmsValidation";
 import { useQmsModule } from "./Utils/useQmsModule";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
 import {
   incidentTabs, incidentTabStage, incidentTabLabels,
   getIncidentFieldGroups, getIncidentRequired,
   incidentWidthConfig, incidentSectionConfigs, incidentTableColumns,
 } from "./Utils/Qmsconfigs";
-import {
-  getIncidents, createIncident, updateIncident, deleteIncident,
-} from "./Utils/QmsAPI";
+import { getIncidents, getIncident, createIncident, updateIncident, deleteIncident } from "./Utils/QmsAPI";
 
 const API = {
-  list: getIncidents, create: createIncident,
-  update: updateIncident, remove: deleteIncident,
+  list: getIncidents, getOne: getIncident,
+  create: createIncident, update: updateIncident, remove: deleteIncident,
 };
 
 const initialState = {
@@ -26,11 +26,38 @@ const initialState = {
   IncidentTime: "", Shift: "", Area: "", Category: "",
   OtherCategoryDetail: "", Severity: "", Description: "",
   ReportedBy: "", WitnessedBy: "", EquipmentInvolved: "",
-  ProductBatch: "", AttachmentRef: "", ImmediateAction: "",
+  Product: "", ProductBatch: "", AttachmentRef: "", ImmediateAction: "",
   ReviewedBy: "", ReviewDate: "", ImpactAssessment: "",
   DeviationRaised: "", DeviationRef: "", EscalatedTo: "",
   InvestigatedBy: "", RootCause: "", InvestigationSummary: "",
   CapaRef: "", TargetDate: "", ClosedBy: "", ClosureRemarks: "",
+    Department: "", Designation: "", ReportedOn: "",
+  ItemType: "", DocumentNo: "", ArNo: "", CodeNo: "",
+  SupplierName: "", SupplierReceiptDate: "", SupplierQty: "",
+  ImmediateActionDocRef: "", RelatedTo: "", RelatedToOther: "",
+  PersonInvolved: "", Counselor: "", InterviewOutcome: "",
+  PointsDiscussed: "", InterviewConclusion: "",
+  RepeatIncident: "", RepeatIncidentDetail: "",
+  ImpactDecision: "", CampaignBatches: "",
+  InvestigationPlan: "",
+  PlanSignDeptBy: "", PlanSignDeptOn: "", PlanSignQaBy: "", PlanSignQaOn: "",
+  InvestigationStartDate: "", InvestigationCompletionDate: "", RcaMethod: "",
+  CauseIdentified: "", InvestigationExtended: "", InvestExtensionPeriod: "",
+  ExternalHelpRequired: "", ExternalHelpDetail: "",
+  ExtInvestClosedBy: "", ExtInvestClosedOn: "",
+  CapaRequired: "", CorrectiveAction: "", PreventiveAction: "",
+  CapaProposedBy: "", CapaProposedOn: "", CapaApprovedQaBy: "", CapaApprovedQaOn: "",
+  AuthorizationStatus: "", AuthorizedBy: "", AuthorizedOn: "",
+  InterimClosureRemarks: "",
+  CapaVerificationStatus: "", CapaVerifiedBy: "", CapaVerifiedOn: "",
+  ClosedOn: "",
+
+  deptreview: [
+    { Department: "Engineering" }, { Department: "Stores" }, { Department: "Production" },
+    { Department: "Quality Control" }, { Department: "Administration/HR" },
+    { Department: "Purchase" }, { Department: "Any other dept." },
+  ],
+  extensions: [],
 };
 
 const INC_TAB_ICON = {
@@ -45,19 +72,26 @@ function IncidentTabIcon({ tab }) {
   return Icon ? <Icon /> : <span>•</span>;
 }
 
-const STATUS_OPTIONS = ["Reported", "Under Review", "Under Investigation", "Closed", "Rejected"];
+const STATUS_OPTIONS = ["Reported", "Under Review", "Under Investigation", "Pending Closure", "Closed", "Rejected"];
 const EMPTY_FILTERS = { Status: "All", Area: "", Severity: "All" };
 
 export default function IncidentMasterPage({ tab }) {
   const m = useQmsModule({
     moduleKey: "incident",
     title: "Incident",
-    applName: tab?.appl_name || "Incidents",
+    applName: "incident",
     initialState,
     tabs: incidentTabs,
     tabStage: incidentTabStage,
     getRequired: getIncidentRequired,
     api: API,
+  });
+
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/incident',
+    applName: 'incident',
+    emailEndpoint: '/api/qms-print/incident',
+    shareLinkEndpoint: '/api/qms-print/incident',
   });
 
   const fieldGroups = useMemo(
@@ -85,6 +119,21 @@ export default function IncidentMasterPage({ tab }) {
       );
   }, [m.list, filters]);
 
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `Incident-${m.formData?.Id}`,
+      contextLabel: m.formData?.Area,
+    }).catch((err) => console.error('Print open failed:', err));
+  }, [m.formData, printWorkflow]);
+
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Incident Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
+
   if (m.showForm) {
     return (
       <div className="h-full w-full">
@@ -105,7 +154,6 @@ export default function IncidentMasterPage({ tab }) {
           showSettingsTab
           sidebarConfig={{ hidePhoto: true, hideHeader: true }}
           stageHistory={m.history?.stageHistory || null}
-          stageEntered={m.history?.stageEntered || null}
           formData={m.formData}
           savedFormData={m.savedFormData}
           setFormData={m.setFormData}
@@ -122,15 +170,19 @@ export default function IncidentMasterPage({ tab }) {
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
           onModify={m.handleModify}
-          onNewEntry={m.handleAddNew}
-          onCancel={m.handleFormExit}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
+          onNewEntry={m.handleAddNewGuarded}
+          onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
           currentRecord={m.list.length ? m.currentIndex + 1 : 0}
           totalRecords={m.list.length}
+          onSaveDraft={m.handleSaveDraft}
           onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
           onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
           headerActiveTab={m.activeTab}
           onHeaderTabChange={m.handleHeaderTabChange}
+          moduleKey="incident"
         />
       </div>
     );
@@ -148,7 +200,8 @@ export default function IncidentMasterPage({ tab }) {
         showSettingsTab
         onTabChange={m.handleHeaderTabChange}
         onRefresh={m.loadData}
-        onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
         onRowDoubleClick={m.handleRowSelect}
         onDeleteMultiple={m.handleDeleteMultiple}
         onToggleFilter={() => setShowFilter((p) => !p)}
@@ -156,10 +209,11 @@ export default function IncidentMasterPage({ tab }) {
         formComponent={
           <UnivarsalFilter
             filters={filters}
+            setShowFilter={setShowFilter}
             setFilters={setFilters}
             visibleFields={["status", "area", "severity"]}
             options={{ ...m.groupOptions, status: STATUS_OPTIONS }}
-            onApply={() => {}}
+            onApply={() => { }}
             onClear={clearFilter}
           />
         }

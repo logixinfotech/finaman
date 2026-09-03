@@ -1,76 +1,28 @@
-/**
- * pages/NotificationPanel.jsx
- * ═══════════════════════════════════════════════════════════════
- * UI updated to match boss's reference design:
- *   • Colored left border per notification type (like border-l-[6px])
- *   • Type icon in colored circle (info=blue, warning=yellow, etc.)
- *   • "New" green badge on unread items
- *   • Per-item "Mark as Read" button
- *   • Animated pulse ring on newest notification
- *   • Search bar in panel
- *
- * All existing features kept:
- *   • resolveMenu navigation (masmnu lookup)
- *   • Category filter tabs
- *   • menusFromBackend from context
- *   • Framer Motion animations
- *   • Mute / mark-all / clear-all / refresh
- * ═══════════════════════════════════════════════════════════════
- */
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, CheckCheck, Trash2, VolumeX, Volume2, RefreshCw,
-  Info, AlertTriangle, XCircle, CheckCircle2, CircleCheck,
+  CheckCircle2, Undo2,
 } from "lucide-react";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { useNotifications, CATEGORIES } from "../theme/NotificationContext";
-
-dayjs.extend(relativeTime);
-
-// ─── Helpers ─────────────────────────────────────────────────
-function groupByDay(list) {
-  const groups = { Today: [], Yesterday: [], Earlier: [] };
-  const today     = dayjs().startOf("day");
-  const yesterday = today.subtract(1, "day");
-  list.forEach(n => {
-    const d = dayjs(n.created_at);
-    if (d.isSame(today, "day"))          groups.Today.push(n);
-    else if (d.isSame(yesterday, "day")) groups.Yesterday.push(n);
-    else                                  groups.Earlier.push(n);
-  });
-  return groups;
-}
-
-// Fixed resolveMenu — no fake fallback, returns real masmnu row or null
-function resolveMenu(action_url, menusFromBackend) {
-  if (!action_url || !menusFromBackend?.length) return null;
-  return menusFromBackend.find(
-    m => m.appl_name?.trim() === action_url?.trim()
-  ) || null;
-}
-
-// ─── Type → icon + colors (matches reference UI) ─────────────
-const TYPE_CONFIG = {
-  info:    { Icon: Info,         bg: "bg-blue-100",   text: "text-blue-500",   border: "#3b82f6" },
-  warning: { Icon: AlertTriangle,bg: "bg-yellow-100", text: "text-yellow-500", border: "#f59e0b" },
-  error:   { Icon: XCircle,      bg: "bg-red-100",    text: "text-red-500",    border: "#ef4444" },
-  success: { Icon: CircleCheck,  bg: "bg-green-100",  text: "text-green-500",  border: "#22c55e" },
-  default: { Icon: Bell,         bg: "bg-gray-100",   text: "text-gray-500",   border: "#9ca3af" },
-};
-
-function getTypeConfig(type) {
-  return TYPE_CONFIG[type] || TYPE_CONFIG.default;
-}
+import {
+  getNotificationTypeConfig,
+  resolveNotificationMenu,
+  useNotificationFilters,
+  useUndoableAction,
+  useRelativeTime,
+} from "../components/Layout/Notification/useNotificationTime";
 
 // ─── Single row ───────────────────────────────────────────────
 const NotifRow = ({ n, onRead, onDismiss, onNavigate, menusFromBackend, isNewest }) => {
   const cat      = CATEGORIES[n.category] || CATEGORIES.system;
-  const resolved = resolveMenu(n.action_url, menusFromBackend);
-  const tc       = getTypeConfig(n.type);
+  const resolved = useMemo(
+    () => resolveNotificationMenu(n.action_url, menusFromBackend),
+    [n.action_url, menusFromBackend]
+  );
+  const tc       = getNotificationTypeConfig(n.type);
   const IconComp = tc.Icon;
+  const timeLabel = useRelativeTime(n.created_at);
 
   const handleClick = () => {
     onRead(n.id);
@@ -122,17 +74,15 @@ const NotifRow = ({ n, onRead, onDismiss, onNavigate, menusFromBackend, isNewest
 
         {/* Meta: time + category + open link */}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <span className="text-[10px] text-gray-400">
-            {dayjs(n.created_at).fromNow()}
-          </span>
+          <span className="text-[11px] text-gray-400">{timeLabel}</span>
           <span
-            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+            className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
             style={{ color: cat.color, background: cat.bg }}
           >
             {cat.label}
           </span>
           {resolved && (
-            <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+            <span className="text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
               style={{ color: tc.border }}>
               Open →
             </span>
@@ -154,7 +104,8 @@ const NotifRow = ({ n, onRead, onDismiss, onNavigate, menusFromBackend, isNewest
         )}
         <button
           onClick={e => { e.stopPropagation(); onDismiss(n.id); }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-[10px] text-gray-400 hover:text-gray-600"
+          aria-label="Dismiss notification"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-[11px] text-gray-400 hover:text-gray-600"
           title="Dismiss"
         >
           ✕
@@ -173,38 +124,88 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
     toggleMute, fetchNotifications,
   } = useNotifications();
 
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [searchText,   setSearchText]   = useState("");
-  const [newestId,     setNewestId]     = useState(null);
+  // FIX 1 (backported from NOTIFICATIONS_PAGE): shared debounced search +
+  // memoized filtering, instead of re-filtering the whole array on every
+  // render with no debounce on the search box.
+  const {
+    catFilter, setCatFilter,
+    searchText, setSearchText,
+    groups: allGroups,
+  } = useNotificationFilters(notifications, { debounceMs: 200 });
 
-  // Track newest notification for pulse ring
+  const [readFilterOnly, setReadFilterOnly] = useState(false); // "unread"-only quick toggle, kept separate from catFilter tabs below
+  const [newestId, setNewestId] = useState(null);
+  const [announceText, setAnnounceText] = useState("");
+
+  // FIX 2 (backported): undo-on-dismiss instead of instant removal
+  const { pending: pendingDismiss, run: runDismiss, undo: undoDismiss } =
+    useUndoableAction(dismissById, { delayMs: 5000 });
+  const [hiddenIds, setHiddenIds] = useState(() => new Set());
+
+  const handleDismiss = useCallback((id) => {
+    setHiddenIds(prev => new Set(prev).add(id));
+    const item = notifications.find(n => n.id === id);
+    runDismiss(id, item?.title || "Notification", id);
+  }, [notifications, runDismiss]);
+
+  const handleUndoDismiss = useCallback(() => {
+    if (!pendingDismiss) return;
+    setHiddenIds(prev => {
+      const next = new Set(prev);
+      next.delete(pendingDismiss.key);
+      return next;
+    });
+    undoDismiss();
+  }, [pendingDismiss, undoDismiss]);
+
+  // Track newest notification for pulse ring + screen-reader announcement
   const prevLength = useRef(notifications.length);
   useEffect(() => {
     if (notifications.length > prevLength.current) {
       const newest = notifications[0];
       if (newest && !newest.is_read) {
         setNewestId(newest.id);
+        setAnnounceText(`New notification: ${newest.title}`);
         setTimeout(() => setNewestId(null), 5000);
       }
     }
     prevLength.current = notifications.length;
   }, [notifications]);
 
-  // Filter + search
-  const filtered = notifications
-    .filter(n => {
-      if (activeFilter === "unread") return !n.is_read;
-      if (activeFilter !== "all")   return n.category === activeFilter;
-      return true;
-    })
-    .filter(n => {
-      if (!searchText) return true;
-      const s = searchText.toLowerCase();
-      return n.title?.toLowerCase().includes(s) || n.message?.toLowerCase().includes(s);
-    });
+  // FIX 3 (backported): unread error/warning items get pulled into a
+  // "Needs attention" section pinned above Today/Yesterday/Earlier — same
+  // logic as NOTIFICATIONS_PAGE.jsx, so a critical item never scrolls out
+  // of view in a dropdown that only shows 8 items total.
+  const attentionAll = useMemo(() => {
+    const flat = Object.values(allGroups).flat();
+    return flat.filter(n => !n.is_read && (n.type === "error" || n.type === "warning") && !hiddenIds.has(n.id));
+  }, [allGroups, hiddenIds]);
 
-  const recent = filtered.slice(0, 8);
-  const groups = groupByDay(recent);
+  // Everything else, filtered + capped to fill whatever's left of the
+  // 8-item dropdown budget after attention items take their share.
+  const recentCapped = useMemo(() => {
+    const attentionIds = new Set(attentionAll.map(n => n.id));
+    const restByLabel = {};
+    const restFlat = [];
+    for (const [label, items] of Object.entries(allGroups)) {
+      const filtered = items.filter(n =>
+        (!readFilterOnly || !n.is_read) && !hiddenIds.has(n.id) && !attentionIds.has(n.id)
+      );
+      restByLabel[label] = filtered;
+      restFlat.push(...filtered);
+    }
+    const remainingSlots = Math.max(0, 8 - attentionAll.length);
+    const cappedIds = new Set(restFlat.slice(0, remainingSlots).map(n => n.id));
+
+    const out = {};
+    if (attentionAll.length) out["Needs attention"] = attentionAll;
+    for (const [label, items] of Object.entries(restByLabel)) {
+      const capped = items.filter(n => cappedIds.has(n.id));
+      if (capped.length) out[label] = capped;
+    }
+    return out;
+  }, [allGroups, readFilterOnly, hiddenIds, attentionAll]);
+  const recentFlat = useMemo(() => Object.values(recentCapped).flat(), [recentCapped]);
 
   const activeCats = [...new Set(notifications.map(n => n.category))].filter(c => CATEGORIES[c]);
   const filterTabs = [
@@ -212,6 +213,11 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
     { key: "unread", label: `Unread${unreadCount > 0 ? ` (${unreadCount})` : ""}` },
     ...activeCats.map(c => ({ key: c, label: CATEGORIES[c].label })),
   ];
+  const activeFilter = readFilterOnly ? "unread" : catFilter;
+  const setActiveFilter = (key) => {
+    if (key === "unread") { setReadFilterOnly(true); setCatFilter("all"); }
+    else { setReadFilterOnly(false); setCatFilter(key); }
+  };
 
   return (
     <div
@@ -223,7 +229,12 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
         maxHeight:  "540px",
       }}
     >
-      {/* ── Header (uses your sidebar-top-bg theme color) ── */}
+      {/* Visually-hidden live region for screen readers */}
+      <div aria-live="polite" role="status" className="sr-only">
+        {announceText}
+      </div>
+
+      {/* ── Header ── */}
       <div
         className="flex items-center gap-2 px-4 py-3 flex-shrink-0"
         style={{ background: "var(--sidebar-top-bg)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}
@@ -244,14 +255,13 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
           Notifications
         </span>
 
-        {/* Action buttons */}
         {[
           { icon: <RefreshCw size={13} className={loading ? "animate-spin" : ""} />, fn: fetchNotifications, tip: "Refresh" },
           { icon: muted ? <VolumeX size={13} /> : <Volume2 size={13} />,             fn: toggleMute,         tip: muted ? "Unmute" : "Mute" },
           { icon: <CheckCheck size={13} />,                                           fn: markAllAsRead,      tip: "Mark all read" },
           { icon: <Trash2     size={13} />,                                           fn: clearAll,           tip: "Clear all" },
         ].map((b, i) => (
-          <button key={i} onClick={b.fn} title={b.tip}
+          <button key={i} onClick={b.fn} title={b.tip} aria-label={b.tip}
             className="p-1.5 rounded-lg transition-all text-white/40 hover:text-white hover:bg-white/10">
             {b.icon}
           </button>
@@ -308,7 +318,7 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
         style={{ scrollbarWidth: "thin", background: "#f9fafb" }}
       >
         <AnimatePresence mode="popLayout">
-          {!recent.length ? (
+          {!recentFlat.length ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="text-center py-10">
               <Bell size={28} className="mx-auto mb-2 text-gray-300" />
@@ -317,10 +327,14 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
               </p>
             </motion.div>
           ) : (
-            Object.entries(groups).map(([label, items]) =>
+            Object.entries(recentCapped).map(([label, items]) =>
               items.length > 0 && (
                 <div key={label}>
-                  <p className="px-1 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  <p
+                    className={`px-1 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-widest ${
+                      label === "Needs attention" ? "text-red-600" : "text-gray-400"
+                    }`}
+                  >
                     {label}
                   </p>
                   <div className="space-y-1.5">
@@ -330,7 +344,7 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
                         n={n}
                         onRead={markAsRead}
                         onNavigate={onNavigate}
-                        onDismiss={dismissById}
+                        onDismiss={handleDismiss}
                         menusFromBackend={menusFromBackend}
                         isNewest={n.id === newestId}
                       />
@@ -342,6 +356,26 @@ const NotificationPanel = ({ onOpenAll, onNavigate }) => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Undo-dismiss toast */}
+      <AnimatePresence>
+        {pendingDismiss && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="flex-shrink-0 mx-3 mb-2 flex items-center justify-between gap-3 bg-gray-800 text-white text-[11px] px-3 py-2 rounded-lg shadow-lg"
+          >
+            <span>Notification dismissed</span>
+            <button
+              onClick={handleUndoDismiss}
+              className="flex items-center gap-1 font-semibold text-green-300 hover:text-green-200"
+            >
+              <Undo2 size={12} /> Undo
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Footer ── */}
       <button

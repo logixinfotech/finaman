@@ -3,31 +3,28 @@ import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import { useApplSettings } from "../../../../Hooks/useApplSettings";
 import { useGroupOptions } from "../../../../Hooks/useUserGroupOption";
 import { useWorkflowConfig } from "../../../../Hooks/useWorkflowConfig";
-import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
+import { confirmDelete, showToast, alertError, alertWarning } from "../../../../components/Reusable/alert";
 import { getNextRecordNo, advanceState, getRecordHistory } from "./QmsAPI";
+import { useAuth } from "../../../../theme/AuthContext";
+import { useTab } from "../../../../theme/TabContext";
 
-export function getCurrentUser() {
-  try { return JSON.parse(sessionStorage.getItem("user") || "{}"); }
-  catch { return {}; }
-}
-
-/**
- * Har QMS workflow module ka common logic.
- * Page me sirf config + JSX bachega.
- */
 export function useQmsModule({
-  moduleKey,          // 'deviation' | 'incident' | 'capa'
+  moduleKey,          
   title,              // 'Deviation'
   applName,           // settings ka appl name
   initialState,
   tabs, tabStage,     // deviationTabs, deviationTabStage
   getRequired,        // (status) => [keys]
   api,                // { list, create, update, remove }
+  onCloseTab,
 }) {
   const { options: groupOptions } = useGroupOptions();
+  const [lines, setLines] = useState({});
   const { wfConfig } = useWorkflowConfig();
   const workflowConfig = wfConfig?.[moduleKey] || null;
-  const currentUserRole = getCurrentUser()?.user_group;
+  const { user } = useAuth();
+  const { closeTab } = useTab();          
+   const currentUserRole = String(user?.user_group ?? "").trim() || null;
 
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -35,14 +32,17 @@ export function useQmsModule({
   const [history, setHistory] = useState(null);
 
   const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(applName || title);
-
+ 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.list();
-      setList(Array.isArray(res) ? res : (res?.data || []));
+      const arr = Array.isArray(res) ? res : (res?.data || []);
+      setList(arr);
+      return arr;                     // 🆕
     } catch {
       alertError("Load Error", `Failed to load ${title} records`);
+      return [];                      // 🆕
     } finally { setLoading(false); }
   }, [api, title]);
 
@@ -53,7 +53,7 @@ export function useQmsModule({
     title,
   );
   const { mode, formData, setFormData, performSave, setShowForm, setActiveTab,
-          handleAdd, handleView, handleEditCancel, isDirty } = erp;
+    handleAdd, handleView, handleEditCancel, isDirty } = erp;
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -72,11 +72,25 @@ export function useQmsModule({
       .catch((e) => console.error("[record-history]", e));
     return () => { alive = false; };
   }, [moduleKey, formData?.Id, formData?.RecordNo, formData?.Status]);
-
-  // view mode me list se sync
+ 
   useEffect(() => {
-    if (erp.showForm && mode === "view" && list.length > 0) setFormData(list[currentIndex]);
-  }, [currentIndex, list, erp.showForm, mode, setFormData]);
+    if (!(erp.showForm && mode === "view" && list.length > 0)) return;
+    const row = list[currentIndex];
+    if (!row || row.Id === formData?.Id) return;
+
+    let alive = true;
+    (async () => {
+      let full = row;
+      if (api.getOne) {
+        try {
+          const res = await api.getOne(row.Id);
+          if (res?.data) full = res.data;
+        } catch { /* fallback: list wali row */ }
+      }
+      if (alive) setFormData(full);
+    })();
+    return () => { alive = false; };
+  }, [currentIndex, list, erp.showForm, mode, setFormData, formData?.Id, api]);
 
   const requiredFields = useMemo(
     () => getRequired(formData?.Status || workflowConfig?.wf?.[0] || ""),
@@ -89,6 +103,17 @@ export function useQmsModule({
     if (cur < 0) return [];
     return tabs.filter((t) => tabStage[t] < cur);
   }, [formData?.Status, workflowConfig, tabs, tabStage]);
+
+  const canAddNew = useMemo(() => {
+    if (!workflowConfig?.sections?.length) return true;
+    const norm = (v) => String(v ?? "").trim().toLowerCase();
+    if (["admin", "administrator", "superadmin", "super admin"].includes(norm(currentUserRole))) return true;
+    const stage0Roles = workflowConfig.sections
+      .filter((s) => s.stage === 0)
+      .flatMap((s) => (Array.isArray(s.role) ? s.role : [s.role]))
+      .map(norm);
+    return stage0Roles.includes(norm(currentUserRole));
+  }, [workflowConfig, currentUserRole]);
 
   const savedFormData = useMemo(
     () => (formData?.Id && list[currentIndex]?.Id === formData.Id ? list[currentIndex] : null),
@@ -108,61 +133,118 @@ export function useQmsModule({
     setFormData((p) => ({ ...p, RecordNo: recordNo }));
   }, [handleAdd, setShowForm, setActiveTab, setFormData, moduleKey]);
 
-  const handleRowSelect = useCallback((row) => {
+
+    // Add button hamesha dikhega — permission check click pe hoga
+  const stage0Roles = useMemo(() => {
+    const norm = (v) => String(v ?? "").trim().toLowerCase();
+    return (workflowConfig?.sections || [])
+      .filter((s) => s.stage === 0)
+      .flatMap((s) => (Array.isArray(s.role) ? s.role : [s.role]))
+      .filter(Boolean);
+  }, [workflowConfig]);
+
+  const handleAddNewGuarded = useCallback(async () => {
+    if (!canAddNew) {
+      alertWarning(
+        "Not your stage",
+        `A new ${title} record can only be raised by: ${stage0Roles.join(", ") || "the owning department"}.\n\nYour role: ${currentUserRole || "—"}`
+      );
+      return;
+    }
+    await handleAddNew();
+  }, [canAddNew, handleAddNew, title, stage0Roles, currentUserRole]);
+
+   const handleRowSelect = useCallback(async (row) => {
     const i = list.findIndex((x) => x.Id === row.Id);
     if (i !== -1) setCurrentIndex(i);
-    handleView(row);
+
+    // 🆕 detail fetch — child lines yahin se aati hain
+    let full = row;
+    if (api.getOne) {
+      const res = await api.getOne(row.Id);
+      if (res?.data) full = res.data;
+    }
+    handleView(full);
     setShowForm(true);
     setActiveTab("entry");
-  }, [list, handleView, setShowForm, setActiveTab]);
+  }, [list, api, handleView, setShowForm, setActiveTab]);
 
-  const syncIndex = useCallback((arr, id) => {
-    const i = arr.findIndex((x) => x.Id === id);
-    if (i !== -1) setCurrentIndex(i);
-  }, []);
-  
-const handleSave = useCallback(async (localData) => {
-    const res = await performSave("Id", { ...localData, Id: localData.Id ?? null });
+  const handleSave = useCallback(async (localData) => {
+    const res = await performSave("Id", { ...localData, Id: localData.Id ?? null, isDraft: false });
     if (!res?.success) return;
     showToast({ icon: "success", title: "Saved Successfully" });
-    if (res.capaRef)      showToast({ icon: "info", title: `CAPA created: ${res.capaRef}` });
+    if (res.capaRef) showToast({ icon: "info", title: `CAPA created: ${res.capaRef}` });
     if (res.deviationRef) showToast({ icon: "info", title: `Deviation created: ${res.deviationRef}` });
-    await loadData();
-  }, [performSave, loadData]);
 
-  const handleSignedSave = useCallback(async (localData, typedName, newStatus) => {
-    const res = await performSave("Id", { ...localData, Id: localData.Id ?? null });
-    if (!res?.success) { alertError("Save Error", `Failed to save ${title}`); return; }
-
-    let savedId = localData.Id ?? res?.id ?? res?.data?.Id ?? null;
-    if (!savedId) {                       // add mode — RecordNo se dhundo
-      const r = await api.list();
-      const arr = Array.isArray(r) ? r : (r?.data || []);
-      setList(arr);
-      savedId = arr.find((x) => x.RecordNo === localData.RecordNo)?.Id ?? null;
-      if (savedId) syncIndex(arr, savedId);
+    const savedId = res.data?.Id ?? localData.Id;   // 🆕
+    const arr = await loadData();                   // 🆕 ab array wapas milta hai
+    if (savedId && arr?.length) {                    // 🆕
+      const idx = arr.findIndex((x) => x.Id === savedId);
+      if (idx !== -1) setCurrentIndex(idx);           // 🆕 sahi record pe point karo
     }
+  }, [performSave, loadData]);
+  const handleSignedSave = useCallback(async (localData, typedName, newStatus, reason) => {
+    const payload = { ...localData };
+    delete payload.Sr;
+
+    let savedId = localData.Id ?? null;
+
+    try {
+      if (savedId) {
+        const r = await api.update(savedId, payload);
+        if (r && r.success === false) throw new Error(r.message || "Update failed");
+      } else {
+        const r = await api.create({ ...payload, Id: null });
+        savedId = r?.id ?? r?.data?.Id ?? null;
+
+        if (!savedId) {                       // response me id nahi aayi
+          const list2 = await api.list();
+          const arr = Array.isArray(list2) ? list2 : (list2?.data || []);
+          setList(arr);
+          savedId = arr[0]?.Id ?? null;       // list CreatedAt DESC
+        }
+      }
+    } catch (e) {
+      alertError("Save Error", e?.message || `Failed to save ${title}`);
+      return;
+    }
+
     if (!savedId) {
       alertError("Advance Error", "Record saved but Id not found — stage not advanced");
-      await loadData(); return;
+      await loadData();
+      return;
     }
 
-    const adv = await advanceState(moduleKey, savedId, newStatus, typedName);
-    if (!adv?.success) { alertError("Advance Error", adv?.message || "Failed to advance stage"); return; }
-    showToast({ icon: "success", title: `Saved & moved to ${newStatus}` });
+    const adv = await advanceState(moduleKey, savedId, newStatus, typedName, reason);   // 🆕 reason
+    if (!adv?.success) {
+      alertWarning("Warning", adv?.message || "Failed to advance stage");
+      await loadData();
+      return;
+    }
+
+    showToast({
+      icon: newStatus === "Rejected" ? "warning" : "success",
+      title: newStatus === "Rejected" ? "Record rejected" : `Saved & moved to ${newStatus}`,
+    });
+
     await loadData();
     setShowForm(false);
     setActiveTab("search");
-  }, [performSave, api, moduleKey, loadData, setShowForm, setActiveTab, syncIndex, title]);
-
+  }, [api, moduleKey, title, loadData, setShowForm, setActiveTab]); 
   const handleDelete = useCallback(async (row) => {
     if (!(await confirmDelete({ title: `Delete ${title} "${row.RecordNo || row.Id}"?` }))) return;
     try {
-      await api.remove(row.Id);
+      const res = await api.remove(row.Id);
+      if (res && res.success === false) {
+        alertWarning("Cannot delete", res.message || "This record cannot be deleted.");
+        return;
+      }
       showToast({ icon: "success", title: "Deleted" });
       setShowForm(false); setActiveTab("search");
       await loadData();
-    } catch { alertError("Delete Error", `Failed to delete ${title}`); }
+    } catch (e) {
+      alertWarning("Cannot delete", e?.message || `Failed to delete ${title}`);
+    }
   }, [api, title, setShowForm, setActiveTab, loadData]);
 
   const handleDeleteMultiple = useCallback(async (selected) => {
@@ -180,24 +262,59 @@ const handleSave = useCallback(async (localData) => {
       await loadData();
     } catch { alertError("Delete Error", `Failed to delete some ${title} records`); }
   }, [api, title, setShowForm, setActiveTab, loadData]);
-
+   // Cancel / Discard — sirf edit chhodo, form khula rehne do
+   // Cancel / Discard — reset karo, form khula rakho
   const handleFormExit = useCallback(async () => {
-    const wasDirty = isDirty;
+    const wasAddMode = mode === "add";
     await handleEditCancel();
-    if (!wasDirty) {
-      setShowForm(false); setActiveTab("search");
+
+    if (!wasAddMode) return;   // edit mode → view mode me rehne do ✅
+
+    // ── add mode ──
+    // form me kuch bhara hai? (RecordNo aur Id chhod kar)
+    const hasData = Object.entries(formData || {}).some(([k, v]) => {
+      if (k === "RecordNo" || k === "Id" || k === "Status") return false;
+      if (initialState[k] && initialState[k] === v) return false;   // default value hai
+      return String(v ?? "").trim() !== "";
+    });
+
+    if (hasData) {
+      // pehla Cancel → reset karo, form khula rakho
+      setShowForm(true);
+      setActiveTab("entry");
+      setFormData(initialState);
+      const recordNo = await getNextRecordNo(moduleKey);
+      setFormData((p) => ({ ...p, RecordNo: recordNo }));
+    } else {
+      // doosra Cancel (form pehle se khali) → list pe jao
+      setShowForm(false);
+      setActiveTab("search");
       setFormData(initialState);
     }
-  }, [isDirty, handleEditCancel, setShowForm, setActiveTab, setFormData, initialState]);
+  }, [mode, formData, initialState, handleEditCancel, setShowForm, setActiveTab, setFormData, moduleKey]);
 
+  // Exit button — poora tab band
+    const handleTabExit = useCallback(() => {
+    if (closeTab) { closeTab(); return; }
+    setShowForm(false);
+    setActiveTab("search");
+    setFormData(initialState);
+  }, [closeTab, setShowForm, setActiveTab, setFormData, initialState]); 
+  const handleSaveDraft = useCallback(async (localData) => {
+    const payload = { ...localData, isDraft: true, Id: localData.Id ?? null };
+    const res = payload.Id ? await api.update(payload.Id, payload) : await api.create(payload);
+    const savedId = payload.Id ?? res?.data?.Id ?? res?.Id ?? null;
+    if (savedId && !payload.Id) setFormData((p) => ({ ...p, Id: savedId }));
+    return res;
+  }, [api, setFormData]);
   return {
     ...erp,
     groupOptions, workflowConfig, currentUserRole,
     list, setList, loading, currentIndex, setCurrentIndex,
     history, loadData,
     settingsConfig, settingsDefaults, onSettingsSave,
-    requiredFields, completedTabs, savedFormData,
-    handleHeaderTabChange, handleAddNew, handleRowSelect,
-    handleSave, handleSignedSave, handleDelete, handleDeleteMultiple, handleFormExit,
+    requiredFields, completedTabs, savedFormData, canAddNew,
+    handleHeaderTabChange, handleAddNew, handleAddNewGuarded, handleRowSelect,
+    handleSave, handleSaveDraft, handleSignedSave, handleDelete, handleDeleteMultiple, handleFormExit, handleTabExit,
   };
 }

@@ -4,15 +4,12 @@ import ERPFooter from "./FooterForm";
 import ERPSettings from "../ERPSettings";
 import FormBody from "./FormBody";
 import FormSidebar from "./FormSidebar";
-import ESignDialog from "../../../pages/Modules/QMS/Components/ESignDialog"; 
+import ESignDialog from "../../../pages/Modules/QMS/Components/ESignDialog";
 import { ERPFormProvider, useERPFormMeta, useERPFormData } from "../../../theme/ERPFormContext";
 import { useFormSaveHandler } from "../../../Hooks/useFormHandlers";
 import { initERPShortcuts, setERPHandlers, setERPGlobalLoading } from '../../../utils/erpShortcuts';
+import { useAuth } from "../../../theme/AuthContext";
 
-function getCurrentUser() {
-  try { return JSON.parse(sessionStorage.getItem("user") || "{}"); }
-  catch { return {}; }
-}
 
 function ERPFormBuilderInner() {
   const {
@@ -23,21 +20,21 @@ function ERPFormBuilderInner() {
     onModify, onCancel, onDelete, onNewEntry, onEditCancel, onPrint,
     settingsConfig, settingsDefaults, onSettingsSave,
     saveBtnRef,
-    nextStage, isMyTurn, onSignedSave, activeTab, alwaysSignTabs, isStageComplete, 
+    nextStage, isMyTurn, canReject, onSignedSave, activeTab, alwaysSignTabs, isStageComplete, draftStatus, savingDraft, handleSaveDraftClick, canAddNew,
   } = useERPFormMeta();
   const { formData } = useERPFormData();
-
-  const [showSignDialog, setShowSignDialog] = useState(false); 
-  const [signSaving, setSignSaving] = useState(false);    
-
+  const { user } = useAuth();
+  const [showSignDialog, setShowSignDialog] = useState(false);
+  const [signSaving, setSignSaving] = useState(false);
+  const [showReject, setShowReject] = useState(false);
   const handleSave = useFormSaveHandler();
   const mode = isAddMode ? "add" : isEditMode ? "edit" : "view";
- 
-const forceSign = (alwaysSignTabs || []).includes(activeTab);
+
+  const forceSign = (alwaysSignTabs || []).includes(activeTab);
   const requiresSignOnSave =
     !!onSignedSave &&
     !!nextStage &&
-    isStageComplete &&     
+    isStageComplete &&
     (forceSign || isMyTurn);
 
   const effectiveSaveHandler = () => {
@@ -46,6 +43,14 @@ const forceSign = (alwaysSignTabs || []).includes(activeTab);
     } else {
       handleSave();
     }
+  };
+
+  const confirmReject = async (typedName, reason) => {
+    setSignSaving(true);
+    try {
+      await onSignedSave(formData, typedName, "Rejected", reason);
+      setShowReject(false);
+    } finally { setSignSaving(false); }
   };
 
   const confirmSignedSave = async (typedName) => {
@@ -63,11 +68,13 @@ const forceSign = (alwaysSignTabs || []).includes(activeTab);
   useEffect(() => {
     const cleanup = initERPShortcuts();
     setERPHandlers({
-      onSave: () => { if (isAddMode || isEditMode) effectiveSaveHandler(); },    
+      onSave: () => { if (isAddMode || isEditMode) effectiveSaveHandler(); },
       onAdd: () => { if (isViewMode) onNewEntry?.(); },
       onModify: () => { if (isViewMode) onModify?.(); },
-      onCancel: () => { if (isEditMode) onEditCancel?.(); else onCancel?.(); },
-      onEsc: () => { if (isEditMode) onEditCancel?.(); else onCancel?.(); },
+      // onCancel: () => { if (isEditMode) onEditCancel?.(); else onCancel?.(); },
+      // onEsc: () => { if (isEditMode) onEditCancel?.(); else onCancel?.(); },
+      onCancel: () => { if (isAddMode || isEditMode) onEditCancel?.(); },
+      onEsc: () => { if (isAddMode || isEditMode) onEditCancel?.(); },
       onDelete: () => { if (isViewMode) onDelete?.(formData); },
       onPrint: () => onPrint?.(formData),
       onBackspaceNavigation: true,
@@ -85,7 +92,16 @@ const forceSign = (alwaysSignTabs || []).includes(activeTab);
         activeTab={effectiveHeaderTab}
         onTabChange={handleHeaderTabChange}
         showSettingsTab={showSettingsTab}
-        rightContent={`${currentRecord || 1}/${totalRecords || 1}`}
+        rightContent={
+          <div className="flex items-center gap-3">
+            {(isAddMode || isEditMode) && draftStatus && (
+              <span className={`text-[11px] font-medium ${draftStatus === 'saving' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {draftStatus === 'saving' ? 'Saving draft…' : '✓ Draft saved'}
+              </span>
+            )}
+            <span>{currentRecord || 1}/{totalRecords || 1}</span>
+          </div>
+        }
         currentIndex={currentRecord}
         totalRecords={totalRecords}
         onPrevRecord={onPrevRecord}
@@ -99,47 +115,59 @@ const forceSign = (alwaysSignTabs || []).includes(activeTab);
           initialValues={settingsDefaults}
           onSave={(values) => { onSettingsSave?.(values); handleHeaderTabChange("entry"); }}
           onCancel={() => handleHeaderTabChange("entry")}
-          onRestore={() => {}}
+          onRestore={() => { }}
         />
       ) : (
         <>
-          
+
           <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full h-full md:h-[calc(100vh-120px)] overflow-hidden">
             {!hideSidebar && <FormSidebar />}
             <FormBody />
           </div>
-
-          <div id="erp-footer-container">
-            <ERPFooter
-              isAddMode={isAddMode}
-              isViewMode={isViewMode}
-              isEditMode={isEditMode}
-              saving={saving}
-              saveBtnRef={saveBtnRef}
-              rights={rights}
-              handleSubmit={effectiveSaveHandler} 
-              onModify={onModify}
-              onCancel={onCancel}
-              onNewEntry={onNewEntry}
-              onPrint={() => onPrint?.(formData)}
-              onEditCancel={onEditCancel}
-              onDelete={() => onDelete?.(formData)}
-              canPrint={canPrint}
-            />
-          </div>
- 
-         {showSignDialog && (() => {
-            const u = getCurrentUser();
-            return (
-              <ESignDialog
-                meaning={`Save & advance: ${formData?.Status} → ${nextStage}`}
-                signingAsLabel={u?.user_name || u?.user_id || "Unknown"}
-                hint={`Type "${u?.user_name || u?.user_id}" to sign`}
-                onConfirm={confirmSignedSave}
-                onCancel={() => setShowSignDialog(false)}
+          {activeTab !== "audit" && (
+            <div id="erp-footer-container">
+              <ERPFooter
+                isAddMode={isAddMode}
+                isViewMode={isViewMode}
+                isEditMode={isEditMode}
+                saving={saving}
+                saveBtnRef={saveBtnRef}
+                onSaveDraft={handleSaveDraftClick}
+                savingDraft={savingDraft}
+                rights={rights}
+                handleSubmit={effectiveSaveHandler}
+                onModify={onModify}
+                onCancel={onCancel}
+                onNewEntry={onNewEntry}
+                onPrint={() => onPrint?.(formData)}
+                onEditCancel={onEditCancel}
+                onDelete={() => onDelete?.(formData)}
+                canPrint={canPrint}
+                canReject={canReject}
+                onReject={() => setShowReject(true)}
+                onNewEntry={onNewEntry}
               />
-            );
-          })()}
+            </div>
+          )}
+          {showSignDialog && (
+            <ESignDialog
+              meaning={`Save & advance: ${formData?.Status} → ${nextStage}`}
+              signingAsLabel={user?.user_name || user?.user_id || "Unknown"}
+              onConfirm={confirmSignedSave}
+              onCancel={() => setShowSignDialog(false)}
+            />
+          )}
+
+          {showReject && (
+            <ESignDialog
+              meaning={`Reject record at "${formData?.Status}"`}
+              signingAsLabel={user?.user_name || user?.user_id || "Unknown"}
+              requireReason
+              reasonLabel="Rejection Reason"
+              onConfirm={confirmReject}
+              onCancel={() => setShowReject(false)}
+            />
+          )}
         </>
       )}
     </div>

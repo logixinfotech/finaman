@@ -5,20 +5,22 @@ import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter
 import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
 import { getHeaderStyle } from "./Utils/QmsValidation";
 import { useQmsModule } from "./Utils/useQmsModule";
+import { useRefOptions } from "./Utils/useRefOptions";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
 import {
   deviationTabs, deviationTabStage, deviationTabLabels,
   getDeviationFieldGroups, getDeviationRequired,
   deviationWidthConfig, deviationSectionConfigs,
 } from "./Utils/Qmsconfigs";
 import {
-  getDeviations, createDeviation, updateDeviation, deleteDeviation,
+  getDeviations, getDeviation, createDeviation, updateDeviation, deleteDeviation,
 } from "./Utils/QmsAPI";
 import { FaClipboardList, FaCheckCircle, FaSearch, FaLink, FaTools, FaFlagCheckered, FaHistory } from "react-icons/fa";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
 
-
-// ── module-level constants (component ke bahar — stable references) ──
 const API = {
-  list:   getDeviations,
+  list: getDeviations,
+   getOne: getDeviation, 
   create: createDeviation,
   update: updateDeviation,
   remove: deleteDeviation,
@@ -42,16 +44,40 @@ const initialState = {
   RevisedTargetDate: "", ExtensionReason: "",
   CorrectiveAction: "", PreventiveAction: "",
   ReviewedBy: "", ReviewDate: "", ClosureStatus: "",
-  ClosedOn: "", ClosedBy: "", QaRemarks: "",
+  ClosedOn: "", ClosedBy: "", QaRemarks: "", 
+  ItemType: "", DocumentNo: "", ArNo: "", CodeNo: "",
+  SupplierName: "", SupplierReceiptDate: "", SupplierQty: "",
+  PlannedComments: "", ImmediateActionDocRef: "",
+  RelatedTo: "", RelatedToOther: "",
+  PersonInvolved: "", InterviewOutcome: "", Counselor: "",
+  PointsDiscussed: "", InterviewConclusion: "", RepeatDeviationDetail: "",
+  InvestigationPlan: "",
+  PlanSignDeptBy: "", PlanSignDeptOn: "", PlanSignQaBy: "", PlanSignQaOn: "",
+  CauseIdentified: "", InvestigationExtended: "", InvestExtensionPeriod: "",
+  ExternalHelpRequired: "", ExternalHelpDetail: "",
+  ExtInvestClosedBy: "", ExtInvestClosedOn: "",
+  ImpactDecision: "", CampaignBatches: "",
+  CapaProposedBy: "", CapaProposedOn: "", CapaApprovedQaBy: "", CapaApprovedQaOn: "",
+  AuthorizationStatus: "", AuthorizedBy: "", AuthorizedOn: "",
+  InterimClosureRemarks: "",
+  CapaVerificationStatus: "", CapaVerifiedBy: "", CapaVerifiedOn: "",
+
+  // child grids
+  deptreview: [
+    { Department: "Engineering" }, { Department: "Stores" }, { Department: "Production" },
+    { Department: "Quality Control" }, { Department: "Administration/HR" },
+    { Department: "Purchase" }, { Department: "Any other dept." },
+  ],
+  extensions: [],
 };
 const DEV_TAB_ICON = {
-  open:          FaClipboardList,
-  qa_accepted:   FaCheckCircle,
+  open: FaClipboardList,
+  qa_accepted: FaCheckCircle,
   investigation: FaSearch,
-  impact:        FaLink,
-  capa:          FaTools,
-  closure:       FaFlagCheckered,
-  audit:         FaHistory,
+  impact: FaLink,
+  capa: FaTools,
+  closure: FaFlagCheckered,
+  audit: FaHistory,
 };
 function DeviationTabIcon({ tab }) {
   const Icon = DEV_TAB_ICON[tab];
@@ -71,9 +97,10 @@ const TABLE_COLUMNS = [
   { key: "Classification", label: "Classification" },
   { key: "Department", label: "Department" },
   { key: "Status", label: "Status" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Draft" : (r.Status || "Open") },
 ];
 
-const EMPTY_FILTERS = { Status: "All", Product: "", Classification: "All", Department: "" };
+const EMPTY_FILTERS = { Status: "All", DeviationScope: "All", Subject: "", Classification: "All", Department: "" };
 
 export default function DeviationMasterPage({ tab }) {
   const m = useQmsModule({
@@ -87,10 +114,34 @@ export default function DeviationMasterPage({ tab }) {
     api: API,
   });
 
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/deviation',
+    applName: 'deviation',
+    emailEndpoint: '/api/qms-print/deviation',
+    shareLinkEndpoint: '/api/qms-print/deviation',
+  });
+  const refOpts = useRefOptions(["incident"]);
+
   const fieldGroups = useMemo(
-    () => getDeviationFieldGroups(m.groupOptions),
-    [m.groupOptions]
+    () => getDeviationFieldGroups({ ...m.groupOptions, refOpts }),
+    [m.groupOptions, refOpts]
   );
+
+  const completedTabs = useMemo(() => {
+    if (!m.workflowConfig?.wf) return [];
+    const cur = m.workflowConfig.wf.indexOf(m.formData?.Status || "Open");
+    if (cur < 0) return [];
+    const skip = m.workflowConfig.stageSkip || {};
+    const isSkipped = (i) => {
+      const r = skip[i];
+      if (!r) return false;
+      return String(m.formData?.[r.field] ?? "").trim().toLowerCase()
+        === String(r.equals ?? "").trim().toLowerCase();
+    };
+    return deviationTabs.filter(
+      (t) => deviationTabStage[t] < cur && !isSkipped(deviationTabStage[t])
+    );
+  }, [m.formData, m.workflowConfig]);
 
   const customTabs = useMemo(
     () => ({ audit: <RecordAuditPanel history={m.history} /> }),
@@ -106,14 +157,30 @@ export default function DeviationMasterPage({ tab }) {
     const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
     return m.list
       .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Open" }))
-      .filter((it) =>
-        (filters.Status === "All" || it.Status === filters.Status) &&
-        (!filters.Product || has(it.Product, filters.Product)) &&
-        (filters.Classification === "All" || it.Classification === filters.Classification) &&
-        (!filters.Department || has(it.Department, filters.Department))
-      );
+      .filter((it) => {
+        const subject = it.Product || it.Equipment || it.Instrument || it.Area || "";
+        return (filters.Status === "All" || it.Status === filters.Status) &&
+          (filters.DeviationScope === "All" || it.DeviationScope === filters.DeviationScope) &&
+          (filters.Classification === "All" || it.Classification === filters.Classification) &&
+          (!filters.Subject || has(subject, filters.Subject)) &&
+          (!filters.Department || has(it.Department, filters.Department));
+      });
   }, [m.list, filters]);
 
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `Deviation-${m.formData?.Id}`,
+      contextLabel: m.formData?.Department,
+    });
+  }, [m.formData, printWorkflow]);
+
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Deviation Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
   if (m.showForm) {
     return (
       <div className="h-full w-full">
@@ -128,13 +195,13 @@ export default function DeviationMasterPage({ tab }) {
           widthConfig={deviationWidthConfig}
           getHeaderStyle={getHeaderStyle}
           requiredFields={m.requiredFields}
-          completedTabs={m.completedTabs}
+          completedTabs={completedTabs}
           hideSidebar={false}
           hideTabBar={false}
           showSettingsTab
           sidebarConfig={{ hidePhoto: true, hideHeader: true }}
           stageHistory={m.history?.stageHistory || null}
-          stageEntered={m.history?.stageEntered || null}
+          recordHistory={m.history}
           formData={m.formData}
           savedFormData={m.savedFormData}
           setFormData={m.setFormData}
@@ -151,8 +218,10 @@ export default function DeviationMasterPage({ tab }) {
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
           onModify={m.handleModify}
-          onNewEntry={m.handleAddNew}
-          onCancel={m.handleFormExit}
+          onPrint={handlePrint}
+          onNewEntry={m.handleAddNewGuarded}
+          canPrint={true}
+          onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
           currentRecord={m.list.length ? m.currentIndex + 1 : 0}
           totalRecords={m.list.length}
@@ -160,6 +229,9 @@ export default function DeviationMasterPage({ tab }) {
           onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
           headerActiveTab={m.activeTab}
           onHeaderTabChange={m.handleHeaderTabChange}
+          onSaveDraft={m.handleSaveDraft}
+          moduleKey="deviation"
+          rightSidebarConfig={{ showAttachments: true, }}
         />
       </div>
     );
@@ -177,7 +249,7 @@ export default function DeviationMasterPage({ tab }) {
         showSettingsTab
         onTabChange={m.handleHeaderTabChange}
         onRefresh={m.loadData}
-        onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
         onRowDoubleClick={m.handleRowSelect}
         onDeleteMultiple={m.handleDeleteMultiple}
         onToggleFilter={() => setShowFilter((p) => !p)}
@@ -186,10 +258,15 @@ export default function DeviationMasterPage({ tab }) {
           <UnivarsalFilter
             filters={filters}
             setFilters={setFilters}
-            visibleFields={["status", "product", "classification", "department"]}
-            options={{ ...m.groupOptions, status: STATUS_OPTIONS }}
-            onApply={() => {}}
+            visibleFields={["status", "deviationScope", "subject", "classification", "department"]}
+            options={{
+              ...m.groupOptions,
+              status: STATUS_OPTIONS,
+              deviationScope: ["Product / Batch", "Equipment", "Instrument", "Facility / Area", "Process", "Document / System", "Utility"],
+            }}
+            onApply={() => { }}
             onClear={clearFilter}
+            setShowFilter={setShowFilter}
           />
         }
       />

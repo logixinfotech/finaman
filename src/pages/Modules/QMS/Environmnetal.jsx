@@ -1,361 +1,213 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { FaThermometerHalf, FaClipboardCheck, FaFlagCheckered, FaHistory } from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
-import { useERPMode } from "../../../components/Reusable/form/useFormMode";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
+import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
+import { getHeaderStyle } from "./Utils/QmsValidation";
+import { useQmsModule } from "./Utils/useQmsModule";
+import { useRefOptions } from "./Utils/useRefOptions";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
 import {
-  environmentalMonitoringTabs,
-  environmentalMonitoringFieldGroups,
-  environmentalMonitoringRequiredFieldsList,
-  environmentalMonitoringGridConfigs,
-  environmentalMonitoringTableColumns,
+  envTabs, envTabStage, envTabLabels,
+  getEnvFieldGroups, getEnvRequired,
+  envWidthConfig, envSectionConfigs, envTableColumns,
 } from "./Utils/Qmsconfigs";
 import {
-  confirmDelete,
-  showToast,
-  alertError,
-} from "../../../components/Reusable/alert";
-import { setERPHandlers } from "../../../utils/erpShortcuts";
-import {
-  getEnvironmentalMonitorings,
-  createEnvironmentalMonitoring,
-  updateEnvironmentalMonitoring,
-  deleteEnvironmentalMonitoring,
-  getNextRecordNo,
+  getEnvironmentalMonitorings, createEnvironmentalMonitoring,
+  updateEnvironmentalMonitoring, deleteEnvironmentalMonitoring,
 } from "./Utils/QmsAPI";
-import { widthConfig, getHeaderStyle, TabIcon } from "./Utils/QmsValidation";
-import { useApplSettings } from "../../../Hooks/useApplSettings";
-import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
-
-const initialState = {
-  id: null,
-  RecordNo: "",
-  MonitoringDate: new Date().toISOString().slice(0, 10),
-  Area: "",
-  SamplingLocation: "",
-  AreaGrade: "",
-  MonitoringType: "",
-  Result: "",
-  Unit: "",
-  AlertLimit: "",
-  ActionLimit: "",
-  MethodReference: "",
-  PerformedBy: "",
-  ReviewedBy: "",
-  ActionTaken: "",
-  LinkedCapaRef: "",
-  status: "Open",
-  // e-sign audit fields
-  created_by: "",
-  created_at: "",
-  updated_by: "",
-  updated_at: "",
+const API = {
+  list: getEnvironmentalMonitorings, create: createEnvironmentalMonitoring,
+  update: updateEnvironmentalMonitoring, remove: deleteEnvironmentalMonitoring,
 };
 
+const initialState = {
+  Id: null, RecordNo: "", Status: "Recorded",
+  MonitoringDate: new Date().toISOString().slice(0, 10),
+  Shift: "", Area: "", Location: "", Grade: "", MonitoringType: "",
+  SampleId: "", Analyst: "",
+  IncubationStartDate: "", IncubationEndDate: "",
+  Result: "", Unit: "", AlertLimit: "", ActionLimit: "",
+  LimitStatus: "", Method: "",
+  ReviewedBy: "", ReviewedOn: "", TrendRef: "",
+  DeviationRef: "", ActionTaken: "",
+  CapaRef: "", ClosedBy: "", ClosedOn: "", ClosureRemarks: "",
+};
+
+const ENV_TAB_ICON = {
+  monitoring: FaThermometerHalf,
+  review: FaClipboardCheck,
+  closure: FaFlagCheckered,
+  audit: FaHistory,
+};
+function EnvTabIcon({ tab }) {
+  const Icon = ENV_TAB_ICON[tab];
+  return Icon ? <Icon /> : <span>•</span>;
+}
+
+const STATUS_OPTIONS = ["Recorded", "Under Review", "Pending Closure", "Closed", "Rejected"];
+const LIMIT_STATUS_OPTIONS = ["WITHIN LIMITS", "ALERT LIMIT", "ACTION LIMIT EXCURSION"];
+
+const MONITORING_TYPES = [
+  "Viable - Air", "Viable - Surface", "Viable - Personnel",
+  "Non-Viable Particle Count", "Temperature", "Humidity", "Differential Pressure",
+];
+
+const EMPTY_FILTERS = { Status: "All", Area: "", MonitoringType: "All", LimitStatus: "All" };
+
 export default function EnvironmentalMonitoringMasterPage({ tab }) {
-  const [emList, setEmList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(
-    tab?.appl_name || "Environmental Monitoring",
-  );
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getEnvironmentalMonitorings();
-      const arr = Array.isArray(res)
-        ? res
-        : Array.isArray(res?.data)
-          ? res.data
-          : [];
-      setEmList(arr);
-    } catch (err) {
-      console.error(err);
-      alertError("Load Error", "Failed to load environmental monitoring records");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const {
-    mode,
-    formData,
-    setFormData,
-    saving,
-    canPrint,
-    handleView,
-    handleAdd,
-    handleModify,
-    performSave,
-    rights,
-    showForm,
-    setShowForm,
-    activeTab,
-    setActiveTab,
-    handleEditCancel,
-    isDirty,
-  } = useERPMode(
+  const m = useQmsModule({
+    moduleKey: "environmental",
+    title: "Environmental Monitoring",
+    applName: tab?.appl_name || "EnvMonitoring",
     initialState,
-    async (data) => {
-      // e-sign stamp: attributable + contemporaneous (ALCOA+)
-      const now = new Date().toISOString();
-      const currentUser = "H"; // TODO: replace with logged-in user context
-      const stamped = data.id
-        ? { ...data, updated_by: currentUser, updated_at: now }
-        : { ...data, created_by: currentUser, created_at: now };
-      return data.id
-        ? await updateEnvironmentalMonitoring(data.id, stamped)
-        : await createEnvironmentalMonitoring(stamped);
-    },
-    loadData,
-    "Environmental Monitoring",
-  );
-const [filters, setFilters] = useState({ Status: "All", Area: "", MonitoringType: "All" });
-const [showFilter, setShowFilter] = useState(false);
-
-const applyFilter = useCallback(() => {}, []);
-const clearFilter = useCallback(() => {
-  setFilters({ Status: "All", Area: "", MonitoringType: "All" });
-}, []);
-  const { options: groupOptions } = useGroupOptions();
-  const emFieldGroups = useMemo(
-    () => environmentalMonitoringFieldGroups(groupOptions || {}),
-    [groupOptions],
-  );
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleHeaderTabChange = useCallback(
-    (targetTab) => {
-      setActiveTab(targetTab);
-      setShowForm(targetTab !== "search");
-    },
-    [setActiveTab, setShowForm],
-  );
-
-  const handleAddNew = async() => {
-    handleAdd();
-    setShowForm(true);
-    setActiveTab("entry");
-      const  recordNo = await getNextRecordNo("environmental");
-            
-            setFormData((prev) => ({ ...prev, RecordNo: recordNo }));
-  };
-
-  useEffect(() => {
-    if (showForm && mode === "view" && emList.length > 0) {
-      setFormData(emList[currentIndex]);
-    }
-  }, [currentIndex, emList, showForm, mode, setFormData]);
-
-  const listWithSr = emList.map((item, index) => ({
-    ...item,
-    Sr: index + 1,
-    Status: item.Status || item.status || "Open",
-  }));
-
-  const handleRowSelect = (row) => {
-    const index = emList.findIndex((item) => item.id === row.id);
-    if (index !== -1) setCurrentIndex(index);
-    handleView(row);
-    setShowForm(true);
-    setActiveTab("entry");
-  };
-
-  const handleSave = async (localData) => {
-    const missing = environmentalMonitoringRequiredFieldsList.find(
-      (f) => !localData[f] || String(localData[f]).trim() === "",
-    );
-    if (missing) {
-      showToast({ icon: "error", title: "Please fill all required fields" });
-      return;
-    }
-    const dataToSave = { ...localData, id: localData.id ?? null };
-    const response = await performSave("id", dataToSave);
-    if (response && response.success) {
-      showToast({ icon: "success", title: "Saved & e-Signed Successfully" });
-      await loadData();
-      const savedId = response.data?.id;
-      setEmList((prev) => {
-        const idx = prev.findIndex((item) => item.id === savedId);
-        if (idx !== -1) setCurrentIndex(idx);
-        return prev;
-      });
-    }
-  };
-
-  const handleDelete = async (row) => {
-    const confirmed = await confirmDelete({
-      title: `Delete Environmental Monitoring "${row.RecordNo || row.id}"?`,
-    });
-    if (!confirmed) return;
-    try {
-      await deleteEnvironmentalMonitoring(row.id);
-      showToast({ icon: "success", title: "Deleted" });
-      setShowForm(false);
-      setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete environmental monitoring record");
-    }
-  };
-const filteredEmList = useMemo(() => {
-  return listWithSr.filter((item) => {
-    if (filters.Status && filters.Status !== "All") {
-      if (item.Status !== filters.Status) return false;
-    }
-    if (filters.Area) {
-      const area = String(item.Area || "").toLowerCase();
-      if (!area.includes(filters.Area.toLowerCase())) return false;
-    }
-    if (filters.MonitoringType && filters.MonitoringType !== "All") {
-      if (item.MonitoringType !== filters.MonitoringType) return false;
-    }
-    return true;
+    tabs: envTabs,
+    tabStage: envTabStage,
+    getRequired: getEnvRequired,
+    api: API,
   });
-}, [listWithSr, filters]);
-  const handleDeleteMultiple = async (selected) => {
-    const ids = (selected || []).map((item) =>
-      typeof item === "object" ? item.id : item,
-    );
-    if (ids.length === 0) return;
-    const confirmed = await confirmDelete({
-      title: `Delete ${ids.length} environmental monitoring record(s)?`,
-    });
-    if (!confirmed) return;
-    try {
-      const results = await Promise.all(
-        ids.map((id) => deleteEnvironmentalMonitoring(id)),
+
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/environmental',
+    applName: 'environmental',
+    emailEndpoint: '/api/qms-print/environmental',
+    shareLinkEndpoint: '/api/qms-print/environmental',
+  });
+
+  const refOpts = useRefOptions(["capa"]);
+
+  const fieldGroups = useMemo(
+    () => getEnvFieldGroups({ ...m.groupOptions, refOpts }),
+    [m.groupOptions, refOpts]
+  );
+  const customTabs = useMemo(
+    () => ({ audit: <RecordAuditPanel history={m.history} /> }),
+    [m.history]
+  );
+
+  // ── filters ──
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
+
+  const filteredList = useMemo(() => {
+    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
+    return m.list
+      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Recorded" }))
+      .filter((it) =>
+        (filters.Status === "All" || it.Status === filters.Status) &&
+        (filters.MonitoringType === "All" || it.MonitoringType === filters.MonitoringType) &&
+        (filters.LimitStatus === "All" || it.LimitStatus === filters.LimitStatus) &&
+        (!filters.Area || has(it.Area, filters.Area))
       );
-      const failed = results.filter((r) => !r?.success).length;
-      showToast({
-        icon: failed === 0 ? "success" : "warning",
-        title:
-          failed === 0
-            ? `${ids.length} deleted`
-            : `${ids.length - failed} deleted, ${failed} failed`,
-      });
-      setShowForm(false);
-      setActiveTab("search");
-      await loadData();
-    } catch (err) {
-      alertError("Delete Error", "Failed to delete some environmental monitoring records");
-    }
-  };
+  }, [m.list, filters]);
 
-  const handleFormExit = async () => {
-    const wasDirty = isDirty;
-    await handleEditCancel();
-    if (!wasDirty) {
-      setShowForm(false);
-      setActiveTab("search");
-      setFormData(initialState);
-    }
-  };
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `EnvMonitoring-${m.formData?.Id}`,
+      contextLabel: m.formData?.Area,
+    }).catch((err) => console.error('Print open failed:', err));
+  }, [m.formData, printWorkflow]);
 
-  // keep latest values/handlers for the keyboard shortcuts (avoids stale closures)
-  const latest = useRef({});
-  latest.current = {
-    formData,
-    emList,
-    handleSave,
-    handleAddNew,
-    handleFormExit,
-  };
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Environmental Monitoring Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    setERPHandlers({
-      onNextRecord: () =>
-        setCurrentIndex((p) => Math.min(p + 1, latest.current.emList.length - 1)),
-      onPrevRecord: () => setCurrentIndex((p) => Math.max(p - 1, 0)),
-      onNew: () => latest.current.handleAddNew(),
-      onSave: () => latest.current.handleSave(latest.current.formData),
-      onEsc: () => latest.current.handleFormExit(),
-    });
-  }, []);
+  if (m.showForm) {
+    return (
+      <div className="h-full w-full">
+        <ERPFormBuilder
+          title="Environmental Monitoring"
+          tabs={envTabs}
+          tabLabels={envTabLabels}
+          TabIcon={EnvTabIcon}
+          fieldGroups={fieldGroups}
+          customTabs={customTabs}
+          configs={envSectionConfigs}
+          widthConfig={envWidthConfig}
+          getHeaderStyle={getHeaderStyle}
+          requiredFields={m.requiredFields}
+          completedTabs={m.completedTabs}
+          hideSidebar={false}
+          hideTabBar={false}
+          showSettingsTab
+          sidebarConfig={{ hidePhoto: true, hideHeader: true }}
+          stageHistory={m.history?.stageHistory || null}
+          formData={m.formData}
+          savedFormData={m.savedFormData}
+          setFormData={m.setFormData}
+          mode={m.mode}
+          saving={m.saving}
+          rights={m.rights}
+          workflowConfig={m.workflowConfig}
+          currentUserRole={m.currentUserRole}
+          alwaysSignTabs={["closure"]}
+          settingsConfig={m.settingsConfig}
+          settingsDefaults={m.settingsDefaults}
+          onSettingsSave={m.onSettingsSave}
+          onSave={m.handleSave}
+             onSaveDraft={m.handleSaveDraft}
+          onSignedSave={m.handleSignedSave}
+          onDelete={m.handleDelete}
+          onModify={m.handleModify}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
+          onNewEntry={m.handleAddNewGuarded}
+          onCancel={m.handleTabExit}
+          onEditCancel={m.handleFormExit}
+          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
+          totalRecords={m.list.length}
+          onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
+          onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
+          headerActiveTab={m.activeTab}
+          onHeaderTabChange={m.handleHeaderTabChange}
+          moduleKey="environmental"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full">
-      {showForm ? (
-        <>
-          <ERPFormBuilder
-            title="Environmental Monitoring"
-            tabs={environmentalMonitoringTabs}
-            fieldGroups={emFieldGroups}
-            widthConfig={environmentalMonitoringGridConfigs}
-            requiredFields={environmentalMonitoringRequiredFieldsList}
-            hideSidebar={true}
-            hideTabBar={true}
-            showSettingsTab={true}
-            getHeaderStyle={getHeaderStyle}
-            configs={environmentalMonitoringGridConfigs}
-            TabIcon={TabIcon}
-            formData={formData}
-            setFormData={setFormData}
-            mode={mode}
-            canPrint={canPrint}
-            settingsConfig={settingsConfig}
-            settingsDefaults={settingsDefaults}
-            onSettingsSave={onSettingsSave}
-            saving={saving}
-            rights={rights}
-            onSave={handleSave}
-            onCancel={handleFormExit}
-            onDelete={handleDelete}
-            onModify={handleModify}
-            onNewEntry={handleAddNew}
-            onEditCancel={handleFormExit}
-            currentRecord={emList.length > 0 ? currentIndex + 1 : 0}
-            totalRecords={emList.length}
-            onPrevRecord={() => setCurrentIndex((p) => Math.max(p - 1, 0))}
-            onNextRecord={() =>
-              setCurrentIndex((p) => Math.min(p + 1, emList.length - 1))
-            }
-            headerActiveTab={activeTab}
-            onHeaderTabChange={handleHeaderTabChange}
-            // NOTE: if ERPFormBuilder/ERPFooter supports a save-button label prop,
-            // wire it here e.g. saveButtonLabel="Save & e-Sign"
+      <Table
+        title="Environmental Monitoring Register"
+        data={filteredList}
+        columns={envTableColumns}
+        rowKey="Id"
+        loading={m.loading}
+        activeTab={m.activeTab}
+        showSettingsTab
+        onTabChange={m.handleHeaderTabChange}
+        onRefresh={m.loadData}
+        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
+        onRowDoubleClick={m.handleRowSelect}
+        onDeleteMultiple={m.handleDeleteMultiple}
+        onToggleFilter={() => setShowFilter((p) => !p)}
+        showForm={showFilter}
+        formComponent={
+          <UnivarsalFilter
+            filters={filters}
+            setShowFilter={setShowFilter}   // ✅ add kiya
+            setFilters={setFilters}
+            visibleFields={["status", "area", "monitoringType", "limitStatus"]}
+            options={{
+              ...m.groupOptions,
+              status: STATUS_OPTIONS,
+              monitoringType: MONITORING_TYPES,
+              limitStatus: LIMIT_STATUS_OPTIONS,
+            }}
+            onApply={() => { }}
+            onClear={clearFilter}
           />
-          {mode !== "view" && (
-            <p className="text-xs text-gray-500 px-4 pb-2">
-              On save, record is electronically signed as{" "}
-              <strong>{formData.created_by || formData.updated_by || "H"}</strong>{" "}
-              with timestamp (ALCOA+: attributable, contemporaneous).
-            </p>
-          )}
-        </>
-      ) : (
-        <Table
-  activeTab={activeTab}
-  onRefresh={() => loadData()}
-  showSettingsTab={true}
-  onTabChange={handleHeaderTabChange}
-  onDeleteMultiple={handleDeleteMultiple}
-  title="Environmental Monitoring Register"
-  data={filteredEmList}
-  columns={environmentalMonitoringTableColumns}
-  rowKey="id"
-  loading={loading}
-  onAdd={rights?.add === 1 ? handleAddNew : null}
-  onRowDoubleClick={handleRowSelect}
-  onToggleFilter={() => setShowFilter((p) => !p)}
-  showForm={showFilter}
-  formComponent={
-    <UnivarsalFilter
-      filters={filters}
-      visibleFields={["status", "area", "monitoringType"]}
-      setFilters={setFilters}
-             options={{...groupOptions,status:["Recorded","Reviewed", "Closed","Rejected"]}}
-      onApply={applyFilter}
-      onClear={clearFilter}
-    />
-  }
-/>
-      )}
+        }
+      />
     </div>
   );
 }
