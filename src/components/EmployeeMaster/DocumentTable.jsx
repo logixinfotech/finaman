@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   FaPaperclip,
   FaEye,
@@ -22,13 +22,9 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
   const [activePreviewIdx, setActivePreviewIdx] = useState(null);
   const [collapsedCategories, setCollapsedCategories] = useState([]);
   const [draggingDoc, setDraggingDoc] = useState(null);
-  const [savedDocs, setSavedDocs] = useState({}); // {doc_name: {doc_id, file_name, ...}}
-  const [uploading, setUploading] = useState({});
+  const [savedDocs, setSavedDocs] = useState({});
 
   const baseDocumentCategories = useMemo(() => {
-
-
-    // Dynamic — USRGRP data se build karo
     const grouped = {};
     documents.forEach(doc => {
       const cat = doc.category || "Other Documents";
@@ -39,8 +35,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
   }, [documents]);
 
   const flatDocs = Object.values(baseDocumentCategories).flat();
-
-  // Tab load hote hi automatic focus sabse pehle element par land karega
   useEffect(() => {
     setTimeout(() => {
       document.getElementById("doc-wrapper-0")?.focus();
@@ -56,8 +50,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       setPreviewUrl(null);
     }
   }, [previewFile]);
-
-  // DocumentTable ke andar add karo:
   useEffect(() => {
     if (!employeeId) return;
     (async () => {
@@ -67,12 +59,11 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
         const attMap = {};
         res.data.forEach(d => {
           map[d.doc_name] = d;
-          // Saved docs ke liye placeholder — actual file server pe hai
           attMap[d.doc_name] = {
             name: d.file_name,
             size: d.file_size,
             type: d.mime_type,
-            _saved: true,      // server pe save hai
+            _saved: true,
             _doc_id: d.doc_id,
             _view_url: viewEmployeeDocument(employeeId, d.doc_id)
           };
@@ -81,22 +72,15 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
         setAttachments(attMap);
       }
     })();
-  }, [employeeId]);
+  }, [employeeId]);// eslint-disable-line react-hooks/exhaustive-deps
 
 
   useEffect(() => {
     if (!employeeId) return;
-
-    // Pending local attachments upload karo
     const uploadPending = async () => {
       for (const [docName, file] of Object.entries(attachments)) {
-        // Agar file local object hai (server pe save nahi) aur savedDocs mein nahi hai
         if (file && !file._saved && !savedDocs[docName]) {
-          const docObj = Object.values(
-            // documents array se group_id nikalo
-            {} // placeholder
-          ).flat();
-          // USRGRP se docGroupId nikalo
+
           const doc = typeof documents !== 'undefined'
             ? documents.find(d => d.group_name === docName)
             : null;
@@ -113,8 +97,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
           }
         }
       }
-
-      // Reload saved docs
       const res = await getEmployeeDocuments(employeeId);
       if (res?.data) {
         const map = {};
@@ -136,7 +118,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
     };
 
     uploadPending();
-  }, [employeeId]);
+  }, [employeeId]);// eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDragOver = (e, docName) => {
     e.preventDefault();
@@ -160,10 +142,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       handleFileAttach(e.dataTransfer.files[0], docName, globalIdx, docGroupId);
     }
   };
-
-
-  // REPLACE handleFileAttach WITH:
-  const handleFileAttach = async (file, docName, globalIdx, docGroupId, docTypeId) => {
+  const handleFileAttach = async (file, docName, globalIdx, docTypeId) => {
     if (!file) return;
 
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -171,12 +150,22 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       showToast({ icon: "error", title: `File too large! Max 5 MB allowed. "${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB.` }); return;
     }
 
+    const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
+    const fileExt = file.name.split(".").pop()?.toLowerCase();
+    if (!fileExt || !ALLOWED_EXTENSIONS.includes(fileExt)) {
+      showToast({
+        icon: "error",
+        title: `Invalid file type! "${file.name}" — allowed: ${ALLOWED_EXTENSIONS.join(", ").toUpperCase()}`
+      });
+      return;
+    }
+
     setAttachments(prev => ({ ...prev, [docName]: file }));
     if (employeeId) {
-      setUploading(prev => ({ ...prev, [docName]: true }));
+
       try {
         const fd = new FormData();
-        fd.append("file", file, file.name);          // file.name explicitly do
+        fd.append("file", file, file.name);
         fd.append("doc_name", docName || "");
         fd.append("doc_group_id", String(docTypeId || ""));
 
@@ -192,14 +181,11 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       } catch (e) {
         console.error("Upload failed:", e);
       } finally {
-        setUploading(prev => ({ ...prev, [docName]: false }));
       }
     }
 
     setTimeout(() => document.getElementById(`doc-wrapper-${globalIdx}`)?.focus(), 50);
   };
-
-  // handleFileRemove function replace karo:
   const handleFileRemove = async (docName, globalIdx) => {
     const savedDoc = savedDocs[docName];
 
@@ -215,14 +201,8 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
     });
     setTimeout(() => document.getElementById(`doc-wrapper-${globalIdx}`)?.focus(), 50);
   };
-  // ====================================================
-  // 🚀 FIXED KEYBOARD NAVIGATION WITH BUBBLING PROTECTION
-  // ====================================================
   const handleDocumentKeyDown = (e, globalIdx, currentType, hasFile) => {
-    // CRITICAL FIX: Stops event from bubbling up to parent containers
     e.stopPropagation();
-
-    // 1. Vertical Card Travel via Enter
     if (e.key === "Enter") {
       e.preventDefault();
       const nextIdx = globalIdx + 1;
@@ -230,7 +210,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       if (nextEl) {
         nextEl.focus();
       } else {
-        // Last element par Enter dabane se Footer ka Save/Update button focus hoga
         const saveBtn = Array.from(document.querySelectorAll("button")).find(
           (btn) => btn.textContent.toLowerCase().includes("save") || btn.textContent.toLowerCase().includes("update")
         );
@@ -238,8 +217,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       }
       return;
     }
-
-    // 2. Backspace Navigation (Piche jane ke liye)
     if (e.key === "Backspace") {
       e.preventDefault();
       if (currentType !== "wrapper") {
@@ -249,8 +226,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       }
       return;
     }
-
-    // 3. Space Key Action Trigger
     if (e.key === " " || e.key === "Spacebar") {
       e.preventDefault();
       if (currentType === "wrapper" && !hasFile && !isViewMode) {
@@ -264,8 +239,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       }
       return;
     }
-
-    // 4. CIRCULAR LOOP NAVIGATION (Har side se infinite ghumega)
     if (hasFile && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
       e.preventDefault();
 
@@ -275,8 +248,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
 
       const currentIndex = sequence.indexOf(currentType);
       let nextIndex = e.key === "ArrowRight" ? currentIndex + 1 : currentIndex - 1;
-
-      // Infinite wrap-around loop condition
       if (nextIndex >= sequence.length) nextIndex = 0;
       if (nextIndex < 0) nextIndex = sequence.length - 1;
 
@@ -289,8 +260,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
       document.getElementById(nextId)?.focus();
       return;
     }
-
-    // 5. Short-cut Up/Down for Delete Icon
     if (hasFile && !isViewMode) {
       if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -306,7 +275,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
   const handleView = async (file, globalIdx) => {
     if (!file) return;
     if (file._saved && file._view_url) {
-      // Token ke saath fetch karo
       const token = localStorage.getItem("token");
       const res = await fetch(file._view_url, {
         headers: { Authorization: `Bearer ${token}` }
@@ -340,7 +308,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
   };
 
   return (
-    <div className="w-full flex flex-col h-full bg-slate-50 min-h-screen p-1.5 relative overflow-hidden">
+    <div className="w-full flex flex-col min-h-full bg-slate-50 p-1.5 relative">
       <div className="absolute inset-0 pointer-events-none opacity-[0.4] bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]"></div>
 
       <div className="relative z-10 w-full max-w-7xl">
@@ -352,8 +320,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
 
             return (
               <div key={category} className="flex flex-col bg-white/40 backdrop-blur-sm rounded-xl border border-slate-200/50 overflow-hidden transition-all duration-300">
-
-                {/* ACCORDION HEADER */}
                 <button
                   type="button"
                   onClick={() => setCollapsedCategories(prev => prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category])}
@@ -372,9 +338,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
                     {categoryUploaded} / {docs.length}
                   </span>
                 </button>
-
-                {/* GRID CONTENT */}
-                <div className={`transition-all duration-300 ease-in-out ${isCollapsed ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[500px] opacity-100 p-1 pt-0"}`}>
+                <div className={`transition-all duration-300 ease-in-out ${isCollapsed ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[2000px] opacity-100 p-1 pt-0"}`}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-2 mt-1">
 
                     {docs.map((doc) => {
@@ -384,9 +348,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
                       const globalIdx = flatDocs.indexOf(doc);
                       const fileStyle = getFileIconStyle(file);
                       const isDraggingHere = draggingDoc === doc;
-
-
-                      // STATE 1: UPLOADED FILE STATE CARD
                       if (file) {
                         return (
                           <div
@@ -462,8 +423,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
                           </div>
                         );
                       }
-
-                      // STATE 2: EMPTY CARD STATE
                       return (
                         <div
                           key={doc}
@@ -515,8 +474,6 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
             );
           })}
         </div>
-
-        {/* VIEW MODAL (ESC AND BUBBLING PROTECTION REMAIN intact) */}
         {previewFile && previewUrl && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
@@ -524,7 +481,7 @@ const DocumentTable = ({ attachments, setAttachments, isViewMode, documents = []
             onKeyDown={(e) => {
               if (e.key === "Escape" || (e.ctrlKey && e.key.toLowerCase() === "q")) {
                 e.preventDefault();
-                e.stopPropagation(); // Stops event bubbling so parent cancel modal is never triggered
+                e.stopPropagation();
                 closePreview();
               }
             }}

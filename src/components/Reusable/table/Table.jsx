@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import TableExport from "./TableExport";
-import { HeaderAddButton, DeleteButton } from "../button/ActionButon";
+import { HeaderAddButton, } from "../button/ActionButon";
 import { Upload } from "lucide-react";
 import TableRow from "./TableRow";
 import {
@@ -21,7 +21,8 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import { setERPHandlers } from "../../../utils/erpShortcuts";
+  import { registerShortcutAction } from "../../../utils/erpShortcuts";
+ import { useShortcutLabel } from "../../../utils/Shortcuts/ShortcutsContext";
 const TAB_CONFIG_BASE = [
   { id: "entry", Icon: FileText, label: "Entry" },
   { id: "search", Icon: Search, label: "Search" },
@@ -101,11 +102,11 @@ const Table = ({
   formComponent,
   onToggleFilter,
   onImport,
+  logbook,
   pageSizeOptions = [10, 15, 20, 50, 100, 200],
   defaultPageSize = 50,
 }) => {
   const searchRef = useRef(null);
-  const columnMenuRef = useRef(null);
   const tableContainerRef = useRef(null);
   const dragCol = useRef(null);
 
@@ -132,73 +133,73 @@ const Table = ({
   const [anchorIndex, setAnchorIndex] = useState(null);
 
   // FIX: density state — S/M/L tabs now actually work
-  const [density, setDensity] = useState("M");
+  const [density] = useState("M");
   const rowHeight = { M: 34, L: 42 }[density];
 
   const TAB_CONFIG = showSettingsTab
     ? [...TAB_CONFIG_BASE, SETTINGS_TAB]
     : TAB_CONFIG_BASE;
-    const activeTabConfig =
-  TAB_CONFIG.find((t) => t.id === activeTab) || TAB_CONFIG[0];
+  const activeTabConfig =
+    TAB_CONFIG.find((t) => t.id === activeTab) || TAB_CONFIG[0];
 
-// ── mobile tabs dropdown state ──
-const [mobileTabsOpen, setMobileTabsOpen] = useState(false);
-const mobileTabsBtnRef = useRef(null);
-const mobileTabsMenuRef = useRef(null);
-const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
-// ── column settings dropdown (portal) ──
-const columnBtnRef = useRef(null);
-const columnMenuPanelRef = useRef(null);
-const [columnMenuPos, setColumnMenuPos] = useState({ top: 0, right: 0 });
+  // ── mobile tabs dropdown state ──
+  const [mobileTabsOpen, setMobileTabsOpen] = useState(false);
+  const mobileTabsBtnRef = useRef(null);
+  const mobileTabsMenuRef = useRef(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
+  // ── column settings dropdown (portal) ──
+  const columnBtnRef = useRef(null);
+  const columnMenuPanelRef = useRef(null);
+  const [columnMenuPos, setColumnMenuPos] = useState({ top: 0, right: 0 });
 
-useEffect(() => {
-  if (!showColumnMenu) return;
-  const updatePos = () => {
-    if (columnBtnRef.current) {
-      const rect = columnBtnRef.current.getBoundingClientRect();
-      setColumnMenuPos({
-        top: rect.bottom + 6,
-        right: window.innerWidth - rect.right,
-      });
-    }
-  };
-  updatePos();
-  window.addEventListener("scroll", updatePos, true);
-  window.addEventListener("resize", updatePos);
-  return () => {
-    window.removeEventListener("scroll", updatePos, true);
-    window.removeEventListener("resize", updatePos);
-  };
-}, [showColumnMenu]);
-useEffect(() => {
-  if (!mobileTabsOpen) return;
-  const updatePos = () => {
-    if (mobileTabsBtnRef.current) {
-      const rect = mobileTabsBtnRef.current.getBoundingClientRect();
-      setMenuPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
-    }
-  };
-  updatePos();
-  window.addEventListener("scroll", updatePos, true);
-  window.addEventListener("resize", updatePos);
-  return () => {
-    window.removeEventListener("scroll", updatePos, true);
-    window.removeEventListener("resize", updatePos);
-  };
-}, [mobileTabsOpen]);
+  useEffect(() => {
+    if (!showColumnMenu) return;
+    const updatePos = () => {
+      if (columnBtnRef.current) {
+        const rect = columnBtnRef.current.getBoundingClientRect();
+        setColumnMenuPos({
+          top: rect.bottom + 6,
+          right: window.innerWidth - rect.right,
+        });
+      }
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [showColumnMenu]);
+  useEffect(() => {
+    if (!mobileTabsOpen) return;
+    const updatePos = () => {
+      if (mobileTabsBtnRef.current) {
+        const rect = mobileTabsBtnRef.current.getBoundingClientRect();
+        setMenuPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+      }
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [mobileTabsOpen]);
 
-useEffect(() => {
-  if (!mobileTabsOpen) return;
-  const handleClickOutside = (e) => {
-    const clickedBtn =
-      mobileTabsBtnRef.current && mobileTabsBtnRef.current.contains(e.target);
-    const clickedMenu =
-      mobileTabsMenuRef.current && mobileTabsMenuRef.current.contains(e.target);
-    if (!clickedBtn && !clickedMenu) setMobileTabsOpen(false);
-  };
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => document.removeEventListener("mousedown", handleClickOutside);
-}, [mobileTabsOpen]);
+  useEffect(() => {
+    if (!mobileTabsOpen) return;
+    const handleClickOutside = (e) => {
+      const clickedBtn =
+        mobileTabsBtnRef.current && mobileTabsBtnRef.current.contains(e.target);
+      const clickedMenu =
+        mobileTabsMenuRef.current && mobileTabsMenuRef.current.contains(e.target);
+      if (!clickedBtn && !clickedMenu) setMobileTabsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [mobileTabsOpen]);
 
   // ── ERP keyboard shortcuts ──
   // NOTE: selectedRows ref so the shortcut always sees latest value
@@ -206,26 +207,39 @@ useEffect(() => {
   useEffect(() => {
     selectedRowsRef.current = selectedRows;
   }, [selectedRows]);
+  const searchShortcutLabel = useShortcutLabel("search");
+  const refreshShortcutLabel = useShortcutLabel("refresh");
+  const deleteShortcutLabel = useShortcutLabel("delete");
 
+  const onDeleteMultipleRef = useRef(onDeleteMultiple);
+  onDeleteMultipleRef.current = onDeleteMultiple;
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+  const visibleDataRef = useRef([]);
   useEffect(() => {
-    setERPHandlers({
-      onAdd: () => onAdd?.(),
-      onRefresh: () => onRefresh?.(),
-      onSearch: () => searchRef.current?.focus(),
-      // FIX: was broken because closure captured stale selectedRows
-      onDelete: () => {
-        const rows = selectedRowsRef.current;
-        if (rows.length > 0) {
-          onDeleteMultiple?.(rows);
-          setSelectedRows([]);
-          // FIX: reset focusedRowIndex so arrow keys don't hang on deleted index
-          setFocusedRowIndex(0);
-        }
-      },
-      onExport: () => {},
-    });
-    return () => setERPHandlers({});
-  }, [onAdd, onRefresh, onDeleteMultiple]);
+    visibleDataRef.current = serverPagination ? data : paginatedData;
+  });
+
+  useEffect(() => registerShortcutAction("search", () => {
+    searchRef.current?.focus();
+    searchRef.current?.select();
+  }), []);
+
+  useEffect(() => registerShortcutAction("delete", () => {
+    const rows = selectedRowsRef.current;
+    if (rows.length > 0) {
+      onDeleteMultipleRef.current?.(rows);
+      setSelectedRows([]);
+      setFocusedRowIndex((p) => {
+        const remaining = visibleDataRef.current.length - rows.length;
+        return Math.max(0, Math.min(p, remaining - 1));
+      });
+    }
+  }), []);
+
+  useEffect(() => registerShortcutAction("refresh", () => {
+    onRefreshRef.current?.();
+  }), []);
   useEffect(() => {
     if (serverPagination && onPageChange)
       onPageChange(page, pageSize, searchText, sortField, sortOrder);
@@ -234,8 +248,6 @@ useEffect(() => {
   useEffect(() => {
     setPageSize(defaultPageSize);
   }, [defaultPageSize]);
-
-  // ── sync columns when prop changes ──
   useEffect(() => {
     setColumnOrder(columns.map((c) => c.key));
     setVisibleColumns(columns.reduce((a, c) => ({ ...a, [c.key]: true }), {}));
@@ -256,18 +268,18 @@ useEffect(() => {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, sortField, sortOrder]);
-useEffect(() => {
-  const h = (e) => {
-    const clickedBtn =
-      columnBtnRef.current && columnBtnRef.current.contains(e.target);
-    const clickedMenu =
-      columnMenuPanelRef.current &&
-      columnMenuPanelRef.current.contains(e.target);
-    if (!clickedBtn && !clickedMenu) setShowColumnMenu(false);
-  };
-  document.addEventListener("mousedown", h);
-  return () => document.removeEventListener("mousedown", h);
-}, []);
+  useEffect(() => {
+    const h = (e) => {
+      const clickedBtn =
+        columnBtnRef.current && columnBtnRef.current.contains(e.target);
+      const clickedMenu =
+        columnMenuPanelRef.current &&
+        columnMenuPanelRef.current.contains(e.target);
+      if (!clickedBtn && !clickedMenu) setShowColumnMenu(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
   useEffect(() => {
     tableContainerRef.current?.focus();
@@ -307,61 +319,36 @@ useEffect(() => {
     const map = Object.fromEntries(columns.map((c) => [c.key, c]));
     return columnOrder.map((k) => map[k]).filter(Boolean);
   }, [columnOrder, columns]);
-// naya helper — file me useMemo se upar, ya component ke bahar add karo
-const guessColWidth = (c) => {
-  const key = (c.key || "").toLowerCase();
-  const label = (c.label || "").toLowerCase();
-  const text = key + " " + label;
+  // naya helper — file me useMemo se upar, ya component ke bahar add karo
+  const guessColWidth = (c) => {
+    const key = (c.key || "").toLowerCase();
+    const label = (c.label || "").toLowerCase();
+    const text = key + " " + label;
 
-  if (/(^|_)(sr|s\.?no|sno|srno|slno|#)($|_)/.test(text) || text.includes("sr") || text.includes("s.no"))
-    return 40;
-  if (/(^|_)id($|_)/.test(text)) return 80;
-  if (text.includes("status") || text.includes("active")) return 90;
-  if (text.includes("record no.") || text.includes("active")) return 90;
-  if (text.includes("date") || text.includes("time")) return 110;
-  if (text.includes("amount") || text.includes("qty") || text.includes("price") || text.includes("rate"))
-    return 100;
-  if (text.includes("email")) return 200;
-  if (text.includes("address") || text.includes("description") || text.includes("remark") || text.includes("note"))
-    return 240;
-  if (text.includes("name")) return 160;
-  return DEFAULT_COL_WIDTH; // fallback
-};
-const memoizedColumns = useMemo(() => {
-  let leftOffset = 0;
-  return orderedColumns.map((c) => {
-    if (!visibleColumns[c.key]) return null;
-    // FIX: pehle apna defined width, warna smart guess, warna default
-    const width = columnWidths[c.key] ?? c.width ?? guessColWidth(c);
-    const isFrozen = lockedColumns.includes(c.key);
-    const col = {
-      ...c,
-      width,
-      isFrozen,
-      stickyLeft: isFrozen ? leftOffset : null,
-    };
-    if (isFrozen) leftOffset += width;
-    return col;
-  });
-}, [orderedColumns, visibleColumns, columnWidths, lockedColumns]);
-  // const memoizedColumns = useMemo(() => {
-  //   let leftOffset = 0;
-  //   return orderedColumns.map((c) => {
-  //     if (!visibleColumns[c.key]) return null;
-  //     const width = columnWidths[c.key] || DEFAULT_COL_WIDTH;
-  //     const isFrozen = lockedColumns.includes(c.key);
-  //     const col = {
-  //       ...c,
-  //       width,
-  //       isFrozen,
-  //       stickyLeft: isFrozen ? leftOffset : null,
-  //     };
-  //     if (isFrozen) leftOffset += width;
-  //     return col;
-  //   });
-  // }, [orderedColumns, visibleColumns, columnWidths, lockedColumns]);
+    if (/(^|_)( sno|srno|slno|#)($|_)/.test(text) || text.includes("sr") || text.includes("s.no") || text.includes("id"))
+      return 40;
+    if (/(^|_)id($|_)/.test(text)) return 80;
 
-  // ── keyboard navigation (AFTER paginatedData) ──
+    return DEFAULT_COL_WIDTH; // fallback
+  };
+  const memoizedColumns = useMemo(() => {
+    let leftOffset = 0;
+    return orderedColumns.map((c) => {
+      if (!visibleColumns[c.key]) return null;
+      // FIX: pehle apna defined width, warna smart guess, warna default
+      const width = columnWidths[c.key] ?? c.width ?? guessColWidth(c);
+      const isFrozen = lockedColumns.includes(c.key);
+      const col = {
+        ...c,
+        width,
+        isFrozen,
+        stickyLeft: isFrozen ? leftOffset : null,
+      };
+      if (isFrozen) leftOffset += width;
+      return col;
+    });
+  }, [orderedColumns, visibleColumns, columnWidths, lockedColumns]);
+ 
   useEffect(() => {
     const container = tableContainerRef.current;
     if (!container) return;
@@ -394,19 +381,7 @@ const memoizedColumns = useMemo(() => {
         e.preventDefault();
         setSelectedRows(curData.map((r) => r[rowKey]));
       }
-      // FIX: Alt+D delete — was not wired to the inline handler at all
-      else if (e.altKey && e.key.toLowerCase() === "d") {
-        e.preventDefault();
-        const rows = selectedRowsRef.current;
-        if (rows.length > 0) {
-          onDeleteMultiple?.(rows);
-          setSelectedRows([]);
-          // FIX: clamp focusedRowIndex so arrow keys don't get stuck after delete
-          setFocusedRowIndex((p) =>
-            Math.max(0, Math.min(p, curData.length - rows.length - 1)),
-          );
-        }
-      }
+      
     };
 
     container.addEventListener("keydown", handle);
@@ -438,28 +413,28 @@ const memoizedColumns = useMemo(() => {
   }, []);
 
   const startResize = useCallback(
-  (e, key) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const col = columns.find((c) => c.key === key);
-    // FIX: resize base width bhi column-specific ho
-   const startW = columnWidths[key] ?? col?.width ?? guessColWidth(col);
-    const onMove = (ev) =>
-      requestAnimationFrame(() =>
-        setColumnWidths((p) => ({
-          ...p,
-          [key]: Math.max(startW + (ev.clientX - startX), MIN_COL_WIDTH),
-        })),
-      );
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  },
-  [columnWidths, columns],
-);
+    (e, key) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const col = columns.find((c) => c.key === key);
+      // FIX: resize base width bhi column-specific ho
+      const startW = columnWidths[key] ?? col?.width ?? guessColWidth(col);
+      const onMove = (ev) =>
+        requestAnimationFrame(() =>
+          setColumnWidths((p) => ({
+            ...p,
+            [key]: Math.max(startW + (ev.clientX - startX), MIN_COL_WIDTH),
+          })),
+        );
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    },
+    [columnWidths, columns],
+  );
 
   const toggleVisibleColumn = useCallback(
     (key) => setVisibleColumns((p) => ({ ...p, [key]: !p[key] })),
@@ -473,7 +448,6 @@ const memoizedColumns = useMemo(() => {
       ),
     [],
   );
-
   const handleSortClick = useCallback((key) => {
     setSortField((prev) => {
       if (prev === key) {
@@ -519,156 +493,166 @@ const memoizedColumns = useMemo(() => {
   }, [selectedRows, onDeleteMultiple]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col h-full">
+    <div className="isolate  bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col h-full">
       {/* loading bar */}
       {loading && (
         <div className="h-[2px] w-full bg-blue-50 overflow-hidden flex-shrink-0">
           <div className="h-full bg-blue-600 w-1/2 animate-[progress_1.4s_ease-in-out_infinite] origin-left" />
         </div>
       )}
-      <div
-        className="relative flex items-center justify-between px-3.5 border-b border-slate-200 bg-white flex-shrink-0"
-        style={{ height: 48 }}
-      >
+<div
+  className="relative flex items-center gap-2 px-2.5 sm:px-3.5 border-b border-slate-200 bg-white rounded-t-xl flex-shrink-0 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden"
+  style={{
+    height: 48,
+    minHeight: 48,
+    maxHeight: 48,
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
+    WebkitOverflowScrolling: "touch",
+  }}
+>
         {/* left: title + count */}
         {!isHidden && (
-  <>
-    {/* Desktop segmented tabs (sm and up) */}
-    <div className="hidden sm:flex items-center gap-0.5 bg-slate-100 rounded-[10px] p-[3px]">
-      {TAB_CONFIG.map(({ id, Icon, label }) => {
-        const active = activeTab === id;
-        const isSettings = id === "settings";
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onTabChange(id)}
-            className={`
-              relative flex items-center gap-1.5 h-[30px] px-3.5 rounded-[8px]
-              text-[11.5px] transition-colors duration-200
-              ${
-                active
-                  ? "font-medium"
-                  : "text-slate-500 font-normal hover:text-slate-700"
-              }
-            `}
-            style={
-              active
-                ? { color: isSettings ? "#b45309" : "var(--icon-color)" }
-                : undefined
-            }
-          >
-            {active && (
-              <motion.span
-                layoutId="tableHeaderTabHighlight"
-                className="absolute inset-0 rounded-[4px] -z-0"
-                style={{
-                  background: "#ffffff",
-                  borderRadius:"7px",
-                  border: "1px solid rgba(15,23,42,0.08)",
-                  boxShadow:
-                    "0 1px 3px rgba(15,23,42,0.07), 0 1px 1px rgba(15,23,42,0.04)",
-                }}
-                transition={{ type: "spring", bounce: 0.18, duration: 0.4 }}
-              />
-            )}
-            <Icon size={13} className="relative z-10 shrink-0" />
-            <span className="relative z-10">{label}</span>
-          </button>
-        );
-      })}
-    </div>
+          <>
+            {/* Desktop segmented tabs (sm and up) */}
+            <div className="hidden sm:flex shrink-0 items-center gap-0.5 bg-slate-100 rounded-[10px] p-[3px]">
+              {TAB_CONFIG.map(({ id, Icon, label }) => {
+                const active = activeTab === id;
+                const isSettings = id === "settings";
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onTabChange(id)}
+                 className={`
+  relative flex items-center gap-1.5 h-[30px] px-3.5 rounded-[8px]
+  text-[10px] font-bold tracking-[0.06em] uppercase transition-colors duration-200
+  ${active
+    ? ""
+    : "text-slate-500 hover:text-slate-700"
+  }
+`}
+                    style={
+                      active
+                        ? { color: isSettings ? "#b45309" : "var(--icon-color)" }
+                        : undefined
+                    }
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="headerTabHighlight"
+                        className="absolute inset-0 rounded-[8px] -z-0"
+                        style={{
+                          background: "#ffffff",
+                          border: "1px solid rgba(15,23,42,0.08)",
+                          boxShadow: "0 1px 3px rgba(15,23,42,0.07), 0 1px 1px rgba(15,23,42,0.04)",
+                        }}
+                        transition={{ type: "spring", bounce: 0.18, duration: 0.4 }}
+                      />
+                    )}
+                    <Icon size={13} className="relative z-10 shrink-0" />
+                    <span className="relative z-10">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="sm:hidden shrink-0">
+              <button
+                ref={mobileTabsBtnRef}
+                type="button"
+                onClick={() => setMobileTabsOpen((v) => !v)}
+                className="flex items-center gap-1.5 h-[30px] pl-2.5 pr-2 rounded-[8px] bg-slate-100 text-[11.5px] font-medium active:scale-[0.97] transition-transform"
+                style={{ color: activeTab === "settings" ? "#b45309" : "var(--icon-color)" }}
+              >
+                <activeTabConfig.Icon size={13} className="shrink-0" />
+                <span>{activeTabConfig.label}</span>
+                <ChevronDown
+                  size={13}
+                  className={`shrink-0 transition-transform duration-200 ${mobileTabsOpen ? "rotate-180" : ""
+                    }`}
+                />
+              </button>
 
-    {/* Mobile dropdown (below sm) */}
-    <div className="sm:hidden shrink-0">
-      <button
-        ref={mobileTabsBtnRef}
-        type="button"
-        onClick={() => setMobileTabsOpen((v) => !v)}
-        className="flex items-center gap-1.5 h-[30px] pl-2.5 pr-2 rounded-[8px] bg-slate-100 text-[11.5px] font-medium active:scale-[0.97] transition-transform"
-        style={{ color: activeTab === "settings" ? "#b45309" : "var(--icon-color)" }}
-      >
-        <activeTabConfig.Icon size={13} className="shrink-0" />
-        <span>{activeTabConfig.label}</span>
-        <ChevronDown
-          size={13}
-          className={`shrink-0 transition-transform duration-200 ${
-            mobileTabsOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {mobileTabsOpen &&
-        createPortal(
-          <motion.div
-            ref={mobileTabsMenuRef}
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            style={{
-              position: "fixed",
-              top: menuPos.top,
-              left: menuPos.left,
-              minWidth: Math.max(menuPos.width, 136),
-            }}
-            className="z-[9999] bg-white rounded-[10px] border border-slate-200 shadow-lg p-1"
-          >
-            {TAB_CONFIG.map(({ id, Icon, label }) => {
-              const active = activeTab === id;
-              const isSettings = id === "settings";
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => {
-                    onTabChange(id);
-                    setMobileTabsOpen(false);
-                  }}
-                  className={`flex items-center gap-2 w-full text-left px-2.5 py-2 rounded-[8px] text-[12px] transition-colors ${
-                    active
-                      ? "font-medium bg-slate-50"
-                      : "text-slate-500 font-normal hover:bg-slate-50"
-                  }`}
-                  style={
-                    active
-                      ? { color: isSettings ? "#b45309" : "var(--icon-color)" }
-                      : undefined
-                  }
-                >
-                  <Icon size={13} className="shrink-0" />
-                  {label}
-                </button>
-              );
-            })}
-          </motion.div>,
-          document.body
+              {mobileTabsOpen &&
+                createPortal(
+                  <motion.div
+                    ref={mobileTabsMenuRef}
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.15 }}
+                    style={{
+                      position: "fixed",
+                      top: menuPos.top,
+                      left: menuPos.left,
+                      minWidth: Math.max(menuPos.width, 136),
+                    }}
+                    className="z-[9999] bg-white rounded-[10px] border border-slate-200 shadow-lg p-1"
+                  >
+                    {TAB_CONFIG.map(({ id, Icon, label }) => {
+                      const active = activeTab === id;
+                      const isSettings = id === "settings";
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => {
+                            onTabChange(id);
+                            setMobileTabsOpen(false);
+                          }}
+                          className={`flex items-center gap-2 w-full text-left px-2.5 py-2 rounded-[8px] text-[12px] transition-colors ${active
+                              ? "font-medium bg-slate-50"
+                              : "text-slate-500 font-normal hover:bg-slate-50"
+                            }`}
+                          style={
+                            active
+                              ? { color: isSettings ? "#b45309" : "var(--icon-color)" }
+                              : undefined
+                          }
+                        >
+                          <Icon size={13} className="shrink-0" />
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </motion.div>,
+                  document.body
+                )}
+            </div>
+          </>
         )}
-    </div>
-  </>
-)}
-    {!isHidden && (
-  <>
-    <div className="hidden sm:flex absolute left-[40%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-3.5 py-2 self-stretch bg-slate-50/60 rounded-tl-xl">
-      <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 shadow-[0_2px_6px_rgba(37,99,235,0.25)]">
-        <TitleIcon size={12} strokeWidth={2.5} className="text-white" />
-      </div>
-      <div className="flex flex-col min-w-0">
-        <span
-          className="text-[16px] !font-medium text-slate-900 truncate whitespace-nowrap"
-          style={{
-            fontFamily: "'Inter', 'Roboto', 'Segoe UI', system-ui, sans-serif",
-          }}
-        >
-          {title}
-        </span>
-      </div>
-    </div>
+        {!isHidden && (
+          <>
+            <div className="hidden sm:flex absolute left-[43%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center">
+    
+              <div
+                className="flex items-center gap-1.5 min-w-0 px-2 py-[4px] rounded-md"
+                style={{
+                  border: "1px solid var(--icon-color)",
+                  background: "var(--accent-soft)",
+                }}
+              >
+                <TitleIcon size={14} strokeWidth={2.5} style={{ color: "var(--icon-color)" }} />
 
-    {/* Mobile compact title — hidden, since search+icons need the room; shown only if space allows via truncate */}
-  
-  </>
-)}
+                <span
+                  className="text-[15px] font-medium truncate whitespace-nowrap"
+                  style={{
+                    fontFamily: "'Inter', 'Roboto', 'Segoe UI', system-ui, sans-serif",
+                    color: "var(--icon-color)",
+                  }}
+                  title={title}
+                >
+                  {title}
+                </span>
+
+
+              </div>
+            </div>
+
+
+
+          </>
+        )}
         {isHidden && (
           <div
             className="flex items-center gap-3.5 px-4 py-2 self-stretch bg-slate-50/60 rounded-tl-xl mx-auto"
@@ -693,118 +677,128 @@ const memoizedColumns = useMemo(() => {
           </div>
         )}
 
-        {/* right: controls */}
-       <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar">
-  {/* search */}
-  <div className="relative flex items-center group shrink-0">
-    {loading ? (
-      <RefreshCw
-        size={12}
-        className="absolute left-2.5 text-blue-500 animate-spin pointer-events-none"
-      />
-    ) : (
-      <Search
-        size={12}
-        className="absolute left-2.5 text-slate-400 pointer-events-none group-focus-within:text-blue-500"
-      />
-    )}
-    <input
-      ref={searchRef}
-      value={searchText}
-      placeholder="Search…"
-      onChange={(e) => {
-        setSearchText(e.target.value);
-        setPage(1);
-      }}
-      className="h-8 pl-7 pr-6 text-[11.5px] bg-slate-50 border border-slate-200 rounded-md w-[110px] sm:w-[185px] outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+      {/* right: controls */}
+<div
+  className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto h-full pr-1"
+  style={{
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
+    WebkitOverflowScrolling: "touch",
+  }}
+> 
+<div className="relative flex items-center group shrink-0">
+  {loading ? (
+    <RefreshCw
+      size={12}
+      className="absolute left-2.5 text-blue-500 animate-spin pointer-events-none"
     />
-    {searchText && (
-      <X
-        size={12}
-        className="absolute right-2 text-slate-400 cursor-pointer hover:text-slate-700"
-        onClick={() => setSearchText("")}
-      />
-    )}
-  </div>
-
-          <TableExport
-            title={title}
-            columns={columns}
-            data={sortedData}
-            visibleColumns={visibleColumns}
-            serverPagination={serverPagination}
-            onExportAll={onExportAll}
-          />
-          {onImport && (
-            <button
-              onClick={onImport}
-              title="Import data"
-              className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-emerald-50 border-emerald-300 text-emerald-600 hover:bg-emerald-100"
-            >
-              <Upload size={12} />
-            </button>
-          )}
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              title="Refresh (Alt+R)"
-              className="h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-pink-50 border-pink-300 text-pink-600 hover:bg-pink-100"
-            >
-              <RefreshCw size={12} />
-            </button>
-          )}
-          {/* FIX: column menu — was broken because visibleColumns toggle wasn't being called correctly */}
-    <div className="relative shrink-0">
-  <button
-    ref={columnBtnRef}
-    onClick={() => setShowColumnMenu((p) => !p)}
-    title="Column settings"
-    className={`h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
-      showColumnMenu
-        ? "bg-slate-200 border-slate-400 text-slate-700"
-        : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"
-    }`}
-  >
-    <Settings size={12} />
-  </button>
-
-  {showColumnMenu &&
-    createPortal(
-      <div
-        ref={columnMenuPanelRef}
-        style={{
-          position: "fixed",
-          top: columnMenuPos.top,
-          right: columnMenuPos.right,
-        }}
-        className="bg-white border border-slate-200 rounded-lg shadow-lg z-[9999] overflow-hidden"
-      >
-        <ColumnPanel
-          columns={columns}
-          visibleColumns={visibleColumns}
-          lockedColumns={lockedColumns}
-          onToggleVisible={toggleVisibleColumn}
-          onToggleLock={toggleLockColumn}
-        />
-      </div>,
-      document.body
-    )}
+  ) : (
+    <Search
+      size={12}
+      className="absolute left-2.5 text-slate-400 pointer-events-none group-focus-within:text-blue-500"
+    />
+  )}
+  <input
+    ref={searchRef}
+    value={searchText}
+   placeholder={`Refresh${refreshShortcutLabel ? ` (${refreshShortcutLabel})` : ""}`}
+    onChange={(e) => {
+      setSearchText(e.target.value);
+      setPage(1);
+    }}
+    className="h-8 pl-7 pr-6 text-xs placeholder-slate/40 bg-slate-50 border border-slate-200 rounded-md w-[110px] sm:w-[185px] outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+  />
+  {searchText && (
+    <X
+      size={12}
+      className="absolute right-2 text-slate-400 cursor-pointer hover:text-slate-700"
+      onClick={() => setSearchText("")}
+    />
+  )}
 </div>
+ <div className="shrink-0">
+  <TableExport
+    title={title}
+    columns={columns}
+    data={sortedData}
+    visibleColumns={visibleColumns}
+    serverPagination={serverPagination}
+    onExportAll={onExportAll}
+    logbook={logbook}
+  />
+</div>
+   {onImport && (
+  <button
+    onClick={onImport}
+    title="Import data"
+    className="shrink-0 h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-emerald-50 border-emerald-300 text-emerald-600 hover:bg-emerald-100"
+  >
+    <Upload size={12} />
+  </button>
+)}
+{onRefresh && (
+  <button
+    onClick={onRefresh}
+    title="Refresh (Alt+R)"
+    className="shrink-0 h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none bg-pink-50 border-pink-300 text-pink-600 hover:bg-pink-100"
+  >
+    <RefreshCw size={12} />
+  </button>
+)}
+          {/* FIX: column menu — was broken because visibleColumns toggle wasn't being called correctly */}
+          <div className="relative shrink-0">
+            <button
+              ref={columnBtnRef}
+              onClick={() => setShowColumnMenu((p) => !p)}
+              title="Column settings"
+              className={`h-7 shrink-0 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${showColumnMenu
+                  ? "bg-slate-200 border-slate-400 text-slate-700"
+                  : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"
+                }`}
+            >
+              <Settings size={12} />
+            </button>
+
+            {showColumnMenu &&
+              createPortal(
+                <div
+                  ref={columnMenuPanelRef}
+                  style={{
+                    position: "fixed",
+                    top: columnMenuPos.top,
+                    right: columnMenuPos.right,
+                  }}
+                  className="bg-white border border-slate-200 rounded-lg shadow-lg z-[9999] overflow-hidden"
+                >
+                  <ColumnPanel
+                    columns={columns}
+                    visibleColumns={visibleColumns}
+                    lockedColumns={lockedColumns}
+                    onToggleVisible={toggleVisibleColumn}
+                    onToggleLock={toggleLockColumn}
+                  />
+                </div>,
+                document.body
+              )}
+          </div>
 
           {onToggleFilter && (
             <button
               onClick={onToggleFilter}
               title="Filters"
-              className={`h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
-                showForm
+              className={`shrink-0 h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${showForm
                   ? "bg-amber-100 border-amber-400 text-amber-700"
                   : "bg-amber-50 border-amber-300 text-amber-600 hover:bg-amber-100"
-              }`}
+                }`}
             >
               <Filter size={12} />
             </button>
           )}
-          {onAdd && <HeaderAddButton onClick={onAdd} />}
+  {onAdd && (
+  <div className="shrink-0">
+    <HeaderAddButton compact onClick={onAdd} />
+  </div>
+)}
         </div>
       </div>
 
@@ -839,11 +833,11 @@ const memoizedColumns = useMemo(() => {
                 const isSorted = sortField === c.key;
                 const stickyStyle = c.isFrozen
                   ? {
-                      position: "sticky",
-                      left: c.stickyLeft,
-                      zIndex: 42,
-                      boxShadow: "2px 0 4px -2px rgba(0,0,0,0.07)",
-                    }
+                    position: "sticky",
+                    left: c.stickyLeft,
+                    zIndex: 42,
+                    boxShadow: "2px 0 4px -2px rgba(0,0,0,0.07)",
+                  }
                   : {};
                 return (
                   <th
@@ -912,29 +906,29 @@ const memoizedColumns = useMemo(() => {
 
           <tbody>
             {loading &&
-            paginatedData.length === 0 ? null : paginatedData.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={orderedColumns.length + (actions ? 1 : 0)}
-                  className="py-16 text-center"
-                >
-                  <div className="flex flex-col items-center gap-2 text-slate-400">
-                    <Inbox size={36} strokeWidth={1} />
-                    <span className="text-[12px] font-medium">
-                      No records found
-                    </span>
-                    {debouncedSearch && (
-                      <button
-                        className="text-[11px] text-blue-500 hover:underline"
-                        onClick={() => setSearchText("")}
-                      >
-                        Clear search
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ) : (
+              paginatedData.length === 0 ? null : paginatedData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={orderedColumns.length + (actions ? 1 : 0)}
+                    className="py-16 text-center"
+                  >
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Inbox size={36} strokeWidth={1} />
+                      <span className="text-[12px] font-medium">
+                        No records found
+                      </span>
+                      {debouncedSearch && (
+                        <button
+                          className="text-[11px] text-blue-500 hover:underline"
+                          onClick={() => setSearchText("")}
+                        >
+                          Clear search
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
               paginatedData.map((row, index) => {
                 const rowId = row[rowKey];
                 const isSelected = selectedRows.includes(rowId);
@@ -973,9 +967,11 @@ const memoizedColumns = useMemo(() => {
           <span className="text-[11.5px] font-semibold text-blue-700">
             {selectedRows.length} row{selectedRows.length !== 1 ? "s" : ""}{" "}
             selected
-            <span className="font-normal text-blue-500 ml-2 text-[10.5px]">
-              · Alt+D to delete
-            </span>
+            {deleteShortcutLabel && (
+             <span className="font-normal text-blue-500 ml-2 text-[10.5px]">
+               · {deleteShortcutLabel} to delete
+             </span>
+           )}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -1027,7 +1023,7 @@ const memoizedColumns = useMemo(() => {
             {[
               ["↑↓", "navigate"],
               ["Space", "select"],
-              ["Alt+D", "delete"],
+             ...(deleteShortcutLabel ? [[deleteShortcutLabel, "delete"]] : []),
               ["Esc", "clear"],
             ].map(([k, v]) => (
               <span key={k} className="flex items-center gap-1">
@@ -1039,7 +1035,6 @@ const memoizedColumns = useMemo(() => {
             ))}
           </span>
         </div>
-
         <div className="flex items-center gap-1">
           <button
             className="h-7 w-7 inline-flex items-center justify-center border border-slate-200 rounded bg-white text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-default"

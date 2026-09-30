@@ -57,8 +57,6 @@ const STAT_META = [
   { key: "tds", label: "TDS", bg: "#FCEBEB", color: "#A32D2D" },
   { key: "lwf", label: "LWF", bg: "#EEEDFE", color: "#3C3489" },
 ];
-
-// ── helpers ─────────────────────────────────────────────────────
 const pick = (obj, keys) => {
   for (const k of keys) {
     if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
@@ -131,7 +129,6 @@ const PayrollOverview = () => {
       setEmployees(empRes?.success ? empRes.data || [] : []);
 
       const rawGrades = gradeRes?.success ? gradeRes.data || [] : [];
-      console.log("[gradeMix debug] raw grades BEFORE mapping (full objects):", rawGrades);
       setGrades(
         rawGrades.map((g, i) => ({
           id: pick(g, GRADE_ID_KEYS),
@@ -180,8 +177,6 @@ const PayrollOverview = () => {
     });
     return STAT_META.map((s) => ({ ...s, val: formatINR(totals[s.key]) }));
   }, [latestMonth]);
-
-  // ── Gross / Net / Deductions summary for the latest month ──────
   const metaRow = useMemo(() => {
     const gross = latestMonth.records.reduce((sum, r) => sum + num(pick(r, PAYROLL_KEYS.gross)), 0);
     const net = latestMonth.records.reduce((sum, r) => sum + num(pick(r, PAYROLL_KEYS.net)), 0);
@@ -193,12 +188,8 @@ const PayrollOverview = () => {
       { label: "Net payout", val: formatLakhs(net), bar: "#639922", w: `${Math.min((net / max) * 100, 100)}%` },
     ];
   }, [latestMonth]);
-
-  // ── Headcount & grade mix (currently active employees only) ────
   const gradeMix = useMemo(() => {
     const active = employees.filter((e) => !isLeftEmployee(e));
-
-    // Build an id -> label lookup from fetchGrades() (e.g. { 54: "GRADE A" })
     const idToLabel = {};
     grades.forEach((g) => {
       if (g.id !== null && g.id !== undefined && g.id !== "") idToLabel[String(g.id)] = g.label;
@@ -210,27 +201,14 @@ const PayrollOverview = () => {
       const label = (gradeId !== null && idToLabel[String(gradeId)]) || "Unassigned";
       counts[label] = (counts[label] || 0) + 1;
     });
-
-    // ── 🐞 TEMP DEBUG — remove once grade mix is confirmed working ──
-    console.log("[gradeMix debug] total employees:", employees.length);
-    console.log("[gradeMix debug] active (non-left) employees:", active.length);
-    console.log("[gradeMix debug] idToLabel lookup built from fetchGrades():", idToLabel);
-    console.log("[gradeMix debug] counts by resolved label:", counts);
-    // ─────────────────────────────────────────────────────────────
-
-    // Show every known grade (even 0-count ones) plus "Unassigned" if any exist
     const knownLabels = grades.map((g) => g.label);
     const labels = counts["Unassigned"] > 0 ? [...knownLabels, "Unassigned"] : knownLabels;
     const colors = labels.map((l, i) => (l === "Unassigned" ? "#9CA3AF" : grades[i]?.color || PALETTE[i % PALETTE.length]));
     const data = labels.map((l) => counts[l] || 0);
-
-    console.log("[gradeMix debug] final labels used for chart:", labels);
-    console.log("[gradeMix debug] final data (counts per label):", data);
+ 
 
     return { labels, data, colors };
   }, [employees, grades]);
-
-  // ── Joins vs Exits, year-to-date ───────────────────────────────
   const joinExit = useMemo(() => {
     const thisYear = new Date().getFullYear();
     let joins = 0;
@@ -249,8 +227,6 @@ const PayrollOverview = () => {
     });
     return { joins, exits };
   }, [employees]);
-
-  // ── chart configs ───────────────────────────────────────────────
   const trendData = {
     labels: trend.labels,
     datasets: [
@@ -370,8 +346,6 @@ const PayrollOverview = () => {
               </div>
             ))}
           </div>
-
-          {/* Statutory breakdown chips — now computed from real payroll records */}
           <div style={styles.chipRow}>
             {statutory.map((s) => (
               <span key={s.label} style={{ ...styles.chip, background: s.bg, color: s.color }}>
@@ -412,8 +386,6 @@ const PayrollOverview = () => {
               </div>
             )}
           </div>
-
-          {/* Grade chips */}
           <div style={styles.chipRow}>
             {gradeMix.labels.map((g, i) => (
               <span key={g} style={{ ...styles.chip, background: gradeMix.colors[i] + "22", color: gradeMix.colors[i] }}>
@@ -421,8 +393,6 @@ const PayrollOverview = () => {
               </span>
             ))}
           </div>
-
-          {/* Joins vs Exits */}
           <div style={{ marginTop: 12, paddingTop: 10, borderTop: "0.5px solid rgba(0,0,0,0.07)" }}>
             <div style={styles.cardTitle}>Joining vs exit — YTD</div>
             <div style={{ display: "flex", gap: 8, marginTop: 7 }}>

@@ -17,6 +17,7 @@
     align-items: flex-end;
     gap: 3px;
     height: 100%;
+    overflow-y: hidden; 
     overflow-x: auto;
     scrollbar-width: none;
 }

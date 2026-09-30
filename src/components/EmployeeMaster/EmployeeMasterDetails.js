@@ -28,11 +28,6 @@ export const fieldGroups = {
       { key: "Anniversary Date", label: "Anniversary Date", type: "date", showIf: (data) => data["Marital Status"] === "Married" },
 
     ],
-
-
-
-
-
     "Educational Details": [
       { key: "Qualification", label: "Qualification", type: "select", options: ["Below 10th", "10th Pass", "12th Pass", "Graduate", "Post Graduate", "Doctorate"] },
       { key: "Professional Qualification", label: "Professional Qualification", type: "text" },

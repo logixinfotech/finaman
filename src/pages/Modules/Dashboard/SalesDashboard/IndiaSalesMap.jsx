@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import * as d3 from "d3-geo";
+import ExportMenu from "./ExportMenu";
+import { Map } from "lucide-react";
 import { by, inrS } from "../../../../utils/helpers";
 import { CITY_COORDS } from "./indiaCityCoords";
 
@@ -25,7 +27,6 @@ function loadGeo() {
             return j;
           }
         } catch {
-          // try next source
         }
       }
       throw new Error("No India geojson source responded");
@@ -34,6 +35,11 @@ function loadGeo() {
   return geoPromise;
 }
 
+const MAP_EXPORT_COLS = [
+  { key: "state", label: "State" },
+  { key: "amt",   label: "Sales (₹)", type: "num" },
+  { key: "share", label: "Share %", type: "pct" },
+];
 const normalize = (s) => (s || "").toUpperCase().replace(/[^A-Z]/g, "");
 const featName = (f) => {
   const p = f.properties || {};
@@ -144,6 +150,12 @@ export default function IndiaSalesMap({ rows, filters, setFilters, height = 380 
   const stateSales = useMemo(() => by(rows, (r) => normalize(r.state), (r) => r.amt), [rows]);
   const citySales  = useMemo(() => by(rows, (r) => r.city, (r) => r.amt), [rows]);
   const maxState = useMemo(() => Math.max(1, ...Object.values(stateSales)), [stateSales]);
+  /* export uses the raw state name (not the normalised key) so it matches the filter dropdown */
+  const mapExportRows = useMemo(() => {
+    const m = by(rows, (r) => r.state || "Unknown", (r) => r.amt);
+    const total = Object.values(m).reduce((s, v) => s + v, 0) || 1;
+    return Object.entries(m).sort((a, b) => b[1] - a[1]).map(([state, amt]) => ({ state, amt, share: (amt / total) * 100 }));
+  }, [rows]);
   const maxCity  = useMemo(() => Math.max(1, ...Object.values(citySales)), [citySales]);
 
   const lowestStateNorm = useMemo(() => {
@@ -152,10 +164,16 @@ export default function IndiaSalesMap({ rows, filters, setFilters, height = 380 
     return entries.sort((a, b) => a[1] - b[1])[0][0];
   }, [stateSales]);
 
-  const projection = useMemo(
-    () => d3.geoMercator().center([82.8, 22.6]).scale(width * 1.35).translate([width / 2, height / 2]),
-    [width, height]
-  );
+   // Height follows width so the card isn't a tall empty box on small screens.
+  const h = useMemo(() => Math.round(Math.min(height, Math.max(260, width * 0.95))), [width, height]);
+
+  // fitExtent scales + centres the map to the actual box, so it never gets
+  // clipped whatever the card's width/height turn out to be.
+  const projection = useMemo(() => {
+    const p = d3.geoMercator();
+    if (geo) return p.fitExtent([[8, 8], [width - 8, h - 8]], geo);
+    return p.center([82.8, 22.6]).scale(width * 1.35).translate([width / 2, h / 2]);
+  }, [geo, width, h]);
   const pathGen = useMemo(() => d3.geoPath(projection), [projection]);
 
   const statePaths = useMemo(() => {
@@ -167,7 +185,7 @@ export default function IndiaSalesMap({ rows, filters, setFilters, height = 380 
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    if (rafRef.current) return; // ek pending frame se zyada mat queue karo
+    if (rafRef.current) return; 
     rafRef.current = requestAnimationFrame(() => {
       setHover({ name, x, y, amt, lowest: isLowest });
       rafRef.current = null;
@@ -194,7 +212,6 @@ export default function IndiaSalesMap({ rows, filters, setFilters, height = 380 
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md lg:col-span-1">
-      {/* blink keyframe — scoped here since this is the only place that uses it */}
       <style>{`
         @keyframes fd-map-blink {
           0%, 100% { opacity: 1; }
@@ -205,21 +222,24 @@ export default function IndiaSalesMap({ rows, filters, setFilters, height = 380 
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-            🗺️
+            <Map className="h-3.5 w-3.5" strokeWidth={2.5} />
           </span>
           <h4 className="text-[13px] font-bold tracking-tight text-slate-700">Sales by Region</h4>
         </div>
-        {filters.state && (
-          <button
-            onClick={() => setFilters((f) => ({ ...f, state: "", city: "" }))}
-            className="text-[11px] font-semibold text-indigo-600 hover:underline"
-          >
-            Clear map filter
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {filters.state && (
+            <button
+              onClick={() => setFilters((f) => ({ ...f, state: "", city: "" }))}
+              className="text-[11px] font-semibold text-indigo-600 hover:underline"
+            >
+              Clear map filter
+            </button>
+          )}
+          <ExportMenu title="Sales by Region" columns={MAP_EXPORT_COLS} rows={mapExportRows} />
+        </div>
       </div>
 
-      <div ref={containerRef} className="relative w-full" style={{ height }}>
+      <div ref={containerRef} className="relative w-full" style={{ height: h }}>
         {geoError && (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-xs text-slate-400">
             <span>Map data couldn't load. Everything else on the dashboard still works.</span>
@@ -232,7 +252,7 @@ export default function IndiaSalesMap({ rows, filters, setFilters, height = 380 
           <div className="flex h-full items-center justify-center text-xs text-slate-400">Loading map…</div>
         )}
         {geo && (
-          <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height}>
+          <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={h}>
             <StatePaths
               statePaths={statePaths}
               stateSales={stateSales}
@@ -259,7 +279,7 @@ export default function IndiaSalesMap({ rows, filters, setFilters, height = 380 
             className="pointer-events-none absolute z-10 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg"
             style={{ left: hover.x + 12, top: hover.y + 12 }}
           >
-            {hover.name}{hover.lowest ? " 🔻 lowest" : ""}: {inrS(hover.amt)}
+            {hover.name}{hover.lowest ? " · lowest" : ""}: {inrS(hover.amt)}
           </div>
         )}
       </div>

@@ -24,7 +24,6 @@ export default function LazySection({ children, minHeight = 320, rootMargin = "3
     </div>
   );
 }
-
 function SkeletonBlock({ height }) {
   return (
     <div

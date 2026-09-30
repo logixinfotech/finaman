@@ -3,6 +3,8 @@ import {
   FaCogs, FaStamp, FaVial, FaFileContract,
   FaFlagCheckered, FaHistory,
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa"; 
+
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -105,6 +107,10 @@ export default function QualificationMasterPage({ tab }) {
         (!filters.Equipment || has(it.Equipment, filters.Equipment))
       );
   }, [m.list, filters]);
+  const ModuleIcon = useMemo(() => {
+                    const name = tab?.icon_name || tab?.module?.icon_name;
+                    return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+                  }, [tab?.icon_name, tab?.module?.icon_name]);
 
   const handlePrint = useCallback(() => {
     printWorkflow.openPrintFor(m.formData?.Id, {
@@ -126,8 +132,11 @@ export default function QualificationMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Qualification Planner"
+          subtitle={m.formData?.RecordNo||"New"}
+          TitleIcon={ModuleIcon}
           tabs={qualificationTabs}
           tabLabels={qualificationTabLabels}
+          tabStage={qualificationTabStage}
           TabIcon={QualificationTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -157,7 +166,7 @@ export default function QualificationMasterPage({ tab }) {
              onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -179,6 +188,7 @@ export default function QualificationMasterPage({ tab }) {
     <div className="h-full w-full">
       <Table
         title="Qualification Planner"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={qualificationTableColumns}
         rowKey="Id"

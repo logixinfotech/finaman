@@ -1,5 +1,6 @@
-// pages/Modules/Master/UserMaster/WorkflowRolesModal.jsx
-import { useEffect, useState, useMemo, useCallback } from "react";
+ 
+import { useEffect, useState, useMemo, useCallback, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import * as FaIcons from "react-icons/fa";
 import { showToast, alertError, alertWarning } from "../../../../components/Reusable/alert";
 import {
@@ -7,10 +8,7 @@ import {
   getWorkflowRoleOptions,
   saveWorkflowRoles,
   resetWorkflowRoles,
-} from "../../QMS/Utils/QmsAPI";
-
-/* ── helpers ─────────────────────────────────────────────────────────── */
-
+} from "../../QMS/Utils/QmsAPI"; 
 const initials = (role) =>
   String(role || "")
     .split(/[\s/]+/)
@@ -19,15 +17,44 @@ const initials = (role) =>
     .map((w) => w[0])
     .join("")
     .toUpperCase() || "?";
-
-// Order-independent comparison of two role arrays
+ 
 const sig = (arr) => [...(arr || [])].map((s) => String(s).trim()).sort().join("|");
-const sameRoles = (a, b) => sig(a) === sig(b);
+const sameRoles = (a, b) => sig(a) === sig(b); 
+function RolePicker({ options, selected, onToggle, onClose, anchorRef, anchorRect }) {
+  const [q, setQ] = useState(""); 
+  const [pos, setPos] = useState(() => toPos(anchorRect));
+  const panelRef = useRef(null);
 
-/* ── role picker dropdown ────────────────────────────────────────────── */
+  
+  function toPos(r) {
+    if (!r) return null;
+    const width = 240; // w-60
+    const gutter = 8;
 
-function RolePicker({ options, selected, onToggle, onClose }) {
-  const [q, setQ] = useState("");
+    let left = r.left;
+    if (left + width > window.innerWidth - gutter) {
+      left = window.innerWidth - width - gutter;
+    }
+    left = Math.max(gutter, left);
+
+    const top = r.bottom + 4;
+    const maxHeight = Math.max(140, window.innerHeight - top - gutter);
+
+    return { left, top, width, maxHeight };
+  } 
+  useLayoutEffect(() => {
+    const recompute = () => {
+      const el = anchorRef?.current;
+      if (!el) return;
+      setPos(toPos(el.getBoundingClientRect()));
+    };
+    window.addEventListener("scroll", recompute, true);
+    window.addEventListener("resize", recompute);
+    return () => {
+      window.removeEventListener("scroll", recompute, true);
+      window.removeEventListener("resize", recompute);
+    };
+  }, [anchorRef]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -35,11 +62,22 @@ function RolePicker({ options, selected, onToggle, onClose }) {
     return options.filter((o) => o.role.toLowerCase().includes(needle));
   }, [options, q]);
 
-  return (
+  if (!pos) return null;
+
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute z-50 mt-1 w-60 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden">
-        <div className="p-2 border-b border-slate-100">
+      <div className="fixed inset-0 z-[70]" onClick={onClose} />
+      <div
+        ref={panelRef}
+        className="fixed z-[80] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden flex flex-col"
+        style={{
+          left: pos.left,
+          top: pos.top,
+          width: pos.width,
+          maxHeight: pos.maxHeight,
+        }}
+      >
+        <div className="p-2 border-b border-slate-100 shrink-0">
           <input
             autoFocus
             value={q}
@@ -48,7 +86,7 @@ function RolePicker({ options, selected, onToggle, onClose }) {
             className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
           />
         </div>
-        <div className="max-h-52 overflow-y-auto">
+        <div className="overflow-y-auto">
           {filtered.length === 0 && (
             <div className="px-3 py-4 text-[11.5px] text-slate-400 text-center">
               No role found
@@ -84,19 +122,22 @@ function RolePicker({ options, selected, onToggle, onClose }) {
           })}
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
 /* ── role chips ──────────────────────────────────────────────────────── */
 
-function RoleChips({ roles, options, disabled, onChange, pickerKey, openKey, setOpenKey }) {
+function RoleChips({ roles, options, disabled, onChange, pickerKey, openPicker, setOpenPicker }) {
+  const addBtnRef = useRef(null);
+
   const countOf = useCallback(
     (r) => options.find((o) => o.role.toLowerCase() === String(r).toLowerCase())?.userCount ?? 0,
     [options]
   );
 
-  const isOpen = openKey === pickerKey;
+  const isOpen = openPicker?.key === pickerKey;
   const orphan = roles.filter((r) => countOf(r) === 0);
 
   const toggle = (role) => {
@@ -146,8 +187,16 @@ function RoleChips({ roles, options, disabled, onChange, pickerKey, openKey, set
 
         {!disabled && (
           <button
+            ref={addBtnRef}
             type="button"
-            onClick={() => setOpenKey(isOpen ? null : pickerKey)}
+            onClick={(e) => {
+              if (isOpen) {
+                setOpenPicker(null);
+                return;
+              } 
+              const rect = e.currentTarget.getBoundingClientRect();
+              setOpenPicker({ key: pickerKey, rect });
+            }}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-slate-300 text-[11.5px] text-slate-400 hover:border-blue-400 hover:text-blue-600"
             aria-label="Add role"
           >
@@ -174,15 +223,15 @@ function RoleChips({ roles, options, disabled, onChange, pickerKey, openKey, set
           options={options}
           selected={roles}
           onToggle={toggle}
-          onClose={() => setOpenKey(null)}
+          onClose={() => setOpenPicker(null)}
+          anchorRef={addBtnRef}
+          anchorRect={openPicker.rect}
         />
       )}
     </div>
   );
 }
-
-/* ── main modal ──────────────────────────────────────────────────────── */
-
+ 
 export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, onSaved }) {
   const [loading, setLoading]         = useState(true);
   const [saving, setSaving]           = useState(false);
@@ -192,8 +241,10 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
   const [defaults, setDefaults]       = useState({});   // sectionKey -> roles[] (system default)
   const [mode, setMode]               = useState("standard");
   const [splitStages, setSplitStages] = useState(() => new Set());
-  const [openKey, setOpenKey]         = useState(null);
-
+  const [openPicker, setOpenPicker]   = useState(null); // { key, rect } | null
+  // Parent may pass a new inline onClose on every render — keep it out of deps
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -223,16 +274,16 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
     } finally {
       setLoading(false);
     }
-  }, [moduleKey, onClose]);
+  }, [moduleKey]);
 
   useEffect(() => { load(); }, [load]);
 
   // Close on Escape
   useEffect(() => {
-    const h = (e) => { if (e.key === "Escape") { setOpenKey(null); onClose?.(); } };
+    const h = (e) => { if (e.key === "Escape") { setOpenPicker(null); onClose?.(); } };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
+  }, []);
 
   const readOnly = mode === "standard";
 
@@ -355,7 +406,7 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
                   <button
                     key={o.v}
                     type="button"
-                    onClick={() => { setOpenKey(null); setMode(o.v); }}
+                    onClick={() => { setOpenPicker(null); setMode(o.v); }}
                     className={`text-left rounded-lg p-3 border transition-colors ${
                       on
                         ? "border-blue-500 bg-blue-50/70 ring-1 ring-blue-500"
@@ -400,14 +451,14 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
                   <span className="text-[10px] tracking-wider text-slate-400">WHO WORKS HERE</span>
                 </div>
 
-                {stages.map((st) => {
+                {stages.map((st, stIdx) => {
                   const secs = st.sections || [];
 
                   // Terminal stages (Closed / Obsolete) have no work to assign
                   if (st.isTerminal || secs.length === 0) {
                     return (
                       <div
-                        key={st.stage}
+                        key={`${st.stage}-${stIdx}`}
                         className="grid grid-cols-[26px_minmax(0,150px)_minmax(0,1fr)] gap-2.5 px-3 py-2.5 border-b border-slate-100 last:border-0 items-center opacity-50"
                       >
                         <span className="w-[22px] h-[22px] rounded-full border border-dashed border-slate-300 text-slate-400 flex items-center justify-center">
@@ -423,7 +474,11 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
                   const uniform =
                     secs.length > 1 &&
                     secs.every((s) => sameRoles(rolesOf(s.sectionKey), rolesOf(secs[0].sectionKey)));
-                  const split = splitStages.has(st.stage);
+                  // Use the row index (not just st.stage) so two stages that
+                  // happen to share the same `stage` number can never
+                  // collide on the same split/picker state.
+                  const splitId = `${st.stage}-${stIdx}`;
+                  const split = splitStages.has(splitId);
                   const showUniform = uniform && !split;
 
                   const stageChanged = secs.some(
@@ -432,7 +487,7 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
 
                   return (
                     <div
-                      key={st.stage}
+                      key={splitId}
                       className={`grid grid-cols-[26px_minmax(0,150px)_minmax(0,1fr)] gap-2.5 px-3 py-2.5 border-b border-slate-100 last:border-0 items-start ${
                         stageChanged ? "bg-emerald-50/60" : ""
                       }`}
@@ -463,7 +518,7 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
                         {!readOnly && uniform && !split && (
                           <button
                             type="button"
-                            onClick={() => setSplitStages((p) => new Set(p).add(st.stage))}
+                            onClick={() => setSplitStages((p) => new Set(p).add(splitId))}
                             className="text-[10px] text-blue-600 hover:underline mt-0.5"
                           >
                             Set per section
@@ -478,14 +533,14 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
                             options={options}
                             disabled={readOnly}
                             onChange={(r) => setStageRoles(secs, r)}
-                            pickerKey={`stage-${st.stage}`}
-                            openKey={openKey}
-                            setOpenKey={setOpenKey}
+                            pickerKey={`stagepicker-${splitId}`}
+                            openPicker={openPicker}
+                            setOpenPicker={setOpenPicker}
                           />
                         ) : (
                           <div className="space-y-2.5">
-                            {secs.map((sec) => (
-                              <div key={sec.sectionKey}>
+                            {secs.map((sec, secIdx) => (
+                              <div key={`${sec.sectionKey}-${secIdx}`}>
                                 {secs.length > 1 && (
                                   <div className="text-[10.5px] text-slate-400 mb-1 truncate">
                                     {sec.sectionKey}
@@ -496,9 +551,9 @@ export default function WorkflowRolesModal({ moduleKey, moduleLabel, onClose, on
                                   options={options}
                                   disabled={readOnly}
                                   onChange={(r) => setSectionRoles(sec.sectionKey, r)}
-                                  pickerKey={sec.sectionKey}
-                                  openKey={openKey}
-                                  setOpenKey={setOpenKey}
+                                  pickerKey={`sectionpicker-${splitId}-${sec.sectionKey}-${secIdx}`}
+                                  openPicker={openPicker}
+                                  setOpenPicker={setOpenPicker}
                                 />
                               </div>
                             ))}

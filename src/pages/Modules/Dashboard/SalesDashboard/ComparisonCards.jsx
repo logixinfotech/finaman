@@ -1,6 +1,20 @@
 import { useMemo } from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { inrS, isoOf, addD, monday, toD } from "../../../../utils/helpers";
+import { useExportSource } from "./ExportRegistry";
+
+const EXPORT_COLS = [
+  { key: "label",   label: "Comparison" },
+  { key: "curRange",  label: "Current Period" },
+  { key: "curAmt",  label: "Current Sales (₹)", type: "num" },
+  { key: "curInv",  label: "Current Invoices", type: "int" },
+  { key: "prevRange", label: "Previous Period" },
+  { key: "prevAmt", label: "Previous Sales (₹)", type: "num" },
+  { key: "prevInv", label: "Previous Invoices", type: "int" },
+  { key: "pct",     label: "Change %", type: "pct" },
+  { key: "avgCur",  label: "Avg Order Value (₹)", type: "num" },
+  { key: "avgPrev", label: "Prev Avg Order Value (₹)", type: "num" },
+];
 
 function buildWindows(today) {
   const wkStart = monday(today);
@@ -31,8 +45,6 @@ function rangeLabel(aISO, bISO, gran) {
   if (gran === "month") return new Date(aISO).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
   return `${fmtD(aISO)} – ${fmtD(bISO)}`;
 }
-
-/* One pass over rows -> per-day { amt, invSet }. Har card isi map se padhta hai. */
 function buildDailyIndex(rows) {
   const m = new Map();
   for (const r of rows) {
@@ -51,15 +63,13 @@ function sumWindow(daily, dates, a, b) {
   const inv = new Set();
   for (const d of dates) {
     if (d < a) continue;
-    if (d > b) break;                       // dates sorted hain
+    if (d > b) break;           
     const e = daily.get(d);
     amt += e.amt;
     for (const v of e.inv) inv.add(v);
   }
   return { amt, inv: inv.size };
 }
-
-/* week/month -> daily buckets, year -> monthly buckets (365 points 100px me bekaar hain) */
 function buildSparkline(daily, dates, aISO, bISO, gran) {
   const buckets = new Map();
   if (gran === "year") {
@@ -105,8 +115,6 @@ function Sparkline({ values, up }) {
 export default function ComparisonCards({ rows, refDate }) {
   const daily = useMemo(() => buildDailyIndex(rows), [rows]);
   const dates = useMemo(() => [...daily.keys()].sort(), [daily]);
-
-  // aaj ki date nahi — data ki aakhri date. Warna stale data pe "This Week" hamesha ₹0.
   const anchor = useMemo(() => {
     const iso = refDate || dates[dates.length - 1];
     return iso ? toD(iso) : new Date();
@@ -132,14 +140,26 @@ export default function ComparisonCards({ rows, refDate }) {
     });
   }, [daily, dates, anchor]);
 
+  /* no button on these small cards — the data is included in "Export all charts" */
+  useExportSource("comparison-cards", () => ({
+    title: "Period Comparison",
+    columns: EXPORT_COLS,
+    rows: cards.map((c) => ({
+      label: c.label,
+      curRange: rangeLabel(c.win.curA, c.win.curB, c.win.gran), curAmt: c.cur.amt, curInv: c.cur.inv,
+      prevRange: rangeLabel(c.win.prevA, c.win.prevB, c.win.gran), prevAmt: c.prev.amt, prevInv: c.prev.inv,
+      pct: c.pct, avgCur: c.avgCur, avgPrev: c.avgPrev,
+    })),
+  }));
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-5">
       {cards.map((c, i) => {
         const up = c.pct >= 0;
         const barPct = Math.min(100, Math.max(6, (c.cur.amt / (Math.max(c.cur.amt, c.prev.amt) || 1)) * 100));
         const avgUp = c.avgPct >= 0;
         return (
-          <div key={i} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+         <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">{c.label}</h4>
               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${up ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"}`}>
@@ -149,8 +169,8 @@ export default function ComparisonCards({ rows, refDate }) {
             </div>
 
             <div className="flex items-baseline justify-between mb-1">
-              <span className="text-xs text-slate-500">📍 {rangeLabel(c.win.curA, c.win.curB, c.win.gran)}</span>
-              <span className="text-lg font-extrabold text-slate-900">{inrS(c.cur.amt)}</span>
+              <span className="text-xs text-slate-500">{rangeLabel(c.win.curA, c.win.curB, c.win.gran)}</span>
+             <span className="text-base font-extrabold text-slate-900">{inrS(c.cur.amt)}</span>
             </div>
 
             <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden mb-1">

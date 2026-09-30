@@ -13,7 +13,7 @@ import { fetchAttendanceRegister } from "../../../utils/api";
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
-const TREND_DATA = [209, 215, 211, 218, 211]; // TODO: wire this to a real weekly-trend endpoint if available
+const TREND_DATA = [209, 215, 211, 218, 211];
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -31,6 +31,8 @@ const mapStatus = (dbStatus) => {
     "WEEKOFF OT": "WOT",
     HOLIDAY: "H",
     "HOLIDAY OT": "HOT",
+    WFH: "H",
+    WFS: "D",
     CL: "CL",
     SL: "SL",
     PL: "PL",
@@ -39,8 +41,8 @@ const mapStatus = (dbStatus) => {
   return map[dbStatus] || dbStatus || "-";
 };
 
-const PRESENT_STATUSES = ["P", "HD", "SH"];
-const OFF_STATUSES = ["WO", "H", "WOT", "HOT"];
+const PRESENT_STATUSES = ["P", "HD", "SH", "D", "H"];
+const OFF_STATUSES = ["WO", "S", "WOT", "HOT"];
 
 const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate();
 
@@ -52,9 +54,7 @@ function cellColor(v) {
 }
 
 const HOLIDAY_COLOR = "#F7C1C1";
-const NO_DATA_COLOR = "#EAECEF"; // future / not-yet-available day
-
-// ── tiny inline icons (no external deps) ──────────────────────
+const NO_DATA_COLOR = "#EAECEF";
 const CalendarIcon = ({ color = "#185FA5" }) => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
@@ -140,11 +140,11 @@ const AttendanceHeatmap = () => {
   }, []);
 
   const [cursor, setCursor] = useState({
-    month: today.getMonth() + 1, // 1-12
+    month: today.getMonth() + 1,
     year: today.getFullYear(),
   });
 
-  const [dayMap, setDayMap] = useState({}); // { [day]: { total, present, off } }
+  const [dayMap, setDayMap] = useState({});
   const [hmLoading, setHmLoading] = useState(false);
   const [hmError, setHmError] = useState(false);
 
@@ -203,8 +203,8 @@ const AttendanceHeatmap = () => {
   };
   const calendarCells = useMemo(() => {
     const daysInMonth = getDaysInMonth(cursor.month, cursor.year);
-    const firstWeekday = new Date(cursor.year, cursor.month - 1, 1).getDay(); // 0=Sun..6=Sat
-    const leadingBlanks = (firstWeekday + 6) % 7; // shift so Monday = 0
+    const firstWeekday = new Date(cursor.year, cursor.month - 1, 1).getDay();
+    const leadingBlanks = (firstWeekday + 6) % 7;
 
     const cells = Array.from({ length: leadingBlanks }, () => null);
 
@@ -232,8 +232,6 @@ const AttendanceHeatmap = () => {
 
       cells.push({ day, color, label, isFuture: isFuture || !entry, isToday: cellDate.getTime() === today.getTime() });
     }
-
-    // pad trailing cells so the grid always completes full week rows
     while (cells.length % 7 !== 0) cells.push(null);
 
     return cells;
@@ -242,11 +240,11 @@ const AttendanceHeatmap = () => {
   const workingCells = calendarCells.filter((c) => c && !c.isFuture && c.color !== HOLIDAY_COLOR);
   const heatmapAvg = workingCells.length
     ? Math.round(
-        workingCells.reduce((sum, c) => {
-          const m = { "#27500A": 97, "#3B6D11": 92, "#639922": 87, "#C0DD97": 80 };
-          return sum + (m[c.color] ?? 0);
-        }, 0) / workingCells.length
-      )
+      workingCells.reduce((sum, c) => {
+        const m = { "#27500A": 97, "#3B6D11": 92, "#639922": 87, "#C0DD97": 80 };
+        return sum + (m[c.color] ?? 0);
+      }, 0) / workingCells.length
+    )
     : null;
 
   const deptRows = (deptData || [])
@@ -296,7 +294,6 @@ const AttendanceHeatmap = () => {
 
   return (
     <>
-      {/* CARD 1: Heatmap */}
       <div className="ah-card ah-heatmap-card" style={styles.heatmapCard}>
         <div style={styles.cardHdr}>
           <div style={styles.headerLeft}>
@@ -399,8 +396,6 @@ const AttendanceHeatmap = () => {
           </div>
         </div>
       </div>
-
-      {/* CARD 2: Dept bars + trend */}
       <div className="ah-card" style={styles.card}>
         <div style={styles.cardHdr}>
           <div style={styles.headerLeft}>

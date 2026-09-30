@@ -1,20 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-
-// Worker is served from your own /public folder — no CDN dependency.
-// Copy node_modules/pdfjs-dist/build/pdf.worker.min.mjs into public/
-// (older pdfjs versions ship pdf.worker.min.js — match the filename here).
+ 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Renders every page of a PDF onto <canvas> elements.
-// Works identically on Android, iOS and desktop because WE draw it —
-// nothing relies on the browser's (missing on Android) inline PDF viewer.
-// ─────────────────────────────────────────────────────────────────────────────
+ 
 const PdfView = ({ url }) => {
     const wrapRef = useRef(null);
-    const [status, setStatus] = useState("loading"); // loading | done | error
-
+    const [status, setStatus] = useState("loading");  
     useEffect(() => {
         let cancelled = false;
         const wrap = wrapRef.current;
@@ -33,7 +24,6 @@ const PdfView = ({ url }) => {
                     const base  = page.getViewport({ scale: 1 });
                     const width = (wrap && wrap.clientWidth) || 600;
                     const dpr   = window.devicePixelRatio || 1;
-                    // scale so the page fills the container width, then * dpr for sharpness
                     const vp    = page.getViewport({ scale: (width / base.width) * dpr });
 
                     const canvas  = document.createElement("canvas");

@@ -14,13 +14,13 @@ import {
   FaExclamationCircle,
   FaBuilding,
   FaHashtag,
-  FaCalendarAlt,
+  FaCalendarAlt, FaCog
 } from "react-icons/fa";
 import { useNotifications } from "../../theme/NotificationContext";
 import NotificationPanel from "../../pages/NotificationPanel";
 import GlobalSearch from "./GlobalSearch";
- import { GiHamburgerMenu } from 'react-icons/gi';
-import { fetchSwitchableCompanies, switchCompany } from "../../utils/api"; 
+import { GiHamburgerMenu } from 'react-icons/gi';
+import { fetchSidebarMenu, fetchSwitchableCompanies, switchCompany } from "../../utils/api";
 import { useAuth } from "../../theme/AuthContext";
 const DEFAULT_ACC_YEAR = "2024-2025";
 
@@ -37,6 +37,8 @@ function Header({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [username, setUsername] = useState("");
+  const [modules, setModules] = useState([]);
+  const { token } = useAuth();
   const [companyInfo, setCompanyInfo] = useState({
     name: "Demo Company Private Limited",
     loc: "Uttar Pradesh",
@@ -52,7 +54,7 @@ function Header({
   const [switchError, setSwitchError] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [currentComId, setCurrentComId] = useState(null);
-const { user, login } = useAuth();
+  const { user, login } = useAuth();
   const searchRef = useRef(null);
   const rowRefs = useRef([]);
   const srNoBodyRef = useRef(null);
@@ -71,7 +73,7 @@ const { user, login } = useAuth();
   }, []);
 
   useEffect(() => {
-   
+
     if (user) {
       setUsername(user.user_name || user.username || user.user_id || "User");
       setCurrentComId(user.com_id || user.selected_company_id || null);
@@ -113,14 +115,14 @@ const { user, login } = useAuth();
     setTheme(nextTheme);
   };
 
- const filteredCompanies = useMemo(
-  () =>
-    companies.filter(c =>
-      c.company?.toLowerCase().includes(switchSearch.toLowerCase()) ||
-      c.com_code?.toLowerCase().includes(switchSearch.toLowerCase())
-    ),
-  [companies, switchSearch]
-);
+  const filteredCompanies = useMemo(
+    () =>
+      companies.filter(c =>
+        c.company?.toLowerCase().includes(switchSearch.toLowerCase()) ||
+        c.com_code?.toLowerCase().includes(switchSearch.toLowerCase())
+      ),
+    [companies, switchSearch]
+  );
 
   useEffect(() => {
     if (highlightedIndex >= filteredCompanies.length) {
@@ -136,6 +138,25 @@ const { user, login } = useAuth();
       });
     }
   }, [highlightedIndex]);
+
+
+
+  useEffect(() => {
+    const loadModules = async () => {
+      try {
+        if (!token) throw new Error("No token found");
+        const data = await fetchSidebarMenu(token);
+        const visibleModules = (data || [])
+          .filter((m) => m.show_stat === "Y")
+          .sort((a, b) => (a.mod_srl || 0) - (b.mod_srl || 0));
+        setModules(visibleModules);
+      } catch (err) {
+      } finally {
+      }
+    };
+
+    loadModules();
+  }, []);
 
   const handleColumnScroll = (source) => {
     const top = source.current?.scrollTop || 0;
@@ -181,7 +202,7 @@ const { user, login } = useAuth();
       const res = await switchCompany(company.com_id);
       if (!res.success) throw new Error(res.message || "Failed to switch company.");
 
-      login(res.token, res.user, res.permissions);    
+      login(res.token, res.user, res.permissions);
 
       window.location.reload();
     } catch (err) {
@@ -217,31 +238,31 @@ const { user, login } = useAuth();
     <header
       className="relative z-[500] h-[44px] w-full flex items-center justify-between px-3 md:px-5 shadow-md border-b-2 border-blue-700"
       style={{ background: "var(--sidebar-top-bg)" }}
-    > 
+    >
       <div className="flex items-center gap-2 md:gap-3">
         {isMobile && (<>
-           <button
+          <button
             onClick={onOpenMobileSidebar}
             className="  p-0.5 rounded-lg   hover:bg-white/20 text-white transition"
             aria-label="Open menu"
           >
-              <GiHamburgerMenu size={24}/>
-      
+            <GiHamburgerMenu size={24} />
+
           </button>
           <button
             onClick={onOpenMobileSidebar}
             className="  p-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
             aria-label="Open menu"
           >
-             
+
             <img
               src="/finaman-logo.png"
               alt="Logo"
               className="h-6 w-6 object-contain"
             />
-      
+
           </button>
-          </>
+        </>
         )}
 
         {!isMobile && (
@@ -274,7 +295,7 @@ const { user, login } = useAuth();
           {companyInfo.name}
           <span className="absolute left-0 -bottom-[1px] w-full h-[1px] bg-blue-500/50 rounded-full"></span>
         </span>
-        <div className="flex items-center gap-2 mt-0.5 text-[9px] font-semibold text-white/60">
+        <div className="flex items-center gap-2 mt-0.5 text-[11px] font-semibold text-white/60">
           <span className="flex items-center gap-1">
             <FaMapMarkerAlt className="text-blue-400 text-[8px]" />
             {companyInfo.loc}
@@ -285,11 +306,10 @@ const { user, login } = useAuth();
           </span>
         </div>
       </div>
-
       <div className="flex items-center gap-2 md:gap-3">
         <div className="flex items-center gap-1.5">
 
-          <GlobalSearch allMenus={allMenus} onOpenPage={onOpenPage} />
+          <GlobalSearch allMenus={allMenus} modules={modules} onOpenPage={onOpenPage} />
           <div className="relative" ref={notifyRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -384,6 +404,18 @@ const { user, login } = useAuth();
                   className="w-full flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
                 >
                   <FaUser className="opacity-40" /> Profile
+                </button>
+                <button
+                  onClick={() =>
+                    onOpenPage({
+                      masmnu_id: 706,
+                      bar_name: "Global setting",
+                      appl_name: "global_setting",
+                    })
+                  }
+                  className="w-full flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                >
+                  <FaCog className="opacity-40" /> Settings
                 </button>
                 <hr className="my-1 border-slate-100" />
                 <button

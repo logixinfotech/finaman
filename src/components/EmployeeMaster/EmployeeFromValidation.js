@@ -1,30 +1,39 @@
-export const validateSingleField = (fieldName, value) => {
+ export const validateSingleField = (fieldName, value) => {
   const valStr = value ? String(value).trim() : "";
   const nameStr = fieldName.toLowerCase();
 
-  
   const isRequiredField = 
     nameStr.includes("first name") || 
     nameStr === "mobile no" || 
-    nameStr === "email id" || 
+    nameStr === "personal email" ||   // 🔧 fix: "email id" → "personal email"
     nameStr === "department";
 
   if (valStr === "") {
     if (isRequiredField) {
       return "This field is required";
     }
-    return null;}
-  if (nameStr.includes("first name") || nameStr.includes("contact person") || nameStr.includes("father") || nameStr.includes("mother")) {
+    return null;
+  }
+
+  if (
+    nameStr.includes("first name") ||
+    nameStr.includes("middle name") ||
+    nameStr.includes("last name") ||
+    nameStr.includes("spouse name") ||
+    nameStr.includes("holder name") ||
+    nameStr.includes("contact person") ||
+    nameStr.includes("father") ||
+    nameStr.includes("mother")
+  ) {
     if (!/^[A-Za-z\s]+$/.test(valStr)) {
       return "Name must contain only alphabets";
     }
-    if (valStr.length < 3) {
+    if ((nameStr.includes("first name") || nameStr.includes("contact person") || nameStr.includes("father") || nameStr.includes("mother")) && valStr.length < 3) {
       return "Name must be at least 3 characters";
     }
   }
 
-
-  if (nameStr === "dob") {
+  if (nameStr === "date of birth") {   // 🔧 fix: "dob" → "date of birth"
     const dobDate = new Date(valStr);
     const today = new Date();
     let age = today.getFullYear() - dobDate.getFullYear();
@@ -36,50 +45,54 @@ export const validateSingleField = (fieldName, value) => {
       return "Employee must be at least 18 years old";
     }
   }
-  
-  
+
   else if (nameStr.includes("aadhaar") || nameStr.includes("adhar")) {
     if (!/^\d{12}$/.test(valStr)) {
-      
       return "Aadhaar must be exactly 12 digits";
     }
   }
 
- 
   else if (nameStr.includes("mobile") || nameStr.includes("alternate no")) {
     if (!/^[6-9]\d{9}$/.test(valStr)) {
       return "Enter valid 10-digit mobile number (starts with 6-9)";
     }
   }
-  
+
+  else if (nameStr.includes("phone extension") || nameStr.includes("phone (residence)")) {
+    if (!/^\d+$/.test(valStr)) {
+      return "Phone extension / residence number must contain digits only";
+    }
+  }
 
   else if (nameStr.includes("email")) {
     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(valStr)) {
       return "Enter a valid email address";
     }
   }
-  
 
   else if (nameStr.includes("pin code") || nameStr === "pin") {
     if (!/^[1-9][0-9]{5}$/.test(valStr)) {
       return "PIN code must be exactly 6 digits";
     }
   }
-  
 
   else if (nameStr.includes("voter id")) {
     if (!/^[A-Z]{3}[0-9]{7}$/i.test(valStr)) {
-       return "Invalid Voter ID format (e.g., ABC1234567)";
+      return "Invalid Voter ID format (e.g., ABC1234567)";
     }
   }
 
-
-  else if (nameStr.includes("pan ") || nameStr === "pan card") {
+  else if (nameStr.includes("pan number") || nameStr === "pan card") {   // 🔧 fix: "pan " → "pan number"
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(valStr)) {
       return "Invalid PAN format (e.g., ABCDE1234F)";
     }
   }
-  
+
+  else if (nameStr.includes("passport no") || nameStr === "passport") {
+    if (!/^[A-Z][0-9]{7}$/i.test(valStr)) {
+      return "Invalid Passport format (e.g., A1234567)";
+    }
+  }
 
   else if (nameStr.includes("bank ifsc") || nameStr.includes("ifsc")) {
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(valStr)) {
@@ -92,21 +105,27 @@ export const validateSingleField = (fieldName, value) => {
       return "Account number must be between 9 and 18 digits";
     }
   }
+
+  else if (nameStr.includes("micr")) {
+    if (!/^\d{9}$/.test(valStr)) {
+      return "MICR code must be exactly 9 digits";
+    }
+  }
+
   else if (nameStr.includes("driving licence")) {
-  // Regex allows standard 15 characters, handling optional space or hyphen after the RTO code
-  if (!/^([A-Z]{2}\d{2}[ -]?\d{4}\d{7})$/i.test(valStr)) {
-    return "Invalid Driving Licence format. DL1420110012345 ";
+    if (!/^([A-Z]{2}\d{2}[ -]?\d{4}\d{7})$/i.test(valStr)) {
+      return "Invalid Driving Licence format. DL1420110012345 ";
+    }
   }
-}
-else if (nameStr.includes("ctc") || nameStr.includes("last ctc") || nameStr.includes("Last CTC")|| nameStr.includes("number")||nameStr.includes("uan")) {
-  // Regex checks if the string contains only numbers and is not empty
-  if (!/^\d+$/.test(valStr)) {
-    return "This field must contain numbers only";
+
+  else if (nameStr.includes("ctc") || nameStr.includes("last ctc") || nameStr.includes("number") || nameStr.includes("uan")) {
+    if (!/^\d+$/.test(valStr)) {
+      return "This field must contain numbers only";
+    }
   }
-}
 
   else if (
-    nameStr==="ctc"||
+    nameStr === "ctc" ||
     nameStr === "hra" || 
     nameStr === "da" || 
     nameStr === "pf" || 
@@ -138,23 +157,21 @@ export const validateEmployeeForm = (formData, fieldGroups) => {
     }
   };
 
+  const firstName = formData["First Name"];
 
- const firstName = formData["First Name"];
-
-if (!firstName || firstName.trim() === "") {
-  markError("First Name", "First Name is required", "basic");
-} else if (firstName.trim().length < 3) {
-  markError("First Name", "Name must be at least 3 characters", "basic");
-} else if (!/^[A-Za-z\s]+$/.test(firstName.trim())) {
-  markError("First Name", "Name must contain only alphabets", "basic");
-}
+  if (!firstName || firstName.trim() === "") {
+    markError("First Name", "First Name is required", "basic");
+  } else if (firstName.trim().length < 3) {
+    markError("First Name", "Name must be at least 3 characters", "basic");
+  } else if (!/^[A-Za-z\s]+$/.test(firstName.trim())) {
+    markError("First Name", "Name must contain only alphabets", "basic");
+  }
 
   if (fieldGroups) {
     for (const [tabKey, groups] of Object.entries(fieldGroups)) {
-      for (const [groupTitle, fields] of Object.entries(groups)) {
+      for (const [, fields] of Object.entries(groups)) {
         if (Array.isArray(fields)) {
           for (const fieldObj of fields) {
-            
 
             if (fieldObj.showIf && !fieldObj.showIf(formData)) {
               continue;
@@ -162,7 +179,7 @@ if (!firstName || firstName.trim() === "") {
 
             const fieldKey = fieldObj.key;
             const errorMsg = validateSingleField(fieldKey, formData[fieldKey]);
-            
+
             if (errorMsg) {
               markError(fieldKey, errorMsg, tabKey);
             }

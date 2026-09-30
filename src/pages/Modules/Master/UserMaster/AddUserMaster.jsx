@@ -82,7 +82,6 @@ const AddUserMaster = ({
   }, [showGroupModal]);
 
   const { options, loading } = useGroupOptions();
-  console.log(options.grade.label);
 
   // AUTO FOCUS
   useEffect(() => {

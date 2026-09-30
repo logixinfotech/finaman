@@ -8,26 +8,23 @@ const TYPE_STYLES = {
   alert: "bg-rose-50 border-rose-200",
   good: "bg-emerald-50 border-emerald-200",
 };
-
-/* insights helper HTML string deta hai aur usme DB se aaya customer/product naam hota hai.
-   Naam free-text hain (83 spelling variants mile the) — matlab stored-XSS ka raasta.
-   Isliye render se pehle sirf formatting tags allow karte hain, baaki unwrap. */
+ 
 const ALLOWED_TAGS = /^(b|strong|i|em|span|br)$/i;
 
 function sanitize(html) {
   if (!html) return "";
   const tpl = document.createElement("template");
-  tpl.innerHTML = html; // template parsing scripts execute nahi karti
+  tpl.innerHTML = html;  
   const clean = (node) => {
     [...node.childNodes].forEach((child) => {
-      if (child.nodeType === 3) return;        // text — safe
+      if (child.nodeType === 3) return;       
       if (child.nodeType !== 1) { child.remove(); return; }
-      clean(child);                            // pehle bachche saaf
+      clean(child);                           
       if (!ALLOWED_TAGS.test(child.tagName)) {
-        child.replaceWith(...child.childNodes); // tag hatao, content rakho
+        child.replaceWith(...child.childNodes);  
       } else {
         [...child.attributes].forEach((a) => {
-          if (a.name !== "class") child.removeAttribute(a.name); // on*, style, href sab out
+          if (a.name !== "class") child.removeAttribute(a.name); 
         });
       }
     });
@@ -37,7 +34,6 @@ function sanitize(html) {
 }
 
 export default function AIInsights({ rows, onClose }) {
-  // memoized — pehle har render pe poore filtered set pe chalte the
   const summary = useMemo(() => buildAISummary(rows), [rows]);
   const insights = useMemo(
     () => buildInsights(rows).map((i) => ({ ...i, safeHtml: sanitize(i.html) })),
@@ -55,8 +51,6 @@ export default function AIInsights({ rows, onClose }) {
   useEffect(() => {
     doneRef.current = false;
     if (timerRef.current) clearInterval(timerRef.current);
-
-    // reduced-motion respect — animation off, seedha full text
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     if (reduce || !safeSummary) {
       setTyped(safeSummary);
@@ -77,8 +71,6 @@ export default function AIInsights({ rows, onClose }) {
 
     return () => clearInterval(timerRef.current);
   }, [safeSummary]);
-
-  // click karo to typing skip
   const skip = () => {
     if (doneRef.current) return;
     clearInterval(timerRef.current);

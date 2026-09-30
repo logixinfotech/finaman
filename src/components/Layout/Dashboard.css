@@ -1,4 +1,30 @@
 /* ================= ROOT ================= */
+.menu-context {
+  position: fixed;
+  z-index: 9999;
+  min-width: 170px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+}
+.menu-context button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 13px;
+  color: #334155;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.menu-context button:hover {
+  background: #eef2ff;
+  color: #4f46e5;
+}
 
 .dashboard-shell {
   display: flex;

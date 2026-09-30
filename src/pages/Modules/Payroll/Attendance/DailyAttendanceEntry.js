@@ -16,7 +16,7 @@ import {
   FONT, toast, ToastContainer, ConfirmModal,
   todayDay, todayMonth, todayYear,
   getAvatarColor, getInitials,
-  getDayName, isEmployeeWeekoff, isHolidayDate, getAutoStatus, toggleAmPm,
+  getDayName, isEmployeeWeekoff, isHolidayDate, getAutoStatus, calculateAutoStatus, toggleAmPm,
   getStatusStyle, getStatusBadge, statusOptions, attendanceTypeOptions, buildStatusOptions,
   OutlineButton, AvatarCell, StatusBadge,
   TableHeader, TableRow, EmptyState, LoadingState, FileChip,
@@ -25,6 +25,7 @@ import {
 
 import AttendanceImports from "./Attendanceimports";
 import HorizontalAttendanceEntry from "./Horizontalattendanceentry";
+import config from "../../../../config";
 
 const TH = { background: "#f1f5f9", color: "#475569", borderBottom: "2px solid #cbd5e1" };
 
@@ -66,6 +67,7 @@ const AttendancePage = ({
   });
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [bioTableData, setBioTableData] = useState([]);
+  const [bioLoading, setBioLoading] = useState(false);
   const [excelRows, setExcelRows] = useState([]);
 
   // ── Period state ─────────────────────────────────────────────────────────────
@@ -159,30 +161,7 @@ const AttendancePage = ({
     })();
   }, []);
 
-  // ── Add/Edit mode: focus mode dropdown ───────────────────────────────────────
-  useEffect(() => {
-    if (isAddMode || isEditMode) {
-      isFirstMount.current = true;
-      setTimeout(() => { modeRef.current?.focus(); }, 200);
-    }
-  }, [isAddMode, isEditMode]);
-
-  // ── Sync formData punch_type → attendanceType ────────────────────────────────
-  useEffect(() => {
-    if (formData?.punch_type) setAttendanceType(formData.punch_type);
-  }, [formData?.punch_type]);
-
-  // ── Sync formData in_time → selectedMonth/Year ───────────────────────────────
-  useEffect(() => {
-    if (formData?.in_time) {
-      const clean = formData.in_time.toString().replace("T", " ").split(".")[0];
-      const [y, m] = clean.split(" ")[0].split("-");
-      setSelectedMonth(months[parseInt(m, 10) - 1]);
-      setSelectedYear(y);
-    }
-  }, [formData?.in_time]);
-
-  // ── Manual attendance fetch ───────────────────────────────────────────────────
+  // ── Manual attendance (Calendar mode) ─────────────────────────────────────────
   const fetchAttendance = useCallback(async () => {
     if (!formData.employee_id) return;
     setAttendanceData({});
@@ -200,7 +179,6 @@ const AttendancePage = ({
         month: months.indexOf(selectedMonth) + 1,
         year: selectedYear
       });
-
       const leaveMap = {};
       (leaveRes?.data || []).forEach(l => {
         const from = new Date(l.from_date);
@@ -218,29 +196,61 @@ const AttendancePage = ({
 
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${selectedYear}-${String(mNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
         const existingLog = res?.data?.find(item => {
           const clean = item.in_time?.toString().replace("T", " ").split(".")[0];
           return clean?.split(" ")[0] === dateStr;
         });
-        const autoStatus = getAutoStatus(dateStr, formData.employee_id, existingLog, weekoffs, holidays);
+
+        let rawIn = existingLog?.in_time ? existingLog.in_time.substring(11, 16) : "--:--";
+        let rawOut = existingLog?.out_time ? existingLog.out_time.substring(11, 16) : "--:--";
+        const hasRealPunch = (rawIn && rawIn !== "--:--" && rawIn !== "00:00") ||
+          (rawOut && rawOut !== "--:--" && rawOut !== "00:00");
+
+        if (!hasRealPunch) {
+          rawIn = "--:--";
+          rawOut = "--:--";
+        }
+
+        const isWO = isEmployeeWeekoff(dateStr, formData.employee_id, weekoffs);
+        const isHol = isHolidayDate(dateStr, holidays);
+        const isLeave = !!leaveMap[day];
+
+        let status = leaveMap[day] || "";
+        if (!status) {
+          if (isHol) {
+            status = hasRealPunch ? "HOLIDAY OT" : "HOLIDAYS";
+          } else if (isWO) {
+            status = hasRealPunch ? "WEEKOFF OT" : "WEEK OFF";
+          } else if (hasRealPunch) {
+            status = calculateAutoStatus({ inTime: rawIn, outTime: rawOut }) || existingLog?.attendance_status || "PRESENT";
+          } else if (existingLog) {
+            status = existingLog.attendance_status === "PRESENT" ? "ABSENT" : (existingLog.attendance_status || "ABSENT");
+          } else {
+            status = "";
+          }
+        }
 
         fmt[day] = {
           log_id: existingLog?.log_id || null,
-          in: existingLog?.in_time ? existingLog.in_time.substring(11, 16) : "--:--",
-          out: existingLog?.out_time ? existingLog.out_time.substring(11, 16) : "--:--",
-          status: existingLog?.attendance_status || leaveMap[day] || autoStatus,
-          is_weekoff: isEmployeeWeekoff(dateStr, formData.employee_id, weekoffs),
-          is_holiday: isHolidayDate(dateStr, holidays),
-          is_leave: !!leaveMap[day],
+          in: rawIn,
+          out: rawOut,
+          status,
+          is_weekoff: isWO,
+          is_holiday: isHol,
+          is_leave: isLeave,
         };
       }
 
       setAttendanceData(fmt);
 
       setTimeout(() => {
-        const firstValidDay = Object.entries(fmt).find(([, d]) => !d.is_holiday && !d.is_weekoff && !d.is_leave);
+        const firstValidDay = Object.entries(fmt).find(
+          ([, d]) => !d.is_holiday && !d.is_weekoff
+        );
         if (firstValidDay) {
-          const sel = document.querySelector(`[data-day="${firstValidDay[0]}"] select`);
+          const dayNum = firstValidDay[0];
+          const sel = document.querySelector(`[data-day="${dayNum}"] select`);
           sel?.focus();
         }
       }, 200);
@@ -250,7 +260,68 @@ const AttendancePage = ({
 
   useEffect(() => { fetchAttendance(); }, [fetchAttendance]);
 
-  // ── List Entry fetch ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (formData?.in_time) {
+      const clean = formData.in_time.toString().replace("T", " ").split(".")[0];
+      const [y, m] = clean.split(" ")[0].split("-");
+      setSelectedMonth(months[parseInt(m, 10) - 1]);
+      setSelectedYear(y);
+    }
+  }, [formData?.in_time]);
+
+  useEffect(() => {
+    if (formData?.punch_type) setAttendanceType(formData.punch_type);
+  }, [formData?.punch_type]);
+
+  // ── Biometric: date-wise, ALL employees with logs for that date ──────────────
+  const fetchBioData = useCallback(async () => {
+    setBioLoading(true);
+    setBioTableData([]);
+    try {
+      const mIdx = months.indexOf(bioMonth) + 1;
+      const res = await getAttendanceList({
+        filters: {
+          month: mIdx, year: bioYear, punch_type: "Biometric"
+        }
+      });
+      const rows = (res?.data || [])
+        .filter(item => {
+          const d = item.in_time?.toString().replace("T", " ").split(".")[0].split(" ")[0];
+          return d === bioSelectedDate;
+        })
+        .map(item => {
+          let rawIn = item.in_time ? item.in_time.substring(11, 16) : "--:--";
+          let rawOut = item.out_time ? item.out_time.substring(11, 16) : "--:--";
+          const hasRealPunch = (rawIn && rawIn !== "--:--" && rawIn !== "00:00") ||
+            (rawOut && rawOut !== "--:--" && rawOut !== "00:00");
+          if (!hasRealPunch) {
+            rawIn = "--:--";
+            rawOut = "--:--";
+          }
+          const status = hasRealPunch
+            ? (item.attendance_status || "PRESENT")
+            : (item.attendance_status === "PRESENT" ? "ABSENT" : (item.attendance_status || "ABSENT"));
+
+          return {
+            log_id: item.log_id,
+            employee_id: item.employee_id,
+            employee_name: item.employee_name || "—",
+            employee_code: item.employee_code || "",
+            in: rawIn,
+            out: rawOut,
+            status
+          };
+        });
+      setBioTableData(rows);
+    } catch (e) { console.error(e); }
+    finally { setBioLoading(false); }
+  }, [bioDay, bioMonth, bioYear, bioSelectedDate]);
+
+  useEffect(() => {
+    if (attendanceType === "Biometric") fetchBioData();
+  }, [attendanceType, bioDay, bioMonth, bioYear, fetchBioData]);
+
+  // ── List Entry (Day Entry mode) ─────────────────────────────────────────────
   const fetchListEntryData = useCallback(async () => {
     if (!employees.length) return;
     setListLoading(true);
@@ -271,6 +342,31 @@ const AttendancePage = ({
         const isWO = isEmployeeWeekoff(listEntryDate, emp.Actled_id, weekoffs);
         const isHol = isHolidayDate(listEntryDate, holidays);
         const isLeave = !!leaveMap[emp.Actled_id];
+
+        let inVal = log?.in_time ? log.in_time.substring(11, 16) : "";
+        let outVal = log?.out_time ? log.out_time.substring(11, 16) : "";
+        const hasRealPunch = (inVal && inVal !== "--:--" && inVal !== "00:00") ||
+          (outVal && outVal !== "--:--" && outVal !== "00:00");
+        if (!hasRealPunch) {
+          inVal = "";
+          outVal = "";
+        }
+
+        let status = leaveMap[emp.Actled_id] || "";
+        if (!status) {
+          if (isHol) {
+            status = hasRealPunch ? "HOLIDAY OT" : "HOLIDAYS";
+          } else if (isWO) {
+            status = hasRealPunch ? "WEEKOFF OT" : "WEEK OFF";
+          } else if (hasRealPunch) {
+            status = calculateAutoStatus({ inTime: inVal, outTime: outVal }) || log?.attendance_status || "PRESENT";
+          } else if (log) {
+            status = log.attendance_status === "PRESENT" ? "ABSENT" : (log.attendance_status || "ABSENT");
+          } else {
+            status = "";
+          }
+        }
+
         return {
           employee_id: emp.Actled_id,
           employee_name: emp.Led_name,
@@ -278,9 +374,9 @@ const AttendancePage = ({
           employee_photo: emp.Ledimg || null,
           department: emp.department || "",
           log_id: log?.log_id || null,
-          in: log?.in_time ? log.in_time.substring(11, 16) : "",
-          out: log?.out_time ? log.out_time.substring(11, 16) : "",
-          status: log?.attendance_status || leaveMap[emp.Actled_id] || (isHol ? "HOLIDAYS" : isWO ? "WEEK OFF" : ""),
+          in: inVal,
+          out: outVal,
+          status,
           is_weekoff: isWO,
           is_holiday: isHol,
           is_leave: isLeave,
@@ -305,17 +401,17 @@ const AttendancePage = ({
         updated.out = "";
       }
 
-      // ✅ IN ya OUT time dalne par auto PRESENT set karo
+      // ✅ Auto calculate status (PRESENT, L1, L2, HALF_DAY, HOLIDAY OT, WEEKOFF OT)
       if (field === "in" || field === "out") {
-        const hasTime = (updated.in && updated.in !== "") || (updated.out && updated.out !== "");
-        if (hasTime && !updated.status && !updated.is_holiday && !updated.is_weekoff && !updated.is_leave) {
-          updated.status = "PRESENT";  // ✅ AUTO PRESENT
-        }
-        // Holiday/Weekoff OT logic same rahega
-        if (updated.is_holiday) {
-          updated.status = hasTime ? "HOLIDAY OT" : "HOLIDAYS";
-        } else if (updated.is_weekoff) {
-          updated.status = hasTime ? "WEEKOFF OT" : "WEEK OFF";
+        const auto = calculateAutoStatus({
+          inTime: updated.in,
+          outTime: updated.out,
+          isHoliday: updated.is_holiday,
+          isWeekoff: updated.is_weekoff,
+          isLeave: updated.is_leave,
+        });
+        if (auto) {
+          updated.status = auto;
         }
       }
 
@@ -392,14 +488,16 @@ const AttendancePage = ({
         updated.out = "--:--";
       }
 
-      // Holiday/Weekoff pe in/out fill hone par OT status
       if (field === "in" || field === "out") {
-        const hasTime = (updated.in && updated.in !== "--:--") ||
-          (updated.out && updated.out !== "--:--");
-        if (updated.is_holiday) {
-          updated.status = hasTime ? "HOLIDAY OT" : "HOLIDAYS";
-        } else if (updated.is_weekoff) {
-          updated.status = hasTime ? "WEEKOFF OT" : "WEEK OFF";
+        const auto = calculateAutoStatus({
+          inTime: updated.in,
+          outTime: updated.out,
+          isHoliday: updated.is_holiday,
+          isWeekoff: updated.is_weekoff,
+          isLeave: updated.is_leave,
+        });
+        if (auto) {
+          updated.status = auto;
         }
       }
 
@@ -416,35 +514,46 @@ const AttendancePage = ({
   // ── Manual (calendar) save ────────────────────────────────────────────────────
   const handleManualSave = async () => {
     if (!formData.employee_id) { toast("Please select employee", "info"); return; }
-    const targetDay = parseInt(formData.attendance_day?.split("-")[2], 10);
-    const dayData = attendanceData[targetDay];
-    if (!dayData?.status) { toast("Please select status for the day", "info"); return; }
 
-    if ((dayData.is_holiday || dayData.is_weekoff) &&
-      (!dayData.in || dayData.in === "--:--" || !dayData.out || dayData.out === "--:--")) {
-      toast("Holiday/Weekoff OT ke liye In aur Out time dono required hain", "info");
-      return;
-    }
+    // ✅ Sirf woh days jinka status set hai
+    const daysToSave = Object.entries(attendanceData).filter(([, d]) => {
+      if (!d.status) return false;
+      if (d.is_leave) return false;
+      if ((d.is_holiday || d.is_weekoff) && (!d.in || d.in === "--:--" || !d.out || d.out === "--:--")) return false;
+      return true;
+    });
+
+    if (!daysToSave.length) { toast("Please select status for at least one day", "info"); return; }
+
+    const mNum = months.indexOf(selectedMonth) + 1;
+    let saved = 0;
 
     try {
-      const dt = formData.attendance_day;
-      const payload = {
-        employee_id: formData.employee_id,
-        punch_type: "Manual",
-        attendance_status: dayData?.status || "PRESENT",
-        in_time: `${dt} ${dayData?.in && dayData.in !== "--:--" ? dayData.in : "00:00"}:00`,
-        out_time: `${dt} ${dayData?.out && dayData.out !== "--:--" ? dayData.out : "00:00"}:00`,
-      };
-      const res = dayData?.log_id
-        ? await updateAttendance(dayData.log_id, payload)
-        : await saveAttendanceLog(payload);
-      if (res?.success) {
-        toast("Attendance saved successfully", "success");
-        await fetchAttendance();
-        onNewEntry?.();
-        onSave?.();
-      } else { toast("Save failed", "error"); }
-    } catch (e) { console.error(e); toast("Error saving: " + e.message, "error"); }
+      for (const [dayNum, dayData] of daysToSave) {
+        const dt = `${selectedYear}-${String(mNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+        const payload = {
+          employee_id: formData.employee_id,
+          punch_type: "Manual",
+          attendance_status: dayData.status,
+          in_time: `${dt} ${dayData.in && dayData.in !== "--:--" ? dayData.in : "00:00"}:00`,
+          out_time: `${dt} ${dayData.out && dayData.out !== "--:--" ? dayData.out : "00:00"}:00`,
+        };
+
+        if (dayData.log_id) {
+          await updateAttendance(dayData.log_id, payload);
+        } else {
+          await saveAttendanceLog(payload);
+        }
+        saved++;
+      }
+
+      toast(`${saved} day(s) saved successfully`, "success");
+      await fetchAttendance();
+      onSave?.();
+    } catch (e) {
+      console.error(e);
+      toast("Error saving: " + e.message, "error");
+    }
   };
 
   // ── Main save dispatcher ──────────────────────────────────────────────────────
@@ -462,19 +571,27 @@ const AttendancePage = ({
 
   const handleEmployeeSelect = (label) => {
     const emp = employees.find(e => e.Led_name === label);
-    if (emp) setFormData(prev => ({
-      ...prev,
-      employee_name: emp.Led_name,
-      employee_code: emp.Led_code,
-      employee_id: emp.Actled_id,
-      designation: emp.Designation || "",
-      employee_photo: emp.Ledimg || null,
-    }));
+    if (emp) {
+      setFormData(prev => ({
+        ...prev,
+        employee_name: emp.Led_name,
+        employee_code: emp.Led_code,
+        employee_id: emp.Actled_id,
+        designation: emp.Designation || "",
+        employee_photo: emp.Ledimg || null,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        employee_name: label,
+        employee_id: "",
+      }));
+    }
   };
 
   // ── Totals ────────────────────────────────────────────────────────────────────
   const src = attendanceType === "List" ? listEntryData : Object.values(attendanceData);
-  const totalPresent = src.filter(x => x.status === "PRESENT").length;
+  const totalPresent = src.filter(x => ["PRESENT", "L1", "L2", "HALF_DAY", "WFH", "WFS"].includes(x.status)).length;
   const totalAbsent = src.filter(x => x.status === "ABSENT").length;
   const totalWeekOff = src.filter(x => x.status === "WEEK OFF").length;
   const totalLeave = src.filter(x => leaveCodes.includes(x.status)).length;
@@ -484,7 +601,7 @@ const AttendancePage = ({
   const inputCls = "h-8 w-full text-[13px] text-center font-medium font-mono border border-slate-200 rounded-md px-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 hover:border-slate-300 transition-colors disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:hidden";
   const selectCls = "h-8 text-[14px] border border-slate-200 rounded-md px-2 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed";
   const labelCls = "text-[14px] font-semibold text-slate-700 uppercase whitespace-nowrap tracking-wide";
-  const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:63554";
+  const baseUrl = config.apiUrl;
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
@@ -516,7 +633,6 @@ const AttendancePage = ({
                 <div className="bg-slate-800 h-24 w-full relative mb-16 shrink-0">
                   <div className="absolute -bottom-14 left-1/2 -translate-x-1/2">
                     <div className="w-[120px] h-[120px] bg-white rounded-xl p-0.5 shadow-lg border">
-                      {/*               ↑ 66px→100px  ↑ 66px→100px */}
                       {formData.employee_photo ? (
                         <img src={`${baseUrl}${formData.employee_photo}`} alt="emp"
                           className="w-full h-full rounded-[10px] object-cover"
@@ -525,7 +641,6 @@ const AttendancePage = ({
                         <div className="w-full h-full rounded-[10px] flex items-center justify-center border border-dashed border-slate-300"
                           style={{ background: getAvatarColor(formData.employee_id)?.[0] || "#f1f5f9" }}>
                           <span className="text-[22px] font-semibold"
-
                             style={{ color: getAvatarColor(formData.employee_id)?.[1] || "#475569" }}>
                             {formData.employee_name
                               ? getInitials(formData.employee_name)
@@ -574,7 +689,6 @@ const AttendancePage = ({
             )}
 
             {/* ══ RIGHT CONTENT ══ */}
-            {/* Biometric / Excel — delegate to AttendanceImports */}
             {attendanceType === "Horizontal" ? (
               <HorizontalAttendanceEntry
                 mode={mode}
@@ -596,7 +710,7 @@ const AttendancePage = ({
                 <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
                   <AttendanceImports
                     employees={employees}
-                    leaveTypes={leaveTypes} 
+                    leaveTypes={leaveTypes}
                     isViewMode={isViewMode}
                     attendanceType={attendanceType}
                     onModeChange={(newType) => {
@@ -684,13 +798,16 @@ const AttendancePage = ({
                       {attendanceType === "Manual" && (
                         <div data-employee-autocomplete className="flex items-center gap-2 border-r border-slate-200 pr-3 shrink-0">
                           <span className={labelCls}>Employee:</span>
-                          <ERPAutocomplete
-                            disabled={isViewMode}
-                            options={employeeOptions.map(o => o.label)}
-                            value={employeeOptions.find(e => String(e.id) === String(formData.employee_id))?.label || ""}
-                            onChange={handleEmployeeSelect}
-                            className={selectCls}
-                          />
+                          <div style={{ minWidth: 200 }}>
+                            <ERPAutocomplete
+                              disabled={isViewMode}
+                              options={employeeOptions.map(o => o.label)}
+                              value={formData.employee_name || employeeOptions.find(e => String(e.id) === String(formData.employee_id))?.label || ""}
+                              onChange={handleEmployeeSelect}
+                              className={selectCls}
+                              placeholder="Search Employee..."
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

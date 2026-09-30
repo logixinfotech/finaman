@@ -173,3 +173,34 @@ export function summarize(rows) {
   const nProd = new Set(rows.map((r) => r.item)).size;
   return { amt, gst, qty, invAmt, nInv, nCust, nCity, nState, nProd };
 }
+
+// ---------- Universal Clipboard Copy (Supports both HTTP & HTTPS) ----------
+export async function copyToClipboard(text) {
+  if (!text) return false;
+  // Modern Clipboard API (works on localhost and HTTPS)
+  if (typeof navigator !== "undefined" && navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(String(text));
+      return true;
+    } catch (_) {}
+  }
+  // Fallback for non-secure HTTP contexts (e.g. http://finamanerp.com:3000)
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = String(text);
+    textarea.style.position = "fixed";
+    textarea.style.left = "-999999px";
+    textarea.style.top = "-999999px";
+    textarea.setAttribute("readonly", "");
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return !!successful;
+  } catch (err) {
+    console.error("Clipboard copy error:", err);
+    return false;
+  }
+}
+

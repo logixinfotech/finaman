@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchOrderDashboard, fetchOrderDashboardFilters, fetchOrderDashboardHistory } from "../utils/api";
 
 export const useOrderDashboard = (initialRange = {}, enabled = true) => {
-  const [rows, setRows] = useState([]);   // FIN_CUSORD lines
-  const [hist, setHist] = useState([]);   // FIN_SALES customer-level history
+  const [rows, setRows] = useState([]);   
+  const [hist, setHist] = useState([]);   
   const [filterLists, setFilterLists] = useState({ cities: [], customers: [], groups: [], payTerms: [], states: [] });
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(null);
@@ -46,7 +46,7 @@ export const useOrderDashboard = (initialRange = {}, enabled = true) => {
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;   // tab khulne tak fetch nahi
+    if (!enabled) return;   
     fetchAll(initialRange);
   }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 

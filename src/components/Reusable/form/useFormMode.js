@@ -7,9 +7,12 @@ export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
   const [formData, setFormData] = useState(initialState);
   const [originalData, setOriginalData] = useState(null);
   const [showForm, setShowForm] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [canPrint, setCanPrint] = useState(false); 
+  const [saving, setSaving] = useState(false);  
   const rights = useMemo(() => getRights(appl_name), [appl_name]);
+  const canPrint = useMemo(
+  () => rights.print === 1 && mode === "view" && !!formData?.Id,
+  [rights.print, mode, formData?.Id]
+);
   const [activeTab, setActiveTab] = useState("entry");
   const canAdd = rights.add === 1;
   const canModify = rights.mod === 1; 
@@ -35,8 +38,7 @@ export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
     setFormData(initialState);
     setOriginalData(initialState);
     setMode("add");
-    setShowForm(true);
-    setCanPrint(false);
+    setShowForm(true); 
   }, [initialState, canAdd, appl_name]);
 
   const handleModify = useCallback(() => {
@@ -50,8 +52,7 @@ export const useERPMode = (initialState, onSaveApi, loadList, appl_name) => {
       return;
     }
     setOriginalData({ ...formData });
-    setMode("edit");
-    setCanPrint(false);
+    setMode("edit"); 
   }, [formData, canModify, rights.modDays, isWithinLimit]);
  const handleEditCancel = useCallback(async () => {
     if (isDirty) {
@@ -113,9 +114,7 @@ const performSave = useCallback(async (idField, overrideData = null) => {
         const savedData = response.data || dataToSave;
         setFormData(savedData);
         setOriginalData(savedData);
-        setMode("view");
-        setCanPrint(true);
-        
+        setMode("view"); 
         showToast({ icon: "success", title: "Saved Successfully" });
         return { success: true, data: savedData };
       }
@@ -133,8 +132,7 @@ const performSave = useCallback(async (idField, overrideData = null) => {
     setFormData(data);
     setOriginalData(data);
     setMode("view");
-    setShowForm(true);
-    setCanPrint(rights.print === 1);
+    setShowForm(true); 
   }, [rights.print]);
 
   return {

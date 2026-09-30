@@ -1,20 +1,4 @@
-/**
- * NotificationToast.jsx
- * ─────────────────────────────────────────────────────────────────
- * Real-time toast for incoming WebSocket / addNotification() events.
- *
- * Mount ONCE in AppShell (not Dashboard):
- *
- *   // In AppShell.jsx, add alongside <Footer>:
- *   import NotificationToast from "./components/NotificationToast";
- *   ...
- *   <NotificationToast onOpenPage={handleOpenPageFromMenu} />
- *
- * onOpenPage receives the same shape as your handleOpenPageFromMenu,
- * so clicking a toast opens the correct tab automatically.
- * ─────────────────────────────────────────────────────────────────
- */
-
+ 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
@@ -73,22 +57,18 @@ const SingleToast = ({ notification: n, onDismiss, onOpenPage, onMarkRead }) => 
         onDismiss();
       }}
     >
-      {/* Progress bar */}
       <div
         className="absolute top-0 left-0 h-[2px] transition-none"
         style={{ width: `${progress}%`, background: accent }}
       />
 
       <div className="flex items-start gap-3 px-4 pt-4 pb-3">
-        {/* Icon */}
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
           style={{ background: cat.bg + "25" }}
         >
           {cat.icon}
         </div>
-
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <span
             className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
@@ -103,8 +83,6 @@ const SingleToast = ({ notification: n, onDismiss, onOpenPage, onMarkRead }) => 
             {n.message}
           </p>
         </div>
-
-        {/* Close */}
         <button
           onClick={(e) => { e.stopPropagation(); onDismiss(); }}
           className="text-white/25 hover:text-white/70 p-0.5 rounded flex-shrink-0 mt-0.5 transition-colors"
@@ -121,8 +99,6 @@ const SingleToast = ({ notification: n, onDismiss, onOpenPage, onMarkRead }) => 
     </motion.div>
   );
 };
-
-// ─── Container ───────────────────────────────────────────────────
 const NotificationToast = ({ onOpenPage }) => {
   const { toastQueue, consumeToast, markAsRead } = useNotifications();
   const visible = toastQueue.slice(0, 3);

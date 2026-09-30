@@ -1,5 +1,8 @@
 import { useMemo, memo } from "react";
 import { buildCombinedView } from "../../../../utils/orderHelpers";
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { Users } from "lucide-react";
 import { inr } from "../../../../utils/helpers";
 
 const STATUS_STYLE = {
@@ -9,14 +12,27 @@ const STATUS_STYLE = {
 };
 const ABC_STYLE = { A: "bg-emerald-50 text-emerald-700", B: "bg-amber-50 text-amber-700", C: "bg-slate-100 text-slate-500" };
 
+const EXPORT_COLS = [
+  { key: "cust",    label: "Customer" },
+  { key: "custId",  label: "Customer ID" },
+  { key: "geo",     label: "City / State" },
+  { key: "abc",     label: "ABC Class" },
+  { key: "status",  label: "Status" },
+  { key: "curAmt",  label: "Current Orders (₹)", type: "num" },
+  { key: "orders",  label: "Orders", type: "int" },
+  { key: "balance", label: "Balance Qty", type: "int" },
+  { key: "pastAmt", label: "Past Sales (₹)", type: "num" },
+  { key: "pastInv", label: "Past Invoices", type: "int" },
+  { key: "returnAmt", label: "Returns (₹)", type: "num" },
+];
 function CombinedCustomerView({ rows, hist, abcMap, n = 300, onCustomerClick }) {
   const data = useMemo(() => buildCombinedView(rows, hist, abcMap).slice(0, n), [rows, hist, abcMap, n]);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">
-        Combined Customer View — Current Orders vs Past Sales
-      </h4>
+      <SectionHeader icon={Users} accent="sky" title="Combined Customer View — Current Orders vs Past Sales" className="mb-1">
+        <ExportMenu title="Combined Customer View" columns={EXPORT_COLS} rows={data} />
+      </SectionHeader>
       <p className="text-[11px] text-slate-400 mb-4">joined by customer ID · click a customer for drill-down (coming soon)</p>
       <div className="overflow-auto" style={{ maxHeight: 380 }}>
         <table className="w-full text-left text-sm">

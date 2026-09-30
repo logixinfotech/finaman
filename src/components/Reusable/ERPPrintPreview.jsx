@@ -5,14 +5,15 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, ExternalLink, MoreVertical,
   PanelTop, Building2, Share2, Mail, Link2, Check,
 } from "lucide-react";
+import { copyToClipboard } from "../../utils/helpers";
  
 const Styles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    .rpv-root { font-family:'Plus Jakarta Sans',sans-serif; width:100%; height:100%; min-height:100vh;
-      background:#f4f6f9; display:flex; flex-direction:column; color:#0f172a; }
-    .rpv-root *, .rpv-root *::before, .rpv-root *::after { box-sizing:border-box; }
+ .rpv-root { font-family:'Plus Jakarta Sans',sans-serif; width:100%; height:100%; min-height:100vh;
+  background:#f4f6f9; display:flex; flex-direction:column; color:#0f172a;
+  position:relative; z-index:0; isolation:isolate; min-width:0; max-width:100%; }
 
     /* ---------- single-row toolbar ---------- */
     .rpv-topbar { display:flex; align-items:center; gap:10px; padding:10px 16px;
@@ -300,7 +301,7 @@ const ERPPrintPreview = ({
     if (!onGetShareLink) return;
     try {
       const url = await onGetShareLink();
-      await navigator.clipboard.writeText(url);
+      await copyToClipboard(url);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch { /* ignore */ }

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import {
   FaChartArea, FaSearchPlus, FaBalanceScale, FaFlagCheckered, FaHistory,
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa"; 
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -15,7 +16,8 @@ import {
   ootWidthConfig, ootSectionConfigs, ootTableColumns,
 } from "./Utils/Qmsconfigs";
 import { getOots, createOot, updateOot, deleteOot } from "./Utils/QmsAPI";
-
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
 const API = { list: getOots, create: createOot, update: updateOot, remove: deleteOot };
 
 const initialState = {
@@ -58,7 +60,12 @@ export default function OotMasterPage({ tab }) {
     getRequired: getOotRequired,
     api: API,
   });
-
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/oot',
+    applName: 'oot',
+    emailEndpoint: '/api/qms-print/oot',
+    shareLinkEndpoint: '/api/qms-print/oot',
+  });
   const refOpts = useRefOptions(["capa"]);
 
   const fieldGroups = useMemo(
@@ -86,14 +93,35 @@ export default function OotMasterPage({ tab }) {
         (!filters.Product || has(it.Product, filters.Product))
       );
   }, [m.list, filters]);
+     const ModuleIcon = useMemo(() => {
+          const name = tab?.icon_name || tab?.module?.icon_name;
+          return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+        }, [tab?.icon_name, tab?.module?.icon_name]);
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `OOT-${m.formData?.Id}`,
+      contextLabel: m.formData?.Product,
+    });
+  }, [m.formData, printWorkflow]);
 
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Out of Trend (OOT) Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
   if (m.showForm) {
     return (
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Out of Trend (OOT)"
+            subtitle={m.formData?.RecordNo || "New"}   
+                    TitleIcon={ModuleIcon}
+                    
           tabs={ootTabs}
           tabLabels={ootTabLabels}
+          tabStage={ootTabStage}
           TabIcon={OotTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -125,8 +153,10 @@ export default function OotMasterPage({ tab }) {
           onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onNewEntry={m.handleAddNewGuarded}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
           onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
           currentRecord={m.list.length ? m.currentIndex + 1 : 0}
@@ -144,6 +174,7 @@ export default function OotMasterPage({ tab }) {
     <div className="h-full w-full">
       <Table
         title="Out of Trend (OOT)"
+           TitleIcon={ModuleIcon}
         data={filteredList}
         columns={ootTableColumns}
         rowKey="Id"

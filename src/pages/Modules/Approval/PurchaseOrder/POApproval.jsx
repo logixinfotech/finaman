@@ -4,8 +4,6 @@ import POApprovalForm from "./POApprovalForm";
 import { showToast, alertError } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 import { fetchApprovals, patchApproval } from "../../../../utils/api";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
     Pending:  { bg: "bg-[#FAEEDA]", text: "text-[#633806]" },
     Approved: { bg: "bg-[#EAF3DE]", text: "text-[#27500A]" },
@@ -22,16 +20,12 @@ const StatusPill = ({ status }) => {
         </span>
     );
 };
-
-// counts attachments regardless of how they're stored
 const countAttach = (raw) => {
     if (!raw) return 0;
     if (Array.isArray(raw)) return raw.filter(Boolean).length;
     try { const p = JSON.parse(raw); return Array.isArray(p) ? p.filter(Boolean).length : 1; }
     catch { return 1; }
 };
-
-// ─── PO list card ─────────────────────────────────────────────────────────────
 const POListCard = ({ record, isActive, onClick }) => {
     const amount = record.amount != null && !isNaN(Number(record.amount))
         ? `₹${Number(record.amount).toLocaleString("en-IN")}`
@@ -68,16 +62,12 @@ const POListCard = ({ record, isActive, onClick }) => {
         </button>
     );
 };
-
-// ─── Stat chip ────────────────────────────────────────────────────────────────
 const StatChip = ({ label, value, bg, color }) => (
     <div className={`flex-1 text-center py-1.5 px-1 rounded-lg ${bg}`}>
         <div className={`text-[16px] font-semibold leading-none ${color}`}>{value}</div>
         <div className={`text-[10px] mt-1 opacity-70 ${color}`}>{label}</div>
     </div>
 );
-
-// ─── Tab button ───────────────────────────────────────────────────────────────
 const TabBtn = ({ label, active, badge, onClick }) => (
     <button
         onClick={onClick}
@@ -92,15 +82,11 @@ const TabBtn = ({ label, active, badge, onClick }) => (
         )}
     </button>
 );
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
 const Sidebar = ({
     loading, list, activeTab, setActiveTab,
     currentIndex, handleRowSelect, stats,
 }) => (
     <div className="flex flex-col bg-white h-full overflow-hidden">
-
-{/* title on its own line, chips full-width below — safest if counts get large */}
 <div className="px-3 pt-3 pb-2 border-b border-slate-100">
     <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
         PO Approvals
@@ -112,8 +98,6 @@ const Sidebar = ({
         <StatChip label="Hold"  value={stats.Hold}     bg="bg-[#E6F1FB]" color="text-[#0C447C]" />
     </div>
 </div>
-
-        {/* Tabs */}
         <div className="flex px-2 border-b border-slate-100 overflow-x-auto no-scrollbar">
             {["Pending", "Approved", "Rejected", "All"].map(t => (
                 <TabBtn
@@ -125,8 +109,6 @@ const Sidebar = ({
                 />
             ))}
         </div>
-
-        {/* List */}
         <div className="flex-1 overflow-y-auto p-2 no-scrollbar">
             {loading ? (
                 <div className="flex items-center justify-center h-full text-slate-400 text-[12px]">
@@ -151,8 +133,6 @@ const Sidebar = ({
                 ))
             )}
         </div>
-
-        {/* Pending value footer */}
         {stats._pendingAmt > 0 && (
             <div className="px-3 py-1.5 border-t border-slate-100 flex items-center justify-between shrink-0">
                 <span className="text-[10px] text-slate-400 uppercase tracking-wider">Pending value</span>
@@ -163,8 +143,6 @@ const Sidebar = ({
         )}
     </div>
 );
-
-// ─── Empty detail state ───────────────────────────────────────────────────────
 const EmptyDetail = () => (
     <div className="flex flex-col items-center justify-center h-full text-slate-300 gap-3">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
@@ -176,8 +154,6 @@ const EmptyDetail = () => (
         <p className="text-[13px]">Select a PO to review</p>
     </div>
 );
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 const POApproval = ({ tab }) => { 
     const [allRecords,   setAllRecords]   = useState([]);
     const [loading,      setLoading]      = useState(true);
@@ -225,15 +201,11 @@ const POApproval = ({ tab }) => {
     }, []);
 
     useEffect(() => { loadList(); }, [loadList]);
-
-    // ── visible list = master filtered by the active tab ──────────────────────
     const list = useMemo(() => {
         if (activeTab === "All")     return allRecords;
         if (activeTab === "Pending") return allRecords.filter(r => r.status === "Pending" || r.status === "Draft");
         return allRecords.filter(r => r.status === activeTab);
     }, [allRecords, activeTab]);
-
-    // ── stats — ALWAYS from the master, so they don't move with the tab ───────
     const stats = useMemo(() => ({
         Pending:  allRecords.filter(r => r.status === "Pending" || r.status === "Draft").length,
         Approved: allRecords.filter(r => r.status === "Approved").length,
@@ -243,8 +215,6 @@ const POApproval = ({ tab }) => {
             .filter(r => r.status === "Pending" || r.status === "Draft")
             .reduce((s, r) => s + (isNaN(Number(r.amount)) ? 0 : Number(r.amount)), 0),
     }), [allRecords]);
-
-    // ── keep the form in sync with the visible list ───────────────────────────
     useEffect(() => {
         if (list.length > 0) {
             setFormData(list[currentIndex] ?? list[0]);
@@ -287,8 +257,6 @@ const POApproval = ({ tab }) => {
     const navigate = useCallback((dir) => {
         setCurrentIndex(p => Math.max(0, Math.min(list.length - 1, p + dir)));
     }, [list.length]);
-
-    // switching tab resets the cursor to the top of the new list
     const switchTab = useCallback((t) => {
         setActiveTab(t);
         setCurrentIndex(0);
@@ -306,8 +274,6 @@ const POApproval = ({ tab }) => {
         onNavigate: navigate,
     };return (
         <div className="h-full w-full overflow-hidden bg-slate-100">
-
-            {/* ── DESKTOP (sm: 640px and up) ────────────────────────────────── */}
             <div className="hidden sm:flex h-full">
                 <div className="w-[260px] min-w-[200px] border-r border-slate-200 shrink-0">
                     <Sidebar
@@ -324,8 +290,6 @@ const POApproval = ({ tab }) => {
                     }
                 </div>
             </div>
-
-            {/* ── MOBILE (below sm: 640px) ──────────────────────────────────── */}
             <div className="flex sm:hidden h-full flex-col">
                 {mobileView === "list" ? (
                     <div className="h-full">
@@ -338,11 +302,8 @@ const POApproval = ({ tab }) => {
                     </div>
                 ) : (
                     <div className="h-full flex flex-col overflow-hidden">
-                        {/* Mobile top bar — back + doc no + counter + nav, all one line */}
                         <div className="flex items-center gap-1.5 px-3 py-2 bg-white border-b border-slate-200 shrink-0"
                              style={{ paddingTop: "max(8px, env(safe-area-inset-top))" }}>
-
-                            {/* Back */}
                             <button
                                 onClick={() => setMobileView("list")}
                                 className="flex items-center text-[#185FA5] -ml-1 px-1.5 rounded-md
@@ -354,13 +315,9 @@ const POApproval = ({ tab }) => {
                                     <polyline points="15 18 9 12 15 6"/>
                                 </svg>
                             </button>
-
-                            {/* Doc no — flexes & truncates */}
                             <span className="text-[13px] text-slate-700 truncate font-medium flex-1 min-w-0">
                                 {formData?.key_doc_no ?? ""}
                             </span>
-
-                            {/* Counter + prev/next — same line, right side */}
                             <span className="text-[11px] text-slate-400 shrink-0">
                                 {currentIndex + 1}/{list.length}
                             </span>

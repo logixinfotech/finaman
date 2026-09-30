@@ -2,7 +2,9 @@ import { useState, useCallback, useMemo } from "react";
 import {
   FaClipboardList, FaSearch, FaTasks, FaSpinner,
   FaCheckDouble, FaChartLine, FaHistory,
+
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -18,7 +20,6 @@ import {
 import { getCapas, getCapa, createCapa, updateCapa, deleteCapa } from "./Utils/QmsAPI";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
 import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
-// ── module-level constants (component ke bahar — stable references) ──
 const API = {
   list: getCapas, getOne: getCapa,
   create: createCapa, update: updateCapa, remove: deleteCapa,
@@ -41,7 +42,7 @@ const initialState = {
   EffectivenessCriteria: "", EffectivenessDueDate: "",
   EffectivenessResult: "", EffectivenessReviewedBy: "",
   ClosedBy: "", ClosureRemarks: "",
-    InitiatedBy: "", ProposedBy: "", ProposedOn: "",
+  InitiatedBy: "", ProposedBy: "", ProposedOn: "",
   Investigation: "",
   CorrectiveTargetDate: "", PreventiveTargetDate: "",
   CaInitiatedBy: "", CaInitiatedOn: "", CaVerifiedQaBy: "", CaVerifiedQaOn: "",
@@ -93,7 +94,12 @@ export default function CapaMasterPage({ tab }) {
     getRequired: getCapaRequired,
     api: API,
   });
-
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/capa',
+    applName: 'capa',
+    emailEndpoint: '/api/qms-print/capa',
+    shareLinkEndpoint: '/api/qms-print/capa',
+  });
   const refOpts = useRefOptions(["changecontrol", "dms", "training", "deviation", "incident", "audit", "capa"]);   // 🆕
 
   const fieldGroups = useMemo(
@@ -105,6 +111,14 @@ export default function CapaMasterPage({ tab }) {
     () => ({ audit: <RecordAuditPanel history={m.history} /> }),
     [m.history]
   );
+
+  // ── module icon (from the module this tab belongs to), used before the
+  // "Deviation" title in both the list header and the form header ──────────
+  const ModuleIcon = useMemo(() => {
+    const name = tab?.icon_name || tab?.module?.icon_name;
+    return (name && FaIcons[name]) || FaClipboardList;
+  }, [tab?.icon_name, tab?.module?.icon_name]);
+
 
   // ── filters ──
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -121,14 +135,30 @@ export default function CapaMasterPage({ tab }) {
         (!filters.Department || has(it.Department, filters.Department))
       );
   }, [m.list, filters]);
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `CAPA-${m.formData?.Id}`,
+      contextLabel: m.formData?.Department,
+    });
+  }, [m.formData, printWorkflow]);
 
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="CAPA Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
   if (m.showForm) {
     return (
       <div className="h-full w-full">
         <ERPFormBuilder
           title="CAPA"
+          subtitle={m.formData?.RecordNo || "New"}
+          TitleIcon={ModuleIcon}
           tabs={capaTabs}
           tabLabels={capaTabLabels}
+          tabStage={capaTabStage}
           TabIcon={CapaTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -154,11 +184,13 @@ export default function CapaMasterPage({ tab }) {
           settingsConfig={m.settingsConfig}
           settingsDefaults={m.settingsDefaults}
           onSettingsSave={m.onSettingsSave}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
           onSave={m.handleSave}
-             onSaveDraft={m.handleSaveDraft}
+          onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onNewEntry={m.handleAddNewGuarded}
           onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
@@ -178,6 +210,7 @@ export default function CapaMasterPage({ tab }) {
     <div className="h-full w-full">
       <Table
         title="CAPA"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={capaTableColumns}
         rowKey="Id"
@@ -192,6 +225,7 @@ export default function CapaMasterPage({ tab }) {
         onDeleteMultiple={m.handleDeleteMultiple}
         onToggleFilter={() => setShowFilter((p) => !p)}
         showForm={showFilter}
+        onprint={m.handlePrint}
         formComponent={
           <UnivarsalFilter
             filters={filters}

@@ -184,7 +184,7 @@ const DeductionHeadForm = ({
                 onKeyDown={handleKeyDown}
                 className={getInputClass(isViewMode, "preTax")}
               />
-            </div> 
+            </div>
             <div className="flex flex-row items-center gap-0.5 md:gap-2">
               <label className="text-[10px] md:text-sm font-medium whitespace-nowrap">Status</label>
               <ERPAutocomplete
@@ -196,21 +196,21 @@ const DeductionHeadForm = ({
                 className={getInputClass(isViewMode, "status")}
               />
             </div>
-              <div className="col-span-1 flex flex-row items-center gap-0.5 md:gap-2">
-                <label className="text-[10px] md:text-sm font-medium whitespace-nowrap">
-                  Max Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  name="max_amount"
-                  value={formData.max_amount ?? ""}
-                  disabled={isViewMode}
-                  onChange={(e) => handleChange("max_amount", e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className={getInputClass(isViewMode, "max_amount")}
-                />
-              </div>
+            <div className="col-span-1 flex flex-row items-center gap-0.5 md:gap-2">
+              <label className="text-[10px] md:text-sm font-medium whitespace-nowrap">
+                Max Amount (₹)
+              </label>
+              <input
+                type="number"
+                min="0"
+                name="max_amount"
+                value={formData.max_amount ?? ""}
+                disabled={isViewMode}
+                onChange={(e) => handleChange("max_amount", e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={getInputClass(isViewMode, "max_amount")}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -1,9 +1,18 @@
 import { useMemo } from "react";
 import { inrS } from "../../../../utils/helpers";
-
-// NOTE: `r.status` is a GUESS. The app already has an `orderStatus` filter
-// (FiltersBar / applyOrderFilters) — check orderHelpers.js for the real field
-// name it filters on and swap it in below.
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { XCircle } from "lucide-react";
+const EXPORT_COLS = [
+  { key: "ord",    label: "Order No" },
+  { key: "dt",     label: "Date", type: "date" },
+  { key: "cust",   label: "Customer" },
+  { key: "city",   label: "City" },
+  { key: "item",   label: "Item" },
+  { key: "status", label: "Status" },
+  { key: "qo",     label: "Qty Ordered", type: "int" },
+  { key: "amt",    label: "Amount (₹)", type: "num" },
+];
 export default function CancelledReducedOrders({ rows }) {
   const data = useMemo(() => {
     const flagged = (rows || []).filter((r) => {
@@ -18,7 +27,9 @@ export default function CancelledReducedOrders({ rows }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">❌ Cancelled / Reduced Orders</h4>
+      <SectionHeader icon={XCircle} accent="rose" title="Cancelled / Reduced Orders" className="mb-4">
+        <ExportMenu title="Cancelled Reduced Orders" columns={EXPORT_COLS} rows={data.flagged} />
+      </SectionHeader>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="rounded-lg bg-rose-50 p-3">
           <p className="text-[11px] font-semibold text-rose-700">Cancelled</p>

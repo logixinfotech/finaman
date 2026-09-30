@@ -425,6 +425,8 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
+import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
+import { fetchAttendanceRules } from "../../../../utils/api";
 
 const ShiftMasterForm = ({
   mode = "view",
@@ -447,6 +449,7 @@ const ShiftMasterForm = ({
 }) => {
 
   const [errors, setErrors] = useState({});
+  const [attendanceRules, setAttendanceRules] = useState([]);
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
@@ -454,6 +457,19 @@ const ShiftMasterForm = ({
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 
   const requiredFields = ["shift_name", "start_time", "end_time"];
+
+  useEffect(() => {
+    const loadRules = async () => {
+      try {
+        const res = await fetchAttendanceRules();
+        const data = Array.isArray(res) ? res : res?.data || [];
+        setAttendanceRules(data);
+      } catch (err) {
+        console.error("Failed to load attendance rules", err);
+      }
+    };
+    loadRules();
+  }, []);
 
   // Only reset formData when initialData's actual content changes —
   // not every time a new (but identical) {} reference is passed in from the parent.
@@ -806,6 +822,35 @@ const ShiftMasterForm = ({
                     className={getInputClass(isViewMode, "half_day_hours")}
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Attendance Rule */}
+            <div className="flex flex-row items-center px-1 gap-2 sm:gap-0">
+              <label className="text-black-800 text-[13px] sm:text-[15px] w-[70px] sm:w-[100px] shrink-0">
+                Att. Rule
+              </label>
+              <div className="flex-1 w-full">
+                <ERPAutocomplete
+                  options={attendanceRules.map(r => r.rule_name?.trim())}
+                  value={
+                    attendanceRules.find(r => String(r.rule_id).trim() === String(formData.attendance_rule_id).trim())?.rule_name ||
+                    formData.attendance_rule_name ||
+                    ""
+                  }
+                  disabled={isViewMode}
+                  onChange={(val) => {
+                    const rule = attendanceRules.find(r => r.rule_name?.trim() === val?.trim());
+                    setFormData(prev => ({
+                      ...prev,
+                      attendance_rule_id: rule ? rule.rule_id : null,
+                      attendance_rule_name: val,
+                    }));
+                  }}
+                  onKeyDown={handleKeyDown}
+                  className={getInputClass(isViewMode, "attendance_rule_id")}
+                  placeholder="Select Attendance Rule (Optional)"
+                />
               </div>
             </div>
 

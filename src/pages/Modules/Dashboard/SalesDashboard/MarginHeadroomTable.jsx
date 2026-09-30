@@ -1,12 +1,24 @@
 import { useMemo, memo } from "react";
 import { buildMarginHeadroom } from "../../../../utils/orderHelpers";
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { Percent } from "lucide-react";
 
+const EXPORT_COLS = [
+  { key: "item",     label: "Product" },
+  { key: "cust",     label: "Customer" },
+  { key: "rate",     label: "Rate (₹)", type: "num" },
+  { key: "mrp",      label: "MRP (₹)", type: "num" },
+  { key: "headroom", label: "Headroom %", type: "pct" },
+];
 function MarginHeadroomTable({ rows, n = 200 }) {
   const data = useMemo(() => buildMarginHeadroom(rows, n), [rows, n]);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Rate vs MRP Margin Headroom</h4>
+      <SectionHeader icon={Percent} accent="indigo" title="Rate vs MRP Margin Headroom" className="mb-1">
+        <ExportMenu title="Margin Headroom" columns={EXPORT_COLS} rows={data} />
+      </SectionHeader>
       <p className="text-[11px] text-slate-400 mb-4">(MRP − rate) ÷ MRP · trade margin potential</p>
       <div className="overflow-auto" style={{ maxHeight: 300 }}>
         <table className="w-full text-left text-sm">

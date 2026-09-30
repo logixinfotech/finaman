@@ -35,7 +35,6 @@ export const useDashboard = () => {
 
       setData(res.data);
       setLastFetched(new Date());
-      // console.log("[useDashboard] ✅ State updated successfully");
 
     } catch (err) {
       console.error("[useDashboard] ❌ EXCEPTION:", err);

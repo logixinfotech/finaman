@@ -16,10 +16,7 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
-  // Decouple collapsed state from mobile
   const isCollapsed = isMobile ? false : collapsed;
-  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const loadModules = async () => {
@@ -30,6 +27,7 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
         if (!token) throw new Error("No token found");
 
         const data = await fetchSidebarMenu(token);
+     
 
         const visibleModules = (data || [])
           .filter((m) => m.show_stat === "Y")
@@ -99,8 +97,6 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
           )}
         </button>
       )}
-
-      {/* ── Module list (Started from top) ──────────────────────────────── */}
    <div
   className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2 space-y-1 no-scrollbar"
   style={{
@@ -165,15 +161,11 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
               >
                 <DynamicIcon name={module.icon_name} />
               </div>
-
-              {/* Label — hidden when collapsed */}
               {!isCollapsed && (
                 <span className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
                   {module.mod_name}
                 </span>
               )}
-
-              {/* Tooltip — only shown when collapsed (desktop/tablet icon mode) */}
               {isCollapsed && (
                 <div className="fixed left-[70px] bg-gray-900 text-white text-xs px-2 py-1
                   rounded opacity-0 group-hover:opacity-100 pointer-events-none

@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { 
-  Building2, Fingerprint, Shield, Briefcase, UserCircle,
+  Building2, Fingerprint, Shield,   UserCircle,
   Copy, Check, MapPin, Clock, KeyRound, Mail, Phone,
-  ChevronRight, ShieldCheck, Laptop, MoreVertical, 
+  ShieldCheck, Laptop, MoreVertical, 
   CheckCircle2, Activity, Wallet, Network, History, Lock,
   ArrowLeftRight, Search, X as CloseIcon, Loader2, AlertCircle
 } from "lucide-react";
 import { fetchUserProfile, fetchSwitchableCompanies, switchCompany } from "../../utils/api";
+import { copyToClipboard } from "../../utils/helpers";
 import { useAuth } from "../../theme/AuthContext";
+
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -511,9 +513,9 @@ const ProfileRow = ({ icon: Icon, label, value }) => (
 const CopyableRow = ({ icon: Icon, label, value }) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!value) return;
-    navigator.clipboard.writeText(value);
+    await copyToClipboard(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

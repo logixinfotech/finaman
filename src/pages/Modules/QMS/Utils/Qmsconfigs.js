@@ -18,17 +18,22 @@ export const deviationTabLabels = {
   closure: "6. Closure",
   audit: "7. Audit Trail",
 };
+
+export const deviationAutoFieldMap = {
+  autoCreateCapa: ["CapaRequired", "CapaRef"],
+  autoCreateRisk: ["RiskAssessmentRequired", "RiskAssessmentRef"],
+};
 export const deviationWidthConfig = {
   "Product": "col-span-2",
   "Deviation Scope": "col-span-2",
-  "Description of Deviation": "col-span-4",
-  "Immediate Action Taken": "col-span-4",
-  "Investig. Start Date": "col-span-2",
-  "Investigated By": "col-span-2",
+  "Description of Deviation": "col-span-3",
+  "Immediate Action Taken": "col-span-3",
+  "CAPA Implementation Verification": "col-span-2",
+  "Root Cause Method": "col-span-2",
   "Investig. Completion Date": "col-span-2",
   "Immediate Action — Document Ref.": "col-span-2",
   "Attachment Ref.": "col-span-2",
-  "Investigation Summary": "col-span-full",
+  "Summary": "col-span-full",
   "Probable / Root Cause": "col-span-full",
   "Impact Assessment (Quality / Validation / Regulatory)": "col-span-full",
   "Other Batches / Products Impacted": "col-span-full",
@@ -56,6 +61,7 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
   const EQ = (groupOptions.equipment || []).map((g) => g.label);
   const IN = (groupOptions.instrument || []).map((g) => g.label);
   const AR = (groupOptions.area || []).map((g) => g.label);
+  const A = groupOptions.auto || {};   // { autoCreateCapa: true/false, ... }
 
   const PS = ["Dispensing", "Raw Material Receipt", "Granulation", "Drying", "Blending",
     "Compression", "Coating", "Inspection", "Packing", "Storage", "QC Testing"];
@@ -66,14 +72,13 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
     "SOPs", "Storage", "Packing", "Specification", "Training", "Maintenance", "Cross contamination",
     "Human error", "Yield out of limit", "Personal practices", "Other"];
 
-  const DEPTS7 = ["Engineering", "Stores", "Production", "Quality Control", "Administration/HR", "Purchase", "Any other dept."];
 
   return {
     // ═════════════ S1 — OPEN (stage 0) ═════════════
     open: [
       [
         ["1. Deviation Details", [
-          { key: "RecordNo", label: "Deviation No.", type: "text", disabled: true },
+          { key: "RecordNo", label: "Deviation No.", type: "text", disabled: (d) => !groupOptions.recordNoEditable || !!d.Id },
           { key: "DeviationType", label: "Deviation Type", type: "select", options: ["Planned", "Unplanned"] },
           { key: "OccurrenceDate", label: "Date of Occurrence", type: "date" },
           { key: "DetectionDate", label: "Date of Detection", type: "date" },
@@ -189,10 +194,10 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
       [
         ["4. QA Assessment", [
           { key: "Classification", label: "Classification", type: "select", options: ["Minor", "Major", "Critical"] },
-          { key: "RiskAssessmentRequired", label: "Risk Assessment Required?", type: "select", options: ["Yes", "No"], showIf: (d) => d.Classification === 'Critical' },
-          { key: "RiskAssessmentRef", label: "Linked Risk Assessment Ref. (auto)", type: "text", disabled: true, showIf: (d) => d.RiskAssessmentRequired === "Yes" },
+          { key: "RiskAssessmentRequired", label: "Risk Assessment Req.?", type: "select", options: ["Yes", "No"], showIf: (d) => A.autoCreateRisk && d.Classification === "Critical" },
+          { key: "RiskAssessmentRef", label: "Linked Risk Assessment Ref. (auto)", type: "text", disabled: true, showIf: (d) => A.autoCreateRisk && d.RiskAssessmentRequired === "Yes" },
           { key: "Priority", label: "Priority", type: "select", options: ["Low", "Medium", "High", "Critical"] },
-          { key: "InvestigationRequired", label: "Detailed Investig. Required", type: "select", options: ["Yes", "No"] },
+          { key: "InvestigationRequired", label: "Investigation Req.", type: "select", options: ["Yes", "No"] },
           { key: "QaNotifiedDate", label: "QA Notified On", type: "date" },
           { key: "AcceptedBy", label: "Accepted By (QA)", type: "select", options: P },
           { key: "AcceptedOn", label: "Accepted On", type: "date" },
@@ -216,11 +221,11 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
       ],
       [
         ["6. Investigation Details", [
-          { key: "InvestigationStartDate", label: "Investig. Start Date", type: "date" },
-          { key: "InvestigationCompletionDate", label: "Investig. Completion Date", type: "date" },
+          { key: "InvestigationStartDate", label: "Start Date", type: "date" },
+          { key: "InvestigationCompletionDate", label: "Completion Date", type: "date" },
           { key: "InvestigatedBy", label: "Investigated By", type: "select", options: P },
           { type: "row-break" },
-          { key: "InvestigationSummary", label: "Investigation Summary", type: "textarea" },
+          { key: "InvestigationSummary", label: "Summary", type: "textarea" },
         ]],
         ["7. Root Cause Analysis", [
           { key: "RcaMethod", label: "Root Cause Method", type: "select", options: ["5-Why", "Fishbone", "FMEA", "Other"] },
@@ -229,9 +234,11 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
         ]],
       ],
       [
-        ["8. Department Involvement", [                        // 🆕 childgrid
+        ["8. Department Involvement", [
           {
             key: "deptreview", type: "childgrid", label: "Department Review", fixedRows: true,
+            rowLockField: "RoleTitle",                    // 🆕
+            rowLockColumns: ["Comments", "SignBy"],          // 🆕 "Required" isme nahi — wo QA Investigator ka hi rehta hai
             defaultRows: [
               { Department: "Engineering" }, { Department: "Stores" }, { Department: "Production" },
               { Department: "Quality Control" }, { Department: "Administration/HR" },
@@ -241,8 +248,8 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
               { key: "Department", label: "Department", type: "text", disabled: true, width: "15%" },
               { key: "Required", label: "Required", type: "select", options: ["Required", "Not Required"], width: "12%" },
               { key: "Comments", label: "Comments", type: "textarea" },
-              { key: "SignBy", label: "Sign", type: "select", options: P, width: "14%" },
-              { key: "SignOn", label: "Date", type: "date", width: "12%" },
+              { key: "SignBy", label: "Sign", type: "text", autoSign: true, dateKey: "SignOn", width: "14%" },  // 🆕 dropdown hataya
+              { key: "SignOn", label: "Date", type: "date", disabled: true, width: "12%" },                      // 🆕 sirf auto-fill
             ]
           },
         ]],
@@ -304,8 +311,8 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
     capa: [
       [
         ["11. CAPA (Corrective & Preventive Action)", [
-          { key: "CapaRequired", label: "CAPA Required", type: "select", options: ["Yes", "No"] },
-          { key: "CapaRef", label: "Linked CAPA Ref.", type: "text", disabled: true },
+          { key: "CapaRequired", label: "CAPA Required", type: "select", options: ["Yes", "No"], showIf: () => A.autoCreateCapa },
+          { key: "CapaRef", label: "Linked CAPA Ref.", type: "text", disabled: true, showIf: () => A.autoCreateCapa },
           { key: "TargetDate", label: "Target Completion Date", type: "date" },
           { type: "row-break" },
           { key: "CorrectiveAction", label: "Corrective Action", type: "textarea" },
@@ -323,7 +330,6 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
         ["12. Target Date Extension", [                        // 🆕 childgrid
           {
             key: "extensions", type: "childgrid", label: "Extension Required",
-            footer: "Add one row per extension. Each extension needs a justification and both signatures.",
             columns: [
               { key: "Justification", label: "Justification", type: "textarea" },
               { key: "Period", label: "Extension Period", type: "text", width: "14%" },
@@ -342,7 +348,7 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
         ["13. Authorization & Closure", [
           { key: "Status", label: "Current Stage", type: "text", disabled: true },
           {
-            key: "AuthorizationStatus", label: "Deviation Authoriz / Reject", type: "select",   // 🆕
+            key: "AuthorizationStatus", label: "Deviation Auth / Rej", type: "select",   // 🆕
             options: ["Authorized", "Rejected"]
           },
           { key: "ReviewedBy", label: "Reviewed By (QA)", type: "select", options: P },
@@ -370,12 +376,12 @@ export const getDeviationFieldGroups = (groupOptions = {}) => {
   };
 };
 export const deviationSectionConfigs = {
-  "1. Deviation Details": "grid-cols-1 sm:grid-cols-4 xl:grid-cols-8",
+  "1. Deviation Details": "grid-cols-1 sm:grid-cols-4 xl:grid-cols-6",
   "2. Classification & Personnel Interview": "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
   "3. Source & Linkage": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-4",
   "4. QA Assessment": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-6",
   "5. Investigation Plan": "grid-cols-1",
-  "6. Investigation Details": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-6",
+  "6. Investigation Details": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 ",
   "7. Root Cause Analysis": "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
   "8. Department Involvement": "grid-cols-1",
   "9. Extended Investigation": "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
@@ -462,8 +468,15 @@ export const getIncidentFieldGroups = (options = {}) => {
     "SOPs", "Storage", "Packing", "Specification", "Training", "Maintenance", "Cross contamination",
     "Human error", "Yield out of limit", "Personal practices", "Other"];
 
-  const DEPT_ROWS = ["Engineering", "Stores", "Production", "Quality Control",
-    "Administration/HR", "Purchase", "Any other dept."].map((d) => ({ Department: d }));
+  const DEPT_ROWS = [
+    { Department: "Engineering", RoleTitle: "Engineering Head" },
+    { Department: "Stores", RoleTitle: "Warehouse Head" },
+    { Department: "Production", RoleTitle: "Production Head" },
+    { Department: "Quality Control", RoleTitle: "QC Head" },
+    { Department: "Administration/HR", RoleTitle: "Administration Head" },
+    { Department: "Purchase", RoleTitle: "Purchase Head" },
+    { Department: "Any other dept.", exemptFromLock: true },
+  ];
 
   return {
     // ═════════════ S1 — REPORTED (stage 0) — Operator ═════════════
@@ -627,14 +640,16 @@ export const getIncidentFieldGroups = (options = {}) => {
         ["8. Department Involvement", [
           {
             key: "deptreview", type: "childgrid", label: "Department Review", fixedRows: true,
+            rowLockField: "RoleTitle",                    // 🆕
+            rowLockColumns: ["Comments", "SignBy"],          // 🆕
             defaultRows: DEPT_ROWS,
             footer: "Tick Required / Not Required for each department, then record their comment and sign.",
             columns: [
               { key: "Department", label: "Department", type: "text", disabled: true, width: "15%" },
               { key: "Required", label: "Required", type: "select", options: ["Required", "Not Required"], width: "12%" },
               { key: "Comments", label: "Comments", type: "textarea" },
-              { key: "SignBy", label: "Sign", type: "select", options: P, width: "14%" },
-              { key: "SignOn", label: "Date", type: "date", width: "12%" },
+              { key: "SignBy", label: "Sign", type: "text", autoSign: true, dateKey: "SignOn", width: "14%" },  // 🆕
+              { key: "SignOn", label: "Date", type: "date", disabled: true, width: "12%" },                      // 🆕
             ]
           },
         ]],
@@ -690,7 +705,6 @@ export const getIncidentFieldGroups = (options = {}) => {
         ["11. Target Date Extension", [
           {
             key: "extensions", type: "childgrid", label: "Extension Required",
-            footer: "Add one row per extension. Each extension needs a justification and both signatures.",
             columns: [
               { key: "Justification", label: "Justification", type: "textarea" },
               { key: "Period", label: "Extension Period", type: "text", width: "14%" },
@@ -763,7 +777,9 @@ export const incidentTableColumns = [
   { key: "Area", label: "Area / Location" },
   { key: "Category", label: "Category" },
   { key: "Severity", label: "Severity" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ══════════════════════════════════════════════════════ CAPA ═══════════════
@@ -789,7 +805,7 @@ export const capaWidthConfig = {
   "Investigation": "col-span-full",
   "Root Cause": "col-span-full",
   "Correction (Immediate Fix)": "col-span-full",
-   "Effectiveness Verification Required":"col-span-1",
+  "Effectiveness Verification Required": "col-span-1",
   "Corrective Action": "col-span-full",
   "Preventive Action": "col-span-full",
   "Progress Remarks": "col-span-full",
@@ -937,7 +953,6 @@ export const getCapaFieldGroups = (o = {}) => {
         [
           {
             key: "extensions", type: "childgrid", label: "Extension Required",
-            footer: "Add one row per extension request. Each needs a justification and both signatures.",
             columns: [
               { key: "Justification", label: "Justification & Pending Activities", type: "textarea" },
               { key: "InitialFrom", label: "Initial From", type: "date", width: "10%" },
@@ -986,7 +1001,7 @@ export const getCapaFieldGroups = (o = {}) => {
       [[
         "11. Linked Records",
         [
-          { key: "ChangeControlRef", label: "Linked Change Control Ref.", type: "text", disabled: true },
+          { key: "ChangeControlRef", label: "Change Control Ref.", type: "text", disabled: true },
           { key: "DmsRef", label: "Linked Document Ref.", type: "text", disabled: true },
           { key: "TrainingRef", label: "Linked Training Ref.", type: "text", disabled: true },
         ],
@@ -1135,7 +1150,9 @@ export const capaTableColumns = [
   { key: "Department", label: "Department" },
   { key: "TargetDate", label: "Target Date", render: (r) => (r.TargetDate || "").slice(0, 10) },
   { key: "EffectivenessResult", label: "Effectiveness" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 
@@ -1197,6 +1214,10 @@ export const getChangeControlFieldGroups = (o = {}) => {
         "1. Change Details",
         [
           { key: "RecordNo", label: "Change Control No.", type: "text", disabled: true },
+          {
+            key: "ProposalRef", label: "Linked Proposal Ref. (auto)", type: "text", disabled: true,
+            showIf: (d) => !!d.ProposalRef
+          },
           { key: "InitiationDate", label: "Initiation Date", type: "date" },
           { key: "Department", label: "Initiating Department", type: "select", options: D },
           { key: "InitiatedBy", label: "Initiated By", type: "select", options: P },
@@ -1401,7 +1422,6 @@ export const getChangeControlFieldGroups = (o = {}) => {
         [
           {
             key: "extensions", type: "childgrid", label: "Time Frame Extension",
-            footer: "Add one row per extension request. Each needs a justification and both signatures.",
             columns: [
               { key: "Justification", label: "Justification & Pending Activities", type: "textarea" },
               { key: "InitialFrom", label: "Initial From", type: "date", width: "10%" },
@@ -1534,8 +1554,110 @@ export const changeControlTableColumns = [
   { key: "Product", label: "Product" },
   { key: "Classification", label: "Classification" },
   { key: "TargetDate", label: "Target Date", render: (r) => (r.TargetDate || "").slice(0, 10) },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
+
+/* ============================================================================
+   ADD THIS to Qmsconfigs.js — anywhere alongside the other module blocks.
+   ============================================================================ */
+
+// ══════════════════════════════ CHANGE PROPOSAL ═══════════════════════════
+
+export const changeProposalTabs = ["details", "screening", "audit"];
+
+export const changeProposalTabStage = {
+  details: 0, screening: 1, audit: 99,
+};
+
+export const changeProposalTabLabels = {
+  details: "1. Proposal Details",
+  screening: "2. QA Screening",
+  audit: "3. Audit Trail",
+};
+
+export const changeProposalWidthConfig = {
+  "Existing System / Current State": "col-span-full",
+  "Proposed Change": "col-span-full",
+  "Justification / Reason for Change": "col-span-full",
+  "Screening Remarks": "col-span-full",
+};
+
+export const getChangeProposalFieldGroups = (o = {}) => {
+  const P = (o.personnel || []).map((g) => g.label);
+  const D = (o.department || []).map((g) => g.label);
+
+  return {
+    // ═══════ S1 — DRAFT (stage 0) — Dept Head / Operator ═══════
+    details: [
+      [[
+        "1. Proposal Details",
+        [
+          { key: "RecordNo", label: "Proposal No.", type: "text", disabled: true },
+          { key: "InitiationDate", label: "Date", type: "date" },
+          { key: "Department", label: "Department", type: "select", options: D },
+          { key: "InitiatedBy", label: "Proposed By", type: "select", options: P },
+          {
+            key: "ChangeType", label: "Change Type", type: "select",
+            options: ["Process / Method", "Equipment", "Facility / Utility", "Document / SOP",
+              "Software / System", "Supplier / Vendor", "Other"]
+          },
+          { type: "row-break" },
+          { key: "CurrentState", label: "Existing System / Current State", type: "textarea" },
+          { key: "ProposedChange", label: "Proposed Change", type: "textarea" },
+          { key: "Justification", label: "Justification / Reason for Change", type: "textarea" },
+        ],
+      ]],
+    ],
+
+    // ═══════ S2 — QA SCREENING (stage 1) — QA Head ═══════
+    // "Update" (normal save+advance) => Accepted, auto-creates Change Control.
+    // "Reject" (existing reject button/dialog) => Rejected, nothing created.
+    screening: [
+      [[
+        "2. QA Screening",
+        [
+          {
+            key: "ChangeControlRef", label: "Linked Change Control Ref. (auto)", type: "text", disabled: true,
+            showIf: (d) => !!d.ChangeControlRef
+          },
+          { key: "ScreenedBy", label: "Screened By (QA)", type: "select", options: P },
+          { key: "ScreenedOn", label: "Screened On", type: "date" },
+          { type: "row-break" },
+          { key: "ScreeningRemarks", label: "Screening Remarks", type: "textarea" },
+        ],
+      ]],
+    ],
+  };
+};
+
+export const changeProposalSectionConfigs = {
+  "1. Proposal Details": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-5",
+  "2. QA Screening": "grid-cols-1 sm:grid-cols-3 xl:grid-cols-4",
+};
+
+export const changeProposalRequiredByStage = {
+  "Draft": ["InitiationDate", "Department", "InitiatedBy", "ChangeType", "CurrentState", "ProposedChange", "Justification"],
+  "QA Screening": ["ScreenedBy", "ScreenedOn", "ScreeningRemarks"],
+  "Closed": [],
+};
+
+export const getChangeProposalRequired = (s) =>
+  changeProposalRequiredByStage[s] || changeProposalRequiredByStage["Draft"];
+
+export const changeProposalTableColumns = [
+  { key: "Sr", label: "Sr" },
+  { key: "RecordNo", label: "Proposal No." },
+  { key: "InitiationDate", label: "Date", render: (r) => (r.InitiationDate || "").slice(0, 10) },
+  { key: "Department", label: "Department" },
+  { key: "ChangeType", label: "Change Type" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "ChangeControlRef", label: "Change Control Ref.", render: (r) => r.ChangeControlRef || "—" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
+];
+
 
 // ═════════════════════════════════════════════ PRODUCT RECALL ══════════════
 
@@ -1702,7 +1824,9 @@ export const recallTableColumns = [
   { key: "BatchNos", label: "Batch No.(s)" },
   { key: "Classification", label: "Class" },
   { key: "RecoveryPercent", label: "Recovery %" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ═══════════════════════════════════════════════════════ DMS ═══════════════
@@ -1746,7 +1870,7 @@ export const getDmsFieldGroups = (o = {}) => {
           { key: "Department", label: "Owner Department", type: "select", options: D },
           { key: "Version", label: "Version No.", type: "text" },
           { key: "Supersedes", label: "Supersedes", type: "text" },
-          { key: "ChangeRef", label: "Linked Change Control Ref.", type: "text", disabled: true },
+          { key: "ChangeRef", label: "Change Control Ref.", type: "text", disabled: true },
           { key: "CapaRef", label: "Linked CAPA Ref.", type: "text", disabled: true },
           { key: "PreparedBy", label: "Prepared By", type: "select", options: P },
           { key: "PreparedOn", label: "Prepared On", type: "date" },
@@ -1862,7 +1986,9 @@ export const dmsTableColumns = [
   { key: "Version", label: "Version" },
   { key: "Department", label: "Owner Dept." },
   { key: "EffectiveDate", label: "Effective Date", render: (r) => (r.EffectiveDate || "").slice(0, 10) },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ═══════════════════════════════════════════════ STP REGISTER ══════════════
@@ -1905,9 +2031,9 @@ export const getStpFieldGroups = (o = {}) => {
           { key: "Department", label: "Department", type: "select", options: D },
           { key: "Category", label: "Category", type: "select", options: ["SOP", "STP", "Policy", "Work Instruction", "Format", "Guideline"] },
           { key: "Version", label: "Version No.", type: "text" },
-          { key: "Supersedes", label: "Supersedes (Previous Version)", type: "text" },
+          { key: "Supersedes", label: "Supersedes", type: "text" },//superseded
           { key: "CapaRef", label: "Linked CAPA Ref.", type: "select", options: (o.refOpts?.capa || []).map((x) => x.value) },
-          { key: "ChangeRef", label: "Linked Change Control Ref.", type: "select", options: (o.refOpts?.changecontrol || []).map((x) => x.value) },
+          { key: "ChangeRef", label: "Change Control Ref.", type: "select", options: (o.refOpts?.changecontrol || []).map((x) => x.value) },
           { key: "PreparedBy", label: "Prepared By", type: "select", options: P },
           { key: "PreparedOn", label: "Prepared On", type: "date" },
           { key: "AttachmentRef", label: "Attachment Ref.", type: "text" },
@@ -2043,7 +2169,9 @@ export const stpTableColumns = [
   { key: "Category", label: "Category" },
   { key: "Department", label: "Department" },
   { key: "EffectiveDate", label: "Effective Date", render: (r) => (r.EffectiveDate || "").slice(0, 10) },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ══════════════════════════════════════════════════ TRAINING ═══════════════
@@ -2084,9 +2212,9 @@ export const getTrainingFieldGroups = (o = {}) => {
           { key: "TrainingMode", label: "Training Mode", type: "select", options: ["Classroom", "Online", "On-the-Job", "Hybrid"] },
           { key: "Department", label: "Target Department", type: "select", options: D },
           { key: "Trainer", label: "Trainer / Faculty", type: "select", options: P },
-          { key: "ChangeRef", label: "Linked Change Control Ref.", type: "text", disabled: true },   // 🆕
+          { key: "ChangeRef", label: "Change Control Ref.", type: "text", disabled: true },   // 🆕
           { key: "Priority", label: "Priority", type: "select", options: ["Normal", "High"], }, // 🆕
-          { key: "DueDate", label: "Due Date (Before Implementation)", type: "date", }, // 🆕
+          { key: "DueDate", label: "Due Date", type: "date", }, // 🆕
           { key: "ScheduledDate", label: "Scheduled Date", type: "date" },
           { key: "ScheduledBy", label: "Scheduled By", type: "select", options: P },
           { key: "DocRef", label: "Linked STP / SOP Ref.", type: "text", disabled: true },
@@ -2170,7 +2298,9 @@ export const trainingTableColumns = [
   { key: "TrainingType", label: "Type" },
   { key: "Department", label: "Dept." },
   { key: "Trainer", label: "Trainer" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ═════════════════════════════════════════════════════ AUDIT ═══════════════
@@ -2312,7 +2442,9 @@ export const auditTableColumns = [
   { key: "Agency", label: "Agency / Auditee" },
   { key: "AreaDepartment", label: "Area / Dept." },
   { key: "ComplianceStatus", label: "Compliance" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ══════════════════════════════════════════════ CALIBRATION ════════════════
@@ -2433,7 +2565,9 @@ export const calibrationTableColumns = [
   { key: "DueDate", label: "Due Date", render: (r) => (r.DueDate || "").slice(0, 10) },
   { key: "NextDue", label: "Next Due", render: (r) => (r.NextDue || "").slice(0, 10) },
   { key: "Result", label: "Result" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ═══════════════════════════════ ENVIRONMENTAL MONITORING ══════════════════
@@ -2582,7 +2716,9 @@ export const envTableColumns = [
   { key: "MonitoringType", label: "Type" },
   { key: "Result", label: "Result" },
   { key: "LimitStatus", label: "Limit Status" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ═════════════════════════════════════════════ QUALIFICATION ═══════════════
@@ -2721,7 +2857,9 @@ export const qualificationTableColumns = [
   { key: "PlannedDate", label: "Planned Date", render: (r) => (r.PlannedDate || "").slice(0, 10) },
   { key: "Result", label: "Result" },
   { key: "NextRequalDue", label: "Next Requal.", render: (r) => (r.NextRequalDue || "").slice(0, 10) },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ══════════════════════════════════ PREVENTIVE MAINTENANCE ═════════════════
@@ -2843,7 +2981,9 @@ export const pmTableColumns = [
   { key: "DueDate", label: "Due Date", render: (r) => (r.DueDate || "").slice(0, 10) },
   { key: "NextDue", label: "Next Due", render: (r) => (r.NextDue || "").slice(0, 10) },
   { key: "LastResult", label: "Result" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 
@@ -2907,8 +3047,14 @@ const INVESTIGATION_METHODOLOGY = ["Review of Batch Manufacturing Records",
   "Stability data review", "Trend data review", "Equipment / area logbook review",
   "Training records review", "Investigation extended to other batches"];
 
-const COMPLAINT_DEPT_ROWS = ["Quality Assurance", "Manufacturing", "Quality Control",
-  "Warehouse", "Other Department", "Party / Complainant"].map((d) => ({ Department: d }));
+const COMPLAINT_DEPT_ROWS = [
+  { Department: "Quality Assurance", RoleTitle: "QA Head" },
+  { Department: "Manufacturing", RoleTitle: "Production Head" },
+  { Department: "Quality Control", RoleTitle: "QC Head" },
+  { Department: "Warehouse", RoleTitle: "Warehouse Head" },
+  { Department: "Other Department", exemptFromLock: true },
+  { Department: "Party / Complainant", exemptFromLock: true },
+];
 
 export const getComplaintFieldGroups = (o = {}) => {
   const P = (o.personnel || []).map((g) => g.label);
@@ -3074,13 +3220,15 @@ export const getComplaintFieldGroups = (o = {}) => {
         [
           {
             key: "deptreview", type: "childgrid", label: "Comments by Department", fixedRows: true,
+            rowLockField: "RoleTitle",                        // 🆕
+            rowLockColumns: ["Comments", "SignBy"],            // 🆕
             defaultRows: COMPLAINT_DEPT_ROWS,
             footer: "Each department records its finding and signs.",
             columns: [
               { key: "Department", label: "Department", type: "text", disabled: true, width: "17%" },
               { key: "Comments", label: "Comments", type: "textarea" },
-              { key: "SignBy", label: "Name / Signature", type: "select", options: P, width: "17%" },
-              { key: "SignOn", label: "Date", type: "date", width: "13%" },
+              { key: "SignBy", label: "Name / Signature", type: "text", autoSign: true, dateKey: "SignOn", width: "17%" },  // 🔧 select→text+autoSign
+              { key: "SignOn", label: "Date", type: "date", disabled: true, width: "13%" },                                  // 🔧 disabled add kiya
             ]
           },
         ],
@@ -3184,7 +3332,6 @@ export const getComplaintFieldGroups = (o = {}) => {
         [
           {
             key: "extensions", type: "childgrid", label: "Extension Required",
-            footer: "Add one row per extension request.",
             columns: [
               { key: "Justification", label: "Justification", type: "textarea" },
               { key: "Period", label: "Extension Period", type: "text", width: "13%" },
@@ -3198,7 +3345,7 @@ export const getComplaintFieldGroups = (o = {}) => {
       [[
         "15. Customer Response",
         [
-          { key: "ResponseDate", label: "Response Sent to Complainant On", type: "date" },
+          { key: "ResponseDate", label: "Response Sent On", type: "date" },
           {
             key: "ResponseMode", label: "Response Mode", type: "select",
             options: ["Email", "Letter", "Phone Call", "In Person"]
@@ -3280,7 +3427,9 @@ export const complaintTableColumns = [
   { key: "BatchNo", label: "Batch No." },
   { key: "Category", label: "Category" },
   { key: "Severity", label: "Severity" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ══════════════════════════════════════════ RISK ASSESSMENT ════════════════
@@ -3356,7 +3505,7 @@ export const getRiskFieldGroups = (o = {}) => {
             options: [...(o.refOpts?.changecontrol || []), ...(o.refOpts?.deviation || []), ...(o.refOpts?.complaint || [])].map((x) => x.value)
           },
           {
-            key: "ChangeControlRef", label: "Linked Change Control Ref.", type: "select",
+            key: "ChangeControlRef", label: "Change Control Ref.", type: "select",
             options: (o.refOpts?.changecontrol || []).map((x) => x.value)
           },
           { key: "PreviousCycleRef", label: "Previous Cycle Ref. (auto)", type: "text", disabled: true, showIf: (d) => !!d.PreviousCycleRef },
@@ -3504,7 +3653,9 @@ export const riskTableColumns = [
   { key: "ResidualScore", label: "Residual" },
   { key: "Owner", label: "Risk Owner" },
   { key: "ReviewDate", label: "Next Review", render: (r) => (r.ReviewDate || "").slice(0, 10) },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ══════════════════════════════ OOS — OUT OF SPECIFICATION ═════════════════
@@ -3791,11 +3942,11 @@ export const getOosFieldGroups = (o = {}) => {
           { key: "ResultMean", label: "Overall Mean", type: "text" },
           { key: "ResultRsd", label: "% RSD", type: "text" },
           {
-            key: "WithinAcceptanceCriteria", label: "Within Acceptance Criteria?", type: "select",
+            key: "WithinAcceptanceCriteria", label: "Within Acceptance", type: "select",
             options: ["Yes", "No"]
           },
           {
-            key: "ExtendedInvestigationRecommended", label: "Extended (Production) Investigation Recommended?",
+            key: "ExtendedInvestigationRecommended", label: "Prod. Investigation?",
             type: "select", options: ["Yes", "No"]
           },
           { type: "row-break" },
@@ -3853,7 +4004,7 @@ export const getOosFieldGroups = (o = {}) => {
     // ───── S5 — PENDING CLOSURE (stage 4) — QA Head ─────
     closure: [
       [[
-         "13. Closure",
+        "13. Closure",
         [
           { key: "Status", label: "Current Stage", type: "text", disabled: true },
           { key: "TargetClosure", label: "Target Closure Date", type: "date" },
@@ -3885,7 +4036,7 @@ export const oosSectionConfigs = {
 
 export const oosRequiredByStage = {
   "Reported": ["ReportedDate", "Product", "BatchNo", "ArNo", "Stage", "TestParameter", "ReportedBy", "StpRef", "SpecificationLimit", "ObtainedResult", "Analyst", "Instrument", "AnalysisDate"],
-   "Phase 1 Investigation": ["ObviousError", "Phase1By", "Phase1Date", "Phase1Conclusion"],
+  "Phase 1 Investigation": ["ObviousError", "Phase1By", "Phase1Date", "Phase1Conclusion"],
   "Phase 2 Investigation": ["Phase2Investigation", "RootCause", "Phase2By", "Phase2Date"],
   "Pending Decision": ["FinalClassification", "BatchDisposition", "ApprovedBy", "ApprovalDate"],
   "Pending Closure": ["QaComments", "ClosedBy"],
@@ -3904,7 +4055,9 @@ export const oosTableColumns = [
   { key: "ObtainedResult", label: "Result" },
   { key: "FinalClassification", label: "Classification" },
   { key: "BatchDisposition", label: "Disposition" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];
 
 // ══════════════════════════════════ OOT — OUT OF TREND ═════════════════════
@@ -4060,5 +4213,7 @@ export const ootTableColumns = [
   { key: "DataSource", label: "Source" },
   { key: "ObservedValue", label: "Value" },
   { key: "Outcome", label: "Outcome" },
-  { key: "Status", label: "Status" },
+  { key: "Status", label: "Stage", render: (r) => (r.Status === "Rejected" ? (r.RejectedFromStage || "—") : r.Status) },
+  { key: "Rejected", label: "Rejected", render: (r) => r.Status === "Rejected" ? "Yes" : "No" },
+  { key: "IsDraft", label: "Is Draft", render: (r) => r.IsDraft ? "Yes" : "No" },
 ];

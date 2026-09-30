@@ -11,6 +11,8 @@ import {
   getCalibrationFieldGroups, getCalibrationRequired,
   calibrationWidthConfig, calibrationSectionConfigs, calibrationTableColumns,
 } from "./Utils/Qmsconfigs";
+import * as FaIcons from "react-icons/fa"; 
+
 import { getCalibrations, createCalibration, updateCalibration, deleteCalibration, } from "./Utils/QmsAPI";
 import { useRefOptions } from "./Utils/useRefOptions";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
@@ -100,6 +102,10 @@ export default function CalibrationMasterPage({ tab }) {
       contextLabel: m.formData?.Instrument,
     }).catch((err) => console.error('Print open failed:', err));
   }, [m.formData, printWorkflow]);
+        const ModuleIcon = useMemo(() => {
+                  const name = tab?.icon_name || tab?.module?.icon_name;
+                  return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+                }, [tab?.icon_name, tab?.module?.icon_name]);
 
   if (printWorkflow.isOpen) {
     return (
@@ -114,8 +120,11 @@ export default function CalibrationMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Instrument Calibration"
+          subtitle={m.formData?.RecordNo||"New"}
+          TitleIcon={ModuleIcon}
           tabs={calibrationTabs}
           tabLabels={calibrationTabLabels}
+          tabStage={calibrationTabStage}
           TabIcon={CalibrationTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -145,7 +154,7 @@ export default function CalibrationMasterPage({ tab }) {
              onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -167,6 +176,7 @@ export default function CalibrationMasterPage({ tab }) {
     <div className="h-full w-full">
       <Table
         title="Instrument Calibration"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={calibrationTableColumns}
         rowKey="Id"

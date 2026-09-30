@@ -15,8 +15,76 @@ import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - 1 + i));
+
+export const getEligibleFYMonths = (dojStr, fyStartYear) => {
+  const fyYear = parseInt(fyStartYear) || new Date().getFullYear();
+  const fyMonths = [
+    { index: 1, name: "Apr", year: fyYear, month: 4 },
+    { index: 2, name: "May", year: fyYear, month: 5 },
+    { index: 3, name: "Jun", year: fyYear, month: 6 },
+    { index: 4, name: "Jul", year: fyYear, month: 7 },
+    { index: 5, name: "Aug", year: fyYear, month: 8 },
+    { index: 6, name: "Sep", year: fyYear, month: 9 },
+    { index: 7, name: "Oct", year: fyYear, month: 10 },
+    { index: 8, name: "Nov", year: fyYear, month: 11 },
+    { index: 9, name: "Dec", year: fyYear, month: 12 },
+    { index: 10, name: "Jan", year: fyYear + 1, month: 1 },
+    { index: 11, name: "Feb", year: fyYear + 1, month: 2 },
+    { index: 12, name: "Mar", year: fyYear + 1, month: 3 },
+  ];
+
+  if (!dojStr) {
+    return fyMonths.map((m) => ({ ...m, isEligible: true }));
+  }
+
+  const doj = new Date(dojStr);
+  if (isNaN(doj.getTime())) {
+    return fyMonths.map((m) => ({ ...m, isEligible: true }));
+  }
+
+  const dojY = doj.getFullYear();
+  const dojM = doj.getMonth() + 1;
+  const dojD = doj.getDate();
+
+  // Rule:
+  // If joined on or before 15th (dojD <= 15) -> eligible for that joining month
+  // If joined after 15th (dojD > 15) -> eligible starting from next month
+  let eligY = dojY;
+  let eligM = dojM;
+  if (dojD > 15) {
+    if (dojM === 12) {
+      eligY = dojY + 1;
+      eligM = 1;
+    } else {
+      eligM = dojM + 1;
+    }
+  }
+
+  return fyMonths.map((m) => {
+    const isEligible = m.year > eligY || (m.year === eligY && m.month >= eligM);
+    return { ...m, isEligible };
+  });
+};
+
+export const getFYMonthTimeline = (monthIdx, fyStartYear) => {
+  // monthIdx: 0 (Apr) to 11 (Mar)
+  const fyYear = parseInt(fyStartYear) || new Date().getFullYear();
+  const calMonth = monthIdx < 9 ? monthIdx + 4 : monthIdx - 8;
+  const calYear = monthIdx < 9 ? fyYear : fyYear + 1;
+
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth() + 1;
+
+  const isPast = (calYear < curYear) || (calYear === curYear && calMonth < curMonth);
+  const isCurrent = (calYear === curYear && calMonth === curMonth);
+  const isFuture = !isPast && !isCurrent;
+
+  return { calMonth, calYear, isPast, isCurrent, isFuture };
+};
+
 const AVATAR_COLORS = [
   { bg: "bg-blue-100", text: "text-blue-800" },
   { bg: "bg-purple-100", text: "text-purple-800" },
@@ -233,83 +301,122 @@ const LeaveAccrualBulk = ({ tab }) => {
     .toFixed(2);
 
   // ── Load existing accruals ────────────────────────────────────────────
-const loadAccruals = useCallback(async () => {
-  if (!year || filteredEmployees.length === 0) { setRows([]); return; }
-  try {
-    setLoading(true);
-    const res = await getLeaveAccruals({ year });
-    const existing = res?.data || [];
+  const loadAccruals = useCallback(async () => {
+    if (!year || filteredEmployees.length === 0) { setRows([]); return; }
+    try {
+      setLoading(true);
+      const res = await getLeaveAccruals({ year });
+      const existing = res?.data || [];
+      const takenList = res?.takenLeaves || [];
 
-    const newRows = filteredEmployees.map((emp) => {
-      const empAccruals = existing.filter(
-        (a) => Number(a.employee_id) === Number(emp.Actled_id)
-      );
+      // Map employee_id -> { [monthNum 1..12]: totalTakenDays }
+      const takenByEmpAndMonth = {};
+      const fyStartYear = parseInt(year) || new Date().getFullYear();
 
-      const months = {};
-      const totalAnnual = empAccruals.reduce((s, a) =>
-        s + parseFloat(a.accrual_days || 0), 0
-      );
-      const perMonthDisplay = parseFloat((totalAnnual / 12).toFixed(2));
-      const isPostedAll = empAccruals.length > 0 && empAccruals.every(a => !!a.is_posted);
+      takenList.forEach((tl) => {
+        const empId = Number(tl.employee_id);
+        if (!empId || !tl.from_date) return;
 
-      // ✅ remarks se month-wise data parse karo
-      let monthData = {};
-      try {
-        const remarksStr = empAccruals[0]?.remarks || "";
-        const parsed = JSON.parse(remarksStr);
-        if (parsed?.months) monthData = parsed.months;
-      } catch (e) {
-        monthData = {};
-      }
-      const hasMonthData = Object.keys(monthData).length > 0;
+        const d = new Date(tl.from_date);
+        if (isNaN(d.getTime())) return;
 
-      for (let i = 1; i <= 12; i++) {
-        const ltBreakdown = empAccruals.map(a => ({
-          leave_type_id: a.leave_type_id,
-          leave_name: a.leave_name,
-          accrual_id: a.accrual_id,
-          perMonth: parseFloat((parseFloat(a.accrual_days || 0) / 12).toFixed(2)),
-        }));
+        const calMonth = d.getMonth() + 1; // 1-12
+        const calYear = d.getFullYear();
 
-        months[i] = {
-          accrual_ids: empAccruals.map(a => a.accrual_id).filter(Boolean),
-          // ✅ Month data available hai to use karo, warna annual/12
-          days: hasMonthData
-            ? (monthData[String(i)] > 0 ? String(monthData[String(i)]) : "")
-            : (perMonthDisplay > 0 ? String(perMonthDisplay) : ""),
-          ltBreakdown,
-          is_posted: isPostedAll,
-        };
-      }
+        let mNum = null;
+        if (calMonth >= 4 && calYear === fyStartYear) {
+          mNum = calMonth - 3;
+        } else if (calMonth <= 3 && calYear === fyStartYear + 1) {
+          mNum = calMonth + 9;
+        }
 
-      const carry_forward = fmtNum(empAccruals[0]?.carry_forward || 0);
-      const isPosted = empAccruals.length > 0 && empAccruals.every((a) => a.is_posted);
-
-      const existingLTIds = {};
-      empAccruals.forEach((a) => {
-        if (a.leave_type_id) existingLTIds[a.leave_type_id] = true;
+        if (mNum) {
+          if (!takenByEmpAndMonth[empId]) takenByEmpAndMonth[empId] = {};
+          const days = parseFloat(tl.total_days) || 1;
+          takenByEmpAndMonth[empId][mNum] = (takenByEmpAndMonth[empId][mNum] || 0) + days;
+        }
       });
 
-      return {
-        employee_id: emp.Actled_id,
-        employee_name: (emp.full_name || emp.Led_name)?.trim() || "",
-        dept_name: emp.Op_name3 || "—",
-        months,
-        carry_forward,
-        is_posted: isPosted,
-        existingLTIds,
-      };
-    });
+      const newRows = filteredEmployees.map((emp) => {
+        const empAccruals = existing.filter(
+          (a) => Number(a.employee_id) === Number(emp.Actled_id)
+        );
 
-    setRows(newRows);
-    originalRows.current = JSON.parse(JSON.stringify(newRows));
-    setSelected({});
-  } catch (err) {
-    console.error("loadAccruals error:", err);
-  } finally {
-    setLoading(false);
-  }
-}, [year, deptId, allEmployees]);
+        const months = {};
+        const totalAnnual = empAccruals.reduce((s, a) =>
+          s + parseFloat(a.accrual_days || 0), 0
+        );
+        const perMonthDisplay = parseFloat((totalAnnual / 12).toFixed(2));
+        const isPostedAll = empAccruals.length > 0 && empAccruals.every(a => !!a.is_posted);
+
+        // ✅ remarks se month-wise data parse karo
+        let monthData = {};
+        try {
+          const remarksStr = empAccruals[0]?.remarks || "";
+          const parsed = JSON.parse(remarksStr);
+          if (parsed?.months) monthData = parsed.months;
+        } catch (e) {
+          monthData = {};
+        }
+        const hasMonthData = Object.keys(monthData).length > 0;
+
+        // ✅ Calculate FY months eligibility based on employee Date of Joining (15th-day rule)
+        const eligibleFYMonths = getEligibleFYMonths(emp.Doj, year);
+
+        for (let i = 1; i <= 12; i++) {
+          const isElig = eligibleFYMonths[i - 1]?.isEligible ?? true;
+
+          const ltBreakdown = empAccruals.map(a => ({
+            leave_type_id: a.leave_type_id,
+            leave_name: a.leave_name,
+            accrual_id: a.accrual_id,
+            perMonth: parseFloat((parseFloat(a.accrual_days || 0) / 12).toFixed(2)),
+          }));
+
+          months[i] = {
+            accrual_ids: empAccruals.map(a => a.accrual_id).filter(Boolean),
+            // ✅ Month data available hai to use karo, warna eligible months mein perMonthDisplay
+            days: hasMonthData
+              ? (monthData[String(i)] !== undefined && monthData[String(i)] > 0 ? String(monthData[String(i)]) : "")
+              : (isElig && perMonthDisplay > 0 ? String(perMonthDisplay) : ""),
+            ltBreakdown,
+            is_posted: isPostedAll,
+            is_eligible: isElig,
+          };
+        }
+
+        const carry_forward = fmtNum(empAccruals[0]?.carry_forward || 0);
+        const isPosted = empAccruals.length > 0 && empAccruals.every((a) => a.is_posted);
+
+        const existingLTIds = {};
+        empAccruals.forEach((a) => {
+          if (a.leave_type_id) existingLTIds[a.leave_type_id] = true;
+        });
+
+        const empTakenMonths = takenByEmpAndMonth[Number(emp.Actled_id)] || {};
+
+        return {
+          employee_id: emp.Actled_id,
+          employee_name: (emp.full_name || emp.Led_name)?.trim() || "",
+          doj: emp.Doj,
+          dept_name: emp.Op_name3 || "—",
+          months,
+          takenMonths: empTakenMonths,
+          carry_forward,
+          is_posted: isPosted,
+          existingLTIds,
+        };
+      });
+
+      setRows(newRows);
+      originalRows.current = JSON.parse(JSON.stringify(newRows));
+      setSelected({});
+    } catch (err) {
+      console.error("loadAccruals error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [year, deptId, allEmployees]);
 
   useEffect(() => { loadAccruals(); }, [year, deptId, allEmployees]);
 
@@ -358,16 +465,17 @@ const loadAccruals = useCallback(async () => {
     setSelected(next);
   };
 
-  // ── Auto-fill ─────────────────────────────────────────────────────────
+  // ── Auto-fill (respects DOJ 15th-day rule, locks past and taken months) ──
   const handleAutoFill = () => {
     if (checkedLTList.length === 0) {
       showToast({ icon: "error", title: "Please select at least one leave type" });
       return;
     }
     const rate = parseFloat(totalRate) || 0;
+    const fyYear = parseInt(year) || new Date().getFullYear();
+
     setRows(prev =>
       prev.map(row => {
-        // ✅ String comparison — dono ko String mein convert karo
         const isSelected = Object.keys(selected).some(
           k => String(k) === String(row.employee_id) && selected[k]
         );
@@ -375,7 +483,12 @@ const loadAccruals = useCallback(async () => {
 
         const months = { ...row.months };
         for (let m = 1; m <= 12; m++) {
-          if (!months[m]?.is_posted) {
+          const { isPast } = getFYMonthTimeline(m - 1, fyYear);
+          const isTaken = (row.takenMonths?.[m] || 0) > 0;
+          const isElig = months[m]?.is_eligible ?? true;
+
+          // Only auto-fill if not posted, eligible, not past month, and not leave taken
+          if (!months[m]?.is_posted && isElig && !isPast && !isTaken) {
             months[m] = {
               ...months[m],
               days: rate.toFixed(2),
@@ -391,8 +504,14 @@ const loadAccruals = useCallback(async () => {
 
   const handleCellChange = (empId, monthNum, value) => {
     if (isViewMode) return;
+    const { isPast } = getFYMonthTimeline(monthNum - 1, parseInt(year) || new Date().getFullYear());
+    if (isPast) return; // Disallow editing past month
+
     setRows(prev => prev.map(row => {
       if (row.employee_id !== empId) return row;
+      const isTaken = (row.takenMonths?.[monthNum] || 0) > 0;
+      if (isTaken) return row; // Disallow editing month where leave was taken
+
       return {
         ...row,
         months: {
@@ -401,7 +520,6 @@ const loadAccruals = useCallback(async () => {
             ...row.months[monthNum],
             days: value,
             is_posted: false,
-            // ltBreakdown mat touch karo — save mein days se calculate hoga
           },
         },
       };
@@ -445,7 +563,8 @@ const loadAccruals = useCallback(async () => {
           const ltAccrualDays = parseFloat((annualTotal / activeLTCount).toFixed(2));
 
           // Fallback — agar koi cell fill nahi
-          const fallback = parseFloat(((parseFloat(lt.rate) || 0) * 12).toFixed(2));
+          const eligibleMonthsCount = Object.values(row.months).filter(m => m.is_eligible).length;
+          const fallback = parseFloat(((parseFloat(lt.rate) || 0) * eligibleMonthsCount).toFixed(2));
           const finalAccrualDays = annualTotal > 0 ? ltAccrualDays : fallback;
 
           const ltTotal = parseFloat((finalAccrualDays + cf).toFixed(2));
@@ -617,11 +736,19 @@ const loadAccruals = useCallback(async () => {
 
         <div className="flex-1" />
 
-        {/* Status badges */}
-        <div className="flex items-center gap-2 self-end pb-0.5">
+        {/* Status & Legend badges */}
+        <div className="flex items-center gap-2 self-end pb-0.5 flex-wrap">
           <span className="px-2.5 py-1 rounded-full text-[11px] font-medium
                  bg-green-50 text-green-700 border border-green-200">
             {postedCount} posted
+          </span>
+          <span className="px-2 py-0.5 rounded text-[10px] font-medium
+                 bg-slate-100 text-slate-500 border border-slate-200" title="Previous months are locked">
+            🔒 Past (Locked)
+          </span>
+          <span className="px-2 py-0.5 rounded text-[10px] font-medium
+                 bg-amber-50 text-amber-800 border border-amber-200" title="Months where leave was taken are locked">
+            🏷️ Taken (Locked)
           </span>
         </div>
 
@@ -658,7 +785,7 @@ const loadAccruals = useCallback(async () => {
             className="h-[32px] px-4 rounded-md text-[12px] font-medium self-end
                        bg-slate-700 text-white hover:bg-slate-800
                        transition-colors flex items-center gap-1.5">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <svg width="12" height="12" viewBox="0 12 12" fill="none">
               <path d="M2 6h8M6 2l4 4-4 4" stroke="white" strokeWidth="1.3"
                 strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -696,16 +823,23 @@ const loadAccruals = useCallback(async () => {
                                  uppercase tracking-wide">
                     Employee
                   </th>
-                  {MONTHS.map((m, i) => (
-                    <th key={m}
-                      className={`px-1 py-2 text-center font-medium text-[11px]
-                                  border-r border-slate-200 w-[52px]
-                                  ${i === new Date().getMonth()
-                          ? "bg-blue-50 text-blue-700"
-                          : "text-slate-500"}`}>
-                      {m}
-                    </th>
-                  ))}
+                  {MONTHS.map((m, i) => {
+                    const { isPast, isCurrent } = getFYMonthTimeline(i, parseInt(year) || new Date().getFullYear());
+                    return (
+                      <th key={m}
+                        className={`px-1 py-1.5 text-center font-medium text-[11px]
+                                    border-r border-slate-200 w-[52px]
+                                    ${isCurrent
+                            ? "bg-blue-100/70 text-blue-700 font-bold border-b-2 border-blue-500"
+                            : isPast
+                              ? "bg-slate-100/80 text-slate-400 font-medium"
+                              : "text-slate-600 font-medium"}`}>
+                        <span className="block">{m}</span>
+                        {isCurrent && <span className="block text-[8px] text-blue-600 font-semibold uppercase leading-tight">Now</span>}
+                        {isPast && <span className="block text-[8px] text-slate-400 uppercase leading-tight">Past</span>}
+                      </th>
+                    );
+                  })}
                   <th className="px-2 py-2 text-center font-medium text-[11px]
                                  bg-purple-50 text-purple-700 border-r border-slate-200
                                  w-[68px] uppercase tracking-wide">
@@ -763,40 +897,91 @@ const loadAccruals = useCallback(async () => {
                                            shrink-0 ${bg} ${text}`}>
                               {initials(row.employee_name)}
                             </div>
-                            <span className="text-[12px] text-slate-700 font-medium
-                                           truncate max-w-[110px]">
-                              {row.employee_name}
-                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[12px] text-slate-700 font-medium
+                                             truncate max-w-[110px]">
+                                {row.employee_name}
+                              </span>
+                              {row.doj && (
+                                <span className="text-[9px] text-slate-400">
+                                  DOJ: {new Date(row.doj).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
 
                         {/* 12 months */}
                         {Array.from({ length: 12 }, (_, i) => {
                           const mNum = i + 1;
+                          const { isPast, isCurrent } = getFYMonthTimeline(i, parseInt(year) || new Date().getFullYear());
                           const cell = row.months[mNum];
                           const val = cell?.days || "";
-                          const cellDis = cell?.is_posted || isPosted || isViewMode;
-                          const isCurrent = mNum === new Date().getMonth() + 1;
+                          const isElig = cell?.is_eligible ?? true;
+                          const takenDays = row.takenMonths?.[mNum] || 0;
+                          const isTaken = takenDays > 0;
+
+                          const cellDis = cell?.is_posted || isPosted || isViewMode || !isElig || isPast || isTaken;
+
+                          let tooltip = "";
+                          if (!isElig) {
+                            tooltip = "Not eligible for this month (joined after 15th / not yet joined)";
+                          } else if (isTaken) {
+                            tooltip = `Leave taken: ${takenDays} day(s) in this month — locked`;
+                          } else if (isPast) {
+                            tooltip = `Previous month (${MONTHS[i]}) — locked from editing`;
+                          } else if (isCurrent) {
+                            tooltip = "Current month";
+                          }
+
+                          let tdBgClass = "";
+                          if (!isElig) {
+                            tdBgClass = "bg-slate-100/60";
+                          } else if (isTaken) {
+                            tdBgClass = "bg-amber-50/70";
+                          } else if (isPast) {
+                            tdBgClass = "bg-slate-100/50";
+                          } else if (isCurrent) {
+                            tdBgClass = "bg-blue-50/20";
+                          }
+
+                          let inputClass = "w-[44px] h-[24px] text-center text-[12px] rounded border outline-none transition-colors ";
+                          if (!isElig) {
+                            inputClass += "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed";
+                          } else if (isTaken) {
+                            inputClass += "bg-amber-100 border-amber-300 text-amber-900 font-semibold cursor-not-allowed shadow-inner";
+                          } else if (isPast) {
+                            inputClass += "bg-slate-100/80 border-slate-200 text-slate-400 font-medium cursor-not-allowed";
+                          } else if (cellDis) {
+                            inputClass += "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed";
+                          } else if (val) {
+                            inputClass += "bg-green-50 border-green-300 text-green-800 focus:border-green-400 focus:bg-white";
+                          } else {
+                            inputClass += "bg-white border-slate-200 text-slate-600 focus:border-blue-300";
+                          }
 
                           return (
                             <td key={mNum}
-                              className={`px-1 py-1.5 border-r border-slate-100 text-center
-                              ${isCurrent ? "bg-blue-50/20" : ""}`}>
-                              <input
-                                type="number"
-                                step="0.5"
-                                min="0"
-                                value={val}
-                                disabled={cellDis}
-                                onChange={(e) => handleCellChange(row.employee_id, mNum, e.target.value)}
-                                className={`w-[44px] h-[24px] text-center text-[12px]
-                                          rounded border outline-none transition-colors
-                                          ${cellDis
-                                    ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                                    : val
-                                      ? "bg-green-50 border-green-300 text-green-800 focus:border-green-400"
-                                      : "bg-white border-slate-200 text-slate-600 focus:border-blue-300"}`}
-                              />
+                              className={`px-1 py-1.5 border-r border-slate-100 text-center ${tdBgClass}`}
+                              title={tooltip}>
+                              <div className="relative inline-block">
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  value={val}
+                                  disabled={cellDis}
+                                  onChange={(e) => handleCellChange(row.employee_id, mNum, e.target.value)}
+                                  className={inputClass}
+                                  title={tooltip}
+                                />
+                                {isTaken && (
+                                  <span
+                                    className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500 border border-white"
+                                    title={`Leave taken: ${takenDays}d`}
+                                  />
+                                )}
+                              </div>
                             </td>
                           );
                         })}

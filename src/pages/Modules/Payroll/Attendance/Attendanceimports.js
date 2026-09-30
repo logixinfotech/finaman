@@ -17,7 +17,7 @@ import {
     OutlineButton, AvatarCell, StatusBadge,
     TableHeader, TableRow, EmptyState, LoadingState, FileChip,
     PeriodDropdowns, getStatusBadge,
-    todayDay, todayMonth, todayYear,  normalizeStatus,
+    todayDay, todayMonth, todayYear, normalizeStatus, calculateAutoStatus,
 } from "./Attendancehelpers";
 
 const ImportIcon = (
@@ -83,17 +83,31 @@ const AttendanceImports = ({
                     const d = item.in_time?.toString().replace("T", " ").split(".")[0].split(" ")[0];
                     return d === bioSelectedDate;
                 })
-                .map(item => ({
-                    log_id: item.log_id,
-                    employee_id: item.employee_id,
-                    employee_name: item.employee_name || "—",
-                    employee_code: item.employee_code || "",
-                    in: item.in_time ? item.in_time.substring(11, 16) : "--:--",
-                    out: item.out_time ? item.out_time.substring(11, 16) : "--:--",
-                    status: item.attendance_status || "PRESENT",
-                    existing_log_id: null,      // filled below for cross-punch-type conflicts
-                    existing_punch_type: null,
-                }));
+                .map(item => {
+                    let rawIn = item.in_time ? item.in_time.substring(11, 16) : "--:--";
+                    let rawOut = item.out_time ? item.out_time.substring(11, 16) : "--:--";
+                    const hasRealPunch = (rawIn && rawIn !== "--:--" && rawIn !== "00:00") ||
+                        (rawOut && rawOut !== "--:--" && rawOut !== "00:00");
+                    if (!hasRealPunch) {
+                        rawIn = "--:--";
+                        rawOut = "--:--";
+                    }
+                    const status = hasRealPunch
+                        ? (item.attendance_status || "PRESENT")
+                        : (item.attendance_status === "PRESENT" ? "ABSENT" : (item.attendance_status || "ABSENT"));
+
+                    return {
+                        log_id: item.log_id,
+                        employee_id: item.employee_id,
+                        employee_name: item.employee_name || "—",
+                        employee_code: item.employee_code || "",
+                        in: rawIn,
+                        out: rawOut,
+                        status,
+                        existing_log_id: null,      // filled below for cross-punch-type conflicts
+                        existing_punch_type: null,
+                    };
+                });
             setBioTableData(rows);
         } catch (e) { console.error(e); }
         finally { setBioLoading(false); }
@@ -106,9 +120,9 @@ const AttendanceImports = ({
     // ── Sample file download ────────────────────────────────────────────────────
     const downloadSampleFile = () => {
         const ws = XLSX.utils.json_to_sheet([
-            { Date: "2026-04-01", In: "10:00", Out: "18:30", EmployeeID: "1", Status: "PRESENT" },
-            { Date: "2026-04-02", In: "10:15", Out: "18:40", EmployeeID: "2", Status: "ABSENT" },
-            { Date: "2026-04-03", In: "09:55", Out: "18:20", EmployeeID: "11", Status: "PRESENT" },
+            { Date: "2026-04-01", In: "10:00", Out: "18:30", EmployeeID: "1" },
+            { Date: "2026-04-02", In: "10:15", Out: "18:40", EmployeeID: "2" },
+            { Date: "2026-04-03", In: "09:55", Out: "18:20", EmployeeID: "11" },
         ]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Attendance");
@@ -184,7 +198,14 @@ const AttendanceImports = ({
                     };
                     const empId = String(row.EmployeeID || row.ID || row.employee_id || "");
                     const empRec = employees.find(e => String(e.Actled_id) === empId || String(e.Led_code) === empId);
-                    const parsedStatus = normalizeStatus(row.Status, leaveTypes) || "PRESENT";
+                    const rawIn = fmtTime(row.In) || "--:--";
+                    const rawOut = fmtTime(row.Out) || "--:--";
+                    let parsedStatus = normalizeStatus(row.Status, leaveTypes);
+                    if (!parsedStatus || parsedStatus === "PRESENT") {
+                        const auto = calculateAutoStatus({ inTime: rawIn, outTime: rawOut });
+                        if (auto) parsedStatus = auto;
+                        else if (!parsedStatus) parsedStatus = "PRESENT";
+                    }
                     return {
                         log_id: null,
                         employee_id: empId,
@@ -192,8 +213,8 @@ const AttendanceImports = ({
                         employee_code: empRec?.Led_code || empId,
                         employee_photo: empRec?.Ledimg || null,
                         date: dateStr,
-                        in: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.In) || "--:--",
-                        out: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.Out) || "--:--",
+                        in: parsedStatus === "ABSENT" ? "00:00" : rawIn,
+                        out: parsedStatus === "ABSENT" ? "00:00" : rawOut,
                         status: parsedStatus,
                     };
                 });
@@ -248,15 +269,22 @@ const AttendanceImports = ({
                     };
                     const empId = String(row.EmployeeID || row.ID || row.employee_id || "");
                     const empRec = employees.find(e => String(e.Actled_id) === empId || String(e.Led_code) === empId);
-                    const parsedStatus = normalizeStatus(row.Status, leaveTypes) || "PRESENT";
+                    const rawIn = fmtTime(row.In);
+                    const rawOut = fmtTime(row.Out);
+                    let parsedStatus = normalizeStatus(row.Status, leaveTypes);
+                    if (!parsedStatus || parsedStatus === "PRESENT") {
+                        const auto = calculateAutoStatus({ inTime: rawIn, outTime: rawOut });
+                        if (auto) parsedStatus = auto;
+                        else if (!parsedStatus) parsedStatus = "PRESENT";
+                    }
                     return {
                         log_id: null,
                         employee_id: empId,
                         employee_name: empRec?.Led_name || `ID: ${empId}`,
                         employee_code: empRec?.Led_code || empId,
                         employee_photo: empRec?.Ledimg || null,
-                        in: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.In),
-                        out: parsedStatus === "ABSENT" ? "00:00" : fmtTime(row.Out),
+                        in: parsedStatus === "ABSENT" ? "00:00" : rawIn,
+                        out: parsedStatus === "ABSENT" ? "00:00" : rawOut,
                         status: parsedStatus,
                     };
                 });
@@ -565,7 +593,7 @@ const AttendanceImports = ({
                                         </svg>
                                     </div>
                                     <h3 className="text-[13px] font-semibold text-slate-800 mb-1">Import Excel Attendance</h3>
-                                    <p className="text-[11px] text-slate-400 mb-5">Columns: Date, In, Out, EmployeeID, Status</p>
+                                    <p className="text-[11px] text-slate-400 mb-5">Columns: Date, In, Out, EmployeeID</p>
                                 </div>
                             </div>
                         ) : (

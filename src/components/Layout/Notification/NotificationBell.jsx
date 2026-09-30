@@ -1,14 +1,4 @@
-/**
- * NotificationBell.jsx
- * ─────────────────────────────────────────────────────────────
- * The bell icon that lives in your app header / navbar.
- * Shows an animated red badge with unread count.
- * Clicking it toggles the NotificationPanel.
- *
- * Usage:
- *   <NotificationBell onToggle={() => setPanelOpen(o => !o)} isOpen={panelOpen} />
- * ─────────────────────────────────────────────────────────────
- */
+ 
 
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,7 +8,7 @@ import { useNotifications } from "../../../theme/NotificationContext";
 const NotificationBell = ({ onToggle, isOpen }) => {
   const { unreadCount } = useNotifications();
   const prevCount = useRef(unreadCount);
-  const badgeKey  = useRef(0);   // force re-mount to replay animation
+  const badgeKey  = useRef(0);    
 
   useEffect(() => {
     if (unreadCount > prevCount.current) badgeKey.current += 1;
@@ -41,7 +31,6 @@ const NotificationBell = ({ onToggle, isOpen }) => {
         }
       `}
     >
-      {/* Bell icon — pulses when there are unread notifications */}
       <motion.span
         animate={unreadCount > 0 ? { rotate: [0, -12, 12, -8, 8, 0] } : {}}
         transition={{ duration: 0.5, delay: 0.2 }}
@@ -55,8 +44,6 @@ const NotificationBell = ({ onToggle, isOpen }) => {
           }`}
         />
       </motion.span>
-
-      {/* Unread badge */}
       <AnimatePresence>
         {unreadCount > 0 && (
           <motion.span

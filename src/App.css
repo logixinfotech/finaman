@@ -40,6 +40,7 @@
   left: 0;
 }
 
+
  
  
 .theme-light {
@@ -231,6 +232,7 @@
 .app-sidebar.collapsed {
   width: 72px;
 }
+
 
 .app-content {
   flex: 1;
@@ -510,6 +512,33 @@ input:-webkit-autofill:focus {
   border-radius: var(--radius-lg);
   padding: 24px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+/* Safari-only fix — Chrome aur mobile par koi asar nahi */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width: 768px) {
+    .layout-sidebar {
+      height: 100% !important;
+    }
+    .app-body {
+      flex-wrap: nowrap !important;
+    }
+  }
+}
+.erp-toast-popup {
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15) !important;
+  font-family: 'Inter', 'Segoe UI', system-ui, Arial, sans-serif !important;
+}
+
+.erp-toast-title {
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+}
+
+.erp-toast-progress {
+  height: 3px !important;
 }
 
 .section-title {

@@ -2,16 +2,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import ERPAutocomplete from "../Reusable/input/ERPAutocomplete";
 import { generateId } from "../../utils/helpers";
-import { fetchSubtasks, deleteSubtask } from "../../utils/api";
 import { newTask } from "./WorkDiaryForm";
 import {
   Plus, Trash2, Save, X, ListChecks, ClipboardList, ListTree,
   CalendarDays, ChevronLeft, ChevronRight, Clock3,
 } from "lucide-react";
-import { useGroupOptions } from "../../Hooks/useUserGroupOption";
-
-// ── Professional light palette — borders now carry a bit more structure so the form
-// doesn't read as flat/all-white, while staying clean ──
+import { useGroupOptions } from "../../Hooks/useUserGroupOption"; 
 const T = {
   bg: "#F7F8FA",
   surface: "#FFFFFF",
@@ -61,7 +57,6 @@ const todayISO = () => {
   const t = new Date();
   return toISODate(t.getFullYear(), t.getMonth(), t.getDate());
 };
-// DD-MM-YYYY ↔ ISO helpers — matches the manual-entry convention already used on the PO form
 const formatISOtoDMY = (iso) => {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
@@ -363,17 +358,18 @@ export const TaskTableEntry = ({
   const isEditMode = !!initialTask;
   const isViewMode = false;
   const assignRef = useRef(null);
-  const saveBtnRef = useRef(null);
+  const saveBtnRef = useRef(null); 
+const defaultCategory = String(currentUser?.user_group || "").trim();
 
-  const [header, setHeader] = useState(() => initialTask ? {
-    assigned_to_name: initialTask.assigned_to_name ?? (currentUser?.user_name || currentUser?.user_id || ""),
-    assigned_to_id: initialTask.assigned_to_id ?? (currentUser?.userma_id || currentUser?.user_id || null),
-    category: initialTask.category || "Development",
-  } : {
-    assigned_to_name: currentUser?.user_name || currentUser?.user_id || "",
-    assigned_to_id: currentUser?.userma_id || currentUser?.user_id || null,
-    category: "Development",
-  });
+const [header, setHeader] = useState(() => initialTask ? {
+  assigned_to_name: initialTask.assigned_to_name ?? (currentUser?.user_name || currentUser?.user_id || ""),
+  assigned_to_id: initialTask.assigned_to_id ?? (currentUser?.userma_id || currentUser?.user_id || null),
+  category: initialTask.category || defaultCategory,
+} : {
+  assigned_to_name: currentUser?.user_name || currentUser?.user_id || "",
+  assigned_to_id: currentUser?.userma_id || currentUser?.user_id || null,
+  category: defaultCategory,
+});
 
   const makeEmptyRow = () => ({
     _key: generateId(),
@@ -411,6 +407,7 @@ export const TaskTableEntry = ({
     if (!isViewMode && assignRef.current) assignRef.current.focus?.();
   }, [isViewMode]);
 
+  
   const setH = useCallback((field, value) => setHeader(p => ({ ...p, [field]: value })), []);
 
   const addRow = useCallback(() => setRows(p => [...p, makeEmptyRow()]), []);
@@ -428,9 +425,6 @@ export const TaskTableEntry = ({
   }, []);
 
   const updateRow = useCallback((key, field, val) => setRows(p => p.map(r => r._key === key ? { ...r, [field]: val } : r)), []);
-
-  // ── Row ke andar jitne bhi focusable fields hain unhe DOM order me dhoondo.
-  // Delete button aur calendar/dropdown popovers ko [data-nav-skip] se exclude kiya hai.
   const getRowFocusables = useCallback((rowEl) => {
     if (!rowEl) return [];
     return Array.from(
@@ -480,13 +474,10 @@ export const TaskTableEntry = ({
 
       let insert;
       if (bulletMatch) {
-        // pichli line already bullet thi -> agli line bhi bullet se shuru hogi
         insert = `\n${bulletMatch[1]}- `;
       } else if (lastLine.trim() === "") {
-        // khali line pe Shift+Enter -> list khatam, plain newline
         insert = "\n";
       } else {
-        // pehli bar list shuru ho rahi hai
         insert = "\n- ";
       }
 
@@ -567,8 +558,6 @@ export const TaskTableEntry = ({
 
   const { loading, options } = useGroupOptions();
   const validRows = rows.filter(r => r.subtask_text?.trim()).length;
-
-  // ── Grid template depends on mode — Status column only in Edit mode ──
   const gridTemplate = isEditMode
     ? "26px 1fr 132px 132px 88px 108px 108px 34px"
     : "26px 1fr 132px 132px 88px 108px 34px";
@@ -576,7 +565,13 @@ export const TaskTableEntry = ({
   const colHeaders = isEditMode
     ? ["#", "Task", "Assigned on", "Due date", "Due time", "Priority", "Status", ""]
     : ["#", "Task", "Assigned on", "Due date", "Due time", "Priority", ""];
-
+useEffect(() => {
+  if (isEditMode || !header.category) return;
+  const labels = (options.department || []).map(g => g.label);
+  if (labels.includes(header.category)) return;
+  const match = labels.find(l => l.trim().toLowerCase() === header.category.trim().toLowerCase());
+  if (match) setH("category", match);
+}, [options.department]);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}

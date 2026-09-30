@@ -9,6 +9,7 @@ const baseSwal = Swal.mixin({
   reverseButtons: true,
 }); 
 
+
 export const showToast = ({
   icon = "success",
   title = "",
@@ -22,9 +23,17 @@ export const showToast = ({
     showConfirmButton: false,
     timer,
     timerProgressBar: true,
+    customClass: {
+      popup: "erp-toast-popup",
+      title: "erp-toast-title",
+      timerProgressBar: "erp-toast-progress",
+    },
+    didOpen: (toastEl) => {
+      toastEl.addEventListener("mouseenter", Swal.stopTimer);
+      toastEl.addEventListener("mouseleave", Swal.resumeTimer);
+    },
   });
 };
-
 /* ================= SUCCESS ================= */
 
 export const alertSuccess = (title, text = "") => {

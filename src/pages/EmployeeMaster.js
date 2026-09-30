@@ -20,6 +20,7 @@ import UnivarsalFilter from "../components/Reusable/Filter/UnivarsalFilter.jsx";
 import { setERPHandlers } from "../utils/erpShortcuts";
 import { useERPMode } from "../components/Reusable/form/useFormMode";
 import { useGroupOptions } from "../Hooks/useUserGroupOption";
+import config from "../config";
 const initialState = {
   employee_id: null,
   "Employee ID": "",
@@ -307,7 +308,7 @@ const EmployeeMaster = ({ tab }) => {
         "Leave allow names": item.leave_san ? item.leave_san.split(",") : [],
         Status: item.Approved === 1 ? "Active" : "Inactive",
         photo_url: item.Ledimg
-          ? `${process.env.REACT_APP_API_URL || "http://localhost:63554"}${item.Ledimg}`
+          ? `${config.apiUrl}${item.Ledimg}`
           : "",
         "Middle Name": item.Middle_name || "",
         Nationality: item.Nationality || "Indian",
@@ -416,7 +417,7 @@ const EmployeeMaster = ({ tab }) => {
     await performSave("employee_id");
     try {
       const latestRes = await getActledListAll();
-      const allEmployees = latestRes || [];
+const allEmployees = latestRes?.data || latestRes || [];   // ✅ fix
       let savedEmployeeId = formData.employee_id;
       if (!savedEmployeeId) {
         const maxId = Math.max(...allEmployees.map((e) => e.Actled_id || 0));

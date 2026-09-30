@@ -2,7 +2,9 @@ import { useState, useCallback, useMemo } from "react";
 import {
   FaClipboardList, FaSearchPlus, FaFileAlt,
   FaReply, FaFlagCheckered, FaHistory,
+ 
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa"; 
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -107,6 +109,10 @@ export default function AuditMasterPage({ tab }) {
       contextLabel: m.formData?.AreaDepartment,
     }).catch((err) => console.error('Print open failed:', err));
   }, [m.formData, printWorkflow]);
+     const ModuleIcon = useMemo(() => {
+                    const name = tab?.icon_name || tab?.module?.icon_name;
+                    return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+                  }, [tab?.icon_name, tab?.module?.icon_name]);
 
   if (printWorkflow.isOpen) {
     return (
@@ -121,8 +127,11 @@ export default function AuditMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Audit Management"
+          subtitle={m.formData?.RecordNo||"New"}
+          TitleIcon={ModuleIcon}
           tabs={auditTabs}
           tabLabels={auditTabLabels}
+          tabStage={auditTabStage}
           TabIcon={AuditTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -174,6 +183,7 @@ export default function AuditMasterPage({ tab }) {
     <div className="h-full w-full">
       <Table
         title="Audit Management"
+         TitleIcon={ModuleIcon}
         data={filteredList}
         columns={auditTableColumns}
         rowKey="Id"

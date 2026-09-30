@@ -13,18 +13,18 @@ import {
 import FinamanDashboard from "../../pages/FinamanDashboard";
 
 
-  const menuColors = [
-    ["#22c55e", "#4ade80"],
-    ["#6366f1", "#818cf8"],
-    ["#f97316", "#fb923c"],
-    ["#06b6d4", "#22d3ee"],
-    ["#ec4899", "#f472b6"],
-    ["#8b5cf6", "#a78bfa"],
-    ["#eab308", "#facc15"],
-    ["#ef4444", "#f87171"],
-    ["#14b8a6", "#2dd4bf"],
-    ["#3b82f6", "#60a5fa"]
-  ];
+const menuColors = [
+  ["#22c55e", "#4ade80"],
+  ["#6366f1", "#818cf8"],
+  ["#f97316", "#fb923c"],
+  ["#06b6d4", "#22d3ee"],
+  ["#ec4899", "#f472b6"],
+  ["#8b5cf6", "#a78bfa"],
+  ["#eab308", "#facc15"],
+  ["#ef4444", "#f87171"],
+  ["#14b8a6", "#2dd4bf"],
+  ["#3b82f6", "#60a5fa"]
+];
 function Dashboard({
   activeModule,
   tabs,
@@ -71,10 +71,10 @@ function Dashboard({
     loadMenus();
   }, [activeModule]);
 
-  useEffect(() => { 
-    if (!activeTab) return; 
-    setLoadedTabs((prev) => { 
-      if (prev.includes(activeTab.id)) return prev; 
+  useEffect(() => {
+    if (!activeTab) return;
+    setLoadedTabs((prev) => {
+      if (prev.includes(activeTab.id)) return prev;
       return [...prev, activeTab.id];
 
     });
@@ -178,128 +178,128 @@ function Dashboard({
       window.removeEventListener("keydown", handleKeyPress);
   }, [sortedEntries, sortedReports, activeTab]);
 
-const renderModuleDashboard = () => (
-  <div className="module-board modern-card h-full flex flex-col"> 
-<div className="flex justify-end items-center gap-2 p-2 pt-0">
-      <div className="dashboard-search flex items-center">
-        <FaSearch className="search-icon" />
-        <input
-          type="text"
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
-          <FaTimesCircle
-            className="search-clear cursor-pointer ml-1"
-            onClick={() => setSearchQuery("")}
+  const renderModuleDashboard = () => (
+    <div className="module-board modern-card h-full flex flex-col">
+      <div className="flex justify-end items-center gap-2 p-2 pt-0">
+        <div className="dashboard-search flex items-center">
+          <FaSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        )}
-      </div>
-      
-      {/* Result Badge right next to search */}
-      <div className="result-badge whitespace-nowrap">
-        {filteredMenus.length} Results
-      </div>
-    </div>
-
-    <div className="flex-1 overflow-y-auto px-4 custom-dashboard-scrollbar"> 
-      {/* ENTRIES */}
-      <section className="dashboard-section entries">
-        <div className="section-title">
-          <FaRegWindowMaximize className="section-icon" />
-          Entries
+          {searchQuery && (
+            <FaTimesCircle
+              className="search-clear cursor-pointer ml-1"
+              onClick={() => setSearchQuery("")}
+            />
+          )}
         </div>
 
-        <div className="dashboard-card-grid">
-          {sortedEntries.map((m, index) => {
-            const fav = favourites.includes(m.masmnu_id);
-            return (
-              <div
-                key={m.masmnu_id}
-                className="dashboard-card entry-card group"
-                onClick={() => onOpenPage(m)}
-              > 
-                <div className="menu-serial">{getAlphabet(index)}</div> 
+        {/* Result Badge right next to search */}
+        <div className="result-badge whitespace-nowrap">
+          {filteredMenus.length} Results
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 custom-dashboard-scrollbar">
+        {/* ENTRIES */}
+        <section className="dashboard-section entries">
+          <div className="section-title">
+            <FaRegWindowMaximize className="section-icon" />
+            Entries
+          </div>
+
+          <div className="dashboard-card-grid">
+            {sortedEntries.map((m, index) => {
+              const fav = favourites.includes(m.masmnu_id);
+              return (
                 <div
-                  className="fav-star"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleFavourite(m.masmnu_id);
-                  }}
+                  key={m.masmnu_id}
+                  className="dashboard-card entry-card group"
+                  onClick={() => onOpenPage(m)}
                 >
-                  {fav ? <FaStar /> : <FaRegStar />}
-                </div> 
-                <div
-                  className="dashboard-card-icon colored-icon"
-                  style={{ background: getMenuColor(m.bar_name), color: "#fff" }}
-                >
-                  {getIcon(m)}
-                </div> 
-                <div className="dashboard-card-text overflow-hidden">
-                  {/* Tooltip added via title attribute and dots added via CSS */}
-                  <div 
-                    className="dashboard-card-title truncate-text" 
-                    title={m.bar_name}
+                  <div className="menu-serial">{getAlphabet(index)}</div>
+                  <div
+                    className="fav-star"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleFavourite(m.masmnu_id);
+                    }}
                   >
-                    {m.bar_name}
+                    {fav ? <FaStar /> : <FaRegStar />}
+                  </div>
+                  <div
+                    className="dashboard-card-icon colored-icon"
+                    style={{ background: getMenuColor(m.bar_name), color: "#fff" }}
+                  >
+                    {getIcon(m)}
+                  </div>
+                  <div className="dashboard-card-text overflow-hidden">
+                    {/* Tooltip added via title attribute and dots added via CSS */}
+                    <div
+                      className="dashboard-card-title truncate-text"
+                      title={m.bar_name}
+                    >
+                      {m.bar_name}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
 
-      {/* REPORTS */}
-      <section className="dashboard-section reports mt-4 pb-8">
-        <div className="section-title">
-          <FaIcons.FaChartBar className="section-icon" />
-          Reports
-        </div>
-        <div className="dashboard-card-grid">
-          {sortedReports.map((m, index) => {
-            const fav = favourites.includes(m.masmnu_id);
-            return (
-              <div
-                key={m.masmnu_id}
-                className="dashboard-card report-card group"
-                onClick={() => onOpenPage(m)}
-              >
-                <div className="menu-serial">{getAlphabet(sortedEntries.length + index)}</div>
+        {/* REPORTS */}
+        <section className="dashboard-section reports mt-4 pb-8">
+          <div className="section-title">
+            <FaIcons.FaChartBar className="section-icon" />
+            Reports
+          </div>
+          <div className="dashboard-card-grid">
+            {sortedReports.map((m, index) => {
+              const fav = favourites.includes(m.masmnu_id);
+              return (
                 <div
-                  className="fav-star"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleFavourite(m.masmnu_id);
-                  }}
+                  key={m.masmnu_id}
+                  className="dashboard-card report-card group"
+                  onClick={() => onOpenPage(m)}
                 >
-                  {fav ? <FaStar /> : <FaRegStar />}
-                </div>
-                <div
-                  className="dashboard-card-icon colored-icon"
-                  style={{ background: getMenuColor(m.bar_name), color: "#fff" }}
-                >
-                  {getIcon(m)}
-                </div>
-                <div className="dashboard-card-text overflow-hidden">
-                  <div 
-                    className="dashboard-card-title truncate-text" 
-                    title={m.bar_name}
+                  <div className="menu-serial">{getAlphabet(sortedEntries.length + index)}</div>
+                  <div
+                    className="fav-star"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleFavourite(m.masmnu_id);
+                    }}
                   >
-                    {m.bar_name}
+                    {fav ? <FaStar /> : <FaRegStar />}
+                  </div>
+                  <div
+                    className="dashboard-card-icon colored-icon"
+                    style={{ background: getMenuColor(m.bar_name), color: "#fff" }}
+                  >
+                    {getIcon(m)}
+                  </div>
+                  <div className="dashboard-card-text overflow-hidden">
+                    <div
+                      className="dashboard-card-title truncate-text"
+                      title={m.bar_name}
+                    >
+                      {m.bar_name}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
+      </div>
     </div>
-  </div>
-);
+  );
   return (
 
     <div className="dashboard-shell">
@@ -311,7 +311,6 @@ const renderModuleDashboard = () => (
         onCloseTab={onCloseTab}
         onReorderTabs={setTabs}
       />
-
       <div className="dashboard-content">
         {!activeTab && <FinamanDashboard />}
         {tabs.map((tab) => {
@@ -319,7 +318,9 @@ const renderModuleDashboard = () => (
           const Component =
             tab.type === "module"
               ? null
-              : PageRegistry[tab.appl_name];
+              : (PageRegistry[tab.appl_name] ||
+                (tab.label && PageRegistry[tab.label.replace(/\s+/g, "")]) ||
+                (tab.label && PageRegistry[tab.label]));
           return (
             <div
               key={tab.id}
@@ -354,7 +355,7 @@ const renderModuleDashboard = () => (
                       </span>
                     </div>
                   )}
-           </div>
+            </div>
           );
         })}
       </div>

@@ -73,11 +73,13 @@ const columns = [
   {
     key: "attendance_status", label: "Status",
     render: (row) => (
-      <span className={`px-2 py-1 text-xs rounded ${row.attendance_status === "PRESENT" ? "bg-green-100 text-green-700" :
+      <span className={`px-2 py-1 text-xs rounded font-medium ${row.attendance_status === "PRESENT" ? "bg-green-100 text-green-700" :
           row.attendance_status === "ABSENT" ? "bg-red-100 text-red-700" :
-            row.attendance_status === "WEEK OFF" ? "bg-purple-100 text-purple-700" :
-              row.attendance_status === "HOLIDAYS" ? "bg-yellow-100 text-yellow-700" :
-                "bg-gray-100 text-gray-600"
+            row.attendance_status === "WFH" ? "bg-sky-100 text-sky-700 font-semibold" :
+              row.attendance_status === "WFS" ? "bg-teal-100 text-teal-700 font-semibold" :
+                row.attendance_status === "WEEK OFF" ? "bg-purple-100 text-purple-700" :
+                  row.attendance_status === "HOLIDAYS" ? "bg-yellow-100 text-yellow-700" :
+                    "bg-gray-100 text-gray-600"
         }`}>{row.attendance_status || "—"}</span>
     )
   },
@@ -188,12 +190,21 @@ const DailyAttendancePage = ({ tab }) => {
       const mapped = (res?.data || []).map(item => {
         const inRaw = item.in_time?.toString().replace("T", " ").split(".")[0] || "";
         const outRaw = item.out_time?.toString().replace("T", " ").split(".")[0] || "";
+        const inFmt = inRaw ? inRaw.split(" ")[1]?.slice(0, 5) : "--:--";
+        const outFmt = outRaw ? outRaw.split(" ")[1]?.slice(0, 5) : "--:--";
+        const hasRealPunch = (inFmt && inFmt !== "--:--" && inFmt !== "00:00") ||
+                             (outFmt && outFmt !== "--:--" && outFmt !== "00:00");
+        const status = hasRealPunch
+          ? (item.attendance_status || "PRESENT")
+          : (item.attendance_status === "PRESENT" ? "ABSENT" : (item.attendance_status || "—"));
+
         return {
           ...item,
           department: item.department || "—",
           date: inRaw ? inRaw.split(" ")[0] : "",
-          in_time_fmt: inRaw ? inRaw.split(" ")[1]?.slice(0, 5) : "--:--",
-          out_time_fmt: outRaw ? outRaw.split(" ")[1]?.slice(0, 5) : "--:--",
+          in_time_fmt: hasRealPunch && inFmt !== "00:00" ? inFmt : "--:--",
+          out_time_fmt: hasRealPunch && outFmt !== "00:00" ? outFmt : "--:--",
+          attendance_status: status,
         };
       });
 

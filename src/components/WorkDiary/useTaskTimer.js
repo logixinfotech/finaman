@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 
 const useTaskTimer = () => {
-  const [timers, setTimers] = useState({}); // { [_key]: { running, startedAt, elapsed } }
+  const [timers, setTimers] = useState({}); 
 
   const start = useCallback((key) => {
     setTimers(p => ({

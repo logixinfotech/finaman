@@ -1,4 +1,3 @@
-// components/EmployeeMaster/LeaveTypeSelector.jsx
 
 import { useEffect, useState } from "react";
 import { getLeaveTypes } from "../../utils/api";
@@ -19,12 +18,7 @@ const LeaveTypeSelector = ({ value, onChange, disabled }) => {
     });
   }, []);
 
-  const selectedNames = leaveTypes
-    .filter(lt => safeValue.includes(lt.leave_type_id))  // value → safeValue
-    .map(lt => lt.leave_name)
-    .join(", ");
-
-  // LeaveTypeSelector.jsx mein onChange call karte waqt naam bhi bhejo
+  
   const toggleSelect = (id) => {
   if (disabled) return;
 
@@ -34,7 +28,6 @@ const LeaveTypeSelector = ({ value, onChange, disabled }) => {
     ? safeValue.filter(v => v !== id)
     : [...safeValue, id];
 
-  // ✅ selected names
   const selectedNames = leaveTypes
     .filter(lt => updated.includes(lt.leave_type_id))
     .map(lt => lt.leave_name);
@@ -44,7 +37,6 @@ const LeaveTypeSelector = ({ value, onChange, disabled }) => {
 
   return (
     <div className="relative w-full">
-      {/* Dropdown trigger */}
       <div
         onClick={() => !disabled && setOpen(o => !o)}
         className={`
@@ -54,7 +46,7 @@ const LeaveTypeSelector = ({ value, onChange, disabled }) => {
           border-gray-300
         `}
       >
-        {safeValue.length === 0 ? (                            // value → safeValue
+        {safeValue.length === 0 ? (                            
           <span className="text-gray-400">Select Leave Types...</span>
         ) : (
           leaveTypes
@@ -76,7 +68,6 @@ const LeaveTypeSelector = ({ value, onChange, disabled }) => {
         )}
       </div>
 
-      {/* Dropdown list */}
       {open && !disabled && (
         <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded shadow-lg max-h-52 overflow-y-auto">
           {leaveTypes.map(lt => (
@@ -99,7 +90,6 @@ const LeaveTypeSelector = ({ value, onChange, disabled }) => {
         </div>
       )}
 
-      {/* Close on outside click */}
       {open && (
         <div
           className="fixed inset-0 z-40"

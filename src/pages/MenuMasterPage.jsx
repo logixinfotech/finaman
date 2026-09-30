@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import MenuMasterForm from "./Modules/MainMenu/MenuMasterPage/MenuMasterForm";
 import MenuMasterFilterForm from "./Modules/MainMenu/MenuMasterPage/MenuMasterFilterForm";
 import Table from "../components/Reusable/table/Table"; 
@@ -32,27 +32,7 @@ const initialState = {
   menu_hide: "",
 };
 
-const columns = [
-  { key: "masmnu_id", label: "ID" },
-  { key: "mod_name", label: "Module" }, 
-  { key: "pad_name", label: "Section" }, 
-  { key: "grp_name", label: "Group" },
-  { key: "bar_name", label: "Menu Name" }, 
-  { key: "icon_name", label: "Icon" }, 
-  { key: "item_type", label: "Item Type" },
-  { key: "srl_no", label: "Serial No" },
-  {
-    key: "menu_hide",
-    label: "Hidden",
-    render: (row) => (
-      <span className={`status-badge ${row.menu_hide === "Y" ? "inactive" : "active"}`}>
-        {row.menu_hide === "Y" ? "Yes" : "No"}
-      </span>
-    ),
-  },
-];
  
-
  
 const MenuMasterPage = ({ tab }) => {
   const [modules, setModules] = useState([]);
@@ -125,6 +105,70 @@ useEffect(() => {
     if (index !== -1) setCurrentIndex(index);
     handleView(row);
   };
+  // 1️⃣ Toggle handler — jaisa handleToggleBlock hai waisa hi
+const handleToggleMenuHide = useCallback(async (row) => {
+    const newHideValue = row.menu_hide === "Y" ? "N" : "Y"; // flip value
+
+    try {
+        // Poori row bhejo, sirf menu_hide field change karke
+        const res = await updateMasmnu(row.masmnu_id, {
+            ...row,
+            menu_hide: newHideValue,
+        });
+
+        if (res?.success !== false) {
+            showToast({
+                icon: "success",
+                title: newHideValue === "Y" ? "Menu hidden" : "Menu made visible",
+            });
+
+            // Local state me turant patch — reload ki zarurat nahi
+            setList(prev =>
+                prev.map(m =>
+                    m.masmnu_id === row.masmnu_id ? { ...m, menu_hide: newHideValue } : m
+                )
+            );
+        } else {
+            alertError("Update Failed", res?.message || "Something went wrong");
+        }
+    } catch (error) {
+        alertError("Update Failed", error.message);
+    }
+}, []);
+
+// 2️⃣ Column definition — button jaisa block wala
+const columns = useMemo(() => [
+    { key: "masmnu_id", label: "ID" },
+    { key: "mod_name", label: "Module" },
+    { key: "pad_name", label: "Section" },
+    { key: "bar_name", label: "Menu Name" },
+    { key: "icon_name", label: "Icon" },
+    {
+        key: "menu_hide",
+        label: "Hidden",
+        render: (row) => {
+            const hidden = row.menu_hide === "Y";
+            return (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();   // row select / open trigger na ho
+                        handleToggleMenuHide(row);
+                    }}
+                    title={hidden ? "Click to unhide" : "Click to hide"}
+                    className={`px-2 py-1 text-xs rounded ${
+                        hidden
+                            ? "bg-red-100 text-red-600"
+                            : "bg-green-100 text-green-700"
+                    }`}
+                >
+                    {hidden ? "Yes" : "No"}
+                </button>
+            );
+        },
+    },
+], [handleToggleMenuHide]);
+
 
   // const handleSave = async () => {
   //   const response = await performSave("masmnu_id");

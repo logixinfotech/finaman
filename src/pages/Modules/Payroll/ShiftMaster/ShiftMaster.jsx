@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import Table from "../../../../components/Reusable/table/Table";
-import ShiftMasterForm from "./ShiftMasterForm"; 
-import { fetchShifts, deleteShift, createShift, updateShift } from "../../../../utils/api";  
+import ShiftMasterForm from "./ShiftMasterForm";
+import { fetchShifts, deleteShift, createShift, updateShift } from "../../../../utils/api";
 import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 
@@ -21,7 +21,7 @@ const columns = [
   { key: "shift_name", label: "Shift Name" },
   { key: "start_time", label: "Start Time" }, // Must match the key in API JSON
   { key: "end_time", label: "End Time" },
-    {
+  {
     key: "full_day_hours",
     label: "Hours",
     render: (row) => {
@@ -32,7 +32,11 @@ const columns = [
       return mins > 0 ? `${hrs} hrs ${mins} min` : `${hrs} hrs`;
     }
   },
-
+  {
+    key: "attendance_rule_name",
+    label: "Attendance Rule",
+    render: (row) => row.attendance_rule_name || "Standard (Default)"
+  },
 ];
 
 const ShiftMaster = ({ tab }) => {
@@ -44,35 +48,35 @@ const ShiftMaster = ({ tab }) => {
     mode,
     formData, setFormData,
     showForm, setShowForm,
-    saving, handleEditCancel, 
+    saving, handleEditCancel,
     handleView, handleAdd, handleModify, performSave, rights
   } = useERPMode(
     initialState,
     async (data, isEdit) => {
       return isEdit ? await updateShift(data.shift_id, data) : await createShift(data);
     },
-    () => loadShifts(), 
+    () => loadShifts(),
     tab.appl_name
-  ); 
-const loadShifts = useCallback(async () => {
-  try {
-    setLoading(true);
-    const data = await fetchShifts();
-    const finalData = Array.isArray(data) ? data : data?.data || [];
-    setList(finalData); 
-   
-    if (finalData.length > 0) {
-      setFormData(finalData[0]);
-      setCurrentIndex(0);
-    }
-  } catch (err) {
-    alertError("Fetch Error", "Failed to load shifts");
-  } finally {
-    setLoading(false);
-  }
-}, [setFormData]);
+  );
+  const loadShifts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchShifts();
+      const finalData = Array.isArray(data) ? data : data?.data || [];
+      setList(finalData);
 
-  useEffect(() => { loadShifts(); }, []); 
+      if (finalData.length > 0) {
+        setFormData(finalData[0]);
+        setCurrentIndex(0);
+      }
+    } catch (err) {
+      alertError("Fetch Error", "Failed to load shifts");
+    } finally {
+      setLoading(false);
+    }
+  }, [setFormData]);
+
+  useEffect(() => { loadShifts(); }, []);
   useEffect(() => {
     if (showForm && mode === "view" && list.length > 0) {
       setFormData(list[currentIndex]);
@@ -90,18 +94,18 @@ const loadShifts = useCallback(async () => {
     handleView(row);
   };
 
-const handleSave = async (updatedData) => {
+  const handleSave = async (updatedData) => {
 
-  const response = await performSave("shift_id", updatedData);
-  if (response?.success) {
-    await loadShifts();
-  }
-};
+    const response = await performSave("shift_id", updatedData);
+    if (response?.success) {
+      await loadShifts();
+    }
+  };
 
   const handleDelete = async (row) => {
     console.log("Deleting ID:", row.shift_id); // Verify this isn't undefined
     const confirmed = await confirmDelete({ title: `Delete Shift "${row.shift_name}"?` });
-    if (confirmed) { 
+    if (confirmed) {
       const res = await deleteShift(row.shift_id);
       if (res.success) {
         showToast({ icon: "success", title: "Deleted" });
@@ -110,38 +114,38 @@ const handleSave = async (updatedData) => {
       }
     }
   };
-   
-const handleDeleteMultiple = async (selected) => {
-  // Normalize: Table may pass an array of row objects OR an array of keys
-  const ids = (selected || []).map((item) =>
-    typeof item === "object" ? item.shift_id : item
-  );
 
-  if (ids.length === 0) return;
+  const handleDeleteMultiple = async (selected) => {
+    // Normalize: Table may pass an array of row objects OR an array of keys
+    const ids = (selected || []).map((item) =>
+      typeof item === "object" ? item.shift_id : item
+    );
 
-  const confirmed = await confirmDelete({
-    title: `Delete ${ids.length} shift(s)?`,
-  });
-  if (!confirmed) return;
+    if (ids.length === 0) return;
 
-  try {
-    const results = await Promise.all(ids.map((id) => deleteShift(id)));
-    const failed = results.filter((r) => !r?.success).length;
+    const confirmed = await confirmDelete({
+      title: `Delete ${ids.length} shift(s)?`,
+    });
+    if (!confirmed) return;
 
-    if (failed === 0) {
-      showToast({ icon: "success", title: `${ids.length} deleted` });
-    } else {
-      showToast({
-        icon: "warning",
-        title: `${ids.length - failed} deleted, ${failed} failed`,
-      });
+    try {
+      const results = await Promise.all(ids.map((id) => deleteShift(id)));
+      const failed = results.filter((r) => !r?.success).length;
+
+      if (failed === 0) {
+        showToast({ icon: "success", title: `${ids.length} deleted` });
+      } else {
+        showToast({
+          icon: "warning",
+          title: `${ids.length - failed} deleted, ${failed} failed`,
+        });
+      }
+      loadShifts();
+      setShowForm(false);
+    } catch (err) {
+      alertError("Delete Error", "Failed to delete some shifts");
     }
-    loadShifts();
-    setShowForm(false);
-  } catch (err) {
-    alertError("Delete Error", "Failed to delete some shifts");
-  }
-};
+  };
 
   useEffect(() => {
     setERPHandlers({
@@ -157,7 +161,7 @@ const handleDeleteMultiple = async (selected) => {
     <div className="h-full w-full">
       {showForm ? (
         <ShiftMasterForm
-          initialData={formData} 
+          initialData={formData}
           formData={formData}
           setFormData={setFormData}
           onSave={handleSave}

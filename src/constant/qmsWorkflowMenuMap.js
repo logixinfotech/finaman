@@ -1,8 +1,4 @@
-// constant/qmsWorkflowMenuMap.js
-// Menu row (MASMNU) ko QMS workflow moduleKey se jodta hai.
-// appl_name pe match karta hai; na mile to menu name (bar_name) pe fallback.
-// Jis menu ka workflow nahi (dashboard, report, OOS-report etc.) wahan null aayega
-// aur UI me Workflow column me dash dikhega.
+ 
 
 const MODULE_ALIASES = {
   deviation:     ['deviation', 'deviations', 'deviationreport'],
@@ -24,10 +20,8 @@ const MODULE_ALIASES = {
   oot:           ['oot', 'outoftrend'],
 };
 
-// lowercase + sirf a-z0-9 — spaces, dots, brackets sab hat jate hain
 const slug = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-// alias -> moduleKey (ek hi baar banta hai)
 const LOOKUP = {};
 Object.entries(MODULE_ALIASES).forEach(([moduleKey, aliases]) => {
   aliases.forEach((a) => { LOOKUP[slug(a)] = moduleKey; });
@@ -41,7 +35,6 @@ Object.entries(MODULE_ALIASES).forEach(([moduleKey, aliases]) => {
 export function resolveWorkflowModuleKey(row) {
   if (!row) return null;
 
-  // report/dashboard rows ka workflow nahi hota
   const pad = slug(row.pad_name);
   if (pad.includes('report') || pad.includes('dashboard')) return null;
 

@@ -1,13 +1,33 @@
 import { useMemo } from "react";
 import { inrS } from "../../../../utils/helpers";
 import { buildPendingOrders } from "../../../../utils/orderHelpers";
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { AlertTriangle } from "lucide-react";
 
+const EXPORT_COLS = [
+  { key: "ord",   label: "Order No" },
+  { key: "dt",    label: "Order Date", type: "date" },
+  { key: "cust",  label: "Customer" },
+  { key: "city",  label: "City" },
+  { key: "item",  label: "Item" },
+  { key: (r) => (r.comple === "Y" ? "Completed" : "Pending"), label: "Status" },
+  { key: "qo",    label: "Qty Ordered", type: "int" },
+  { key: "qs",    label: "Qty Supplied", type: "int" },
+  { key: "qb",    label: "Pending Qty", type: "int" },
+  { key: "rate",  label: "Rate (₹)", type: "num" },
+  { key: "amt",   label: "Amount (₹)", type: "num" },
+  { key: "atRisk", label: "Value at Risk (₹)", type: "num" },
+  { key: "openDays", label: "Open Days", type: "int" },
+];
 export default function CustomerWisePendingOrders({ rows, refDate }) {
   const pending = useMemo(() => buildPendingOrders(rows, refDate), [rows, refDate]);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">🚨 Customer-wise Pending Orders</h4>
+      <SectionHeader icon={AlertTriangle} accent="rose" title="Customer-wise Pending Orders" className="mb-4">
+        <ExportMenu title="Customer-wise Pending Orders" columns={EXPORT_COLS} rows={pending} />
+      </SectionHeader>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
@@ -33,7 +53,7 @@ export default function CustomerWisePendingOrders({ rows, refDate }) {
             ))}
           </tbody>
         </table>
-        {!pending.length && <p className="py-6 text-center text-xs text-slate-400">No pending orders 🎉</p>}
+        {!pending.length && <p className="py-6 text-center text-xs text-slate-400">No pending orders</p>}
       </div>
     </div>
   );

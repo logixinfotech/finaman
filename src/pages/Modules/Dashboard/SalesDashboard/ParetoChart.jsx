@@ -10,12 +10,18 @@ import { inr, inrS } from "../../../../utils/helpers";
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip);
 
 const CLASS_COLOR = { A: "#16a34a", B: "#f59e0b", C: "#94a3b8" };
+const EXPORT_COLS = [
+  { key: (r) => r.rank, label: "Rank", type: "int" },
+  { key: "name",   label: "Customer" },
+  { key: "custId", label: "Customer ID" },
+  { key: "amt",    label: "Order Value (₹)", type: "num" },
+  { key: "cumPct", label: "Cumulative %", type: "pct" },
+  { key: "cls",    label: "Class" },
+];
 
 function ParetoChart({ rows, n = 40, onClassed }) {
   const classed = useMemo(() => buildPareto(rows), [rows]);
   const shown = useMemo(() => classed.slice(0, n), [classed, n]);
-
-  // let parent (Combined View table) reuse the same A/B/C classification
   useMemo(() => {
     if (onClassed) {
       const map = {};
@@ -23,6 +29,9 @@ function ParetoChart({ rows, n = 40, onClassed }) {
       onClassed(map);
     }
   }, [classed, onClassed]);
+
+  /* export: every classed customer (the chart shows only the top `n`) */
+  const exportSpec = useMemo(() => ({ columns: EXPORT_COLS, rows: classed.map((c, i) => ({ ...c, rank: i + 1 })) }), [classed]);
 
   const tot = classed.reduce((s, c) => s + c.amt, 0) || 1;
   const summary = { A: { n: 0, amt: 0 }, B: { n: 0, amt: 0 }, C: { n: 0, amt: 0 } };
@@ -74,7 +83,7 @@ function ParetoChart({ rows, n = 40, onClassed }) {
   };
 
   return (
-    <CardShell title="ABC Analysis — Pareto 80/20">
+    <CardShell title="ABC Analysis — Pareto 80/20" exportSpec={exportSpec}>
       <div style={{ height: 300 }}>
         <Chart type="bar" data={data} options={options} />
       </div>

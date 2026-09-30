@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import Table from "../../../../../components/Reusable/table/Table";
 import UnivarsalFilter from "../../../../../components/Reusable/Filter/UnivarsalFilter";
 import {
@@ -380,6 +381,14 @@ const EmployeeAttendanceDetail = ({
                   label: "P",
                   style: "bg-green-50 border-green-300 text-green-800",
                 },
+                L1: {
+                  label: "L1",
+                  style: "bg-amber-50 border-amber-300 text-amber-800",
+                },
+                L2: {
+                  label: "L2",
+                  style: "bg-indigo-50 border-indigo-300 text-indigo-800",
+                },
                 HALF_DAY: {
                   label: "H/D",
                   style: "bg-yellow-50 border-yellow-300 text-yellow-700",
@@ -391,6 +400,14 @@ const EmployeeAttendanceDetail = ({
                 ABSENT: {
                   label: "A",
                   style: "bg-red-50 border-red-400 text-red-700",
+                },
+                WFH: {
+                  label: "H",
+                  style: "bg-sky-50 border-sky-400 text-sky-700",
+                },
+                WFS: {
+                  label: "d",
+                  style: "bg-teal-50 border-teal-400 text-teal-700",
                 },
                 WEEKOFF: {
                   label: "W/O",
@@ -432,7 +449,7 @@ const EmployeeAttendanceDetail = ({
               };
 
               const KPI_STATUS_MATCH = {
-                present: ["PRESENT", "HALF_DAY", "SHORT"],
+                present: ["PRESENT", "L1", "L2", "HALF_DAY", "SHORT", "WFH", "WFS"],
                 absent: ["ABSENT"],
                 weekoff: ["WEEKOFF"],
                 weekoff_ot: ["WEEKOFF OT"],
@@ -496,7 +513,7 @@ const EmployeeAttendanceDetail = ({
 };
 
 // --- 2. Main Report Component ---
-const MonthlyAttendanceReport = () => {
+const MonthlyAttendanceReport = ({ tab }) => {
   const currentDate = new Date();
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -539,6 +556,31 @@ const MonthlyAttendanceReport = () => {
 
   const [showFilter, setShowFilter] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const empId = tab?.params?.employee_id || params.get("employee_id");
+    const m = tab?.params?.month || params.get("month");
+    const y = tab?.params?.year || params.get("year");
+    if (empId) {
+      if (m && y) {
+        setFiltersRaw((prev) => ({
+          ...prev,
+          month: parseInt(m, 10),
+          year: parseInt(y, 10),
+          from_date: `${y}-${pad(m)}-01`,
+          to_date: `${y}-${pad(m)}-${pad(getLastDay(parseInt(y, 10), parseInt(m, 10)))}`,
+        }));
+      }
+      setSelectedEmployee({
+        employee_id: empId,
+        employee_code: tab?.params?.employee_code || params.get("employee_code") || "",
+        employee_name: tab?.params?.employee_name || params.get("employee_name") || "",
+        department: tab?.params?.department || params.get("department") || "",
+      });
+    }
+  }, [location.search, tab?.params]);
 
   const loadSummary = useCallback(async () => {
     setLoading(true);

@@ -1,9 +1,8 @@
- 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
-import { getActledList, getLeaveTypes, getLeaveTypesByEmployee } from "../../../../utils/api";
+import { getActledList, getLeaveTypes, getLeaveTypesByEmployee, fetchRestrictedHolidays } from "../../../../utils/api";
 import ERPDateInput from "../../../../components/Reusable/input/Date";
 import { showToast } from "../../../../components/Reusable/alert";
 import { focusFirstInput, handleERPBackspaceNavigation, handleERPEnterNavigation } from "../../../../utils/erpShortcuts";
@@ -32,6 +31,7 @@ const LeaveRequestForm = ({
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [leaveTypeNames, setLeaveTypeNames] = useState([]);
   const [allLeaveTypes, setAllLeaveTypes] = useState([]); // backup — sab types
+  const [restrictedHolidays, setRestrictedHolidays] = useState([]);
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
@@ -46,18 +46,22 @@ const LeaveRequestForm = ({
     }
   }, [isAddMode, isEditMode]);
 
-  // ── Fetch employees ─────────────────────────────────────
+  // ── Fetch employees & RH holidays ───────────────────────
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchInitialData = async () => {
       try {
-        const data = await getActledList();
-        setEmployees(data || []);
-        setEmployeeNames((data || []).map((e) => (e.full_name || e.Led_name)?.trim()));
+        const [empData, rhData] = await Promise.all([
+          getActledList(),
+          fetchRestrictedHolidays(),
+        ]);
+        setEmployees(empData || []);
+        setEmployeeNames((empData || []).map((e) => (e.full_name || e.Led_name)?.trim()));
+        setRestrictedHolidays(rhData || []);
       } catch (err) {
-        console.error("Employee fetch error:", err);
+        console.error("Initial fetch error:", err);
       }
     };
-    fetchEmployees();
+    fetchInitialData();
   }, []);
 
   // ── Fetch leave types ───────────────────────────────────
@@ -88,20 +92,38 @@ const LeaveRequestForm = ({
       setLocalData(formatted);
       setFormData(formatted);
     }
-
-    // Agar employee already selected hai to uske leave types load karo
-    if (initialData.employee_id) {
-      getLeaveTypesByEmployee(initialData.employee_id)
-        .then(res => {
-          const empLTs = res?.data || [];
-          if (empLTs.length > 0) {
-            setLeaveTypes(empLTs);
-            setLeaveTypeNames(empLTs.map(lt => lt.leave_name));
-          }
-        })
-        .catch(() => { });
-    }
   }, [initialData]);
+
+  // ── Employee ke leave types + month-wise balance (From Date ke month tak) ──
+  useEffect(() => {
+    const showAll = () => {
+      setLeaveTypes(allLeaveTypes);
+      setLeaveTypeNames(allLeaveTypes.map((lt) => lt.leave_name));
+    };
+    if (!localData.employee_id) {
+      showAll();
+      return;
+    }
+
+    let cancelled = false;
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    getLeaveTypesByEmployee(localData.employee_id, localData.from_date || today, localData.request_id)
+      .then((res) => {
+        if (cancelled) return;
+        const empLTs = res?.data || [];
+        if (empLTs.length > 0) {
+          setLeaveTypes(empLTs);
+          setLeaveTypeNames(empLTs.map((lt) => lt.leave_name));
+        } else {
+          showAll();
+        }
+      })
+      .catch(() => { if (!cancelled) showAll(); });
+
+    return () => { cancelled = true; };
+  }, [localData.employee_id, localData.from_date, localData.request_id, allLeaveTypes]);
 
   // ── Auto-calculate total_days ────────────────────────────
   useEffect(() => {
@@ -138,7 +160,7 @@ const LeaveRequestForm = ({
   );
 
   // ── Field change handler ─────────────────────────────────
-  const handleChange = async (field, value) => {
+  const handleChange = (field, value) => {
     let updated = { ...localData };
 
     if (field === "employee_name") {
@@ -147,33 +169,9 @@ const LeaveRequestForm = ({
       );
       updated.employee_name = value;
       updated.employee_id = emp ? Number(emp.Actled_id) : "";
-      // Leave type bhi clear karo jab employee change ho
+      // Leave type bhi clear karo jab employee change ho (leave types effect se reload honge)
       updated.leave_name = "";
       updated.leave_type_id = "";
-
-      // Is employee ke accrued leave types fetch karo
-      if (emp) {
-        try {
-          const res = await getLeaveTypesByEmployee(emp.Actled_id);
-          const empLTs = res?.data || [];
-          if (empLTs.length > 0) {
-            setLeaveTypes(empLTs);
-            setLeaveTypeNames(empLTs.map(lt => lt.leave_name));
-          } else {
-            // Agar accrual nahi hai to sab types dikhao
-            setLeaveTypes(allLeaveTypes);
-            setLeaveTypeNames(allLeaveTypes.map(lt => lt.leave_name));
-          }
-        } catch (e) {
-          // Error pe bhi sab types dikhao
-          setLeaveTypes(allLeaveTypes);
-          setLeaveTypeNames(allLeaveTypes.map(lt => lt.leave_name));
-        }
-      } else {
-        // Employee clear kiya — sab types restore karo
-        setLeaveTypes(allLeaveTypes);
-        setLeaveTypeNames(allLeaveTypes.map(lt => lt.leave_name));
-      }
     } else if (field === "leave_name") {
       const lt = leaveTypes.find((l) => l.leave_name === value);
       updated.leave_name = value;
@@ -203,8 +201,18 @@ const LeaveRequestForm = ({
       : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
     }`;
 
-  // ── Status badge ─────────────────────────────────────────
+  const selectedLT = leaveTypes.find(
+    (l) => l.leave_type_id === localData.leave_type_id || l.leave_name === localData.leave_name
+  );
+  const isRH = selectedLT && (selectedLT.leave_code?.toUpperCase() === "RH" || selectedLT.leave_name?.toLowerCase().includes("restricted"));
 
+  // ── Month-wise balance (CF + earned till From Date month − used − pending) ──
+  const monthlyBal = selectedLT?.monthly_balance;
+  const requestedDays = parseFloat(localData.total_days) || 0;
+  const balanceError =
+    !isViewMode && monthlyBal && selectedLT?.balance_tracked && requestedDays > monthlyBal.available
+      ? `Only ${monthlyBal.available} day(s) available till ${monthlyBal.month_name}. You selected ${requestedDays} day(s).`
+      : "";
 
   // ── Validate and save ────────────────────────────────────
   const handleValidateAndSave = useCallback(() => {
@@ -221,10 +229,24 @@ const LeaveRequestForm = ({
       return;
     }
 
+    // ── RH Specific Validations ──
+    if (isRH) {
+      const isValidRHDate = restrictedHolidays.some((rh) => rh.date === localData.from_date);
+      if (restrictedHolidays.length > 0 && !isValidRHDate) {
+        showToast({ icon: "error", title: "Selected date is not in the approved Restricted Holiday list." });
+        setErrors((prev) => ({ ...prev, from_date: "Invalid RH Date" }));
+        return;
+      }
+    }
+
+    // ── Leave balance check (all paid leave types) ──
+    if (balanceError) {
+      showToast({ icon: "error", title: `Insufficient ${selectedLT.leave_name} balance. ${balanceError}` });
+      return;
+    }
+
     if (onSave) onSave(localData);
-  }, [localData, onSave, isViewMode]);
-
-
+  }, [localData, onSave, isViewMode, isRH, restrictedHolidays, selectedLT, balanceError]);
 
   return (
     <div
@@ -247,13 +269,12 @@ const LeaveRequestForm = ({
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto">
         <div ref={formRef} className="w-full bg-white border max-w-[750px] mx-auto border-slate-200 shadow-sm rounded-md overflow-visible relative">
-          <div className="p-3 sm:p-5 grid grid-cols-1 gap-y-3 sm:gap-y-5">
+          <div className="p-3 sm:p-5 grid grid-cols-1 gap-y-3 sm:gap-y-4">
 
-
-            {/* ── Employee ── */}
+            {/* ── Employee & Leave Type ── */}
             <div className="flex flex-row gap-2 sm:gap-6 w-full">
               <div className="flex flex-row items-start px-1 flex-1">
-                <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] pt-1 shrink-0">
+                <label className="text-[13px] sm:text-[14px] w-[65px] sm:w-[100px] pt-1 shrink-0">
                   Employee <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -265,18 +286,12 @@ const LeaveRequestForm = ({
                     disabled={isViewMode}
                     onKeyDown={handleKeyDown}
                   />
-                  {/* {localData.employee_id && (
-                  <div className="text-[12px] text-blue-600 mt-1 ml-1">
-                    EMP ID: {localData.employee_id}
-                  </div>
-                )} */}
-
                 </div>
               </div>
 
               {/* ── Leave Type ── */}
               <div className="flex flex-row items-start px-1 flex-1">
-                <label className="text-[13px] sm:text-[15px] w-[60px] sm:w-[100px] pt-1 shrink-0">
+                <label className="text-[13px] sm:text-[14px] w-[60px] sm:w-[100px] pt-1 shrink-0">
                   Leave Type <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -288,15 +303,70 @@ const LeaveRequestForm = ({
                     disabled={isViewMode}
                     onKeyDown={handleKeyDown}
                   />
-
+                  {selectedLT && (
+                    <div className="mt-1 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        {monthlyBal ? (
+                          <span className={`font-semibold ${monthlyBal.available > 0 && !balanceError ? "text-emerald-700" : "text-red-600"}`}>
+                            Available ({monthlyBal.month_name}): {monthlyBal.available} days
+                          </span>
+                        ) : (
+                          <span className={`font-semibold ${parseFloat(selectedLT.balance_days) > 0 ? "text-emerald-700" : "text-red-600"}`}>
+                            Balance: {selectedLT.balance_days ?? 0} days
+                          </span>
+                        )}
+                        {isRH && (
+                          <span className="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                            RH Entitlement
+                          </span>
+                        )}
+                      </div>
+                      {monthlyBal && (
+                        <div className="text-gray-500 mt-0.5">
+                          <span className="text-gray-400"> · Annual {monthlyBal.annual}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
+            {/* ── RH Quick Selector Helper (if RH selected) ── */}
+            {isRH && restrictedHolidays.length > 0 && (
+              <div className="flex flex-row items-center px-1 w-full">
+                <label className="text-[13px] sm:text-[14px] text-gray-700 w-[65px] sm:w-[100px] shrink-0 font-medium">
+                  RH Holiday
+                </label>
+                <div className="flex-1 w-full">
+                  <select
+                    disabled={isViewMode}
+                    onChange={(e) => {
+                      const rh = restrictedHolidays.find((h) => h.date === e.target.value);
+                      if (rh) {
+                        handleChange("from_date", rh.date);
+                        handleChange("to_date", rh.date);
+                        handleChange("reason", `Restricted Holiday - ${rh.purpose}`);
+                      }
+                    }}
+                    className={getInputClass(isViewMode, "rh_holiday")}
+                    value={localData.from_date || ""}
+                  >
+                    <option value="">-- Select Approved Restricted Holiday --</option>
+                    {restrictedHolidays.map((h) => (
+                      <option key={h.id || h.date} value={h.date}>
+                        {h.purpose} ({h.date})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* ── Dates ── */}
             <div className="flex flex-row gap-2 sm:gap-6 w-full">
               <div className="flex flex-row items-start px-1 flex-1">
-                <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] shrink-0">
+                <label className="text-[13px] sm:text-[14px] w-[65px] sm:w-[100px] shrink-0">
                   From Date <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -311,7 +381,7 @@ const LeaveRequestForm = ({
               </div>
 
               <div className="flex flex-row items-start px-1 flex-1">
-                <label className="text-[13px] sm:text-[15px] w-[55px] sm:w-[100px] shrink-0">
+                <label className="text-[13px] sm:text-[14px] w-[55px] sm:w-[100px] shrink-0">
                   To Date <span className="text-red-500">*</span>
                 </label>
                 <div className="flex-1 w-full">
@@ -322,29 +392,31 @@ const LeaveRequestForm = ({
                     className={getInputClass(isViewMode, "to_date")}
                     onKeyDown={handleKeyDown}
                   />
-
                 </div>
               </div>
             </div>
 
             {/* ── Total Days (auto-calculated, read-only) ── */}
             <div className="flex flex-row items-start px-1">
-              <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] shrink-0">Total Days</label>
+              <label className="text-[13px] sm:text-[14px] w-[65px] sm:w-[100px] shrink-0">Total Days</label>
               <div className="flex-1 w-full">
                 <input
                   type="number"
                   value={localData.total_days || ""}
                   disabled
-                  className={getInputClass(true, "total_days")}
+                  className={`${getInputClass(true, "total_days")} ${balanceError ? "!border-red-500" : ""}`}
                   placeholder="Auto-calculated"
                   onKeyDown={handleKeyDown}
                 />
+                {balanceError && (
+                  <p className="text-[11px] text-red-600 font-medium mt-1">{balanceError}</p>
+                )}
               </div>
             </div>
 
             {/* ── Reason ── */}
             <div className="flex flex-row items-start px-1">
-              <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[100px] pt-1 shrink-0">Reason</label>
+              <label className="text-[13px] sm:text-[14px] w-[65px] sm:w-[100px] pt-1 shrink-0">Reason</label>
               <div className="flex-1 w-full">
                 <textarea
                   rows={3}
@@ -357,7 +429,6 @@ const LeaveRequestForm = ({
                 />
               </div>
             </div>
-
 
           </div>
         </div>

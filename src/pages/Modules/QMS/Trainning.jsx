@@ -3,6 +3,7 @@ import {
   FaChalkboardTeacher, FaUsers, FaClipboardCheck,
   FaFlagCheckered, FaHistory,
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa"; 
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -108,6 +109,10 @@ export default function TrainingMasterPage({ tab }) {
       contextLabel: m.formData?.Department,
     }).catch((err) => console.error('Print open failed:', err));
   }, [m.formData, printWorkflow]);
+        const ModuleIcon = useMemo(() => {
+              const name = tab?.icon_name || tab?.module?.icon_name;
+              return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+            }, [tab?.icon_name, tab?.module?.icon_name]);
 
   if (printWorkflow.isOpen) {
     return (
@@ -122,8 +127,11 @@ export default function TrainingMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Training"
+               subtitle={m.formData?.RecordNo || "New"}   
+                    TitleIcon={ModuleIcon}
           tabs={trainingTabs}
           tabLabels={trainingTabLabels}
+          tabStage={trainingTabStage}
           TabIcon={TrainingTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -153,7 +161,7 @@ export default function TrainingMasterPage({ tab }) {
           onSignedSave={m.handleSignedSave}
              onSaveDraft={m.handleSaveDraft}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -174,7 +182,8 @@ export default function TrainingMasterPage({ tab }) {
   return (
     <div className="h-full w-full">
       <Table
-        title="Training Register"
+        title="Training"
+          TitleIcon={ModuleIcon}
         data={filteredList}
         columns={trainingTableColumns}
         rowKey="Id"

@@ -98,3 +98,4 @@ export const widthConfig = {
 "Investigation Summary": "col-span-full",
 "Trainees & Scores (One per line: Name — Dept — Score — Pass/Fail/Retrain)":"col-span-full"
 };
+

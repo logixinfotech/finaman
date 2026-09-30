@@ -5,8 +5,6 @@ import { useAuth } from "../../../theme/AuthContext";
 const REQ_KEYS = {
   id: ["id", "transaction_id", "request_id", "approval_id"],
   employeeName: ["employee_name", "emp_name", "name", "Led_name"],
-  
-  // every possible field name the API might use to say WHICH module this row came from
   requestType: [
     "request_type", "type", "category", "approval_type",
     "module", "module_name", "txn_type", "source_type",
@@ -24,9 +22,6 @@ const CATEGORY_META = {
   "Investment Declaration":  { icon: "ti ti-file-invoice",   color: "#BE185D", bg: "#FDF2F8" },
   Request:                   { icon: "ti ti-file-text",       color: "#64748B", bg: "#F1F5F9" },
 };
-
-// Explicit raw-code → readable label. Add your backend's own codes here
-// (e.g. if it sends "LV", "OT_CLAIM", "ATT_REG" etc, map them below).
 const RAW_TYPE_MAP = {
   LEAVE: "Leave Request",
   LEAVEREQUEST: "Leave Request",
@@ -41,15 +36,12 @@ const RAW_TYPE_MAP = {
   INVESTMENTDECLARATION: "Investment Declaration",
   INVESTMENT: "Investment Declaration",
 };
-
-// try the explicit type field first; if it's missing/unrecognised,
-// guess the category from which fields actually exist on the row
 const detectCategory = (row) => {
   const raw = pick(row, REQ_KEYS.requestType);
   if (raw) {
     const key = String(raw).toUpperCase().replace(/[\s_-]/g, "");
     if (RAW_TYPE_MAP[key]) return RAW_TYPE_MAP[key];
-    if (CATEGORY_META[raw]) return raw; // already a clean readable label
+    if (CATEGORY_META[raw]) return raw;  
   }
 
   if (pick(row, ["leave_type", "leave_type_id", "leave_type_name"])) return "Leave Request";
@@ -57,7 +49,7 @@ const detectCategory = (row) => {
   if (pick(row, ["punch_in", "punch_out", "regularization_reason", "original_in", "original_out"])) return "Regularization";
   if (pick(row, ["comp_off_date"])) return "Comp Off";
   if (pick(row, ["investment_head", "declared_amount"])) return "Investment Declaration";
-  if (pick(row, ["no_of_days", "from_date", "to_date"])) return "Leave Request"; // last-resort heuristic
+  if (pick(row, ["no_of_days", "from_date", "to_date"])) return "Leave Request";  
 
   return raw || "Request";
 };
@@ -83,9 +75,6 @@ const detectDetail = (row, category) => {
   }
   return null;
 };
-
-// how many days a request can sit before it's shown as "Overdue"
-// (only used as a fallback when the API doesn't send its own status)
 const OVERDUE_AFTER_DAYS = 3;
 
 const STATUS_STYLE = {
@@ -106,7 +95,7 @@ const normStatus = (raw) => {
   if (s.startsWith("over")) return "Overdue";
   if (s.startsWith("rev")) return "Review";
   if (s.startsWith("pend")) return "Pending";
-  return null; // unknown -> compute from date below
+  return null; 
 };
 
 const getInitials = (name) => {
@@ -157,7 +146,6 @@ const ApprovalWorkflow = ({ onManageAllClick }) => {
 
       let status = normStatus(pick(r, REQ_KEYS.status));
       if (!status) {
-        // fall back to age-based overdue detection if API doesn't send its own status
         const reqDate = requestedRaw ? new Date(requestedRaw) : null;
         const daysOld = reqDate && !isNaN(reqDate.getTime())
           ? Math.floor((today - reqDate) / 86400000)
@@ -250,8 +238,6 @@ const ApprovalWorkflow = ({ onManageAllClick }) => {
           ))}
         </div>
       )}
-
-      {/* Summary row */}
       <div style={styles.summaryRow}>
         {summary.map((s) => (
           <div key={s.label} style={{ ...styles.summaryBox, background: s.bg }}>

@@ -24,7 +24,7 @@ import {
 } from "./EmployeeFromValidation";
 import DocumentTable from "./DocumentTable";
 
- 
+
 import {
   FaUser,
   FaBuilding,
@@ -46,6 +46,7 @@ import {
   FaCreditCard,
 } from "react-icons/fa";
 import { useGroupOptions } from "../../Hooks/useUserGroupOption";
+import config from "../../config";
 export const tabs = [
   "personal_and_contact",
   "organization",
@@ -255,7 +256,7 @@ const EmployeeMasterForm = forwardRef(
           fd.append("photo", file);
           const res = await uploadEmployeePhoto(employeeId, fd);
           if (res?.success) {
-            const serverUrl = `${process.env.REACT_APP_API_URL || "http://localhost:63554"}${res.photo_url}?t=${Date.now()}`;
+            const serverUrl = `${config.apiUrl}${res.photo_url}?t=${Date.now()}`;
             setFormData((prev) => ({ ...prev, photo_url: serverUrl }));
             return serverUrl;
           }
@@ -271,7 +272,7 @@ const EmployeeMasterForm = forwardRef(
         try {
           const res = await fetchUserGroupsByType("DOC");
           setDocList(res?.data || []);
-        } catch (e) {}
+        } catch (e) { }
       };
       loadDocs();
     }, []);
@@ -297,7 +298,7 @@ const EmployeeMasterForm = forwardRef(
             grade: grade.data || [],
             reporting: reporting.data || [],
           });
-        } catch (err) {}
+        } catch (err) { }
       };
       loadGroups();
     }, []);
@@ -335,7 +336,7 @@ const EmployeeMasterForm = forwardRef(
         }
         return String(value);
       },
-      [groupOptions],
+      [groupOptions],// eslint-disable-line react-hooks/exhaustive-deps
     );
 
     const isPersonalComplete = Boolean(
@@ -451,13 +452,13 @@ const EmployeeMasterForm = forwardRef(
           rawValue === undefined || rawValue === null ? "" : rawValue;
         const nameStr = field.toLowerCase();
         if (nameStr.includes("voter id")) {
-          finalValue = finalValue.toString().slice(0, 10); // Only 10 digits
-        }
-        if (nameStr.includes("driving licence")) {
-          finalValue = finalValue.toString().slice(0, 15); // Only 10 digits
-        }
-        if (nameStr.includes("pin code")) {
+          finalValue = finalValue.toString().slice(0, 10); // Only 10 chars
+        } else if (nameStr.includes("driving licence")) {
+          finalValue = finalValue.toString().slice(0, 15); // Max 15 chars
+        } else if (nameStr.includes("pin code")) {
           finalValue = finalValue.toString().replace(/\D/g, "").slice(0, 6); // Only 6 digits
+        } else if (nameStr.includes("phone extension")) {
+          finalValue = finalValue.toString().replace(/\D/g, "").slice(0, 6); // Max 6 digits
         } else if (
           nameStr.includes("mobile") ||
           nameStr.includes("phone") ||
@@ -473,34 +474,26 @@ const EmployeeMasterForm = forwardRef(
           finalValue = finalValue.toString().replace(/\D/g, "").slice(0, 17); // Only 17 digits
         } else if (nameStr.includes("account number")) {
           finalValue = finalValue.toString().replace(/\D/g, "").slice(0, 18); // Max 18 digits for Bank Accounts
-        } else if (nameStr === "pan number") {
+        } else if (nameStr.includes("pan number") || nameStr === "pan card") {
           finalValue = finalValue
             .toString()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "")
             .slice(0, 10); // 10 Alphanumeric Only
+        } else if (nameStr.includes("passport no")) {
+          finalValue = finalValue
+            .toString()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "")
+            .slice(0, 8); // 8 Alphanumeric Only
+        } else if (nameStr.includes("micr")) {
+          finalValue = finalValue.toString().replace(/\D/g, "").slice(0, 9); // Only 9 digits
         } else if (nameStr.includes("ifsc")) {
           finalValue = finalValue
             .toString()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "")
             .slice(0, 11); // 11 Alphanumeric Only
-        }
-        if (nameStr.includes("pin code")) {
-          finalValue = finalValue.toString().replace(/\D/g, "").slice(0, 6);
-        }
-        if (
-          nameStr.includes("mobile") ||
-          nameStr.includes("phone") ||
-          nameStr.includes("alternate no")
-        ) {
-          finalValue = finalValue.toString().replace(/\D/g, "").slice(0, 10);
-        } else if (
-          nameStr.includes("pan") ||
-          nameStr.includes("ifsc") ||
-          nameStr.includes("uan")
-        ) {
-          finalValue = finalValue.toString().toUpperCase();
         }
         setFormData((prev) => {
           let updated = { ...prev };
@@ -576,7 +569,7 @@ const EmployeeMasterForm = forwardRef(
             return copy;
           });
       },
-      [setFormData, groupOptions],
+      [setFormData, groupOptions],// eslint-disable-line react-hooks/exhaustive-deps
     );
     const handlePhotoUpload = async (e) => {
       const file = e.target.files?.[0];
@@ -590,7 +583,7 @@ const EmployeeMasterForm = forwardRef(
           fd.append("photo", file);
           const res = await uploadEmployeePhoto(formData.employee_id, fd);
           if (res?.success) {
-            const serverUrl = `${process.env.REACT_APP_API_URL || "http://localhost:63554"}${res.photo_url}?t=${Date.now()}`;
+            const serverUrl = `${config.apiUrl}${res.photo_url}?t=${Date.now()}`;
             setFormData((prev) => ({ ...prev, photo_url: serverUrl }));
           }
         } catch (err) {
@@ -608,10 +601,9 @@ const EmployeeMasterForm = forwardRef(
     ];
 
     const getInputClass = (isDisabled) =>
-      `w-full h-[28px] px-[5px] text-[12.5px] border-[1.5px] border-[#c8d2e4] rounded-[5px] bg-[#fafbfd] outline-none transition-all font-['Segoe_UI',system-ui,Arial,sans-serif] ${
-        isDisabled
-          ? "bg-[#f0f3f8] text-[#64748b] border-[#e2e8f4] cursor-default"
-          : "text-[#0f172a] focus:border-[#1a56db] focus:bg-[#ffffff] focus:ring-[3px] focus:ring-[#1a56db]/10 hover:border-[#a0b0c8]"
+      `w-full h-[28px] px-[5px] text-[12.5px] border-[1.5px] border-[#c8d2e4] rounded-[5px] bg-[#fafbfd] outline-none transition-all font-['Segoe_UI',system-ui,Arial,sans-serif] ${isDisabled
+        ? "bg-[#f0f3f8] text-[#64748b] border-[#e2e8f4] cursor-default"
+        : "text-[#0f172a] focus:border-[#1a56db] focus:bg-[#ffffff] focus:ring-[3px] focus:ring-[#1a56db]/10 hover:border-[#a0b0c8]"
       }`;
     const handleKeyDown = useCallback(
       (e) => {
@@ -758,7 +750,13 @@ const EmployeeMasterForm = forwardRef(
 
           return;
         }
+
+        // 🆕 FIX: validation pass hone par onSave call karo
         setErrors({});
+        onSave({
+          ...(formDataRef.current || {}),
+        });
+
       } catch (err) {
         console.error("Save process bypassed a crash: ", err);
         onSave({
@@ -856,10 +854,10 @@ const EmployeeMasterForm = forwardRef(
           : [val, ""];
         const filteredDomains = hasAtSymbol
           ? emailDomains.filter(
-              (d) =>
-                d.toLowerCase().startsWith("@" + domainPrefix.toLowerCase()) &&
-                d.toLowerCase() !== "@" + domainPrefix.toLowerCase(),
-            )
+            (d) =>
+              d.toLowerCase().startsWith("@" + domainPrefix.toLowerCase()) &&
+              d.toLowerCase() !== "@" + domainPrefix.toLowerCase(),
+          )
           : [];
         const selectDomain = (domain) => {
           const completedEmail = `${username}${domain}`;
@@ -946,11 +944,10 @@ const EmployeeMasterForm = forwardRef(
                           e.stopPropagation();
                           selectDomain(domain);
                         }}
-                        className={`px-2 py-0.5 text-[11px] font-medium border rounded transition-colors cursor-pointer ${
-                          isActive
-                            ? "bg-[#1a56db] text-white border-[#1a56db]"
-                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-[#1a56db] hover:text-white"
-                        }`}
+                        className={`px-2 py-0.5 text-[11px] font-medium border rounded transition-colors cursor-pointer ${isActive
+                          ? "bg-[#1a56db] text-white border-[#1a56db]"
+                          : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-[#1a56db] hover:text-white"
+                          }`}
                         onMouseEnter={() => {
                           if (typeof setActiveSuggestIndex === "function")
                             setActiveSuggestIndex(index);
@@ -970,6 +967,7 @@ const EmployeeMasterForm = forwardRef(
           className={getInputClass(fieldDisabled)}
           value={formData[field] || ""}
           disabled={fieldDisabled}
+          maxLength={fieldObj.maxLength}
           onChange={(e) => handleChange(field, e.target.value)}
           style={{ whiteSpace: "nowrap" }}
         />
@@ -1282,25 +1280,22 @@ const EmployeeMasterForm = forwardRef(
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex items-center gap-[6px] px-[12px] sm:px-[16px] pt-[10px] pb-[9px] text-[12px] font-semibold cursor-pointer border-b-2 mb-[-2px] transition-all duration-150 whitespace-nowrap outline-none ${
-                      isActive
-                        ? "text-[#1a56db] border-[#1a56db]"
-                        : "text-[#64748b] border-transparent hover:text-[#334155] hover:border-[#c4cfe4]"
-                    }`}
+                    className={`flex items-center gap-[6px] px-[12px] sm:px-[16px] pt-[10px] pb-[9px] text-[12px] font-semibold cursor-pointer border-b-2 mb-[-2px] transition-all duration-150 whitespace-nowrap outline-none ${isActive
+                      ? "text-[#1a56db] border-[#1a56db]"
+                      : "text-[#64748b] border-transparent hover:text-[#334155] hover:border-[#c4cfe4]"
+                      }`}
                   >
                     <div
-                      className={`w-[20px] h-[20px] rounded-[5px] flex items-center justify-center ${
-                        isActive ? "bg-[#eef3fd]" : "bg-transparent"
-                      }`}
+                      className={`w-[20px] h-[20px] rounded-[5px] flex items-center justify-center ${isActive ? "bg-[#eef3fd]" : "bg-transparent"
+                        }`}
                     >
                       <TabIcon tab={tab} />
                     </div>
                     <span className="hidden sm:inline">{displayName}</span>
 
                     <div
-                      className={`hidden sm:flex w-[16px] h-[16px] rounded-[8px] bg-[#059669] text-white text-[9px] font-bold items-center justify-center ml-1 ${
-                        isCompleted ? "opacity-100" : "opacity-0"
-                      }`}
+                      className={`hidden sm:flex w-[16px] h-[16px] rounded-[8px] bg-[#059669] text-white text-[9px] font-bold items-center justify-center ml-1 ${isCompleted ? "opacity-100" : "opacity-0"
+                        }`}
                     >
                       ✓
                     </div>
@@ -1683,23 +1678,23 @@ export const fieldGroups = {
 
   bank_and_payroll: {
     "Bank Details": [
-      { key: "Bank Name", label: "Bank Name", type: "text" },
-      { key: "IFSC Code", label: "IFSC Code", type: "text" },
-      { key: "Account Number", label: "Account Number", type: "text" },
+      { key: "Bank Name", label: "Bank Name", type: "text", maxLength: 25 },
+      { key: "IFSC Code", label: "IFSC Code", type: "text", maxLength: 11 },
+      { key: "Account Number", label: "Account Number", type: "text", maxLength: 25 },
       {
         key: "Account Type",
         label: "Account Type",
         type: "select",
         options: ["Savings", "Current", "Salary"],
       },
-      { key: "Holder Name", label: "Holder Name", type: "text" },
-      { key: "Branch Name", label: "Branch Name", type: "text" },
-      { key: "MICR Code", label: "MICR Code", type: "text" },
+      { key: "Holder Name", label: "Holder Name", type: "text", maxLength: 100 },
+      { key: "Branch Name", label: "Branch Name", type: "text", maxLength: 50 },
+      { key: "MICR Code", label: "MICR Code", type: "text", maxLength: 9 },
     ],
     "Statutory Details": [
-      { key: "PF Number", label: "PF Number", type: "text" },
-      { key: "UAN", label: "UAN", type: "text" },
-      { key: "ESI Number", label: "ESI Number", type: "text" },
+      { key: "PF Number", label: "PF Number", type: "text", maxLength: 25 },
+      { key: "UAN", label: "UAN", type: "text", maxLength: 12 },
+      { key: "ESI Number", label: "ESI Number", type: "text", maxLength: 17 },
       {
         key: "PT State",
         label: "PT State",

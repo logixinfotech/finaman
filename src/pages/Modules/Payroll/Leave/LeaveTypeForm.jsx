@@ -465,7 +465,30 @@ const LeaveTypeForm = ({
             </div>
           </div>
 
-          {/* Row 3: Description — textarea */}
+          {/* Row 3: Is Paid Checkbox */}
+          <div className="flex flex-row items-center gap-1.5 sm:gap-2">
+            <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[130px] shrink-0">Paid Leave</label>
+            <div className="flex-1 w-full flex items-center gap-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  name="is_paid"
+                  checked={localData.is_paid === true || localData.is_paid === 1 || localData.is_paid === "1" || localData.is_paid === undefined}
+                  onChange={(e) => handleChange("is_paid", e.target.checked ? 1 : 0)}
+                  disabled={isViewMode}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="text-[13.5px] font-medium text-gray-800">
+                  Is Paid Leave
+                </span>
+              </label>
+              <span className="text-[11px] text-slate-500 hidden sm:inline">
+                (Paid leave counts as payable working day in salary processing; unpaid leave is treated as Loss of Pay)
+              </span>
+            </div>
+          </div>
+
+          {/* Row 4: Description — textarea */}
           <div className="flex flex-row items-start gap-1.5 sm:gap-2">
             <label className="text-[13px] sm:text-[15px] w-[65px] sm:w-[130px] pt-1 shrink-0">Description</label>
             <div className="flex-1 w-full">

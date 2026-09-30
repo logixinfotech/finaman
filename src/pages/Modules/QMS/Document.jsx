@@ -2,7 +2,9 @@ import { useState, useCallback, useMemo } from "react";
 import {
   FaFileAlt, FaSearch, FaStamp, FaChalkboardTeacher,
   FaCheckCircle, FaArchive, FaHistory,
+ 
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa"; 
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -104,6 +106,10 @@ export default function DmsMasterPage({ tab }) {
         (!filters.Department || has(it.Department, filters.Department))
       );
   }, [m.list, filters]);
+       const ModuleIcon = useMemo(() => {
+            const name = tab?.icon_name || tab?.module?.icon_name;
+            return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+          }, [tab?.icon_name, tab?.module?.icon_name]);
 
   const handlePrint = useCallback(() => {
     printWorkflow.openPrintFor(m.formData?.Id, {
@@ -119,14 +125,18 @@ export default function DmsMasterPage({ tab }) {
       </div>
     );
   }
+  
 
   if (m.showForm) {
     return (
       <div className="h-full w-full">
         <ERPFormBuilder
           title="DMS"
+          subtitle={m.formData?.RecordNo || "New"}   
+          TitleIcon={ModuleIcon}
           tabs={dmsTabs}
           tabLabels={dmsTabLabels}
+          tabStage={dmsTabStage}
           TabIcon={DmsTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -156,7 +166,7 @@ export default function DmsMasterPage({ tab }) {
           onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -177,7 +187,8 @@ export default function DmsMasterPage({ tab }) {
   return (
     <div className="h-full w-full">
       <Table
-        title="Document Master"
+        title="DMS"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={dmsTableColumns}
         rowKey="Id"
@@ -186,7 +197,6 @@ export default function DmsMasterPage({ tab }) {
         showSettingsTab
         onTabChange={m.handleHeaderTabChange}
         onRefresh={m.loadData}
-        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
         onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
         onRowDoubleClick={m.handleRowSelect}
         onDeleteMultiple={m.handleDeleteMultiple}
@@ -195,7 +205,7 @@ export default function DmsMasterPage({ tab }) {
         formComponent={
           <UnivarsalFilter
             filters={filters}
-            setShowFilter={setShowFilter}   // ✅ add kiya
+            setShowFilter={setShowFilter}    
             setFilters={setFilters}
             visibleFields={["status", "department", "docType"]}
             options={{

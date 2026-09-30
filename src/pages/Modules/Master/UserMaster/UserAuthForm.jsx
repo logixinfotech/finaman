@@ -1,4 +1,3 @@
-// pages/Modules/Master/UserMaster/UserAuthForm.jsx
 import { useEffect, useState,useCallback } from "react";
 import {   showToast } from "../../../../components/Reusable/alert";
 import {
@@ -63,8 +62,7 @@ const UserAuthForm = ({
   onLastRecord, 
   onModify,
   onEditCancel,
-  onCancel,
-  /* tabs */
+  onCancel, 
   activeTab = "entry",
   onTabChange,
 }) => {
@@ -72,7 +70,7 @@ const UserAuthForm = ({
   const [expanded,     setExpanded]     = useState({});
   const [confirmState, setConfirmState] = useState(null);
   const [loading,      setLoading]      = useState(false);
-  const [wfModal,      setWfModal]      = useState(null);   // { moduleKey, label }
+  const [wfModal,      setWfModal]      = useState(null);   
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
@@ -224,8 +222,7 @@ const UserAuthForm = ({
 
   return (
     <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-lg border flex flex-col h-[calc(100vh-100px)] overflow-hidden">
-
-      {/* ── Header — same prop shape as UserGroupForm ── */}
+ 
       <ERPHeader
         title="User Authentication Master"
         isEditMode={isEditMode}
@@ -250,7 +247,6 @@ const UserAuthForm = ({
           applName="User Authentication Master"
           onCancel={() => onTabChange("entry")}
           onSave={(savedSettings) => {
-            console.log("Settings saved:", savedSettings);
             onTabChange("entry");
           }}
         />
@@ -400,8 +396,7 @@ const UserAuthForm = ({
                                   </div>
                                 );
                               })}
-
-                              {/* workflow cell */}
+ 
                               <div className="flex justify-center">
                                 {row.wfModuleKey ? (
                                   <button
@@ -447,9 +442,7 @@ const UserAuthForm = ({
             onLastRecord={onLastRecord}
           />
         </>
-      )}
-
-      {/* ── QMS workflow roles modal ── */}
+      )} 
          {wfModal && (
         <WorkflowRolesModal
           moduleKey={wfModal.moduleKey}

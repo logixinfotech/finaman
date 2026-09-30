@@ -2,7 +2,10 @@ import { useState, useCallback, useMemo } from "react";
 import {
   FaEnvelopeOpenText, FaSearch, FaSitemap,
   FaReply, FaFlagCheckered, FaHistory,
+  FaClipboardList,
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa";
+
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -15,6 +18,8 @@ import {
   complaintWidthConfig, complaintSectionConfigs, complaintTableColumns,
 } from "./Utils/Qmsconfigs";
 import { getComplaints, getComplaint, createComplaint, updateComplaint, deleteComplaint } from "./Utils/QmsAPI";
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
 const API = {
   list: getComplaints, getOne: getComplaint,
   create: createComplaint, update: updateComplaint, remove: deleteComplaint,
@@ -36,7 +41,7 @@ const initialState = {
   ResponseDate: "", ResponseMode: "", RespondedBy: "",
   ReplacementIssued: "", CreditNoteNo: "", CorrectiveAction: "",
   EffectivenessCheck: "", ClosedBy: "", ClosureRemarks: "",
-    BatchSize: "", PackStyle: "", TypeOfPacking: "", PartyName: "",
+  BatchSize: "", PackStyle: "", TypeOfPacking: "", PartyName: "",
   ModeOfReceipt: "", ComplaintReportedBy: "", ComplaintForwardedBy: "",
   ComplaintRelatedTo: "", ComplaintRelatedToOther: "",
   SampleReceiptDate: "", SampleFollowUp: "", SampleGenuine: "",
@@ -90,7 +95,12 @@ export default function MarketComplaintMasterPage({ tab }) {
     getRequired: getComplaintRequired,
     api: API,
   });
-
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/complaint',
+    applName: 'complaint',
+    emailEndpoint: '/api/qms-print/complaint',
+    shareLinkEndpoint: '/api/qms-print/complaint',
+  });
   const fieldGroups = useMemo(
     () => getComplaintFieldGroups(m.groupOptions),
     [m.groupOptions]
@@ -116,14 +126,34 @@ export default function MarketComplaintMasterPage({ tab }) {
         (!filters.Product || has(it.Product, filters.Product))
       );
   }, [m.list, filters]);
+  const ModuleIcon = useMemo(() => {
+    const name = tab?.icon_name || tab?.module?.icon_name;
+    return (name && FaIcons[name]) || FaClipboardList;
+  }, [tab?.icon_name, tab?.module?.icon_name]);
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `Complaint-${m.formData?.Id}`,
+      contextLabel: m.formData?.Product,
+    });
+  }, [m.formData, printWorkflow]);
 
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Market Complaint Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
   if (m.showForm) {
     return (
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Market Complaint"
+          subtitle={m.formData?.RecordNo || "New"}
+          TitleIcon={ModuleIcon}
           tabs={complaintTabs}
           tabLabels={complaintTabLabels}
+          tabStage={complaintTabStage}
           TabIcon={ComplaintTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -147,16 +177,19 @@ export default function MarketComplaintMasterPage({ tab }) {
           rights={m.rights}
           workflowConfig={m.workflowConfig}
           currentUserRole={m.currentUserRole}
+          currentUserName={m.currentUserName}
           alwaysSignTabs={["closure"]}
           settingsConfig={m.settingsConfig}
           settingsDefaults={m.settingsDefaults}
           onSettingsSave={m.onSettingsSave}
           onSave={m.handleSave}
-            onSaveDraft={m.handleSaveDraft}
+          onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onNewEntry={m.handleAddNewGuarded}
+          onPrint={handlePrint}
+          canPrint={m.canPrint}
           onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
           currentRecord={m.list.length ? m.currentIndex + 1 : 0}
@@ -173,7 +206,8 @@ export default function MarketComplaintMasterPage({ tab }) {
   return (
     <div className="h-full w-full">
       <Table
-        title="Market Complaint Register"
+        title="Market Complaint"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={complaintTableColumns}
         rowKey="Id"
@@ -185,6 +219,7 @@ export default function MarketComplaintMasterPage({ tab }) {
         // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
         onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
         onRowDoubleClick={m.handleRowSelect}
+
         onDeleteMultiple={m.handleDeleteMultiple}
         onToggleFilter={() => setShowFilter((p) => !p)}
         showForm={showFilter}

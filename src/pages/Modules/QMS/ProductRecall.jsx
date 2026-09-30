@@ -18,6 +18,7 @@ import {
 import { getRecalls, createRecall, updateRecall, deleteRecall } from "./Utils/QmsAPI";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
 import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+import * as FaIcons from "react-icons/fa"; 
 // ── module-level constants (component ke bahar — stable references) ──
 const API = {
   list: getRecalls, create: createRecall,
@@ -106,6 +107,10 @@ export default function ProductRecallMasterPage({ tab }) {
         (!filters.Product || has(it.Product, filters.Product))
       );
   }, [m.list, filters]);
+    const ModuleIcon = useMemo(() => {
+        const name = tab?.icon_name || tab?.module?.icon_name;
+        return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+      }, [tab?.icon_name, tab?.module?.icon_name]);
 
   const handlePrint = useCallback(() => {
     printWorkflow.openPrintFor(m.formData?.Id, {
@@ -127,8 +132,11 @@ export default function ProductRecallMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Product Recall"
+            subtitle={m.formData?.RecordNo || "New"}   
+          TitleIcon={ModuleIcon}
           tabs={recallTabs}
           tabLabels={recallTabLabels}
+          tabStage={recallTabStage} 
           TabIcon={RecallTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -158,7 +166,7 @@ export default function ProductRecallMasterPage({ tab }) {
             onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -179,7 +187,8 @@ export default function ProductRecallMasterPage({ tab }) {
   return (
     <div className="h-full w-full">
       <Table
-        title="Product Recall Register"
+        title="Product Recall"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={recallTableColumns}
         rowKey="Id"

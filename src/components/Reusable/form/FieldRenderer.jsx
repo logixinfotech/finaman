@@ -4,7 +4,7 @@ import ERPAutocomplete from "../input/ERPAutocomplete";
 import MultiSelectField from "../../../pages/Modules/QMS/Components/MultiSelectField";
 
 
-const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData }) => {
+const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData,error }) => {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -38,12 +38,14 @@ const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData }) => {
     return () => { cancelled = true; };
   }, [dependsOnValue]);
 
-  const baseClass = `w-full h-[32px] px-2 text-[16px] border border-gray-300 rounded-md outline-none transition-all ${disabled
-      ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
-      : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
-    }`;
-
-  return (
+     const baseClass = `w-full h-[32px] px-2 text-[16px] border rounded-md outline-none transition-all ${
+    disabled
+      ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed border-gray-300"
+      : error
+        ? "bg-white text-gray-900 border-[#dc2626] focus:border-[#dc2626] focus:ring-1 focus:ring-red-100" // 🆕
+        : "bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+  }`;
+return (
     <select
       value={value ?? ""}
       disabled={disabled || loading}
@@ -60,7 +62,7 @@ const DynamicSelect = ({ fieldObj, value, disabled, onChange, formData }) => {
   );
 };
 
-const AutoGrowTextarea = ({ value, onChange, disabled, onKeyDown }) => {
+ const AutoGrowTextarea = ({ value, onChange, disabled, onKeyDown, error }) => { // 🆕 error yahan add karo
   const ref = useRef(null);
 
   useLayoutEffect(() => {
@@ -73,10 +75,13 @@ const AutoGrowTextarea = ({ value, onChange, disabled, onKeyDown }) => {
   return (
     <textarea
       ref={ref}
-      className={`w-full px-2 py-1.5 text-[13px] border rounded-md outline-none transition-all resize-y overflow-hidden ${disabled
+      className={`w-full px-2 py-1.5 text-[13px] border rounded-md outline-none transition-all resize-y overflow-hidden ${
+        disabled
           ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
-          : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-        }`}
+          : error
+            ? "bg-white text-slate-800 border-[#dc2626] focus:border-[#dc2626] focus:ring-1 focus:ring-red-100" // 🆕
+            : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+      }`}
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
@@ -96,18 +101,44 @@ const FieldRenderer = ({
   error,
   onKeyDown,
   formData,
+  inputClassName, // optional: overrides the default input styling (opt-in, existing callers unaffected)
 }) => {
   const { type = "text" } = fieldObj;
+  const inputProps = fieldObj.inputProps || {}; // optional: extra native attrs e.g. { type: "number", step: "0.5", placeholder }
 
-  const getInputClass = (disabled) =>
-    `w-full h-[28px] px-2 text-[13px] border rounded-md outline-none transition-all ${disabled
-      ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
-      : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+  const getInputClass = (disabled, error) =>
+    `w-full h-[28px] px-2 text-[13px] border rounded-md outline-none transition-all ${
+      disabled
+        ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200"
+        : error
+          ? "bg-white text-slate-800 border-[#dc2626] focus:border-[#dc2626] focus:ring-1 focus:ring-red-100" // 🆕 error state
+          : "bg-white text-slate-800 border-slate-200 hover:border-slate-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
     }`;
 
-  const baseClass = getInputClass(disabled);
+  const baseClass = inputClassName ?? getInputClass(disabled, error);
 
   switch (type) {
+    // Plain <select> for fixed lists; options may be strings or { value, label }
+    case "native-select":
+      return (
+        <select
+          value={value ?? ""}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          className={baseClass}
+        >
+          {(fieldObj.options || []).map((o) => {
+            const opt = typeof o === "object" ? o : { value: o, label: o };
+            return (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            );
+          })}
+        </select>
+      );
+
     case "dynamic-select":
       return (
         <DynamicSelect
@@ -116,6 +147,7 @@ const FieldRenderer = ({
           disabled={disabled}
           onChange={onChange}
           formData={formData}
+          error={error}
         />
       );
 
@@ -127,6 +159,7 @@ const FieldRenderer = ({
           minDate={minDate}
           minDateLabel={minDateLabel}
           disabled={disabled}
+          error={error}
           className={baseClass}
           onKeyDown={onKeyDown}
         />
@@ -139,6 +172,8 @@ const FieldRenderer = ({
           value={value ?? ""}
           onChange={onChange}
           disabled={disabled}
+          error={error}
+          placeholder={inputProps.placeholder}
           className={baseClass}
         />
       );
@@ -148,6 +183,7 @@ const FieldRenderer = ({
         <MultiSelectField
           options={fieldObj.options || []}
           value={value}
+          error={error}
           onChange={onChange}
           disabled={disabled}
         />
@@ -155,7 +191,9 @@ const FieldRenderer = ({
 
     case "checkbox":
       return (
-        <div className="flex items-center h-[26px] w-full px-1">
+        <div className={`flex items-center h-[26px] w-full px-1 border rounded-md ${
+      error ? "border-[#dc2626]" : "border-transparent" // 🆕 checkbox ke around border
+    }`}>
           <input
             type="checkbox"
             className="w-4 h-4 cursor-pointer accent-slate-700"
@@ -170,6 +208,7 @@ const FieldRenderer = ({
     case "textarea": {
       return <AutoGrowTextarea
         value={value}
+        error={error}
         onChange={onChange}
         disabled={disabled}
         onKeyDown={onKeyDown}
@@ -179,6 +218,7 @@ const FieldRenderer = ({
     default:
       return (
         <input
+          {...inputProps}
           className={baseClass}
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}

@@ -15,6 +15,7 @@ import {
   getPayrollMonthly,
   approvePayroll,
   bulkUpdatePayrollStatus,
+  syncAttendanceNow,
 } from "../../../../../utils/api";
 import { downloadPayslip } from "../../../../../utils/Payslipdownload";
 const DEPT_COLOR = {
@@ -56,6 +57,7 @@ export default function SalaryProcessing() {
   const [confirm, setConfirm] = useState(null);
   const [selected, setSel] = useState(new Set());
   const [showFilter, setShowFilter] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 15;
   const toggleSel = (pid) =>
@@ -90,7 +92,7 @@ export default function SalaryProcessing() {
           td: Number(r.computed_ded) || Number(r.total_deduction) || 0,
           net: Number(r.computed_net) || Number(r.structure_net) || 0,
           p: Number(r.present_days) || 0,
-          w: Number(r.payable_days) || Number(r.total_days) || 30,
+          w: Number(r.working_days) || 25,
           lopD: Number(r.lop_days) || 0,
           otH: Number(r.ot_hours) || 0,
           ti: Number(r.computed_income) || Number(r.structure_income) || 0,
@@ -113,6 +115,8 @@ export default function SalaryProcessing() {
           absent_days: Number(r.absent_days) || 0,
           payable_days: Number(r.payable_days) || 0,
           total_days: Number(r.total_days) || 0,
+          computed_absent: Number(r.computed_absent) || 0,
+          computed_half: Number(r.computed_half) || 0,
         })),
       );
     }
@@ -209,6 +213,24 @@ export default function SalaryProcessing() {
       label: "Mark Paid",
       fn: () => doPay(pids),
     });
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      const res = await syncAttendanceNow(month); // ✅ month directly use karo
+      if (res?.success) {
+        showToast(res.message || 'Attendance synced');
+        await loadPayroll();
+      } else {
+        showToast('Sync failed', 'err');
+      }
+    } catch (err) {
+      showToast('Sync failed: ' + err.message, 'err');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const exportCols = [
     { key: "name", label: "Employee" },
     { key: "dept", label: "Dept" },
@@ -226,7 +248,8 @@ export default function SalaryProcessing() {
   const S = {
     // S.page mein change karo:
     page: {
-      fontFamily: "'DM Sans',system-ui,sans-serif",
+      fontFamily: "'Inter','Segoe UI',system-ui,Arial,sans-serif",
+      fontSize: 13,
       background: "#F4F6F9",
       minHeight: "100vh",
       color: "#1A1D23",
@@ -421,7 +444,7 @@ export default function SalaryProcessing() {
             background: "#fff",
             borderRadius: 10,
             border: "1px solid #E8EAED",
-            overflow: "visible",
+            overflow: "auto",  // ← visible se auto karo
             boxShadow: "0 1px 3px rgba(0,0,0,.04)",
           }}
         >
@@ -505,15 +528,15 @@ export default function SalaryProcessing() {
                   const p =
                     selected.size > 0
                       ? [...selected].filter((pid) =>
-                          ["Draft", "Pending"].includes(
-                            data.find((r) => r.pid === pid)?.status,
-                          ),
-                        )
+                        ["Draft", "Pending"].includes(
+                          data.find((r) => r.pid === pid)?.status,
+                        ),
+                      )
                       : data
-                          .filter((r) =>
-                            ["Draft", "Pending"].includes(r.status),
-                          )
-                          .map((r) => r.pid);
+                        .filter((r) =>
+                          ["Draft", "Pending"].includes(r.status),
+                        )
+                        .map((r) => r.pid);
                   p.length
                     ? handleApprove(p)
                     : showToast("No draft records selected", "err");
@@ -530,13 +553,13 @@ export default function SalaryProcessing() {
                   const p =
                     selected.size > 0
                       ? [...selected].filter(
-                          (pid) =>
-                            data.find((r) => r.pid === pid)?.status ===
-                            "Approved",
-                        )
+                        (pid) =>
+                          data.find((r) => r.pid === pid)?.status ===
+                          "Approved",
+                      )
                       : data
-                          .filter((r) => r.status === "Approved")
-                          .map((r) => r.pid);
+                        .filter((r) => r.status === "Approved")
+                        .map((r) => r.pid);
                   p.length
                     ? handlePay(p)
                     : showToast("No approved records selected", "err");
@@ -653,6 +676,21 @@ export default function SalaryProcessing() {
                 }}
               >
                 <RefreshCw size={12} />
+              </button>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                title="Sync attendance & recalculate"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+              >
+                <svg
+                  className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {syncing ? 'Syncing…' : 'Sync Attendance'}
               </button>
             </div>
           </div>
@@ -778,7 +816,7 @@ export default function SalaryProcessing() {
           )}
 
           {/* TABLE */}
-          <div style={{ overflowX: "auto", overflowY: "visible" }}>
+          <div style={{ overflowX: "auto", overflowY: "auto" }}>
             <table
               style={{
                 width: "100%",
@@ -955,14 +993,8 @@ export default function SalaryProcessing() {
                         <td
                           style={{ padding: "8px 12px", textAlign: "center" }}
                         >
-                          <div
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#2F9E44",
-                            }}
-                          >
-                            {row.p}/{row.w}
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "#2F9E44" }}>
+                            {row.p + row.weekoff_days + row.holiday_days}/{row.total_days}
                           </div>
                           {(row.lopD > 0 || row.otH > 0) && (
                             <div
@@ -1069,21 +1101,21 @@ export default function SalaryProcessing() {
                           >
                             {(row.status === "Draft" ||
                               row.status === "Pending") && (
-                              <button
-                                title="Approve"
-                                style={S.iconBtn}
-                                className="ib"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleApprove([row.pid]);
-                                }}
-                              >
-                                <i
-                                  className="ti ti-check"
-                                  style={{ color: "#2F9E44" }}
-                                />
-                              </button>
-                            )}
+                                <button
+                                  title="Approve"
+                                  style={S.iconBtn}
+                                  className="ib"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApprove([row.pid]);
+                                  }}
+                                >
+                                  <i
+                                    className="ti ti-check"
+                                    style={{ color: "#2F9E44" }}
+                                  />
+                                </button>
+                              )}
                             {row.status === "Approved" && (
                               <button
                                 title="Mark Paid"
@@ -1143,495 +1175,510 @@ export default function SalaryProcessing() {
                               background: "#F8FAFF",
                             }}
                           >
-                            <div
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns:
-                                  "repeat(auto-fit,minmax(200px,1fr))",
-                                gap: 12,
-                                paddingTop: 14,
-                              }}
-                            >
-                              {/* Earnings */}
+                            <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
                               <div
                                 style={{
-                                  background: "#F8FFF9",
-                                  border: "1px solid #D3F9D8",
-                                  borderRadius: 9,
-                                  padding: "12px 14px",
+                                  display: "grid",
+                                  gridTemplateColumns:
+                                    "repeat(auto-fit,minmax(200px,1fr))",
+                                  gap: 12,
+                                  paddingTop: 14,
                                 }}
                               >
+                                {/* Earnings */}
                                 <div
                                   style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "#2F9E44",
-                                    textTransform: "uppercase",
-                                    letterSpacing: ".07em",
-                                    marginBottom: 10,
+                                    background: "#F8FFF9",
+                                    border: "1px solid #D3F9D8",
+                                    borderRadius: 9,
+                                    padding: "12px 14px",
                                   }}
                                 >
-                                  Earnings
-                                </div>
-                                {(row.income_lines &&
-                                row.income_lines.length > 0
-                                  ? row.income_lines.map((l) => [
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      color: "#2F9E44",
+                                      textTransform: "uppercase",
+                                      letterSpacing: ".07em",
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    Earnings
+                                  </div>
+                                  {(row.income_lines &&
+                                    row.income_lines.length > 0
+                                    ? row.income_lines.map((l) => [
                                       l.head_name,
                                       Number(l.amount) || 0,
                                       null,
                                     ])
-                                  : [["Gross", row.gross, null]]
-                                ).map(([l, v, c]) => (
+                                    : [["Gross", row.gross, null]]
+                                  ).map(([l, v, c]) => (
+                                    <div
+                                      key={l}
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        fontSize: 12,
+                                        padding: "3px 0",
+                                        borderBottom: "1px solid #EBFBEE",
+                                      }}
+                                    >
+                                      <span style={{ color: "#495057" }}>
+                                        {l}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          color: c || "#1A1D23",
+                                        }}
+                                      >
+                                        ₹{Math.round(v).toLocaleString("en-IN")}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {/* OT, Bonus, Arrear extra add karo */}
+                                  {row.ot > 0 && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        fontSize: 12,
+                                        padding: "3px 0",
+                                        borderBottom: "1px solid #EBFBEE",
+                                      }}
+                                    >
+                                      <span style={{ color: "#495057" }}>
+                                        OT Addition
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          color: "#2F9E44",
+                                        }}
+                                      >
+                                        +{inr(row.ot)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {row.bonus > 0 && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        fontSize: 12,
+                                        padding: "3px 0",
+                                        borderBottom: "1px solid #EBFBEE",
+                                      }}
+                                    >
+                                      <span style={{ color: "#495057" }}>
+                                        Bonus
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          color: "#1971C2",
+                                        }}
+                                      >
+                                        +{inr(row.bonus)}
+                                      </span>
+                                    </div>
+                                  )}
                                   <div
-                                    key={l}
                                     style={{
                                       display: "flex",
                                       justifyContent: "space-between",
                                       fontSize: 12,
-                                      padding: "3px 0",
-                                      borderBottom: "1px solid #EBFBEE",
+                                      fontWeight: 700,
+                                      marginTop: 6,
+                                      color: "#2F9E44",
                                     }}
                                   >
-                                    <span style={{ color: "#495057" }}>
-                                      {l}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontWeight: 600,
-                                        color: c || "#1A1D23",
-                                      }}
-                                    >
-                                      ₹{Math.round(v).toLocaleString("en-IN")}
-                                    </span>
+                                    <span>Total</span>
+                                    <span>{inr(row.ti)}</span>
                                   </div>
-                                ))}
-                                {/* OT, Bonus, Arrear extra add karo */}
-                                {row.ot > 0 && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      fontSize: 12,
-                                      padding: "3px 0",
-                                      borderBottom: "1px solid #EBFBEE",
-                                    }}
-                                  >
-                                    <span style={{ color: "#495057" }}>
-                                      OT Addition
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontWeight: 600,
-                                        color: "#2F9E44",
-                                      }}
-                                    >
-                                      +{inr(row.ot)}
-                                    </span>
-                                  </div>
-                                )}
-                                {row.bonus > 0 && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      fontSize: 12,
-                                      padding: "3px 0",
-                                      borderBottom: "1px solid #EBFBEE",
-                                    }}
-                                  >
-                                    <span style={{ color: "#495057" }}>
-                                      Bonus
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontWeight: 600,
-                                        color: "#1971C2",
-                                      }}
-                                    >
-                                      +{inr(row.bonus)}
-                                    </span>
-                                  </div>
-                                )}
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    marginTop: 6,
-                                    color: "#2F9E44",
-                                  }}
-                                >
-                                  <span>Total</span>
-                                  <span>{inr(row.ti)}</span>
                                 </div>
-                              </div>
 
-                              {/* Deductions */}
-                              <div
-                                style={{
-                                  background: "#FFF5F5",
-                                  border: "1px solid #FFC9C9",
-                                  borderRadius: 9,
-                                  padding: "12px 14px",
-                                }}
-                              >
+                                {/* Deductions */}
                                 <div
                                   style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "#E03131",
-                                    textTransform: "uppercase",
-                                    letterSpacing: ".07em",
-                                    marginBottom: 10,
+                                    background: "#FFF5F5",
+                                    border: "1px solid #FFC9C9",
+                                    borderRadius: 9,
+                                    padding: "12px 14px",
                                   }}
                                 >
-                                  Deductions
-                                </div>
-                                {(row.deduction_lines &&
-                                row.deduction_lines.length > 0
-                                  ? row.deduction_lines.map((l) => [
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      color: "#E03131",
+                                      textTransform: "uppercase",
+                                      letterSpacing: ".07em",
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    Deductions
+                                  </div>
+                                  {(row.deduction_lines &&
+                                    row.deduction_lines.length > 0
+                                    ? row.deduction_lines.map((l) => [
                                       l.head_name,
                                       Number(l.amount) || 0,
                                       null,
                                     ])
-                                  : []
-                                ).map(([l, v, c]) => (
-                                  <div
-                                    key={l}
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      fontSize: 12,
-                                      padding: "3px 0",
-                                      borderBottom: "1px solid #FFE8E8",
-                                    }}
-                                  >
-                                    <span style={{ color: "#495057" }}>
-                                      {l}
-                                    </span>
-                                    <span
+                                    : []
+                                  ).map(([l, v, c]) => (
+                                    <div
+                                      key={l}
                                       style={{
-                                        fontWeight: 600,
-                                        color: "#E03131",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        fontSize: 12,
+                                        padding: "3px 0",
+                                        borderBottom: "1px solid #FFE8E8",
                                       }}
                                     >
-                                      −₹{Math.round(v).toLocaleString("en-IN")}
-                                    </span>
-                                  </div>
-                                ))}
-                                {row.lop > 0 && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      fontSize: 12,
-                                      padding: "3px 0",
-                                      borderBottom: "1px solid #FFE8E8",
-                                    }}
-                                  >
-                                    <span style={{ color: "#495057" }}>
-                                      LOP Deduction
-                                    </span>
-                                    <span
+                                      <span style={{ color: "#495057" }}>
+                                        {l}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          color: "#E03131",
+                                        }}
+                                      >
+                                        −₹{Math.round(v).toLocaleString("en-IN")}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {row.lop > 0 && (
+                                    <div
                                       style={{
-                                        fontWeight: 600,
-                                        color: "#E03131",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        fontSize: 12,
+                                        padding: "3px 0",
+                                        borderBottom: "1px solid #FFE8E8",
                                       }}
                                     >
-                                      −{inr(row.lop)}
-                                    </span>
-                                  </div>
-                                )}
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    marginTop: 6,
-                                    color: "#E03131",
-                                  }}
-                                >
-                                  <span>Total</span>
-                                  <span>−{inr(row.td)}</span>
-                                </div>
-                              </div>
-
-                              {/* Attendance editable */}
-                              <div
-                                style={{
-                                  background: "#F8F9FF",
-                                  border: "1px solid #D0BFFF",
-                                  borderRadius: 9,
-                                  padding: "12px 14px",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "#7048E8",
-                                    textTransform: "uppercase",
-                                    letterSpacing: ".07em",
-                                    marginBottom: 10,
-                                  }}
-                                >
-                                  Attendance (editable)
-                                </div>
-                                {[
-                                  [
-                                    "Total days",
-                                    "total_days",
-                                    row.total_days || 0,
-                                  ],
-                                  ["Working days", "working_days", row.w || 0],
-                                  ["Present days", "p", row.p || 0],
-                                  [
-                                    "Absent days",
-                                    "absent_days",
-                                    row.absent_days || 0,
-                                  ],
-                                  [
-                                    "Week off",
-                                    "weekoff_days",
-                                    row.weekoff_days || 0,
-                                  ],
-                                  [
-                                    "Holidays",
-                                    "holiday_days",
-                                    row.holiday_days || 0,
-                                  ],
-                                  ["LOP days", "lopD", row.lopD || 0],
-                                  ["OT hours", "otH", row.otH || 0],
-                                  [
-                                    "Half days",
-                                    "half_days",
-                                    row.half_days || 0,
-                                  ],
-                                  [
-                                    "Paid leave",
-                                    "paid_leave",
-                                    row.paid_leave_days || 0,
-                                  ],
-                                ].map(([l, f, v]) => (
-                                  <div
-                                    key={f}
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      alignItems: "center",
-                                      fontSize: 12,
-                                      padding: "3px 0",
-                                      borderBottom: "1px solid #EEE8FF",
-                                    }}
-                                  >
-                                    <span style={{ color: "#495057" }}>
-                                      {l}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontWeight: 600,
-                                        color: "#7048E8",
-                                        padding: "1px 7px",
-                                        borderRadius: 4,
-                                        background: "#EEE8FF",
-                                      }}
-                                    >
-                                      {v}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Bank Details */}
-                              <div
-                                style={{
-                                  background: "#F0FDF4",
-                                  border: "1px solid #BBF7D0",
-                                  borderRadius: 9,
-                                  padding: "12px 14px",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "#166534",
-                                    textTransform: "uppercase",
-                                    letterSpacing: ".07em",
-                                    marginBottom: 10,
-                                  }}
-                                >
-                                  Bank Details
-                                </div>
-                                {[
-                                  ["Bank name", row.bank_name || "HDFC Bank"],
-                                  [
-                                    "Account no.",
-                                    row.account_no || "XXXX 4521",
-                                  ],
-                                  ["IFSC code", row.ifsc_code || "HDFC0001234"],
-                                  [
-                                    "Account type",
-                                    row.account_type || "Savings",
-                                  ],
-                                ].map(([l, v]) => (
-                                  <div
-                                    key={l}
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      fontSize: 12,
-                                      padding: "3px 0",
-                                      borderBottom: "1px solid #DCFCE7",
-                                    }}
-                                  >
-                                    <span style={{ color: "#495057" }}>
-                                      {l}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontWeight: 600,
-                                        color: "#1A1D23",
-                                        fontFamily: "monospace",
-                                        fontSize: 11,
-                                      }}
-                                    >
-                                      {v}
-                                    </span>
-                                  </div>
-                                ))}
-                                <div
-                                  style={{
-                                    marginTop: 8,
-                                    fontSize: 10,
-                                    color: "#166534",
-                                  }}
-                                >
-                                  Payment via:{" "}
-                                  {row.payment_mode || "Bank Transfer"}
-                                </div>
-                              </div>
-
-                              {/* Net */}
-                              <div
-                                style={{
-                                  background:
-                                    "linear-gradient(135deg,#EEF2FF,#E7F5FF)",
-                                  border: "1px solid #A5D8FF",
-                                  borderRadius: 9,
-                                  padding: "12px 14px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  justifyContent: "center",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "#1971C2",
-                                    textTransform: "uppercase",
-                                    letterSpacing: ".07em",
-                                    marginBottom: 8,
-                                  }}
-                                >
-                                  Net Salary
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 28,
-                                    fontWeight: 800,
-                                    color: "#1971C2",
-                                    letterSpacing: "-.02em",
-                                  }}
-                                >
-                                  {inr(row.net)}
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 11,
-                                    color: "#74C0FC",
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  {Math.round((row.net / row.gross) * 100)}% of
-                                  gross {inr(row.gross)}
-                                </div>
-                                <div
-                                  style={{
-                                    height: 5,
-                                    borderRadius: 99,
-                                    background: "#BFDBFE",
-                                    marginTop: 10,
-                                    overflow: "hidden",
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      height: "100%",
-                                      width: `${Math.min(100, Math.round((row.net / row.gross) * 100))}%`,
-                                      background: "#1971C2",
-                                      borderRadius: 99,
-                                    }}
-                                  />
-                                </div>
-                                <div
-                                  style={{
-                                    marginTop: 12,
-                                    display: "flex",
-                                    gap: 6,
-                                  }}
-                                >
-                                  {(row.status === "Draft" ||
-                                    row.status === "Pending") && (
-                                    <button
-                                      style={{
-                                        ...S.btnPri,
-                                        fontSize: 11,
-                                        padding: "5px 12px",
-                                      }}
-                                      onClick={() => handleApprove([row.pid])}
-                                    >
-                                      <i
-                                        className="ti ti-check"
-                                        aria-hidden="true"
-                                      />{" "}
-                                      Approve
-                                    </button>
+                                      <span style={{ color: "#495057" }}>
+                                        LOP Deduction
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          color: "#E03131",
+                                        }}
+                                      >
+                                        −{inr(row.lop)}
+                                      </span>
+                                    </div>
                                   )}
-                                  {row.status === "Approved" && (
-                                    <button
-                                      style={{
-                                        ...S.btnSucc,
-                                        fontSize: 11,
-                                        padding: "5px 12px",
-                                      }}
-                                      onClick={() => handlePay([row.pid])}
-                                    >
-                                      <i
-                                        className="ti ti-send"
-                                        aria-hidden="true"
-                                      />{" "}
-                                      Pay now
-                                    </button>
+
+                                  {(Number(row.computed_absent) || 0) > 0 && (
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0", borderBottom: "1px solid #FFE8E8" }}>
+                                      <span style={{ color: "#495057" }}>Absent ({row.absent_days} days)</span>
+                                      <span style={{ fontWeight: 600, color: "#E03131" }}>−{inr(Number(row.computed_absent) || 0)}</span>
+                                    </div>
                                   )}
-                                  <button
+                                  {(Number(row.computed_half) || 0) > 0 && (
+                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0", borderBottom: "1px solid #FFE8E8" }}>
+                                      <span style={{ color: "#495057" }}>Half Day ({row.half_days} days)</span>
+                                      <span style={{ fontWeight: 600, color: "#E03131" }}>−{inr(Number(row.computed_half) || 0)}</span>
+                                    </div>
+                                  )}
+                                  <div
                                     style={{
-                                      ...S.btnGhost,
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                      marginTop: 6,
+                                      color: "#E03131",
+                                    }}
+                                  >
+                                    <span>Total</span>
+                                    <span>−{inr(row.td)}</span>
+                                  </div>
+                                </div>
+
+                                {/* Attendance editable */}
+                                <div
+                                  style={{
+                                    background: "#F8F9FF",
+                                    border: "1px solid #D0BFFF",
+                                    borderRadius: 9,
+                                    padding: "12px 14px",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      color: "#7048E8",
+                                      textTransform: "uppercase",
+                                      letterSpacing: ".07em",
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    Attendance (editable)
+                                  </div>
+                                  {[
+                                    [
+                                      "Total days",
+                                      "total_days",
+                                      row.total_days || 0,
+                                    ],
+                                    ["Working days", "working_days", row.w || 0],
+                                    ["Present days", "p", row.p || 0],
+                                    [
+                                      "Absent days",
+                                      "absent_days",
+                                      row.absent_days || 0,
+                                    ],
+                                    [
+                                      "Week off",
+                                      "weekoff_days",
+                                      row.weekoff_days || 0,
+                                    ],
+                                    [
+                                      "Holidays",
+                                      "holiday_days",
+                                      row.holiday_days || 0,
+                                    ],
+                                    ["LOP days", "lopD", row.lopD || 0],
+                                    ["OT hours", "otH", row.otH || 0],
+                                    [
+                                      "Half days",
+                                      "half_days",
+                                      row.half_days || 0,
+                                    ],
+                                    [
+                                      "Paid leave",
+                                      "paid_leave",
+                                      row.paid_leave_days || 0,
+                                    ],
+                                  ].map(([l, f, v]) => (
+                                    <div
+                                      key={f}
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        fontSize: 12,
+                                        padding: "3px 0",
+                                        borderBottom: "1px solid #EEE8FF",
+                                      }}
+                                    >
+                                      <span style={{ color: "#495057" }}>
+                                        {l}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          color: "#7048E8",
+                                          padding: "1px 7px",
+                                          borderRadius: 4,
+                                          background: "#EEE8FF",
+                                        }}
+                                      >
+                                        {v}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Bank Details */}
+                                <div
+                                  style={{
+                                    background: "#F0FDF4",
+                                    border: "1px solid #BBF7D0",
+                                    borderRadius: 9,
+                                    padding: "12px 14px",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      color: "#166534",
+                                      textTransform: "uppercase",
+                                      letterSpacing: ".07em",
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    Bank Details
+                                  </div>
+                                  {[
+                                    ["Bank name", row.bank_name || "HDFC Bank"],
+                                    [
+                                      "Account no.",
+                                      row.account_no || "XXXX 4521",
+                                    ],
+                                    ["IFSC code", row.ifsc_code || "HDFC0001234"],
+                                    [
+                                      "Account type",
+                                      row.account_type || "Savings",
+                                    ],
+                                  ].map(([l, v]) => (
+                                    <div
+                                      key={l}
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        fontSize: 12,
+                                        padding: "3px 0",
+                                        borderBottom: "1px solid #DCFCE7",
+                                      }}
+                                    >
+                                      <span style={{ color: "#495057" }}>
+                                        {l}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          color: "#1A1D23",
+                                          fontFamily: "monospace",
+                                          fontSize: 11,
+                                        }}
+                                      >
+                                        {v}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  <div
+                                    style={{
+                                      marginTop: 8,
+                                      fontSize: 10,
+                                      color: "#166534",
+                                    }}
+                                  >
+                                    Payment via:{" "}
+                                    {row.payment_mode || "Bank Transfer"}
+                                  </div>
+                                </div>
+
+                                {/* Net */}
+                                <div
+                                  style={{
+                                    background:
+                                      "linear-gradient(135deg,#EEF2FF,#E7F5FF)",
+                                    border: "1px solid #A5D8FF",
+                                    borderRadius: 9,
+                                    padding: "12px 14px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      color: "#1971C2",
+                                      textTransform: "uppercase",
+                                      letterSpacing: ".07em",
+                                      marginBottom: 8,
+                                    }}
+                                  >
+                                    Net Salary
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 28,
+                                      fontWeight: 800,
+                                      color: "#1971C2",
+                                      letterSpacing: "-.02em",
+                                    }}
+                                  >
+                                    {inr(row.net)}
+                                  </div>
+                                  <div
+                                    style={{
                                       fontSize: 11,
-                                      padding: "5px 10px",
+                                      color: "#74C0FC",
+                                      marginTop: 4,
                                     }}
-                                    onClick={() =>
-                                      downloadPayslip(row, showToast)
-                                    }
                                   >
-                                    <i
-                                      className="ti ti-download"
-                                      aria-hidden="true"
+                                    {Math.round((row.net / row.gross) * 100)}% of
+                                    gross {inr(row.gross)}
+                                  </div>
+                                  <div
+                                    style={{
+                                      height: 5,
+                                      borderRadius: 99,
+                                      background: "#BFDBFE",
+                                      marginTop: 10,
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        height: "100%",
+                                        width: `${Math.min(100, Math.round((row.net / row.gross) * 100))}%`,
+                                        background: "#1971C2",
+                                        borderRadius: 99,
+                                      }}
                                     />
-                                  </button>
+                                  </div>
+                                  <div
+                                    style={{
+                                      marginTop: 12,
+                                      display: "flex",
+                                      gap: 6,
+                                    }}
+                                  >
+                                    {(row.status === "Draft" ||
+                                      row.status === "Pending") && (
+                                        <button
+                                          style={{
+                                            ...S.btnPri,
+                                            fontSize: 11,
+                                            padding: "5px 12px",
+                                          }}
+                                          onClick={() => handleApprove([row.pid])}
+                                        >
+                                          <i
+                                            className="ti ti-check"
+                                            aria-hidden="true"
+                                          />{" "}
+                                          Approve
+                                        </button>
+                                      )}
+                                    {row.status === "Approved" && (
+                                      <button
+                                        style={{
+                                          ...S.btnSucc,
+                                          fontSize: 11,
+                                          padding: "5px 12px",
+                                        }}
+                                        onClick={() => handlePay([row.pid])}
+                                      >
+                                        <i
+                                          className="ti ti-send"
+                                          aria-hidden="true"
+                                        />{" "}
+                                        Pay now
+                                      </button>
+                                    )}
+                                    <button
+                                      style={{
+                                        ...S.btnGhost,
+                                        fontSize: 11,
+                                        padding: "5px 10px",
+                                      }}
+                                      onClick={() =>
+                                        downloadPayslip(row, showToast)
+                                      }
+                                    >
+                                      <i
+                                        className="ti ti-download"
+                                        aria-hidden="true"
+                                      />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </div>

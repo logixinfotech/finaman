@@ -1,7 +1,9 @@
 import { useState, useCallback, useMemo } from "react";
 import {
   FaVial, FaFlask, FaIndustry, FaGavel, FaFlagCheckered, FaHistory,
+  FaClipboardList,
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa"; 
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -15,7 +17,8 @@ import {
   oosWidthConfig, oosSectionConfigs, oosTableColumns,
 } from "./Utils/Qmsconfigs";
 import { getOoss, getOos, createOos, updateOos, deleteOos } from "./Utils/QmsAPI";
-
+import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
 const API = { list: getOoss, getOne: getOos, create: createOos, update: updateOos, remove: deleteOos };
 
 const initialState = {
@@ -76,7 +79,12 @@ export default function OosMasterPage({ tab }) {
     getRequired: getOosRequired,
     api: API,
   });
-
+  const printWorkflow = usePrintWorkflow({
+    printBaseUrl: '/api/qms-print/oos',
+    applName: 'oos',
+    emailEndpoint: '/api/qms-print/oos',
+    shareLinkEndpoint: '/api/qms-print/oos',
+  });
   const refOpts = useRefOptions(["stp", "capa"]);
 
   const fieldGroups = useMemo(
@@ -104,14 +112,34 @@ export default function OosMasterPage({ tab }) {
         (!filters.Product || has(it.Product, filters.Product))
       );
   }, [m.list, filters]);
+     const ModuleIcon = useMemo(() => {
+        const name = tab?.icon_name || tab?.module?.icon_name;
+        return (name && FaIcons[name]) || FaClipboardList;
+      }, [tab?.icon_name, tab?.module?.icon_name]);
+  const handlePrint = useCallback(() => {
+    printWorkflow.openPrintFor(m.formData?.Id, {
+      fileName: m.formData?.RecordNo || `OOS-${m.formData?.Id}`,
+      contextLabel: m.formData?.Product,
+    });
+  }, [m.formData, printWorkflow]);
 
+  if (printWorkflow.isOpen) {
+    return (
+      <div className="h-full w-full">
+        <ERPPrintPreview title="Out of Specification (OOS) Report" {...printWorkflow.printProps} />
+      </div>
+    );
+  }
   if (m.showForm) {
     return (
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Out of Specification (OOS)"
+            subtitle={m.formData?.RecordNo || "New"}   
+          TitleIcon={ModuleIcon}
           tabs={oosTabs}
           tabLabels={oosTabLabels}
+          tabStage={oosTabStage}
           TabIcon={OosTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -134,7 +162,6 @@ export default function OosMasterPage({ tab }) {
           saving={m.saving}
           rights={m.rights}
             onSaveDraft={m.handleSaveDraft}
-
           workflowConfig={m.workflowConfig}
           currentUserRole={m.currentUserRole}
           alwaysSignTabs={["closure"]}
@@ -144,8 +171,10 @@ export default function OosMasterPage({ tab }) {
           onSave={m.handleSave}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onNewEntry={m.handleAddNewGuarded}
+                    onPrint={handlePrint}
+          canPrint={m.canPrint}
           onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
           currentRecord={m.list.length ? m.currentIndex + 1 : 0}
@@ -163,6 +192,7 @@ export default function OosMasterPage({ tab }) {
     <div className="h-full w-full">
       <Table
         title="Out of Specification (OOS)"
+          TitleIcon={ModuleIcon}
         data={filteredList}
         columns={oosTableColumns}
         rowKey="Id"

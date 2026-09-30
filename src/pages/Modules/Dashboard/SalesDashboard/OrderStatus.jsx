@@ -1,11 +1,8 @@
 import { useMemo } from "react";
 import { inrS } from "../../../../utils/helpers";
-
-// NOTE: assumes each row has a `status` field (e.g. "Pending", "Partially
-// Dispatched", "Completed", "Cancelled") — same field the existing
-// `orderStatus` filter in FiltersBar presumably filters on. Check
-// orderHelpers.js (applyOrderFilters) for the real field name and swap
-// `r.status` below if it differs.
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { Target } from "lucide-react";
 const STATUS_COLORS = {
   completed: "bg-emerald-500",
   pending: "bg-amber-500",
@@ -15,6 +12,12 @@ const STATUS_COLORS = {
 };
 const fallbackColor = "bg-slate-400";
 
+const EXPORT_COLS = [
+  { key: "status", label: "Status" },
+  { key: "count",  label: "Lines", type: "int" },
+  { key: "amt",    label: "Amount (₹)", type: "num" },
+  { key: "pct",    label: "Share %", type: "pct" },
+];
 export default function OrderStatus({ rows }) {
 const data = useMemo(() => {
   const byStatus = { Completed: { count: 0, amt: 0 }, Pending: { count: 0, amt: 0 } };
@@ -31,7 +34,9 @@ const data = useMemo(() => {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">🎯 Order Status</h4>
+      <SectionHeader icon={Target} accent="teal" title="Order Status" className="mb-4">
+        <ExportMenu title="Order Status" columns={EXPORT_COLS} rows={data} />
+      </SectionHeader>
       <div className="space-y-3">
         {data.map((d) => (
           <div key={d.status}>

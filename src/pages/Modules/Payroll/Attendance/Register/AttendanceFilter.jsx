@@ -1,4 +1,4 @@
- // export default AttendanceFilter;
+// export default AttendanceFilter;
 import { useState, useEffect } from "react";
 import ERPAutocomplete from "../../../../../components/Reusable/input/ERPAutocomplete";
 import { useGroupOptions } from "../../../../../Hooks/useUserGroupOption";
@@ -42,7 +42,7 @@ const AttendanceRegisterFilter = ({ filters, setFilters, onApply, onClear }) => 
   const handleClear = () => {
     const now = new Date();
     const currentMonthNum = now.getMonth() + 1;
-    
+
     const cleared = {
       month: currentMonthNum,
       year: now.getFullYear(),
@@ -63,7 +63,7 @@ const AttendanceRegisterFilter = ({ filters, setFilters, onApply, onClear }) => 
   return (
     <div className="bg-white rounded-lg px-5 py-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-6">
-        
+
         {/* Month */}
         <div className="relative max-w-[140px] flex-1 sm:flex-none">
           <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide z-10">

@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import { useApplSettings } from "../../../../Hooks/useApplSettings";
 import { useGroupOptions } from "../../../../Hooks/useUserGroupOption";
 import { useWorkflowConfig } from "../../../../Hooks/useWorkflowConfig";
-import { confirmDelete, showToast, alertError, alertWarning } from "../../../../components/Reusable/alert";
+import { confirmDelete, confirmWarning, showToast, alertError, alertWarning } from "../../../../components/Reusable/alert";
 import { getNextRecordNo, advanceState, getRecordHistory } from "./QmsAPI";
 import { useAuth } from "../../../../theme/AuthContext";
 import { useTab } from "../../../../theme/TabContext";
+ import { useQmsIntent } from "../QMSIntent/QMSintent";
 
 export function useQmsModule({
-  moduleKey,          
+  moduleKey,
   title,              // 'Deviation'
   applName,           // settings ka appl name
   initialState,
@@ -17,22 +18,34 @@ export function useQmsModule({
   getRequired,        // (status) => [keys]
   api,                // { list, create, update, remove }
   onCloseTab,
+   autoFieldMap = {},
 }) {
   const { options: groupOptions } = useGroupOptions();
   const [lines, setLines] = useState({});
   const { wfConfig } = useWorkflowConfig();
   const workflowConfig = wfConfig?.[moduleKey] || null;
   const { user } = useAuth();
-  const { closeTab } = useTab();          
-   const currentUserRole = String(user?.user_group ?? "").trim() || null;
+  const { closeTab } = useTab();
+  const currentUserRole = String(user?.user_group ?? "").trim() || null;
+  // 🆕 Sign ke liye current user ka display name
+  const currentUserName = user?.user_name || user?.user_id || null;
 
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const hasSelectedRef = useRef(false);   // 🆕
+  const preAddSnapshotRef = useRef(null);
   const [history, setHistory] = useState(null);
 
   const { settingsConfig, settingsDefaults, onSettingsSave } = useApplSettings(applName || title);
- 
+  // settings toggles -> { autoCreateCapa: true, ... }
+const auto = useMemo(() => Object.fromEntries(
+  Object.entries(settingsDefaults || {})
+    .filter(([k]) => k.startsWith("autoCreate"))
+    .map(([k, v]) => [k, v === true || v === "true"])
+), [settingsDefaults]);
+  // Manual numbering enabled in this module's settings -> RecordNo becomes editable on Add
+const recordNoEditable = String(settingsDefaults?.numberingMode || "Auto") === "Manual";
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -53,11 +66,15 @@ export function useQmsModule({
     title,
   );
   const { mode, formData, setFormData, performSave, setShowForm, setActiveTab,
-    handleAdd, handleView, handleEditCancel, isDirty } = erp;
+    handleAdd, handleModify, handleView, handleEditCancel, isDirty } = erp;
+
+  const isRecordClosed = useMemo(
+    () => !!workflowConfig?.closedStates?.includes(formData?.Status),
+    [workflowConfig, formData?.Status]
+  );
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // record history (sidebar + audit tab)
   useEffect(() => {
     const rec = formData?.RecordNo, id = formData?.Id;
     if (!rec || !id) { setHistory(null); return; }
@@ -72,30 +89,31 @@ export function useQmsModule({
       .catch((e) => console.error("[record-history]", e));
     return () => { alive = false; };
   }, [moduleKey, formData?.Id, formData?.RecordNo, formData?.Status]);
- 
-  useEffect(() => {
-    if (!(erp.showForm && mode === "view" && list.length > 0)) return;
-    const row = list[currentIndex];
-    if (!row || row.Id === formData?.Id) return;
 
-    let alive = true;
-    (async () => {
-      let full = row;
-      if (api.getOne) {
-        try {
-          const res = await api.getOne(row.Id);
-          if (res?.data) full = res.data;
-        } catch { /* fallback: list wali row */ }
-      }
-      if (alive) setFormData(full);
-    })();
-    return () => { alive = false; };
-  }, [currentIndex, list, erp.showForm, mode, setFormData, formData?.Id, api]);
+  // useEffect(() => {
+  //   if (!(erp.showForm && mode === "view" && list.length > 0)) return;
+  //   const row = list[currentIndex];
+  //   if (!row || row.Id === formData?.Id) return;
 
-  const requiredFields = useMemo(
-    () => getRequired(formData?.Status || workflowConfig?.wf?.[0] || ""),
-    [formData?.Status, getRequired, workflowConfig]
-  );
+  //   let alive = true;
+  //   (async () => {
+  //     let full = row;
+  //     if (api.getOne) {
+  //       try {
+  //         const res = await api.getOne(row.Id);
+  //         if (res?.data) full = res.data;
+  //       } catch { /* fallback: list wali row */ }
+  //     }
+  //     if (alive) setFormData(full);
+  //   })();
+  //   return () => { alive = false; };
+  // }, [currentIndex, list, erp.showForm, mode, setFormData, formData?.Id, api]);
+
+const requiredFields = useMemo(() => {
+  const base = getRequired(formData?.Status || workflowConfig?.wf?.[0] || "");
+  const hidden = Object.entries(autoFieldMap).filter(([k]) => auto[k] === false).flatMap(([, f]) => f);
+  return base.filter((k) => !hidden.includes(k));   // hidden field can't be mandatory
+}, [formData?.Status, getRequired, workflowConfig, auto, autoFieldMap]);
 
   const completedTabs = useMemo(() => {
     if (!workflowConfig?.wf) return [];
@@ -125,16 +143,25 @@ export function useQmsModule({
     setShowForm(t !== "search");
   }, [setActiveTab, setShowForm]);
 
+  // const handleAddNew = useCallback(async () => {
+  //   handleAdd();
+  //   setShowForm(true);
+  //   setActiveTab("entry");
+  //   const recordNo = await getNextRecordNo(moduleKey);
+  //   setFormData((p) => ({ ...p, RecordNo: recordNo }));
+  // }, [handleAdd, setShowForm, setActiveTab, setFormData, moduleKey]);
+
   const handleAddNew = useCallback(async () => {
+    preAddSnapshotRef.current = (mode === "view" && formData?.Id) ? formData : null;   // 🆕
     handleAdd();
     setShowForm(true);
     setActiveTab("entry");
     const recordNo = await getNextRecordNo(moduleKey);
     setFormData((p) => ({ ...p, RecordNo: recordNo }));
-  }, [handleAdd, setShowForm, setActiveTab, setFormData, moduleKey]);
+  }, [handleAdd, setShowForm, setActiveTab, setFormData, moduleKey, mode, formData]);   // 🔧 mode, formData add ki
 
 
-    // Add button hamesha dikhega — permission check click pe hoga
+  // Add button hamesha dikhega — permission check click pe hoga
   const stage0Roles = useMemo(() => {
     const norm = (v) => String(v ?? "").trim().toLowerCase();
     return (workflowConfig?.sections || [])
@@ -154,11 +181,49 @@ export function useQmsModule({
     await handleAddNew();
   }, [canAddNew, handleAddNew, title, stage0Roles, currentUserRole]);
 
-   const handleRowSelect = useCallback(async (row) => {
+  // 🆕 current record jis stage pe hai, wahan kaunse roles allowed hain
+  const modifyStageRoles = useMemo(() => {
+    if (!workflowConfig?.sections?.length) return [];
+    const stage = workflowConfig.wf ? workflowConfig.wf.indexOf(formData?.Status) : -1;
+    return [...new Set(
+      (workflowConfig.sections || [])
+        .filter((s) => s.stage === stage)
+        .flatMap((s) => (Array.isArray(s.role) ? s.role : [s.role]))
+        .filter(Boolean)
+    )];
+  }, [workflowConfig, formData?.Status]);
+
+  // 🆕 kya current user isi stage par modify kar sakta hai
+  const canModifyNow = useMemo(() => {
+    if (isRecordClosed) return false;   // 🆕 sabse pehle check — sabse zaroori guard
+    if (!workflowConfig?.sections?.length) return true;
+    const norm = (v) => String(v ?? "").trim().toLowerCase();
+    if (["admin", "administrator", "superadmin", "super admin"].includes(norm(currentUserRole))) return true;
+    if (!modifyStageRoles.length) return true;
+    return modifyStageRoles.map(norm).includes(norm(currentUserRole));
+  }, [workflowConfig, modifyStageRoles, currentUserRole, isRecordClosed]);   // 🔧 dependency add ki
+
+  const handleModifyGuarded = useCallback(() => {
+  if (!formData?.Id) return;   // 🆕 koi real record hi nahi hai — kuch mat karo (Alt+M bhi safe)
+  if (isRecordClosed) {
+    alertWarning("Cannot modify", `This record is already "${formData?.Status}" and cannot be modified.`);
+    return;
+  }
+  if (!canModifyNow) {
+    alertWarning(
+      "Not your stage",
+      `This record at "${formData?.Status}" can only be modified by: ${modifyStageRoles.join(", ") || "the assigned role"}.\n\nYour role: ${currentUserRole || "—"}`
+    );
+    return;
+  }
+  handleModify();
+}, [formData?.Id, isRecordClosed, canModifyNow, modifyStageRoles, currentUserRole, formData?.Status, handleModify]);  // 🔧
+
+  const handleRowSelect = useCallback(async (row) => {
+    hasSelectedRef.current = true;   // 🆕 — user ne khud select kiya, ab sync allowed hai
     const i = list.findIndex((x) => x.Id === row.Id);
     if (i !== -1) setCurrentIndex(i);
 
-    // 🆕 detail fetch — child lines yahin se aati hain
     let full = row;
     if (api.getOne) {
       const res = await api.getOne(row.Id);
@@ -168,6 +233,31 @@ export function useQmsModule({
     setShowForm(true);
     setActiveTab("entry");
   }, [list, api, handleView, setShowForm, setActiveTab]);
+
+  // 🆕 Prev/Next navigation ke liye — MasterPage isको hi "setCurrentIndex" naam se use karता hai
+const setCurrentIndexGuarded = useCallback((updater) => {
+  hasSelectedRef.current = true;   // navigation bhi ek "explicit selection" hai
+  setCurrentIndex(updater);
+}, []);
+
+  useEffect(() => {
+    if (!hasSelectedRef.current) return;   // 🆕 fresh-mount pe currentIndex=0 ka default ignore karo
+    if (!(erp.showForm && mode === "view" && list.length > 0)) return;
+    const row = list[currentIndex];
+    if (!row || row.Id === formData?.Id) return;
+    let alive = true;
+    (async () => {
+      let full = row;
+      if (api.getOne) {
+        try {
+          const res = await api.getOne(row.Id);
+          if (res?.data) full = res.data;
+        } catch { /* fallback */ }
+      }
+      if (alive) setFormData(full);
+    })();
+    return () => { alive = false; };
+  }, [currentIndex, list, erp.showForm, mode, setFormData, formData?.Id, api]);
 
   const handleSave = useCallback(async (localData) => {
     const res = await performSave("Id", { ...localData, Id: localData.Id ?? null, isDraft: false });
@@ -184,7 +274,7 @@ export function useQmsModule({
     }
   }, [performSave, loadData]);
   const handleSignedSave = useCallback(async (localData, typedName, newStatus, reason) => {
-    const payload = { ...localData };
+    const payload = { ...localData, isDraft: false };
     delete payload.Sr;
 
     let savedId = localData.Id ?? null;
@@ -230,8 +320,19 @@ export function useQmsModule({
     await loadData();
     setShowForm(false);
     setActiveTab("search");
-  }, [api, moduleKey, title, loadData, setShowForm, setActiveTab]); 
+  }, [api, moduleKey, title, loadData, setShowForm, setActiveTab]);
+
   const handleDelete = useCallback(async (row) => {
+    // 🆕 Pre-check: agar record stage-0 se aage badh chuka hai, matlab e-sign ho chuka hai —
+    //    is system mein stage kabhi bina e-sign ke advance nahi hoti, isliye ye check reliable hai
+    const isAdvanced = workflowConfig?.wf ? workflowConfig.wf.indexOf(row?.Status) > 0 : false;
+    const isClosed = workflowConfig?.closedStates?.includes(row?.Status);
+
+    if (isAdvanced || isClosed) {
+      alertWarning("Cannot delete", "This record has been electronically signed and cannot be deleted.");
+      return;   // 🆕 seedha ye dikhega — "Yes, delete" wala confirm kabhi aayega hi nahi
+    }
+
     if (!(await confirmDelete({ title: `Delete ${title} "${row.RecordNo || row.Id}"?` }))) return;
     try {
       const res = await api.remove(row.Id);
@@ -245,7 +346,7 @@ export function useQmsModule({
     } catch (e) {
       alertWarning("Cannot delete", e?.message || `Failed to delete ${title}`);
     }
-  }, [api, title, setShowForm, setActiveTab, loadData]);
+  }, [api, title, setShowForm, setActiveTab, loadData, workflowConfig]);   // 🔧 workflowConfig dependency add ki
 
   const handleDeleteMultiple = useCallback(async (selected) => {
     const ids = (selected || []).map((x) => (typeof x === "object" ? x.Id : x));
@@ -262,59 +363,83 @@ export function useQmsModule({
       await loadData();
     } catch { alertError("Delete Error", `Failed to delete some ${title} records`); }
   }, [api, title, setShowForm, setActiveTab, loadData]);
-   // Cancel / Discard — sirf edit chhodo, form khula rehne do
-   // Cancel / Discard — reset karo, form khula rakho
+  // Cancel / Discard — sirf edit chhodo, form khula rehne do
+  // Cancel / Discard — reset karo, form khula rakho
+
   const handleFormExit = useCallback(async () => {
-    const wasAddMode = mode === "add";
-    await handleEditCancel();
+  const wasAddMode = mode === "add";
+  const hasData = wasAddMode && Object.entries(formData || {}).some(([k, v]) => {
+    if (k === "RecordNo" || k === "Id" || k === "Status") return false;
+    if (initialState[k] !== undefined && initialState[k] === v) return false;
+    return String(v ?? "").trim() !== "";
+  });
+  const dirty = wasAddMode ? hasData : isDirty;
 
-    if (!wasAddMode) return;   // edit mode → view mode me rehne do ✅
+  if (dirty) {
+    const confirmed = await confirmWarning({});
+    if (!confirmed) return;
+    showToast({ icon: "info", title: "Changes discarded" });
+  }
 
-    // ── add mode ──
-    // form me kuch bhara hai? (RecordNo aur Id chhod kar)
-    const hasData = Object.entries(formData || {}).some(([k, v]) => {
-      if (k === "RecordNo" || k === "Id" || k === "Status") return false;
-      if (initialState[k] && initialState[k] === v) return false;   // default value hai
-      return String(v ?? "").trim() !== "";
-    });
+  if (!wasAddMode) {
+    handleView(savedFormData || formData);
+    setShowForm(true);
+    return;
+  }
 
-    if (hasData) {
-      // pehla Cancel → reset karo, form khula rakho
-      setShowForm(true);
-      setActiveTab("entry");
-      setFormData(initialState);
-      const recordNo = await getNextRecordNo(moduleKey);
-      setFormData((p) => ({ ...p, RecordNo: recordNo }));
-    } else {
-      // doosra Cancel (form pehle se khali) → list pe jao
-      setShowForm(false);
-      setActiveTab("search");
-      setFormData(initialState);
-    }
-  }, [mode, formData, initialState, handleEditCancel, setShowForm, setActiveTab, setFormData, moduleKey]);
+  if (preAddSnapshotRef.current) {
+    handleView(preAddSnapshotRef.current);
+    setShowForm(true);
+    setActiveTab("entry");
+    preAddSnapshotRef.current = null;
+    return;
+  }
 
-  // Exit button — poora tab band
-    const handleTabExit = useCallback(() => {
+  // 🔧 koi pehla record nahi tha bhi — ab list pe NAHI jaate, isi form-page par View-mode (blank) me rahenge
+  handleView(initialState);
+  setShowForm(true);
+  setActiveTab("entry");
+}, [mode, formData, initialState, isDirty, savedFormData, handleView, setShowForm, setActiveTab]);
+
+  const handleTabExit = useCallback(() => {
     if (closeTab) { closeTab(); return; }
     setShowForm(false);
     setActiveTab("search");
     setFormData(initialState);
-  }, [closeTab, setShowForm, setActiveTab, setFormData, initialState]); 
+  }, [closeTab, setShowForm, setActiveTab, setFormData, initialState]);
+
   const handleSaveDraft = useCallback(async (localData) => {
+    if (isRecordClosed) {
+      alertWarning("Cannot save as draft", `This record is already "${localData?.Status}" and cannot be saved as a draft.`);
+      return { success: false, message: "Record is closed" };
+    }
     const payload = { ...localData, isDraft: true, Id: localData.Id ?? null };
     const res = payload.Id ? await api.update(payload.Id, payload) : await api.create(payload);
+    if (res && res.success === false) {
+      alertError("Save Draft Error", res.message || "Failed to save draft");
+      return res;
+    }
     const savedId = payload.Id ?? res?.data?.Id ?? res?.Id ?? null;
     if (savedId && !payload.Id) setFormData((p) => ({ ...p, Id: savedId }));
+    showToast({ icon: "info", title: `Saved as draft — Stage: ${payload.Status || "Open"}` });
+    const arr = await loadData();
+    if (savedId && arr?.length) {
+      const idx = arr.findIndex((x) => x.Id === savedId);
+      if (idx !== -1) setCurrentIndex(idx);
+    }
     return res;
-  }, [api, setFormData]);
+  }, [api, setFormData, isRecordClosed, loadData, setCurrentIndex]);
+useQmsIntent(moduleKey, { handleAddNewGuarded, handleRowSelect, list, loading })
+
+
   return {
     ...erp,
-    groupOptions, workflowConfig, currentUserRole,
-    list, setList, loading, currentIndex, setCurrentIndex,
+    groupOptions, workflowConfig, currentUserRole, currentUserName, isRecordClosed,
+    list, setList, loading, currentIndex, setCurrentIndex: setCurrentIndexGuarded,
     history, loadData,
     settingsConfig, settingsDefaults, onSettingsSave,
     requiredFields, completedTabs, savedFormData, canAddNew,
-    handleHeaderTabChange, handleAddNew, handleAddNewGuarded, handleRowSelect,
-    handleSave, handleSaveDraft, handleSignedSave, handleDelete, handleDeleteMultiple, handleFormExit, handleTabExit,
+    handleHeaderTabChange, handleAddNew, handleAddNewGuarded, handleModifyGuarded, handleRowSelect,
+    handleSave, handleSaveDraft, handleSignedSave, handleDelete, handleDeleteMultiple, handleFormExit, handleTabExit,  recordNoEditable, auto,
   };
 }

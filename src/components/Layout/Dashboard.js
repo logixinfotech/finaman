@@ -17,9 +17,11 @@ import {
   FaChartBar,
   FaInbox,
 } from "react-icons/fa";
-import FinamanDashboard from "../../pages/FinamanDashboard";
 import RecentActivity from "./RecentActivity";
 import { fetchMasmnuData, fetchMasgrpList } from "../../utils/api"; import { useAuth } from "../../theme/AuthContext";
+import SalesDashboard from "../../pages/Modules/Dashboard/SalesDashboard/SalesDashboard";
+// import FinamanDashboard from "../../pages/FinamanDashboard";
+import MyWork from "../../pages/Modules/QMS/Components/MainDashboard";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -77,6 +79,34 @@ function Dashboard({
       return next;
     });
   }, []);
+  const [ctxMenu, setCtxMenu] = useState(null); // { x, y, menu }
+
+useEffect(() => {
+  if (!ctxMenu) return;
+  const close = () => setCtxMenu(null);
+  const onKey = (e) => e.key === "Escape" && close();
+  window.addEventListener("click", close);
+  window.addEventListener("scroll", close, true);
+  window.addEventListener("resize", close);
+  window.addEventListener("keydown", onKey);
+  return () => {
+    window.removeEventListener("click", close);
+    window.removeEventListener("scroll", close, true);
+    window.removeEventListener("resize", close);
+    window.removeEventListener("keydown", onKey);
+  };
+}, [ctxMenu]);
+
+const openContextMenu = useCallback((e, m) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const MENU_W = 180, MENU_H = 84;
+  setCtxMenu({
+    x: Math.min(e.clientX, window.innerWidth - MENU_W - 8),
+    y: Math.min(e.clientY, window.innerHeight - MENU_H - 8),
+    menu: m,
+  });
+}, []);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -103,7 +133,6 @@ function Dashboard({
           fetchMasgrpList({ masmod_id: activeModule.masmod_id }),
         ]);
 
-        // hidden groups ke saare menus bhi gayab honge
         const grpList = (Array.isArray(grpData) ? grpData : grpData?.data || [])
           .filter((g) => g.grp_hide !== "Y");
         const visibleIds = new Set(grpList.map((g) => g.grp_id));
@@ -277,7 +306,7 @@ function Dashboard({
       const target = shortcutMenus[idx];
       if (target) {
         e.preventDefault();
-        onOpenPage(target);
+       onOpenPage(target, { newTab: false });   // pehle: onOpenPage(target)
         buffer = "";
         clearTimeout(bufferTimer);
       }
@@ -312,7 +341,8 @@ function Dashboard({
       whileTap={{ scale: 0.98 }}
       key={m.masmnu_id}
       className="dashboard-card entry-card"
-      onClick={() => onOpenPage(m)}
+     onClick={() => onOpenPage(m, { newTab: false })}
+onContextMenu={(e) => openContextMenu(e, m)}
       style={{ position: "relative", overflow: "hidden" }}
     >
       <div
@@ -405,7 +435,7 @@ function Dashboard({
             </span>
           </button>
 
-          <AnimatePresence initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             {!isCollapsed && (
               <motion.div
                 key="body"
@@ -439,37 +469,7 @@ function Dashboard({
       animate={{ opacity: 1, x: 0 }}
       className="module-board modern-card h-full flex flex-col"
     >
-      <div className="dashboard-topbar">
-        <div className="dashboard-search">
-          <FaSearch className="search-icon" />
-          <input
-            ref={searchInputRef}
-
-            type="text"
-            placeholder="Search menus..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <AnimatePresence>
-            {searchQuery && (
-              <motion.span
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-              >
-                <FaTimesCircle
-                  className="search-clear cursor-pointer"
-                  onClick={() => {
-                    setSearchQuery("");
-                    searchInputRef.current?.focus();
-                  }}
-                />
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </div>
-        <div className="result-badge">{filteredMenus.length} Results</div>
-      </div>
+      
 
       <div className="dashboard-scroll-body">
         {loading ? (
@@ -556,14 +556,20 @@ function Dashboard({
 
   return (
     <div className="dashboard-shell" ref={constraintsRef}>
-      <TabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onChangeActiveTab={onChangeActiveTab}
-        onCloseTab={handleCloseTab}
-        onReorderTabs={setTabs}
-      />
-
+    {tabs && tabs.length > 0 && (
+  <TabBar
+    tabs={tabs}
+    activeTab={activeTab}
+    onChangeActiveTab={onChangeActiveTab}
+    onCloseTab={handleCloseTab}
+    onReorderTabs={setTabs}
+    // 👇 naye props
+    showSearch={activeTab?.type === "module"}
+    searchQuery={searchQuery}
+    onSearchChange={setSearchQuery}
+    searchInputRef={searchInputRef}
+  />
+)}
       <div
         className="dashboard-content"
         style={{ overflow: "hidden", position: "relative" }}
@@ -572,7 +578,7 @@ function Dashboard({
           className="main-view-area"
           style={{ flex: 1, minWidth: 0, height: "100%", position: "relative" }}
         >
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" >
             {!activeTab ? (
               <motion.div
                 key="finaman"
@@ -581,13 +587,18 @@ function Dashboard({
                 exit={{ opacity: 0 }}
                 style={{ height: "100%" }}
               >
-                <FinamanDashboard />
+                <SalesDashboard />
+                {/* <FinamanDashboard/> */}
               </motion.div>
             ) : (
               tabs.map((tab) => {
                 if (!loadedTabs.includes(tab.id)) return null;
                 const Component =
-                  tab.type === "module" ? null : PageRegistry[tab.appl_name];
+                  tab.type === "module"
+                    ? null
+                    : (PageRegistry[tab.appl_name] ||
+                      (tab.label && PageRegistry[tab.label.replace(/\s+/g, "")]) ||
+                      (tab.label && PageRegistry[tab.label]));
                 return (
                   <motion.div
                     key={tab.id}
@@ -635,7 +646,7 @@ function Dashboard({
           </motion.div>
         </div>
         {isMobile ? (
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {isActivityOpen && (
               <>
                 <motion.div
@@ -674,6 +685,27 @@ function Dashboard({
           </motion.div>
         )}
       </div>
+      <AnimatePresence>
+  {ctxMenu && (
+    <motion.div
+      className="menu-context"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.12 }}
+      style={{ top: ctxMenu.y, left: ctxMenu.x }}
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <button type="button" onClick={() => { onOpenPage(ctxMenu.menu, { newTab: false }); setCtxMenu(null); }}>
+        Open
+      </button>
+      <button type="button" onClick={() => { onOpenPage(ctxMenu.menu, { newTab: true }); setCtxMenu(null); }}>
+        Open in new tab
+      </button>
+    </motion.div>
+  )}
+</AnimatePresence>
     </div>
   );
 }

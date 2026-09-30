@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 
-export default function MultiSelectField({ options = [], value = "", onChange, disabled }) {
+export default function MultiSelectField({ options = [], value = "", onChange, disabled,error }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
@@ -53,7 +53,7 @@ export default function MultiSelectField({ options = [], value = "", onChange, d
 
   return (
     <>
-      <button
+       <button
         ref={btnRef}
         type="button"
         disabled={disabled}
@@ -61,7 +61,9 @@ export default function MultiSelectField({ options = [], value = "", onChange, d
         className={`w-full min-h-[28px] px-2 py-[3px] text-[12.5px] text-left border-[1.5px] rounded-[5px] outline-none transition-all ${
           disabled
             ? "bg-[#f0f3f8] text-[#64748b] border-[#e2e8f4] cursor-default"
-            : "bg-[#fafbfd] text-[#0f172a] border-[#c8d2e4] hover:border-[#a0b0c8] focus:border-[#1a56db]"
+            : error
+              ? "bg-[#fafbfd] text-[#0f172a] border-[#dc2626] hover:border-[#dc2626] focus:border-[#dc2626]" // 🆕 error state
+              : "bg-[#fafbfd] text-[#0f172a] border-[#c8d2e4] hover:border-[#a0b0c8] focus:border-[#1a56db]"
         }`}
       >
         {selected.length === 0

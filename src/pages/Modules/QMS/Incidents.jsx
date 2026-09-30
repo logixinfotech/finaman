@@ -8,6 +8,7 @@ import { getHeaderStyle } from "./Utils/QmsValidation";
 import { useQmsModule } from "./Utils/useQmsModule";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
 import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+import * as FaIcons from "react-icons/fa"; 
 import {
   incidentTabs, incidentTabStage, incidentTabLabels,
   getIncidentFieldGroups, getIncidentRequired,
@@ -52,11 +53,15 @@ const initialState = {
   CapaVerificationStatus: "", CapaVerifiedBy: "", CapaVerifiedOn: "",
   ClosedOn: "",
 
-  deptreview: [
-    { Department: "Engineering" }, { Department: "Stores" }, { Department: "Production" },
-    { Department: "Quality Control" }, { Department: "Administration/HR" },
-    { Department: "Purchase" }, { Department: "Any other dept." },
-  ],
+deptreview: [
+  { Department: "Engineering", RoleTitle: "Engineering Head" },
+  { Department: "Stores", RoleTitle: "Warehouse Head" },
+  { Department: "Production", RoleTitle: "Production Head" },
+  { Department: "Quality Control", RoleTitle: "QC Head" },
+  { Department: "Administration/HR", RoleTitle: "Administration Head" },
+  { Department: "Purchase", RoleTitle: "Purchase Head" },
+  { Department: "Any other dept.", exemptFromLock: true },
+],
   extensions: [],
 };
 
@@ -118,6 +123,10 @@ export default function IncidentMasterPage({ tab }) {
         (filters.Severity === "All" || it.Severity === filters.Severity)
       );
   }, [m.list, filters]);
+     const ModuleIcon = useMemo(() => {
+      const name = tab?.icon_name || tab?.module?.icon_name;
+      return (name && FaIcons[name]) || FaClipboardList;
+    }, [tab?.icon_name, tab?.module?.icon_name]);
 
   const handlePrint = useCallback(() => {
     printWorkflow.openPrintFor(m.formData?.Id, {
@@ -139,8 +148,11 @@ export default function IncidentMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Incident"
+          subtitle={m.formData?.RecordNo || "New"}   
+          TitleIcon={ModuleIcon}
           tabs={incidentTabs}
           tabLabels={incidentTabLabels}
+          tabStage={incidentTabStage}
           TabIcon={IncidentTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -162,6 +174,7 @@ export default function IncidentMasterPage({ tab }) {
           rights={m.rights}
           workflowConfig={m.workflowConfig}
           currentUserRole={m.currentUserRole}
+          currentUserName={m.currentUserName}
           alwaysSignTabs={["closure"]}
           settingsConfig={m.settingsConfig}
           settingsDefaults={m.settingsDefaults}
@@ -169,7 +182,7 @@ export default function IncidentMasterPage({ tab }) {
           onSave={m.handleSave}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -191,7 +204,8 @@ export default function IncidentMasterPage({ tab }) {
   return (
     <div className="h-full w-full">
       <Table
-        title="Incident Register"
+        title="Incident"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={incidentTableColumns}
         rowKey="Id"

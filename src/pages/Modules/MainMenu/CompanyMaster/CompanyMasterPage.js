@@ -20,6 +20,9 @@ import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import { usePrintWorkflow } from "../../../../Hooks/usePrintWorkflow";
 const initialState = {
   company_id: null,
+   com_id: "",        
+  com_code: "",
+  database: "",
   company_name: "",
   trade_name: "",
   business_type: "",
@@ -77,13 +80,15 @@ const initialState = {
 };
 
 const columns = [
+   { key: "com_code", label: "Code" },
   { key: "company_name", label: "Company Name" },
+  { key: "database", label: "Database" },
   { key: "trade_name", label: "Trade Name" },
   { key: "phone_number", label: "Phone" },
   { key: "email_address", label: "Email" },
   { key: "gstin_number", label: "GSTIN" },
   { key: "pan_number", label: "PAN" },
-  { key: "business_type", label: "Type" },
+  { key: "business_type", label: "Type" },  
   {
     key: "company_status",
     label: "Status",

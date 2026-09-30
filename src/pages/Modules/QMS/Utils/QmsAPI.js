@@ -166,6 +166,15 @@ export const createChangeControl = (data) => handleApi(() => api.post("/api/qms/
 export const updateChangeControl = (id, data) => handleApi(() => api.put(`/api/qms/change-controls/${id}`, data));
 export const deleteChangeControl = (id) => handleApi(() => api.delete(`/api/qms/change-controls/${id}`));
 
+ 
+//==============================================CHANGE PROPOSAL ==============================================
+
+export const getChangeProposals = () => handleApi(() => api.get("/api/qms/change-proposals"));
+export const getChangeProposal = (id) => handleApi(() => api.get(`/api/qms/change-proposals/${id}`));
+export const createChangeProposal = (data) => handleApi(() => api.post("/api/qms/change-proposals", data));
+export const updateChangeProposal = (id, data) => handleApi(() => api.put(`/api/qms/change-proposals/${id}`, data));
+export const deleteChangeProposal = (id) => handleApi(() => api.delete(`/api/qms/change-proposals/${id}`));
+ 
 
 //========================================================workflow==================================================
 export const getWorkflowConfig = () => handleApi(() => api.get("/api/qms/workflow-config"));
@@ -235,6 +244,7 @@ export const getKpiDashboard = (from, to) => {
   if (to) p.append("to", to);
   return handleApi(() => api.get(`/api/qms/kpi-dashboard?${p.toString()}`));
 };
+export const getMyWork = () => handleApi(() => api.get("/api/qms/my-work"));
 
 //============================================== Compliance Score ======================================================
 

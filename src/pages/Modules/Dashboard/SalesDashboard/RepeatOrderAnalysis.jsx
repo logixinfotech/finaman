@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { ordersOf } from "../../../../utils/orderHelpers";
 import { inrS } from "../../../../utils/helpers";
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { Repeat } from "lucide-react";
 
 const BUCKETS = [
   { label: "1 order", test: (n) => n === 1 },
@@ -10,6 +13,11 @@ const BUCKETS = [
   { label: "10+ orders", test: (n) => n > 10 },
 ];
 
+const EXPORT_COLS = [
+  { key: "label", label: "Orders per Customer" },
+  { key: "count", label: "Customers", type: "int" },
+  { key: "amt",   label: "Order Value (₹)", type: "num" },
+];
 export default function RepeatOrderAnalysis({ rows }) {
   const stats = useMemo(() => {
     const ords = ordersOf(rows);
@@ -44,8 +52,9 @@ export default function RepeatOrderAnalysis({ rows }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">🔁 Repeat Order Analysis</h4>
-
+      <SectionHeader icon={Repeat} accent="emerald" title="Repeat Order Analysis" className="mb-4">
+        <ExportMenu title="Repeat Order Analysis" columns={EXPORT_COLS} rows={stats.buckets} />
+      </SectionHeader>
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="rounded-lg bg-emerald-50 p-3">
           <p className="text-[11px] font-semibold text-emerald-700 mb-0.5">Repeat Customers</p>

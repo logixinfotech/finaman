@@ -67,7 +67,6 @@ const AlertsStrip = () => {
 
   return (
     <div style={styles.wrap}>
-      {/* Header */}
       <div style={styles.hdr}>
         <div style={styles.hdrLeft}>
           <i className="ti ti-alert-circle" aria-hidden="true" style={{ fontSize: 13, color: "#E24B4A" }} />
@@ -81,24 +80,15 @@ const AlertsStrip = () => {
           Dismiss all
         </button>
       </div>
-
-      {/* Scrollable alert pills */}
       <div style={styles.scrollRow}>
         {visible.map((a) => (
           <div key={a.id} style={{ ...styles.pill, background: a.bg, border: `0.5px solid ${a.border}` }}>
-            {/* Dot */}
             <div style={{ ...styles.dot, background: a.dot }} />
-
-            {/* Icon */}
             <i className={a.icon} aria-hidden="true" style={{ fontSize: 13, color: a.color, flexShrink: 0 }} />
-
-            {/* Text */}
             <div style={styles.pillText}>
               <span style={{ ...styles.pillTitle, color: a.color }}>{a.title}</span>
               <span style={{ ...styles.pillSub, color: a.color + "CC" }}>{a.sub}</span>
             </div>
-
-            {/* Dismiss */}
             <button
               aria-label="Dismiss alert"
               style={styles.closeBtn}

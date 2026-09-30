@@ -1,9 +1,16 @@
 import { useMemo } from "react";
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { Hourglass } from "lucide-react";
 
 // NOTE: same `qo`/`qd` assumption as FulfillmentByCustomer.jsx — pending
 // qty = ordered - delivered. Adjust field names together in both files.
+const EXPORT_COLS = [
+  { key: "cust", label: "Customer" },
+  { key: "qty",  label: "Pending Qty", type: "int" },
+];
 export default function PendingQtyByCustomer({ rows, n = 10 }) {
-  const data = useMemo(() => {
+  const all = useMemo(() => {
     const byCust = {};
 (rows || []).forEach((r) => {
   const pending = r.qb || 0;
@@ -13,13 +20,15 @@ export default function PendingQtyByCustomer({ rows, n = 10 }) {
     const max = Math.max(1, ...Object.values(byCust));
     return Object.entries(byCust)
       .map(([cust, qty]) => ({ cust, qty, pct: (qty / max) * 100 }))
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, n);
-  }, [rows, n]);
+      .sort((a, b) => b.qty - a.qty);
+  }, [rows]);
+  const data = useMemo(() => all.slice(0, n), [all, n]);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">⏳ Pending Qty by Customer</h4>
+      <SectionHeader icon={Hourglass} accent="amber" title="Pending Qty by Customer" className="mb-4">
+        <ExportMenu title="Pending Qty by Customer" columns={EXPORT_COLS} rows={all} />
+      </SectionHeader>
       <div className="space-y-2.5">
         {data.map((d) => (
           <div key={d.cust} className="flex items-center gap-2">

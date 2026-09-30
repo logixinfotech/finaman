@@ -1,25 +1,34 @@
-// DiaryEssentials.jsx — Screen components
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchMyTasks, fetchAssignedByMeTasks, updateTaskLineStatus, deleteTaskLine } from "../../utils/api";
 import { alertError } from "../Reusable/alert";
-import TaskTableEntry from "./TaskTableEntry";
 import {
-  F, FD, FM, C, STAT_BADGE, PRIO_CFG,
-  Avtar, PDot, ProgressRing, useToast,
-  TaskCard, TaskRow, DetailPanel, TaskModal, QuickAddBar,
-  todayStr, fmtHrs, fmtDate, newTask, getTimeAlert,
+  F, FD, FM, C, useToast,
+  TaskCard, DetailPanel,
+  todayStr,
   btnPrimary, btnSecondary, useIsMobile, TaskTable,
 } from "./WorkDiaryForm";
-import { generateId } from "../../utils/helpers";
 import {
-  ClipboardList, RefreshCw, CheckCircle2, AlertTriangle, Clock,
-  LayoutGrid, List, Search, X, RotateCcw, Plus,
-  Circle, Flag, BookOpen, Layers, ChevronRight, UserCheck, CornerDownLeft, Table2, ChevronDown,
-  Filter,
+  ClipboardList, RefreshCw, CheckCircle2,
+  LayoutGrid, Search, X, Plus,
+  BookOpen, Layers, ChevronRight, UserCheck, CornerDownLeft, Table2, ChevronDown,
+  Filter, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
-
-// ─── getCurrentUser ───────────────────────────────────────────────
+ 
+export const BP = { mobile: 1024, compact: 1440 };
+const readBp = () => {
+  const w = window.innerWidth;
+  return w < BP.mobile ? "mobile" : w < BP.compact ? "compact" : "wide";
+};
+export const useBreakpoint = () => {
+  const [bp, setBp] = useState(readBp);
+  useEffect(() => {
+    const fn = () => setBp(readBp());
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return bp;
+};
 export const getCurrentUser = () => {
   try {
     const token = sessionStorage.getItem("token") || localStorage.getItem("token");
@@ -27,7 +36,6 @@ export const getCurrentUser = () => {
     return JSON.parse(atob(token.split(".")[1]));
   } catch { return null; }
 };
-// ─── SectionGroup ─────────────────────────────────────────────────
 const SectionGroup = ({ label, count, accentColor, badgeBg, badgeColor, lineBg, children }) => {
   const [open, setOpen] = useState(true);
   return (
@@ -74,103 +82,36 @@ const SectionGroup = ({ label, count, accentColor, badgeBg, badgeColor, lineBg, 
     </div>
   );
 };
-// ─── SidebarContent ───────────────────────────────────────────────
-export const SidebarContent = ({
-  NAV, activeNav, setActiveNav, setSidebarOpen,
-  categoryList, activeCategory, setActiveCategory,
-}) => (
-  <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: C.surface }}>
-
-    {/* Brand */}
-    <div style={{ padding: "16px 14px 14px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: 10, background: C.blueLight, display: "flex",
-          alignItems: "center", justifyContent: "center", flexShrink: 0, border: `1.5px solid ${C.blueBorder}`
-        }}>
-          <BookOpen size={16} color={C.blue} strokeWidth={2} />
+const CategoryList = ({ categoryList, activeCategory, onPick }) => {
+  const isAll = !activeCategory;
+  return (
+    <>
+      <button onClick={() => onPick(null)}
+        style={{
+          width: "100%", textAlign: "left", padding: "7px 10px", borderRadius: 8,
+          border: "1.5px solid", cursor: "pointer", fontFamily: F, marginBottom: 2,
+          background: isAll ? C.blueLight : "transparent",
+          borderColor: isAll ? C.blueBorder : "transparent",
+          color: isAll ? C.blue : C.t3,
+        }}
+        onMouseEnter={e => { if (!isAll) e.currentTarget.style.background = "#f1f5f9"; }}
+        onMouseLeave={e => { if (!isAll) e.currentTarget.style.background = "transparent"; }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            width: 22, height: 22, borderRadius: 5, display: "flex", alignItems: "center",
+            justifyContent: "center", background: isAll ? C.blue : "#e2e8f0",
+            fontSize: 9, fontWeight: 800, color: isAll ? "#fff" : C.t3, flexShrink: 0
+          }}>
+            ALL
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 600, color: isAll ? C.blue : C.t1 }}>All Categories</span>
         </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.t1, letterSpacing: "-.2px", lineHeight: 1 }}>Work Diary</div>
-          <div style={{ fontSize: 10, color: C.t4, marginTop: 2 }}>FINAMAN ERP</div>
-        </div>
-      </div>
-    </div>
-
-    {/* Nav */}
-    <div style={{ padding: "10px 8px 6px", flexShrink: 0 }}>
-      <div style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: "1.8px", textTransform: "uppercase",
-        color: C.t4, padding: "0 6px 6px"
-      }}>Menu</div>
-      {NAV.map(n => {
-        const active = activeNav === n.k;
-        return (
-          <button key={n.k}
-            onClick={() => { setActiveNav(n.k); setSidebarOpen?.(false); }}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "9px 10px",
-              borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: active ? 600 : 500,
-              transition: "all .14s", marginBottom: 1, fontFamily: F, border: "none", textAlign: "left",
-              background: active ? C.blueLight : "transparent",
-              color: active ? C.blue : C.t3, position: "relative",
-            }}
-            onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = C.t1; } }}
-            onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.t3; } }}>
-            {active && <div style={{
-              position: "absolute", left: 0, top: "20%", bottom: "20%", width: 3,
-              background: C.blue, borderRadius: "0 3px 3px 0"
-            }} />}
-            <n.Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.l}</span>
-          </button>
-        );
-      })}
-    </div>
-
-    <div style={{ margin: "4px 12px", borderTop: `1px solid ${C.border}` }} />
-    <div style={{ padding: "6px 8px 4px", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 6px 6px" }}>
-        <Layers size={11} color={C.t4} />
-        <span style={{
-          fontSize: 9, fontWeight: 700, letterSpacing: "1.8px",
-          textTransform: "uppercase", color: C.t4
-        }}>Categories</span>
-      </div>
-    </div>
-
-    <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 16px", minHeight: 0 }}>
-      {(() => {
-        const isAll = !activeCategory;
-        return (
-          <button onClick={() => setActiveCategory(null)}
-            style={{
-              width: "100%", textAlign: "left", padding: "7px 10px", borderRadius: 8,
-              border: "1.5px solid", cursor: "pointer", fontFamily: F, marginBottom: 2,
-              background: isAll ? C.blueLight : "transparent",
-              borderColor: isAll ? C.blueBorder : "transparent",
-              color: isAll ? C.blue : C.t3,
-            }}
-            onMouseEnter={e => { if (!isAll) e.currentTarget.style.background = "#f1f5f9"; }}
-            onMouseLeave={e => { if (!isAll) e.currentTarget.style.background = "transparent"; }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{
-                width: 22, height: 22, borderRadius: 5, display: "flex", alignItems: "center",
-                justifyContent: "center", background: isAll ? C.blue : "#e2e8f0",
-                fontSize: 9, fontWeight: 800, color: isAll ? "#fff" : C.t3, flexShrink: 0
-              }}>
-                ALL
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: isAll ? C.blue : C.t1 }}>All Categories</span>
-            </div>
-          </button>
-        );
-      })()}
+      </button>
 
       {categoryList.map(({ category, task_count }) => {
         const isActive = activeCategory === category;
         return (
-          <button key={category} onClick={() => setActiveCategory(isActive ? null : category)}
+          <button key={category} onClick={() => onPick(isActive ? null : category)}
             style={{
               width: "100%", textAlign: "left", padding: "7px 10px", borderRadius: 8,
               border: "1.5px solid", cursor: "pointer", fontFamily: F, marginBottom: 2,
@@ -208,13 +149,177 @@ export const SidebarContent = ({
           No categories yet
         </div>
       )}
-    </div>
-  </div>
+    </>
+  );
+};
+const RailBtn = ({ active, title, onClick, children, dot }) => (
+  <button onClick={onClick} title={title} aria-label={title}
+    style={{
+      width: 40, height: 40, margin: "0 auto 4px", borderRadius: 9, border: "none",
+      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+      background: active ? C.blueLight : "transparent", color: active ? C.blue : C.t3,
+      position: "relative", transition: "all .14s", fontFamily: F,
+    }}
+    onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = C.t1; } }}
+    onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.t3; } }}>
+    {active && <div style={{
+      position: "absolute", left: -8, top: "22%", bottom: "22%", width: 3,
+      background: C.blue, borderRadius: "0 3px 3px 0"
+    }} />}
+    {children}
+    {dot && <span style={{
+      position: "absolute", top: 7, right: 7, width: 7, height: 7, borderRadius: "50%",
+      background: C.blue, border: `1.5px solid ${C.surface}`,
+    }} />}
+  </button>
 );
-// ─── MyTasksScreen ────────────────────────────────────────────────
+export const SidebarContent = ({
+  NAV, activeNav, setActiveNav, setSidebarOpen,
+  categoryList, activeCategory, setActiveCategory,
+  collapsed = false, onToggleCollapse,
+}) => {
+  const [catFly, setCatFly] = useState(null); // { top, left } when flyout open
+
+  const openCatFly = e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setCatFly(p => p ? null : { top: r.top, left: r.right + 10 });
+  };
+  const pickCategory = c => { setActiveCategory(c); setCatFly(null); };
+  if (collapsed) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "10px 8px", background: C.surface }}>
+        <div title="Work Diary — FINAMAN ERP" style={{
+          width: 34, height: 34, borderRadius: 10, background: C.blueLight, margin: "0 auto 10px",
+          display: "flex", alignItems: "center", justifyContent: "center", border: `1.5px solid ${C.blueBorder}`
+        }}>
+          <BookOpen size={16} color={C.blue} strokeWidth={2} />
+        </div>
+        <div style={{ borderTop: `1px solid ${C.border}`, margin: "0 2px 10px" }} />
+
+        {NAV.map(n => (
+          <RailBtn key={n.k} active={activeNav === n.k} title={n.l}
+            onClick={() => { setActiveNav(n.k); setSidebarOpen?.(false); }}>
+            <n.Icon size={17} strokeWidth={activeNav === n.k ? 2.2 : 1.8} />
+          </RailBtn>
+        ))}
+
+        <div style={{ borderTop: `1px solid ${C.border}`, margin: "6px 2px 10px" }} />
+
+        <RailBtn active={!!catFly || !!activeCategory} title={activeCategory ? `Category: ${activeCategory}` : "Categories"}
+          onClick={openCatFly} dot={!!activeCategory && !catFly}>
+          <Layers size={17} strokeWidth={1.8} />
+        </RailBtn>
+
+        {catFly && (
+          <>
+            <div onClick={() => setCatFly(null)} style={{ position: "fixed", inset: 0, zIndex: 69 }} />
+            <div style={{
+              position: "fixed", top: catFly.top, left: catFly.left, zIndex: 70, width: 236,
+              maxHeight: "min(420px, calc(100vh - 120px))", overflowY: "auto",
+              background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10,
+              boxShadow: "0 10px 32px rgba(12,25,52,.16)", padding: "8px 8px 6px",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 6px 8px" }}>
+                <Layers size={11} color={C.t4} />
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "1.8px", textTransform: "uppercase", color: C.t4 }}>Categories</span>
+              </div>
+              <CategoryList categoryList={categoryList} activeCategory={activeCategory} onPick={pickCategory} />
+            </div>
+          </>
+        )}
+
+        <div style={{ flex: 1 }} />
+
+        {onToggleCollapse && (
+          <RailBtn title="Expand sidebar" onClick={onToggleCollapse}>
+            <ChevronsRight size={16} strokeWidth={2} />
+          </RailBtn>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: C.surface }}>
+      <div style={{ padding: "16px 14px 14px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 10, background: C.blueLight, display: "flex",
+            alignItems: "center", justifyContent: "center", flexShrink: 0, border: `1.5px solid ${C.blueBorder}`
+          }}>
+            <BookOpen size={16} color={C.blue} strokeWidth={2} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.t1, letterSpacing: "-.2px", lineHeight: 1 }}>Work Diary</div>
+            <div style={{ fontSize: 10, color: C.t4, marginTop: 2 }}>FINAMAN ERP</div>
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: "10px 8px 6px", flexShrink: 0 }}>
+        <div style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: "1.8px", textTransform: "uppercase",
+          color: C.t4, padding: "0 6px 6px"
+        }}>Menu</div>
+        {NAV.map(n => {
+          const active = activeNav === n.k;
+          return (
+            <button key={n.k}
+              onClick={() => { setActiveNav(n.k); setSidebarOpen?.(false); }}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "9px 10px",
+                borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: active ? 600 : 500,
+                transition: "all .14s", marginBottom: 1, fontFamily: F, border: "none", textAlign: "left",
+                background: active ? C.blueLight : "transparent",
+                color: active ? C.blue : C.t3, position: "relative",
+              }}
+              onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = C.t1; } }}
+              onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.t3; } }}>
+              {active && <div style={{
+                position: "absolute", left: 0, top: "20%", bottom: "20%", width: 3,
+                background: C.blue, borderRadius: "0 3px 3px 0"
+              }} />}
+              <n.Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.l}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ margin: "4px 12px", borderTop: `1px solid ${C.border}` }} />
+      <div style={{ padding: "6px 8px 4px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 6px 6px" }}>
+          <Layers size={11} color={C.t4} />
+          <span style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: "1.8px",
+            textTransform: "uppercase", color: C.t4
+          }}>Categories</span>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 16px", minHeight: 0 }}>
+        <CategoryList categoryList={categoryList} activeCategory={activeCategory} onPick={setActiveCategory} />
+      </div>
+
+      {onToggleCollapse && (
+        <div style={{ borderTop: `1px solid ${C.border}`, padding: "6px 8px", flexShrink: 0 }}>
+          <button onClick={onToggleCollapse} title="Collapse sidebar"
+            style={{
+              width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+              borderRadius: 8, border: "none", background: "transparent", cursor: "pointer",
+              fontFamily: F, fontSize: 12, fontWeight: 500, color: C.t4, transition: "all .14s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = C.t1; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.t4; }}>
+            <ChevronsLeft size={15} strokeWidth={2} />
+            <span>Collapse</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 export const MyTasksScreen = ({
   currentUser, employees = [],
-  onSaveAndSubmit, categoryList = [], activeCategory, setActiveCategory, setActiveNav,
+  categoryList = [], activeCategory, setActiveNav,
   isSaving = false, onEditTask,
 }) => {
   const [scope, setScope] = useState("all");           // "all" | "self" | "others"
@@ -231,6 +336,8 @@ export const MyTasksScreen = ({
   const [detailKey, setDetailKey] = useState(null);
 
   const isMobile = useIsMobile();
+  const bp = useBreakpoint();
+  const overlayPanel = bp === "compact";   // small laptop: panel floats over table instead of pushing it
   const { show: toast, ToastUI } = useToast();
   const tod = todayStr();
 
@@ -338,7 +445,7 @@ export const MyTasksScreen = ({
     const set = new Set(scopedTasks.map(t => t.assigned_to_name).filter(Boolean));
     return [...set].sort();
   }, [scopedTasks]);
- 
+
 
   const handleStatusChange = useCallback(async (key, newStatus) => {
     const upd = p => p.map(t => (t._key === key || String(t.line_id) === String(key)) ? { ...t, status: newStatus } : t);
@@ -385,7 +492,7 @@ export const MyTasksScreen = ({
 
   const openDetail = useCallback(k => setDetailKey(k), []);
 
-  const categoryOptions = useMemo(() => categoryList.map(c => c.category), [categoryList]); 
+  const categoryOptions = useMemo(() => categoryList.map(c => c.category), [categoryList]);
   const FPILLS = [
     { k: "all", l: "All" },
     { k: "pending", l: "Pending" },
@@ -414,18 +521,28 @@ export const MyTasksScreen = ({
 
   const hasMoreFiltersActive = filterEmployee || filterCategory || ["overdue", "today", "high"].includes(filter);
   const moreFilterCount = [filterEmployee, filterCategory, ["overdue", "today", "high"].includes(filter) ? filter : null].filter(Boolean).length;
-
+  const detailPanelEl = detailTask && (
+    <DetailPanel
+      key={detailTask._key}
+      task={detailTask}
+      onClose={() => setDetailKey(null)}
+      onEdit={() => { onEditTask?.(detailTask); setDetailKey(null); }}
+      onDelete={delTask}
+      onToggle={toggle}
+      readOnly={!(!detailTask.assigned_by || isMine(detailTask.assigned_by))}
+      isMobile={isMobile}
+      employees={employees}
+    />
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: C.bg }}>
       <ToastUI />
 
-  <div className="wd-toolbar" style={{
+      <div className="wd-toolbar" style={{
         padding: "10px 20px", display: "flex", alignItems: "center", gap: 8,
         flexShrink: 0, flexWrap: "wrap", borderBottom: `1px solid ${C.border}`, background: C.surface,
       }}>
-
-        {/* ── Left group: scope + pills + more filters ── */}
         <div className="wd-left-group" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
 
           <div style={{ position: "relative", flexShrink: 0 }}>
@@ -470,10 +587,8 @@ export const MyTasksScreen = ({
               </>
             )}
           </div>
-
-          {/* Status quick pills — mobile pe sirf "Pending" bahar, baaki More filters me chale jaate hain */}
           <div className="wd-pills" style={{ display: "flex", gap: 5, flexShrink: 0, overflowX: "auto", scrollbarWidth: "none" }}>
-            {(isMobile ? FPILLS.filter(fp => fp.k === "pending") : FPILLS).map(fp => {  {/* ▼ CHANGED */}
+            {(isMobile ? FPILLS.filter(fp => fp.k === "pending") : FPILLS).map(fp => {
               const active = filter === fp.k;
               return (
                 <button key={fp.k} onClick={() => setFilter(fp.k)}
@@ -487,7 +602,7 @@ export const MyTasksScreen = ({
                 </button>
               );
             })}
-          </div> 
+          </div>
           <div style={{ position: "relative", flexShrink: 0 }}>
             <button onClick={() => setMoreFiltersOpen(o => !o)}
               style={{
@@ -517,7 +632,7 @@ export const MyTasksScreen = ({
                   display: "flex", flexDirection: "column", gap: 10,
                 }}>
                   <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                    {(isMobile ? [...FPILLS.filter(fp => fp.k !== "pending"), ...MORE_FPILLS] : MORE_FPILLS).map(fp => {  {/* ▼ CHANGED */}
+                    {(isMobile ? [...FPILLS.filter(fp => fp.k !== "pending"), ...MORE_FPILLS] : MORE_FPILLS).map(fp => {
                       const active = filter === fp.k;
                       return (
                         <button key={fp.k} onClick={() => setFilter(active ? "all" : fp.k)}
@@ -538,7 +653,7 @@ export const MyTasksScreen = ({
                     <option value="">All employees</option>
                     {employeeOptions.map(e => <option key={e} value={e}>{e}</option>)}
                   </select>
- 
+
                   <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
                     style={{ padding: "7px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12.5, fontFamily: F, color: C.t2, background: C.bg, cursor: "pointer" }}>
                     <option value="">All categories</option>
@@ -546,7 +661,7 @@ export const MyTasksScreen = ({
                   </select>
 
                   {hasMoreFiltersActive && (
-                    <button onClick={() => { setFilterEmployee("");  setFilterCategory(""); if (["overdue", "today", "high"].includes(filter)) setFilter("all"); }}
+                    <button onClick={() => { setFilterEmployee(""); setFilterCategory(""); if (["overdue", "today", "high"].includes(filter)) setFilter("all"); }}
                       style={{
                         padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`,
                         fontSize: 12, fontFamily: F, color: C.t3, background: C.bg, cursor: "pointer",
@@ -562,8 +677,6 @@ export const MyTasksScreen = ({
         </div>
 
         <div className="wd-spacer" style={{ flex: 1 }} />
-
-        {/* ── Right group: search + actions ── */}
         <div className="wd-right-group" style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
 
           <div className="wd-search-wrap" style={{
@@ -578,20 +691,14 @@ export const MyTasksScreen = ({
               <X size={13} />
             </button>}
           </div>
-
-          {/* New task */}
           <button onClick={() => setActiveNav?.("diaryentry")} style={{ ...btnPrimary, fontSize: 12.5, flexShrink: 0 }}>
             <Plus size={14} color="#fff" />
             <span className="wd-new-task-label">{!isMobile && "New task"}</span>
           </button>
-
-          {/* Refresh */}
           <button onClick={loadAll} disabled={loading}
             style={{ ...btnSecondary, padding: "8px 10px", flexShrink: 0, opacity: loading ? .6 : 1 }}>
             <RefreshCw size={14} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
           </button>
-
-          {/* View toggle */}
           <div style={{ display: "flex", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: 3, gap: 2, flexShrink: 0 }}>
             {[{ v: "table", Icon: Table2 }, { v: "grid", Icon: LayoutGrid }].map(({ v, Icon: Ic }) => (
               <button key={v} onClick={() => setViewMode(v)}
@@ -608,10 +715,8 @@ export const MyTasksScreen = ({
           </div>
         </div>
       </div>
-
-      {/* Body */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 24px" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0, position: "relative" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 24px", minWidth: 0 }}>
 
           {loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 0", color: C.t4, fontSize: 13, fontFamily: F }}>
@@ -631,7 +736,7 @@ export const MyTasksScreen = ({
               </div>
             </div>
           ) : viewMode === "grid" ? (
-            <AnimatePresence mode="popLayout"> 
+            <AnimatePresence mode="popLayout">
               <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingTop: 16 }}>
                 {gridSections.own.length > 0 && (
                   <SectionGroup label="My own tasks" count={gridSections.own.length} accentColor="#185FA5" badgeBg="#E6F1FB" badgeColor="#0C447C" lineBg="#E6F1FB">
@@ -671,25 +776,29 @@ export const MyTasksScreen = ({
           ) : (
             <div style={{ paddingTop: 16 }}>
               <TaskTable tasks={filtered} onOpen={openDetail} onDelete={delTask} onStatusChange={handleStatusChange} selectedKey={detailKey}
-  isEditable={t => !t.assigned_by || isMine(t.assigned_by)} />
+                isEditable={t => !t.assigned_by || isMine(t.assigned_by)} />
             </div>
           )}
         </div>
-
         <AnimatePresence>
-          {detailTask && (
-            <DetailPanel
-              key={detailTask._key}
-              task={detailTask}
-              onClose={() => setDetailKey(null)}
-              onEdit={() => { onEditTask?.(detailTask); setDetailKey(null); }}
-              onDelete={delTask}
-              onToggle={toggle}
-              readOnly={!(!detailTask.assigned_by || isMine(detailTask.assigned_by))}
-              isMobile={isMobile}
-              employees={employees}
-            />
-          )}
+          {detailTask && (overlayPanel ? (
+            <motion.div key="wd-panel-overlay"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: .15 }}
+              style={{ position: "absolute", inset: 0, zIndex: 30, display: "flex", justifyContent: "flex-end" }}>
+              <div onClick={() => setDetailKey(null)}
+                style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,.18)" }} />
+              <motion.div
+                initial={{ x: 40 }} animate={{ x: 0 }} exit={{ x: 40 }}
+                transition={{ duration: .18, ease: "easeOut" }}
+                style={{
+                  position: "relative", height: "100%", maxWidth: "100%", display: "flex",
+                  background: C.surface, boxShadow: "-10px 0 30px rgba(15,23,42,.16)",
+                }}>
+                {detailPanelEl}
+              </motion.div>
+            </motion.div>
+          ) : detailPanelEl)}
         </AnimatePresence>
       </div>
       <style>{`

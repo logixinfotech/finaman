@@ -1,35 +1,13 @@
-/**
- * ERPFormModal — Universal Modal Wrapper
- *
- * Tumhara koi bhi existing form component isko pass karo,
- * woh modal ke andar exactly waise hi render hoga.
- *
- * Usage:
- *   <ERPFormModal
- *     isOpen={showModal}
- *     onClose={() => setShowModal(false)}
- *     size="md"           // "sm" | "md" | "lg" | "xl" | "2xl" | "full"
- *   >
- *     <AddUserMaster
- *       formData={formData}
- *       setFormData={setFormData}
- *       mode={mode}
- *       onSave={handleSave}
- *       onCancel={() => setShowModal(false)}
- *       ...baki saare props
- *     />
- *   </ERPFormModal>
- */
 
-import React, { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 const sizeMap = {
-  sm:   "max-w-sm",
-  md:   "max-w-md",
-  lg:   "max-w-lg",
-  xl:   "max-w-xl",
-  "2xl":"max-w-2xl",
-  "3xl":"max-w-3xl",
+  sm: "max-w-sm",
+  md: "max-w-md",
+  lg: "max-w-lg",
+  xl: "max-w-xl",
+  "2xl": "max-w-2xl",
+  "3xl": "max-w-3xl",
   full: "max-w-[95vw]",
 };
 
@@ -40,8 +18,6 @@ const ERPFormModal = ({
   size = "2xl",
   closeOnBackdrop = true,
 }) => {
-
-  // Escape key se band ho
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => { if (e.key === "Escape") onClose(); };
@@ -72,7 +48,6 @@ const ERPFormModal = ({
         className={`w-full ${sizeMap[size] ?? sizeMap["2xl"]} max-h-[95vh] overflow-hidden`}
         style={{ animation: "erpFMIn 0.18s cubic-bezier(.4,0,.2,1)" }}
       >
-        {/* Tumhara existing form — bilkul as-is */}
         {children}
       </div>
 

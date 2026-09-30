@@ -1,4 +1,5 @@
 import { getPayslipData } from "./api";
+import config from "../config";
 
 const numberToWords = (num) => {
   if (!num || num === 0) return "Zero";
@@ -21,7 +22,7 @@ const inrFmt = (n) => Math.round(n || 0).toLocaleString("en-IN");
 const fetchPhotoBase64 = async (photoPath) => {
   if (!photoPath) return "";
   try {
-    const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:63554";
+    const baseUrl = config.apiUrl;
     const r = await fetch(`${baseUrl}${photoPath}`);
     const blob = await r.blob();
     return await new Promise((res) => {

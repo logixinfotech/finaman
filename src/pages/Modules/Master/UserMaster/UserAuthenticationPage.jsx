@@ -3,26 +3,13 @@ import { fetchUsers } from "../../../../utils/api";
 import Table from "../../../../components/Reusable/table/Table";
 import UserAuthForm from "../UserMaster/UserAuthForm";
  import { useERPMode } from "../../../../components/Reusable/form/useFormMode"; 
-import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
+import {   alertError } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 
   const columns = [
     { key: "user_id",   label: "User ID",           className: "font-bold text-blue-600" },
     { key: "user_name", label: "User Name" },
     { key: "role",      label: "Role / Designation" },
-    {
-      key: "block",
-      label: "Status",
-      render: (row) => (
-        <span className={`px-2 py-0.5 rounded-full text-[10px]   ${
-          row.block === 0
-            ? "bg-green-100 text-green-700"
-            : "bg-red-100 text-red-700"
-        }`}>
-          {row.block === 0 ? "ACTIVE" : "BLOCKED"}
-        </span>
-      ),
-    },
   ];
 const UserAuthenticationPage = ({ tab }) => {
   const [list, setList]               = useState([]);
@@ -31,33 +18,27 @@ const UserAuthenticationPage = ({ tab }) => {
 
   const {
     mode,
-    formData, setFormData,
+     setFormData,
     showForm, setShowForm,
     saving,
     handleEditCancel,
     handleView,
-    handleAdd,        
     handleModify,
-    performSave,
     rights,
     activeTab, setActiveTab,
   } = useERPMode(
-    {},                         // initialState — auth form has no editable top-level fields
-    async (data, isEdit) => {   // save callback — not used in auth master but required by hook
+    {},                          
+    async (data, isEdit) => {   
       return { success: true };
     },
-    () => loadUsers(),          // refresh after save
+    () => loadUsers(),        
     tab?.appl_name
   );
-
-  /* ── Tab helpers (mirrors UserGroupMasterPage) ── */
   const handleTabChange = (targetTab) => {
     setActiveTab(targetTab);
     if (targetTab === "search") setShowForm(false);
     if (targetTab === "entry")  setShowForm(true);
   };
-
-  /* ── Data loading ── */
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);

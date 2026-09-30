@@ -13,12 +13,29 @@ const initialState = {
   max_days: "",
   description: "",
   applicable: "All", // Default value
+  is_paid: 1,
 };
 
 const columns = [
   { key: "leave_code", label: "Code" },
   { key: "leave_name", label: "Leave Name" },
   { key: "max_days", label: "Max Days" },
+  { 
+    key: "is_paid", 
+    label: "Type",
+    render: (row) => {
+      const isPaid = row.is_paid === true || row.is_paid === 1 || row.is_paid === "1" || row.is_paid === undefined;
+      return (
+        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+          isPaid
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-rose-50 text-rose-700 border border-rose-200"
+        }`}>
+          {isPaid ? "Paid" : "Unpaid"}
+        </span>
+      );
+    }
+  },
   { key: "applicable", label: "Applicable To" },
   { key: "description", label: "Description" },
 ];

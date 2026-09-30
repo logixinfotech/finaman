@@ -34,20 +34,25 @@ const CompanyMasterEntry = ({
   onHeaderTabChange,
   showSettingsTab = false,
 }) => {
-  const activeTab="basic"
   const isViewMode = mode === "view";
-  const [localTab, setLocalTab] = useState(activeTab ?? tabs[0]);
+const [localTab, setLocalTab] = useState(formTab ?? tabs[0]);
   const [countryNames, setCountryNames] = useState([]);
   const [stateNames, setStateNames] = useState([]);
-console.log(activeTab);
-  useEffect(() => {
-    if (activeTab && activeTab !== localTab) setLocalTab(activeTab);
-  }, [activeTab]);
+  const tabStage = {};   // module-level, har render par same object
+ 
+ useEffect(() => {
+  if (formTab && formTab !== localTab) setLocalTab(formTab);
+}, [formTab]);
 
   const handleTabChange = useCallback((t) => {
+    console.log(t);
     setLocalTab(t);
     onFormTabChange?.(t);
   }, [onFormTabChange]);
+  useEffect(() => {
+  console.log("MOUNTED");
+  return () => console.log("UNMOUNTED");
+}, []);
 
   useEffect(() => {
     fetchCountries()
@@ -135,9 +140,9 @@ const handleKeyDown = useCallback((e) => {
     >
       <ERPFormBuilder
         title="Company Master"
-        currentIndex={currentRecord}      // 👈
-        totalRecords={totalRecords}        // 👈
-        onPrevRecord={onPrevRecord}        // 👈
+        currentIndex={currentRecord}      
+        totalRecords={totalRecords}        
+        onPrevRecord={onPrevRecord}        
         onNextRecord={onNextRecord}  
         sidebarName="company_name"
         sidebarSub="business_type"
@@ -148,7 +153,7 @@ const handleKeyDown = useCallback((e) => {
           </svg>
         }
         tabs={tabs}
-        formTab={formTab}
+        tabStage={tabStage}
         fieldGroups={fieldGroups}
         sidebarConfig={sidebarConfig(formData)}
         configs={configs}
@@ -176,11 +181,8 @@ const handleKeyDown = useCallback((e) => {
         validateSingleField={validateSingleField}
         onPrint={onPrint}
         onEditCancel={onEditCancel}
-        currentRecord={currentRecord}
-        totalRecords={totalRecords}
-        activeTab={localTab}
+        currentRecord={currentRecord} 
         showSettingsTab={showSettingsTab} 
-        onTabChange={handleTabChange}
         onHeaderTabChange={onHeaderTabChange}
         settingsConfig={COMPANY_SETTINGS_CONFIG}    // ← add
         settingsDefaults={COMPANY_SETTINGS_DEFAULTS} // ← add

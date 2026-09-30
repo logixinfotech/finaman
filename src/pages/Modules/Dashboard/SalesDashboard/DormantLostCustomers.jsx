@@ -1,8 +1,11 @@
 import { useMemo, useState, useCallback } from "react";
 import { inrS } from "../../../../utils/helpers";
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { UserX } from "lucide-react";
 
 const THRESHOLD_DAYS = 90;
-const STORAGE_KEY = "dormantCustomerNotes"; // { [custId]: { note, followedUp } }
+const STORAGE_KEY = "dormantCustomerNotes";  
 
 function loadNotes() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch { return {}; }
@@ -10,12 +13,18 @@ function loadNotes() {
 function saveNotes(notes) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); } catch { /* storage unavailable — ignore */ }
 }
-
-// NOTE: notes/follow-up flags abhi localStorage mein hain (sirf isi browser
-// mein save honge, doosre user/device pe nahi dikhenge) — kyunki backend mein
-// abhi koi customer-notes table nahi hai. Ye stopgap hai. Agar client ko
-// shared/multi-user notes chahiye, ek chhoti `customer_notes` table + 2 API
-// routes (save/list) banane honge — batao to wo bhi kar deta hoon.
+const EXPORT_COLS = [
+  { key: "cust",   label: "Customer" },
+  { key: "custId", label: "Customer ID" },
+  { key: "city",   label: "City" },
+  { key: "state",  label: "State" },
+  { key: "last",   label: "Last Order", type: "date" },
+  { key: "days",   label: "Days Since", type: "int" },
+  { key: "amt",    label: "Past Sales (₹)", type: "num" },
+  { key: "inv",    label: "Past Invoices", type: "int" },
+  { key: "followedUp", label: "Followed Up" },
+  { key: "note",   label: "Note" },
+];
 export default function DormantLostCustomers({ hist, refDate }) {
   const [notes, setNotes] = useState(loadNotes);
   const [openId, setOpenId] = useState(null);
@@ -28,6 +37,12 @@ export default function DormantLostCustomers({ hist, refDate }) {
       .filter((h) => h.days >= THRESHOLD_DAYS)
       .sort((a, b) => (b.amt || 0) - (a.amt || 0));
   }, [hist, refDate]);
+
+  /* export includes the local follow-up status and note for each customer */
+  const exportRows = useMemo(
+    () => list.map((h) => ({ ...h, followedUp: notes[h.custId]?.followedUp ? "Yes" : "No", note: notes[h.custId]?.note || "" })),
+    [list, notes]
+  );
 
   const toggleFollowedUp = useCallback((custId) => {
     setNotes((prev) => {
@@ -53,7 +68,9 @@ export default function DormantLostCustomers({ hist, refDate }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">💤 Dormant / Lost Customer List</h4>
+      <SectionHeader icon={UserX} accent="amber" title="Dormant / Lost Customer List" className="mb-4">
+        <ExportMenu title="Dormant Lost Customers" columns={EXPORT_COLS} rows={exportRows} />
+      </SectionHeader>
       <p className="text-[11px] text-slate-500 mb-3">{list.length} customers with no order in {THRESHOLD_DAYS}+ days</p>
       <div className="max-h-96 overflow-y-auto divide-y divide-slate-100">
         {list.map((h) => {
@@ -71,7 +88,7 @@ export default function DormantLostCustomers({ hist, refDate }) {
                     onClick={() => toggleFollowedUp(h.custId)}
                     className={`rounded-md px-2 py-1 text-[10px] font-semibold ${n.followedUp ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
                   >
-                    {n.followedUp ? "✓ Followed up" : "Mark followed up"}
+                    {n.followedUp ? "Followed up" : "Mark followed up"}
                   </button>
                   <button
                     onClick={() => openNoteEditor(h.custId)}
@@ -103,7 +120,7 @@ export default function DormantLostCustomers({ hist, refDate }) {
             </div>
           );
         })}
-        {!list.length && <p className="py-6 text-center text-xs text-slate-400">No dormant customers 🎉</p>}
+        {!list.length && <p className="py-6 text-center text-xs text-slate-400">No dormant customers</p>}
       </div>
     </div>
   );

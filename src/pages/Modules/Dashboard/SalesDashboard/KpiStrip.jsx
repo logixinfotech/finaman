@@ -21,7 +21,7 @@ function KpiStrip({ kpis, loading }) {
       { icon: Landmark, label: "Total GST", value: inrS(s.gst || 0), sub: `${s.amt ? ((s.gst / s.amt) * 100).toFixed(1) : 0}% of sales` },
       { icon: FileText, label: "Invoices", value: (s.nInv || 0).toLocaleString("en-IN"), sub: `Avg ${inrS(avgInv)}` },
       { icon: Users, label: "Customers", value: (s.nCust || 0).toLocaleString("en-IN"), sub: `${s.nCity || 0} cities · ${s.nState || 0} states` },
-      { icon: Package, label: "Qty Sold", value: (s.qty || 0).toLocaleString("en-IN"), sub: `${s.nProd || 0} products` },
+      { icon: Package, label: "Qty Sold", value: Math.round(s.qty || 0).toLocaleString("en-IN"), sub: `${s.nProd || 0} products` },  // whole units, same as the charts
     ];
   }, [kpis]);
 

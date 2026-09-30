@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Lock, Eye, EyeOff, LogIn,
-  AlertCircle, ArrowLeft, Loader2,
+  AlertCircle,  Loader2,
   MonitorX, Building2, CalendarDays, Hash,
-  Minus, X as CloseIcon, ShieldCheck
+  X as CloseIcon,  
 } from "lucide-react";
 import { authenticateUser, selectCompany } from "../../utils/api";
 import { useAuth } from "../../theme/AuthContext";
@@ -38,37 +38,7 @@ const fieldsVariant = {
   },
 };
 
-const DEFAULT_ACC_YEAR = "2024-2025";
-
-function AuthIllustration() {
-  return (
-    <svg viewBox="0 0 220 200" className="w-full h-full" aria-hidden="true">
-      <ellipse cx="40" cy="170" rx="38" ry="14" fill="#dbeafe" />
-      <ellipse cx="180" cy="150" rx="30" ry="11" fill="#e0edff" />
-      <ellipse cx="110" cy="185" rx="55" ry="12" fill="#eaf2ff" />
-
-      <path d="M110 60 L150 75 V110 C150 140 130 160 110 168 C90 160 70 140 70 110 V75 Z" fill="#2563eb" />
-      <path d="M110 68 L142 80 V110 C142 134 126 150 110 157 C94 150 78 134 78 110 V80 Z" fill="#3b82f6" />
-      <rect x="98" y="103" width="24" height="20" rx="3" fill="#eff6ff" />
-      <rect x="103" y="95" width="14" height="14" rx="7" fill="none" stroke="#eff6ff" strokeWidth="4" />
-
-      <circle cx="150" cy="55" r="14" fill="#1e3a8a" />
-      <path d="M126 118 C126 95 174 95 174 118 V132 H126 Z" fill="#1e3a8a" />
-
-      <circle cx="65" cy="70" r="17" fill="#1d4ed8" />
-      <path d="M35 145 C35 115 95 115 95 145 V160 H35 Z" fill="#1d4ed8" />
-      <path d="M50 138 L65 148 L80 138 L80 160 H50 Z" fill="#ffffff" />
-
-      <circle cx="95" cy="80" r="15" fill="#2563eb" />
-      <path d="M68 150 C68 122 122 122 122 150 V165 H68 Z" fill="#2563eb" />
-      <path d="M80 143 L95 152 L110 143 L110 165 H80 Z" fill="#eff6ff" />
-
-      <circle cx="30" cy="40" r="3" fill="#bfdbfe" />
-      <circle cx="195" cy="60" r="2.5" fill="#bfdbfe" />
-      <circle cx="185" cy="30" r="2" fill="#bfdbfe" />
-    </svg>
-  );
-}
+const DEFAULT_ACC_YEAR = "2024-2025"; 
 
 function LoginPage({ onLoginSuccess }) {
    const { login } = useAuth();
@@ -104,12 +74,7 @@ function LoginPage({ onLoginSuccess }) {
   const filteredCompanies = companies.filter(c =>
     c.company?.toLowerCase().includes(search.toLowerCase()) ||
     c.com_code?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const accYears = Array.from(
-    new Set(companies.map(c => c.acc_year || DEFAULT_ACC_YEAR))
-  ).sort();
-
+  ); 
   useEffect(() => {
     if (highlightedIndex >= filteredCompanies.length) {
       setHighlightedIndex(filteredCompanies.length - 1);
@@ -364,7 +329,7 @@ onLoginSuccess();
             )}
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence >
             {step === "credentials" && (
               <motion.form
                 key="login-form"

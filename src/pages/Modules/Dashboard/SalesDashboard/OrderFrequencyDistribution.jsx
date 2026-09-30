@@ -1,6 +1,13 @@
 import { useMemo } from "react";
 import { ordersOf } from "../../../../utils/orderHelpers";
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { BarChart3 } from "lucide-react";
 
+const EXPORT_COLS = [
+  { key: "label", label: "Orders" },
+  { key: "count", label: "Customers", type: "int" },
+];
 export default function OrderFrequencyDistribution({ rows }) {
   const data = useMemo(() => {
     const ords = ordersOf(rows);
@@ -20,7 +27,9 @@ export default function OrderFrequencyDistribution({ rows }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">📊 Order Frequency Distribution</h4>
+      <SectionHeader icon={BarChart3} accent="indigo" title="Order Frequency Distribution" className="mb-4">
+        <ExportMenu title="Order Frequency Distribution" columns={EXPORT_COLS} rows={data} />
+      </SectionHeader>
       <div className="flex items-end gap-2" style={{ height: 220 }}>
         {data.map((d) => (
           <div key={d.label} className="flex flex-1 flex-col items-center justify-end gap-1.5">

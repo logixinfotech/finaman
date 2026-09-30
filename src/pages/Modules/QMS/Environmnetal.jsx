@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { FaThermometerHalf, FaClipboardCheck, FaFlagCheckered, FaHistory } from "react-icons/fa";
+import { FaThermometerHalf, FaClipboardCheck, FaFlagCheckered, FaHistory,  } from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -9,6 +9,7 @@ import { useQmsModule } from "./Utils/useQmsModule";
 import { useRefOptions } from "./Utils/useRefOptions";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
 import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+import * as FaIcons from "react-icons/fa"; 
 import {
   envTabs, envTabStage, envTabLabels,
   getEnvFieldGroups, getEnvRequired,
@@ -110,6 +111,10 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
       contextLabel: m.formData?.Area,
     }).catch((err) => console.error('Print open failed:', err));
   }, [m.formData, printWorkflow]);
+          const ModuleIcon = useMemo(() => {
+                const name = tab?.icon_name || tab?.module?.icon_name;
+                return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+              }, [tab?.icon_name, tab?.module?.icon_name]);
 
   if (printWorkflow.isOpen) {
     return (
@@ -124,8 +129,11 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Environmental Monitoring"
+          subtitle={m.formData?.RecordNo || "New"}   
+          TitleIcon={ModuleIcon}
           tabs={envTabs}
           tabLabels={envTabLabels}
+          tabStage={envTabStage}
           TabIcon={EnvTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -155,7 +163,7 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
              onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -176,7 +184,8 @@ export default function EnvironmentalMonitoringMasterPage({ tab }) {
   return (
     <div className="h-full w-full">
       <Table
-        title="Environmental Monitoring Register"
+        title="Environmental Monitoring"
+          TitleIcon={ModuleIcon}
         data={filteredList}
         columns={envTableColumns}
         rowKey="Id"

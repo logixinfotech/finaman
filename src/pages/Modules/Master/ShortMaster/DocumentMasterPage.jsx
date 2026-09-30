@@ -163,7 +163,8 @@ const DocumentMasterPage = ({ tab }) => {
     const handleTabChange = (targetTab) => {
         if (targetTab === "search") setShowForm(false);
         if (targetTab === "entry") setShowForm(true);
-    };const listWithSr = list.map((item, index) => ({
+    };
+    const listWithSr = list.map((item, index) => ({
   ...item,
   Sr: index + 1
 }));
@@ -198,18 +199,19 @@ const DocumentMasterPage = ({ tab }) => {
                     onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
                 />
             ) : (
-                <Table
-                    title="Document Master"
-                    data={listWithSr}
-                    columns={columns}
-                    activeTab={"search"}
-                    onTabChange={handleTabChange}
-                    rowKey="group_id"
-                    loading={loading}
-                    onAdd={rights.add === 1 ? handleAdd : null}
-                    onRowDoubleClick={handleRowSelect}
-                    onDeleteMultiple={handleDeleteMultiple}
-                />
+             <Table
+    title="Document Master"
+    activeTab="search"
+    onTabChange={handleTabChange}
+    data={listWithSr}
+    columns={columns}
+    rowKey="group_id"
+    loading={loading}
+    onRefresh={loadGroups}
+    onAdd={rights.add === 1 ? handleAdd : null}
+    onRowDoubleClick={handleRowSelect}
+    onDeleteMultiple={handleDeleteMultiple}
+/>
             )}
         </div>
     );

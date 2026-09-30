@@ -1,10 +1,11 @@
 import { useMemo, useState, memo } from "react";
 import { AlertTriangle, Clock, Phone, Mail, Inbox, ChevronDown, Filter } from "lucide-react";
 import { inrS, dmy, toD } from "../../../../utils/helpers";
+import ExportMenu from "./ExportMenu";
 
-/* Follow-up rules. Ye ALERT_RULE_CONFIG table me jaane chahiye (sheet ka
-   "IF order meets pending/follow-up rule" — thresholds configurable hone chahiye).
-   Table banne tak yahan se ek jagah control hota hai. */
+/* Follow-up rules. These belong in an ALERT_RULE_CONFIG table (the spec's
+   "IF order meets pending/follow-up rule" — thresholds must be configurable).
+   Until that table exists, this is the single place to control them. */
 const RULES = {
   critical: { days: 90, label: "Critical", cls: "bg-rose-50 border-rose-200 text-rose-700",    dot: "bg-rose-500"   },
   high:     { days: 60, label: "High",     cls: "bg-orange-50 border-orange-200 text-orange-700", dot: "bg-orange-500" },
@@ -12,6 +13,26 @@ const RULES = {
   low:      { days: 0,  label: "Low",      cls: "bg-slate-50 border-slate-200 text-slate-600",  dot: "bg-slate-400"  },
 };
 const SEVERITY_ORDER = ["critical", "high", "medium", "low"];
+const EXPORT_COLS = [
+  { key: (o) => RULES[o.sev]?.label, label: "Severity" },
+  { key: "ord",   label: "Order No" },
+  { key: "dt",    label: "Order Date", type: "date" },
+  { key: "days",  label: "Open Days", type: "int" },
+  { key: "cust",  label: "Customer" },
+  { key: "city",  label: "City" },
+  { key: "state", label: "State" },
+  { key: "pay",   label: "Pay Terms" },
+  { key: "qo",    label: "Qty Ordered", type: "int" },
+  { key: "supplied", label: "Qty Supplied", type: "int" },
+  { key: "balance",  label: "Qty Balance", type: "int" },
+  { key: "pct",   label: "Fulfilled %", type: "pct" },
+  { key: "amt",   label: "Order Value (₹)", type: "num" },
+  { key: "atRisk", label: "Value at Risk (₹)", type: "num" },
+  { key: "contact", label: "Contact" },
+  { key: "mobile",  label: "Mobile" },
+  { key: "email",   label: "Email" },
+  { key: (o) => (o.items || []).join("; "), label: "Items" },
+];
 
 function severityOf(days) {
   if (days >= RULES.critical.days) return "critical";
@@ -20,18 +41,18 @@ function severityOf(days) {
   return "low";
 }
 
-/* Line rows -> order rows. Fulfillment ka source:
-   invQty (asli invoiced, FIN_SALES se) preferred, SALE_QTY fallback.
-   Kyun: SALE_QTY ka write-back Dec-2025 se pehle ke orders me chala hi nahi
-   tha — sab 0 pade hain jabki invoice ho chuki thi. Us field pe bharosa karne
-   se ~26k legacy lines "100% pending" dikhti hain, jo galat hai.
-   NOTE: invQty ORDER-level hai (saare items ka jod), isliye sum nahi karte —
-   ek baar uthate hain. Per-item fulfillment isse nahi nikal sakta. */
+/* Line rows -> order rows. Source of fulfillment:
+   invQty (actual invoiced qty from FIN_SALES) preferred, SALE_QTY as fallback.
+   Why: the SALE_QTY write-back never ran for orders before Dec-2025 — they are
+   all 0 even though they were invoiced. Trusting that field made ~26k legacy
+   lines show as "100% pending", which is wrong.
+   NOTE: invQty is ORDER-level (sum of all items), so it is read once, never
+   summed per line. Per-item fulfillment cannot be derived from it. */
 function buildPendingOrders(rows, refDate) {
   const m = new Map();
 
   for (const r of rows) {
-    if (r.cancelDt) continue;              // cancelled orders follow-up ke liye nahi
+    if (r.cancelDt) continue;              // cancelled orders need no follow-up
     let o = m.get(r.ord);
     if (!o) {
       o = {
@@ -56,7 +77,7 @@ function buildPendingOrders(rows, refDate) {
   for (const o of m.values()) {
     const supplied = o.invQty != null ? o.invQty : o.qsField;
     const balance = Math.max(0, o.qo - supplied);
-    if (balance <= 0) continue;            // poora supply ho chuka — koi alert nahi
+    if (balance <= 0) continue;            // fully supplied — no alert
 
     const days = o.dt ? Math.round((toD(refDate) - toD(o.dt)) / 86400000) : 0;
     const pct = o.qo > 0 ? (supplied / o.qo) * 100 : 0;
@@ -74,7 +95,7 @@ function buildPendingOrders(rows, refDate) {
     });
   }
 
-  // severity pehle, phir value at risk — pehle sabse mehnga critical
+  // severity first, then value at risk — the costliest critical order on top
   return out.sort(
     (a, b) =>
       SEVERITY_ORDER.indexOf(a.sev) - SEVERITY_ORDER.indexOf(b.sev) ||
@@ -117,14 +138,18 @@ function PendingOrderAlerts({ rows, refDate, initialLimit = 15 }) {
             </span>
           )}
         </div>
-        {sevFilter && (
-          <button
-            onClick={() => setSevFilter("")}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-50"
-          >
-            <Filter className="h-3 w-3" /> Clear
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {sevFilter && (
+            <button
+              onClick={() => setSevFilter("")}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-50"
+            >
+              <Filter className="h-3 w-3" /> Clear
+            </button>
+          )}
+          {/* exports the whole list for the active severity, not only the rows shown */}
+          <ExportMenu title={sevFilter ? `Pending Orders - ${RULES[sevFilter].label}` : "Pending Order Follow-up"} id="pending-alerts" columns={EXPORT_COLS} rows={list} />
+        </div>
       </div>
 
       {/* Severity summary — clickable filter */}

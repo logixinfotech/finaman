@@ -5,6 +5,7 @@ import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
 import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
 import { getHeaderStyle } from "./Utils/QmsValidation";
+import * as FaIcons from "react-icons/fa"; 
 import { useQmsModule } from "./Utils/useQmsModule";
 import {
   pmTabs, pmTabStage, pmTabLabels,
@@ -101,7 +102,10 @@ export default function PreventiveMaintenanceMasterPage({ tab }) {
       contextLabel: m.formData?.EquipmentName,
     }).catch((err) => console.error('Print open failed:', err));
   }, [m.formData, printWorkflow]);
-
+const ModuleIcon = useMemo(() => {
+                  const name = tab?.icon_name || tab?.module?.icon_name;
+                  return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+                }, [tab?.icon_name, tab?.module?.icon_name]);
   if (printWorkflow.isOpen) {
     return (
       <div className="h-full w-full">
@@ -115,8 +119,11 @@ export default function PreventiveMaintenanceMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Preventive Maintenance"
+          TitleIcon={ModuleIcon}
+          subtitle={m.formData?.RecordNo||"New"}
           tabs={pmTabs}
           tabLabels={pmTabLabels}
+          tabStage={pmTabStage}
           TabIcon={PmTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -146,7 +153,7 @@ export default function PreventiveMaintenanceMasterPage({ tab }) {
              onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
-          onModify={m.handleModify}
+          onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
@@ -167,6 +174,7 @@ export default function PreventiveMaintenanceMasterPage({ tab }) {
     <div className="h-full w-full">
       <Table
         title="Preventive Maintenance"
+        TitleIcon={ModuleIcon}
         data={filteredList}
         columns={pmTableColumns}
         rowKey="Id"

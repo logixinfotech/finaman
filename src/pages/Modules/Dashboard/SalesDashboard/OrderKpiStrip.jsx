@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { inr, inrS } from "../../../../utils/orderHelpers";
+import {   inrS } from "../../../../utils/orderHelpers";
 
 const CARDS = [
   { key: "amt",       label: "Order Value",     cls: "k1", fmt: (v) => inrS(v.amt) },

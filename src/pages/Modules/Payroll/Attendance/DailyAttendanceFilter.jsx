@@ -2,6 +2,8 @@ import { useState } from "react";
 const STATUS_OPTIONS = [
   { value: "PRESENT",     label: "Present" },
   { value: "ABSENT",      label: "Absent" },
+  { value: "WFH",         label: "WFH (Work From Home)" },
+  { value: "WFS",         label: "WFS (Work From Site)" },
   { value: "HOLIDAYS",    label: "Holiday" },
   { value: "WEEK OFF",    label: "Week Off" },
   { value: "HOLIDAY OT",  label: "Holiday OT" },

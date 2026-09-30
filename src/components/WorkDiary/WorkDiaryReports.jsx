@@ -1,16 +1,15 @@
-import { useState, useEffect, useMemo, useCallback } from "react"; 
+import { useState, useEffect, useMemo,  } from "react"; 
 import {
   F, FD, FM, C, STAT_BADGE, PRIO_CFG,
-  Avtar, PDot, ProgressRing, useToast,
-  TaskCard, TaskRow, DetailPanel, TaskModal, QuickAddBar,
-  todayStr, fmtHrs, fmtDate, newTask, getTimeAlert,
-  btnPrimary, btnSecondary, useIsMobile,
+  Avtar, PDot, 
+  
+  todayStr, fmtHrs, 
+  btnSecondary, 
 } from "./WorkDiaryForm";
-import { generateId } from "../../utils/helpers"; 
 import {
   ClipboardList, RefreshCw, CheckCircle2, AlertTriangle, Clock,
-  LayoutGrid, List, Search, X, RotateCcw, Plus,
-  Circle, Flag, BookOpen, Layers, ChevronRight, UserCheck,  CornerDownLeft, TrendingUp,
+  X, 
+  Flag,   TrendingUp,
 } from "lucide-react";
 
 // ─── DateRangePicker ──────────────────────────────────────────────
@@ -195,7 +194,6 @@ export const SummaryScreen = ({ list = [], currentUser }) => {
   const expHrsAll = allTasks.reduce((s,t)=>s+(parseFloat(t.expected_time)||0),0);
   const onTime    = allTasks.filter(t=>t.status==="Completed"&&(!t.due_date||t.due_date>=tod)).length;
   const onTimePct = totalDone ? Math.round((onTime/totalDone)*100) : 0;
-  const timeAcc   = expHrsAll > 0 ? Math.round((totalHrs/expHrsAll)*100) : 0;
 
   const streak = useMemo(() => {
     let s = 0;

@@ -81,6 +81,8 @@ export const getHeaderStyle = (title) => {
 // 4. VALIDATION & STRICTOR LENGTH RULES (Real-time slicing boundaries)
 // ==========================================
 export const STRICT_LENGTHS = {
+  com_code: 20,
+  database: 100,
   phone_number: 10,
   alt_phone: 10,
   postal_code: 6,
@@ -92,6 +94,17 @@ export const STRICT_LENGTHS = {
 };
 
 export const VALIDATION_RULES = {
+    company_name: { required: true, message: "Company Name is required" },
+  com_code: {
+    required: true,
+    pattern: /^[A-Z0-9]{2,20}$/,
+    message: "Company Code: 2-20 letters/digits, no spaces"
+  },
+  database: {
+    required: true,
+    pattern: /^[A-Za-z_][A-Za-z0-9_]{0,99}$/,
+    message: "Database name must start with a letter and contain only letters, digits or underscore"
+  },
   business_type: { required: true, message: "Select Business Type" },
   company_name: { required: true, message: "Company Name is required" },
   email_address: {
@@ -125,7 +138,21 @@ export const cleanAndSliceField = (key, rawValue) => {
   else if (lowerKey==="pan"|| lowerKey.includes("gstin") || lowerKey.includes("ifsc") || lowerKey.includes("cin") || lowerKey.includes("tan") || lowerKey.includes("swift")) {
     valueStr = valueStr.toUpperCase().replace(/[^A-Z0-9]/g, "");
   }
-
+  // 0. Registry keys
+  if (lowerKey === "com_code" || lowerKey === "com_id") {
+    valueStr = valueStr.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  }
+  else if (lowerKey === "database") {
+    valueStr = valueStr.replace(/[^A-Za-z0-9_]/g, "");
+  }
+  // 1. Force digits extraction only
+  else if (lowerKey.includes("phone") || lowerKey.includes("mobile") || lowerKey.includes("postal") || lowerKey.includes("pin") || lowerKey.includes("micr") || lowerKey.includes("aadhaar")) {
+    valueStr = valueStr.replace(/\D/g, "");
+  }
+  // 2. Force UpperCase identifiers
+  else if (lowerKey==="pan"|| lowerKey.includes("gstin") || lowerKey.includes("ifsc") || lowerKey.includes("cin") || lowerKey.includes("tan") || lowerKey.includes("swift")) {
+    valueStr = valueStr.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  }
   // 3. Strict Slice enforcement boundary check
   if (STRICT_LENGTHS[key]) {
     valueStr = valueStr.slice(0, STRICT_LENGTHS[key]);
@@ -143,6 +170,8 @@ export const sidebarConfig = (data = {}) => {
     completionPercentage: calculateCompanyProgress(data),
     
     quickInfo: [
+       { label: "Code", value: data.com_code || "—", icon: <FaIdCard className="text-[10px] text-blue-500" /> },
+      { label: "Database", value: data.database || "—", icon: <FaCogs className="text-[10px] text-slate-500" /> },
       {
   label: "Financial Year From",
   value: formatDate(data.fin_year_from),
@@ -171,6 +200,9 @@ export const fieldGroups = {
   basic: {
     "Basic Info": [
       { key: "company_name", label: "Company Name", type: "text" },
+      { key: "com_code", label: "Company Code", type: "text", placeholder: "e.g. LOGIX01" },
+      { key: "database", label: "Database", type: "text", placeholder: "Tenant DB name" },
+      { key: "com_id", label: "Company ID", type: "text", placeholder: "Auto" },
       { key: "trade_name", label: "Trade Name", type: "text" },
       { key: "business_type", label: "Business Type", type: "select", options: ["Manufacturing", "Trading", "Service", "Retail", "Multi Business"] },
     ],
@@ -293,6 +325,9 @@ export const fieldGroups = {
 // 6. WIDTH CONFIGURATION
 // ==========================================
 export const widthConfig = {
+    "Company Code": "col-span-1",
+  "Database": "col-span-1",
+  "Company ID": "col-span-1",
   "Full Address": "col-span-full",
   "Company Name": "col-span-3",
   "Trade Name": "col-span-1",
@@ -335,7 +370,7 @@ export const validateSingleField = (field, value) => {
   if (rule.pattern && val && !rule.pattern.test(val)) return rule.message;
   return "";
 };
-export const requiredFields = ["company_name", "business_type", "phone_number"];
+export const requiredFields = ["company_name", "com_code",  "business_type", "phone_number"];
 
 export const validateFullForm = (formData, groups) => {
   let errors = {};

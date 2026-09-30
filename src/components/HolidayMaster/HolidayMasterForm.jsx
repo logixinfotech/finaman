@@ -2,11 +2,9 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import ERPHeader from "../../components/Reusable/form/HeaderForm";
 import ERPFooter from "../../components/Reusable/form/FooterForm";
 import ERPDateInput from "../../components/Reusable/input/Date";
-import {
-  handleERPBackspaceNavigation,
-  handleERPEnterNavigation,
-} from "../../utils/erpShortcuts";
-import { User } from "lucide-react";
+import ERPAutocomplete from "../Reusable/input/ERPAutocomplete";
+
+const HOLIDAY_TYPE_OPTIONS = ["National", "Festival", "Restricted"];
 
 const HolidayMasterForm = ({
   formData = {},
@@ -32,7 +30,7 @@ const HolidayMasterForm = ({
   const isAddMode = mode === "add";
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
   const [errors, setErrors] = useState({});
-  const requiredFields = ["date", "purpose"];
+  const requiredFields = ["date", "purpose"]; // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isAddMode || isEditMode) {
@@ -45,8 +43,11 @@ const HolidayMasterForm = ({
   }, [isAddMode, isEditMode]);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+    let updated = { ...formData, [field]: value };
+    if (field === "holiday_type_code") {
+      updated.is_restricted = value === "Restricted" ? 1 : 0;
+    }
+    setFormData(updated);
     if (errors[field]) {
       setErrors((prev) => {
         const newErrs = { ...prev };
@@ -55,10 +56,9 @@ const HolidayMasterForm = ({
       });
     }
   };
-  const formRef = useRef(null);
   const saveBtnRef = useRef(null);
   const getInputClass = (isDisabled, fieldName) =>
-    `w-full h-[30px] px-2 text-[16px] border rounded-md outline-none transition-colors ${
+    `w-full h-[30px] px-2 text-[15px] border rounded-md outline-none transition-colors ${
       errors[fieldName] ? "border-red-500" : "border-gray-300"
     } ${
       isDisabled
@@ -76,7 +76,6 @@ const HolidayMasterForm = ({
       let val = formData[field];
       let isEmpty = !val || val.toString().trim() === "";
 
-      // Special check: Agar date me "/" ya "_" jaise mask characters aa rahe hain toh usko bhi empty mano
       if (field === "date" && val && typeof val === "string") {
         const cleanVal = val.replace(/[^a-zA-Z0-9]/g, "").trim();
         if (cleanVal === "") {
@@ -93,7 +92,6 @@ const HolidayMasterForm = ({
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
 
-      // Better Focus Logic: Use wrapper IDs or names
       setTimeout(() => {
         let targetInput = null;
 
@@ -109,9 +107,9 @@ const HolidayMasterForm = ({
         }
 
         if (targetInput) targetInput.focus();
-      }, 50); // Minor delay ensures DOM is ready
+      }, 50);
 
-      return; // Stop execution yahi par, aage save nahi hoga
+      return;
     }
 
     if (onSave) onSave(formData);
@@ -145,26 +143,25 @@ const HolidayMasterForm = ({
       if (e.shiftKey && e.key === "Backspace") {
         e.preventDefault();
         const prevField = focusableElements[index - 1];
-        prevField.focus();
-
-        setTimeout(() => {
-          if (prevField.setSelectionRange) {
-            const len = prevField.value?.length || 0;
-            prevField.setSelectionRange(len, len);
-          }
-        }, 0);
+        if (prevField) {
+          prevField.focus();
+          setTimeout(() => {
+            if (prevField.setSelectionRange) {
+              const len = prevField.value?.length || 0;
+              prevField.setSelectionRange(len, len);
+            }
+          }, 0);
+        }
       }
     },
-    [isViewMode, handleValidateAndSave],
+    [isViewMode, handleValidateAndSave], // eslint-disable-line react-hooks/exhaustive-deps
   );
-  //  const handleKeyDown = useCallback((e) => {
-  //     handleERPEnterNavigation(e, formRef, isViewMode, saveBtnRef);
-  //     handleERPBackspaceNavigation(e, formRef, isViewMode);
-  //   }, [isViewMode]);
+
+  const currentHolidayType = formData.holiday_type_code || (formData.is_restricted ? "Restricted" : "Festival");
 
   return (
     <div
-      className="w-full h-full  sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
+      className="w-full h-full sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
       style={{ fontFamily: FONT }}
     >
       <ERPHeader
@@ -175,28 +172,28 @@ const HolidayMasterForm = ({
         isEditMode={isEditMode}
         isViewMode={isViewMode}
         rightContent={`${currentRecord || 1} / ${totalRecords || 1}`}
-        currentIndex={currentRecord} // 👈
-        totalRecords={totalRecords} // 👈
-        onPrevRecord={onPrevRecord} // 👈
+        currentIndex={currentRecord}
+        totalRecords={totalRecords}
+        onPrevRecord={onPrevRecord}
         onNextRecord={onNextRecord}
       />
 
       <div className="flex-1 p-2 sm:p-4 overflow-y-auto flex justify-center">
         <div
           id="holiday-form-container"
-          className="w-full max-w-[750px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-hidden"
+          className="w-full max-w-[750px] h-fit bg-white border border-slate-200 shadow-sm rounded-md overflow-visible"
         >
-          <div className="p-3 grid grid-cols-1 gap-y-3">
-            {/* DATE FIELD - Added ID wrapper for reliable focusing */}
-            <div className="flex  w-full">
+          <div className="p-3 sm:p-5 grid grid-cols-1 gap-y-3 sm:gap-y-4">
+            {/* Row 1: Date + Holiday Type */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full">
               <div
                 id="date-input-wrapper"
-                className="flex flex-col sm:flex-row items-start px-1 w-full"
+                className="flex flex-row items-center px-1 flex-1"
               >
-                <label className="text-black-800 text-[15px] w-[80px] shrink-0">
+                <label className="text-gray-800 text-[14px] w-[80px] shrink-0">
                   Date <span className="text-red-500">*</span>
                 </label>
-                <div className="flex-1 max-w-[130px]">
+                <div className="flex-1">
                   <ERPDateInput
                     value={formData.date || ""}
                     onChange={(val) => handleChange("date", val)}
@@ -207,29 +204,45 @@ const HolidayMasterForm = ({
                 </div>
               </div>
 
-              {/* PURPOSE FIELD - Added name prop */}
-              <div className="flex flex-col sm:flex-row item-start px-1 w-full">
-                <label className="text-black-800 text-[15px] w-[80px] shrink-0">
-                  Purpose <span className="text-red-500">*</span>
+              <div className="flex flex-row items-center px-1 flex-1">
+                <label className="text-gray-800 text-[14px] w-[95px] shrink-0">
+                  Holiday Type
                 </label>
                 <div className="flex-1">
-                  <input
-                    type="text"
-                    name="purpose"
-                    value={formData.purpose || ""}
+                  <ERPAutocomplete
+                    options={HOLIDAY_TYPE_OPTIONS}
+                    value={currentHolidayType}
+                    onChange={(val) => handleChange("holiday_type_code", val)}
                     disabled={isViewMode}
-                    onChange={(e) => handleChange("purpose", e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className={getInputClass(isViewMode, "purpose")}
-                    placeholder="Enter holiday purpose"
+                    className={getInputClass(isViewMode, "holiday_type_code")}
                   />
                 </div>
               </div>
             </div>
 
-            {/* REMARKS FIELD */}
+            {/* Row 2: Purpose */}
+            <div className="flex flex-row items-center px-1 w-full">
+              <label className="text-gray-800 text-[14px] w-[80px] shrink-0">
+                Purpose <span className="text-red-500">*</span>
+              </label>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  name="purpose"
+                  value={formData.purpose || ""}
+                  disabled={isViewMode}
+                  onChange={(e) => handleChange("purpose", e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className={getInputClass(isViewMode, "purpose")}
+                  placeholder="Enter holiday purpose (e.g. Independence Day, Diwali, Eid)"
+                />
+              </div>
+            </div>
+
+            {/* Row 3: Remarks */}
             <div className="flex flex-col sm:flex-row items-start px-1 w-full">
-              <label className="text-black-800 text-[15px] w-[80px] shrink-0 mt-1">
+              <label className="text-gray-800 text-[14px] w-[80px] shrink-0 mt-1">
                 Remarks
               </label>
               <div className="flex-1 w-full">
@@ -244,6 +257,14 @@ const HolidayMasterForm = ({
                 />
               </div>
             </div>
+
+            {/* Restricted Holiday Info Banner */}
+            {currentHolidayType === "Restricted" && (
+              <div className="mx-1 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-[12px] text-amber-800 flex items-center gap-2">
+                <span className="font-bold">ℹ️ Restricted Holiday:</span>
+                <span>The office remains open. Eligible employees can apply for this date using their 2-day yearly RH balance.</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

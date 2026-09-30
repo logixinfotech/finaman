@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import  { useEffect } from "react";
 import KpiStrip from "../components/Layout/DashboardComponnt/KpiStrip";
 import { useDashboard } from "../Hooks/useDashboard";
 import AttendanceHeatmap from "../components/Layout/DashboardComponnt/AttendanceHeatmap";
@@ -159,8 +159,7 @@ const RESPONSIVE_CSS = `
 const FinamanDashboard = () => {
   const { data, loading, } = useDashboard();
 
-  useEffect(() => {
-    // Inject responsive styles once, avoid duplicates
+  useEffect(() => { 
     const styleId = "fd-responsive-styles";
     if (!document.getElementById(styleId)) {
       const tag = document.createElement("style");
@@ -173,11 +172,7 @@ const FinamanDashboard = () => {
 
   return (
     <div className="fd-shell">
-      <div className="fd-body">
-    
-
-        {/* KpiStrip sits above the bento grid as its own row — it is not
-            a grid child, so it isn't constrained to --fd-card-h. */}
+      <div className="fd-body"> 
         <div className="fd-kpi-strip">
           <KpiStrip data={data} loading={loading} />
         </div>

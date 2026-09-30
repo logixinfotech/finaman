@@ -9,11 +9,11 @@ export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCanc
   const canConfirm = typedName.trim() && (!requireReason || reason.trim());
 
   const handleConfirm = async () => {
-    if (!canConfirm) return;                                    // 🆕
+    if (!canConfirm) return;                                     
     setBusy(true);
     setError("");
     try {
-      await onConfirm(typedName.trim(), reason.trim());          // 🆕 reason bhejo
+      await onConfirm(typedName.trim(), reason.trim());        
     } catch (err) {
       setError(err?.message || "Signature failed");
     } finally {
@@ -75,7 +75,7 @@ export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCanc
         <div className="flex gap-2 mt-4">
           <button
             onClick={handleConfirm}
-            disabled={!canConfirm || busy}                       // 🆕
+            disabled={!canConfirm || busy}                        
             className="flex-1 h-9 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12.5px] font-semibold rounded-md transition-colors"
           >
             {busy ? "Signing…" : "✓ Confirm Signature"}

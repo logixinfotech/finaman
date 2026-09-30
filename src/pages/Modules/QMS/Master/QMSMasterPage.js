@@ -80,19 +80,7 @@ const QMSMasterPage = ({ tab, config }) => {
   };
 
   // ── AUTO CODE GENERATION — sirf equipment/instrument (jinke extraFields me type:"code" hai) ──
-  const codeField = extraFields.find((f) => f.type === "code");
-
-  const generateNextCode = useCallback(() => {
-    if (!codeField) return "";
-    const prefix = settingsDefaults?.codePrefix || "";
-    const nums = list
-      .map((item) => item[codeField.key] || "")
-      .filter((code) => code.startsWith(prefix))
-      .map((code) => parseInt(code.slice(prefix.length), 10))
-      .filter((n) => !isNaN(n));
-    const next = (nums.length > 0 ? Math.max(...nums) : 0) + 1;
-    return `${prefix}${String(next).padStart(3, "0")}`;
-  }, [list, settingsDefaults, codeField]);
+ 
 
   const handleAddNew = () => {
     handleAdd();

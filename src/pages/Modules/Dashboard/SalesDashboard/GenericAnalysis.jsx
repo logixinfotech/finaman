@@ -1,7 +1,8 @@
-import { useMemo, useState, memo } from "react";
+import { useMemo, useState, useEffect, memo } from "react";
 import { Bar } from "react-chartjs-2";
-import { FlaskConical, Inbox, Search } from "lucide-react";
+import { FlaskConical, Inbox, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { inrS } from "../../../../utils/helpers";
+import ExportMenu from "./ExportMenu";
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#0f172a",
@@ -19,9 +20,17 @@ const METRICS = [
   { key: "qty",    label: "Qty",    fmt: (v) => Math.round(v).toLocaleString("en-IN") },
   { key: "orders", label: "Orders", fmt: (v) => v.toLocaleString("en-IN") },
 ];
+const CHART_N = 10;
+const EXPORT_COLS = [
+  { key: "gen",    label: "Generic" },
+  { key: "amt",    label: "Value (₹)", type: "num" },
+  { key: "qty",    label: "Qty", type: "int" },
+  { key: "orders", label: "Orders", type: "int" },
+  { key: "custs",  label: "Customers", type: "int" },
+  { key: "share",  label: "Share %", type: "pct" },
+];
+const PAGE_SIZE = 10;
 
-/* Ek pass me sab kuch: generic-wise value, qty, order count, customer count.
-   3792 distinct generics hain — poore set pe multiple passes mehnga padta. */
 function buildGenerics(rows) {
   const m = new Map();
   let blank = 0;
@@ -50,9 +59,10 @@ function buildGenerics(rows) {
   return { list, total, blank, distinct: list.length };
 }
 
-function GenericAnalysis({ rows, n = 12 }) {
+function GenericAnalysis({ rows }) {
   const [metric, setMetric] = useState("amt");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const { list, total, blank, distinct } = useMemo(() => buildGenerics(rows), [rows]);
 
@@ -62,23 +72,32 @@ function GenericAnalysis({ rows, n = 12 }) {
     return [...base].sort((a, b) => b[metric] - a[metric]);
   }, [list, q, metric]);
 
-  const top = useMemo(() => filtered.slice(0, n), [filtered, n]);
-  const active = METRICS.find((mm) => mm.key === metric);
-  const max = top[0]?.[metric] || 1;
+  // Back to page 1 whenever the list itself changes (search, metric, filters)
+  useEffect(() => setPage(1), [filtered]);
 
-  const data = {
-    labels: top.map((e) => (e.gen.length > 22 ? e.gen.slice(0, 20) + "…" : e.gen)),
+  const active = METRICS.find((mm) => mm.key === metric);
+  const exportRows = useMemo(() => filtered.map((e) => ({ ...e, share: total > 0 ? (e.amt / total) * 100 : 0 })), [filtered, total]);
+  const chartRows = useMemo(() => filtered.slice(0, CHART_N), [filtered]);
+  const max = chartRows[0]?.[metric] || 1;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const firstIdx = (safePage - 1) * PAGE_SIZE;
+
+  const data = useMemo(() => ({
+    labels: chartRows.map((e) => (e.gen.length > 22 ? e.gen.slice(0, 20) + "…" : e.gen)),
     datasets: [{
-      data: top.map((e) => e[metric]),
+      data: chartRows.map((e) => e[metric]),
       backgroundColor: "#0ea5b7",
       hoverBackgroundColor: "#3ecbdc",
-      borderRadius: 8,
-      barThickness: 16,
+      borderRadius: 6,
+      barThickness: 14,
     }],
-  };
+  }), [chartRows, metric]);
 
   const options = {
-    indexAxis: "y",           // horizontal — generic naam lambe hote hain
+    indexAxis: "y",
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -86,111 +105,165 @@ function GenericAnalysis({ rows, n = 12 }) {
       tooltip: { ...TOOLTIP_STYLE, callbacks: { label: (ctx) => active.fmt(ctx.parsed.x) } },
     },
     scales: {
-      x: { ticks: { callback: (v) => active.fmt(v), font: { size: 10 }, color: "#94a3b8" }, grid: { color: "#f1f5f9" } },
-      y: { grid: { display: false }, ticks: { font: { size: 10 }, color: "#64748b" } },
+      x: { ticks: { callback: (v) => active.fmt(v), font: { size: 10 }, color: "#94a3b8", maxTicksLimit: 5 }, grid: { color: "#f1f5f9" } },
+      y: { grid: { display: false }, ticks: { font: { size: 10.5 }, color: "#64748b" } },
     },
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
+      {/* ---- header ---- */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-600">
             <FlaskConical className="h-3.5 w-3.5" strokeWidth={2.5} />
           </span>
-          <h4 className="text-[13px] font-bold tracking-tight text-slate-700">Generic-wise Analysis</h4>
+          <h4 className="truncate text-[13px] font-bold tracking-tight text-slate-700">Generic-wise Analysis</h4>
           <span className="hidden shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-500 sm:inline">
             {distinct.toLocaleString("en-IN")} generics
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative w-[120px] sm:w-[150px]">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:w-[170px] sm:flex-none">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search generic..."
-              className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-7 pr-2 text-[12px] text-slate-800 outline-none placeholder:text-slate-400 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-50"
+              onKeyDown={(e) => e.key === "Escape" && q && (e.stopPropagation(), setQ(""))}
+              placeholder="Search generic…"
+              className={`h-8 w-full rounded-md border border-slate-200 bg-white pl-7 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 ${q ? "pr-7" : "pr-2"}`}
             />
+            {q && (
+              <button
+                type="button"
+                onClick={() => setQ("")}
+                title="Clear"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-          <div className="flex shrink-0 rounded-lg bg-slate-100 p-0.5">
+          <div className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="tablist">
             {METRICS.map((mm) => (
               <button
                 key={mm.key}
+                type="button"
+                role="tab"
+                aria-selected={metric === mm.key}
                 onClick={() => setMetric(mm.key)}
-                className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
-                  metric === mm.key ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${
+                  metric === mm.key ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
                 }`}
               >
                 {mm.label}
               </button>
             ))}
           </div>
+          <ExportMenu title="Generic-wise Analysis" columns={EXPORT_COLS} rows={exportRows} />
         </div>
       </div>
 
-      {top.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-1.5 py-16 text-slate-300">
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-1.5 py-14 text-slate-300">
           <Inbox className="h-7 w-7" strokeWidth={1.5} />
           <span className="text-xs font-medium text-slate-400">
-            {q ? "Is search se koi generic nahi mila" : "No data for current filters"}
+            {q ? "No generic matches this search" : "No data for current filters"}
           </span>
         </div>
       ) : (
-        <>
-          <div style={{ height: Math.max(220, top.length * 26) }} className="mb-4">
-            <Bar data={data} options={options} />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+          {/* ---- chart: top 10 by the selected metric ---- */}
+          <div className="lg:col-span-2">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              Top {chartRows.length} by {active.label}
+            </p>
+            <div style={{ height: 300 }}>
+              <Bar data={data} options={options} />
+            </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-100">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-400">
-                <tr>
-                  <th className="px-3 py-2.5 sm:px-4">Generic</th>
-                  <th className="px-3 py-2.5 text-right sm:px-4">Value</th>
-                  <th className="hidden px-4 py-2.5 text-right sm:table-cell">Qty</th>
-                  <th className="hidden px-4 py-2.5 text-right md:table-cell">Orders</th>
-                  <th className="hidden px-4 py-2.5 text-right md:table-cell">Customers</th>
-                  <th className="px-3 py-2.5 text-right sm:px-4">Share</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {top.map((e) => (
-                  <tr key={e.gen} className="transition-colors hover:bg-cyan-50/40">
-                    <td className="max-w-[180px] truncate px-3 py-2.5 font-medium text-slate-800 sm:max-w-none sm:px-4" title={e.gen}>
-                      {e.gen}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-medium text-slate-700 sm:px-4">{inrS(e.amt)}</td>
-                    <td className="hidden px-4 py-2.5 text-right text-slate-500 sm:table-cell">
-                      {Math.round(e.qty).toLocaleString("en-IN")}
-                    </td>
-                    <td className="hidden px-4 py-2.5 text-right text-slate-500 md:table-cell">{e.orders}</td>
-                    <td className="hidden px-4 py-2.5 text-right text-slate-500 md:table-cell">{e.custs}</td>
-                    <td className="px-3 py-2.5 text-right sm:px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="text-[11px] font-semibold text-slate-500">
-                          {total > 0 ? ((e.amt / total) * 100).toFixed(1) : "0.0"}%
-                        </span>
-                        <div className="hidden h-1.5 w-12 overflow-hidden rounded-full bg-slate-100 sm:block">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-500"
-                            style={{ width: `${(e[metric] / max) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
+          {/* ---- table: full list, paginated ---- */}
+          <div className="min-w-0 lg:col-span-3">
+            <div className="overflow-x-auto rounded-lg border border-slate-100">
+              <table className="w-full text-left text-[12.5px]">
+                <thead className="bg-slate-50/80 text-[10.5px] uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="w-8 px-3 py-2 text-right">#</th>
+                    <th className="px-3 py-2">Generic</th>
+                    <th className="px-3 py-2 text-right">Value</th>
+                    <th className="hidden px-3 py-2 text-right sm:table-cell">Qty</th>
+                    <th className="hidden px-3 py-2 text-right md:table-cell">Orders</th>
+                    <th className="hidden px-3 py-2 text-right md:table-cell">Customers</th>
+                    <th className="px-3 py-2 text-right">Share</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {pageRows.map((e, i) => (
+                    <tr key={e.gen} className="transition-colors hover:bg-cyan-50/40">
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-400">{firstIdx + i + 1}</td>
+                      <td className="max-w-[160px] truncate px-3 py-2 font-medium text-slate-800 sm:max-w-[260px]" title={e.gen}>
+                        {e.gen}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums text-slate-700">{inrS(e.amt)}</td>
+                      <td className="hidden px-3 py-2 text-right tabular-nums text-slate-500 sm:table-cell">
+                        {Math.round(e.qty).toLocaleString("en-IN")}
+                      </td>
+                      <td className="hidden px-3 py-2 text-right tabular-nums text-slate-500 md:table-cell">{e.orders}</td>
+                      <td className="hidden px-3 py-2 text-right tabular-nums text-slate-500 md:table-cell">{e.custs}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-[11px] font-semibold tabular-nums text-slate-500">
+                            {total > 0 ? ((e.amt / total) * 100).toFixed(1) : "0.0"}%
+                          </span>
+                          <div className="hidden h-1.5 w-12 overflow-hidden rounded-full bg-slate-100 sm:block">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-500"
+                              style={{ width: `${Math.min(100, (e[metric] / max) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          <p className="mt-2.5 text-[11px] text-slate-400">
-            Showing top {top.length} of {filtered.length.toLocaleString("en-IN")}
-            {blank > 0 && ` · ${blank.toLocaleString("en-IN")} lines without generic name`}
-          </p>
-        </>
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+              <span>
+                {firstIdx + 1}–{firstIdx + pageRows.length} of {filtered.length.toLocaleString("en-IN")}
+                {blank > 0 && (
+                  <span className="text-slate-400"> · {blank.toLocaleString("en-IN")} lines without generic name</span>
+                )}
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={safePage === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2.5 font-medium transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                  </button>
+                  <span className="tabular-nums">
+                    <span className="font-semibold text-slate-700">{safePage}</span> / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safePage === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2.5 font-medium transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    Next <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -8,11 +8,10 @@ import {
   fetchComments, addComment,
 } from "../../utils/api";
 import {
-  Plus, Check, X, ChevronRight, Flag, Circle, AlertTriangle,
-  Clock, Calendar, Paperclip, Send, Pencil, Trash2, Save,
+  Plus, Check, X, ChevronRight,   AlertTriangle,
+  Calendar, Paperclip, Send, Pencil, Trash2, Save,
   UserCheck, UserPlus, ListChecks, MessageSquare, Zap,
-  CheckCircle2, RefreshCw, CornerDownLeft, Ticket, User,
-  Play, Pause, Square, TrendingUp,
+  CheckCircle2,   CornerDownLeft, 
 } from "lucide-react";
 
 export const F = "'DM Sans',system-ui,sans-serif";
@@ -92,8 +91,6 @@ export const newTask = (u = null) => ({
   assigned_to_name: u?.user_id || null,
   assigned_by: null,
 });
-
-// ─── useIsMobile ─────────────────────────────────────────────────
 export const useIsMobile = () => {
   const [m, setM] = useState(() => window.innerWidth < 1024);
   useEffect(() => {
@@ -103,8 +100,6 @@ export const useIsMobile = () => {
   }, []);
   return m;
 };
-
-// ─── Avtar ───────────────────────────────────────────────────────
 export const Avtar = ({ name, size = 30 }) => (
   <div style={{
     width: size, height: size, borderRadius: "50%", background: avGrad(name),
@@ -115,13 +110,9 @@ export const Avtar = ({ name, size = 30 }) => (
     {initials(name)}
   </div>
 );
-
-// ─── PDot ────────────────────────────────────────────────────────
 export const PDot = ({ color, size = 7 }) => (
   <span style={{ width: size, height: size, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />
 );
-
-// ─── ProgressRing ────────────────────────────────────────────────
 export const ProgressRing = ({ pct = 0, size = 44, stroke = 4, color = "#185FA5" }) => {
   const r = (size - stroke * 2) / 2;
   const circ = 2 * Math.PI * r;
@@ -135,8 +126,6 @@ export const ProgressRing = ({ pct = 0, size = 44, stroke = 4, color = "#185FA5"
     </svg>
   );
 };
-
-// ─── useToast ────────────────────────────────────────────────────
 function ToastList({ toasts }) {
   return (
     <div style={{ position: "fixed", bottom: 80, right: 16, display: "flex", flexDirection: "column", gap: 8, zIndex: 9999, pointerEvents: "none" }}>
@@ -169,8 +158,6 @@ export const useToast = () => {
   const ToastUI = useCallback(() => <ToastList toasts={toasts} />, [toasts]);
   return { show, ToastUI };
 };
-
-// ─── Shared button styles ─────────────────────────────────────────
 export const btnPrimary = {
   display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
   borderRadius: 9, border: "none", background: C.blue, color: "#fff",
@@ -182,8 +169,6 @@ export const btnSecondary = {
   borderRadius: 9, border: `1.5px solid ${C.border}`, background: C.surface,
   color: C.t3, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: F,
 };
-
-// ─── Time Alert Logic ─────────────────────────────────────────────
 export const getTimeAlert = (task) => {
   const exp = parseFloat(task.expected_time) || 0;
   const act = parseFloat(task.actual_time) || 0;
@@ -200,16 +185,6 @@ const winp = {
   padding: "9px 13px", color: C.t1, fontFamily: F, fontSize: 13, outline: "none", width: "100%",
   transition: "border-color .14s, box-shadow .14s",
 };
-// ─── Fld ─────────────────────────────────────────────────────────
-const Fld = ({ label, req, children }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-    <label style={{ fontSize: 11, fontWeight: 700, color: C.t2, letterSpacing: ".3px", textTransform: "uppercase" }}>
-      {label}{req && <span style={{ color: "#ef4444", marginLeft: 2 }}>*</span>}
-    </label>
-    {children}
-  </div>
-);
-// ─── CtxMenu ─────────────────────────────────────────────────────
 const CtxMenu = ({ x, y, onClose, items }) => {
   useEffect(() => {
     const h = () => onClose();
@@ -242,22 +217,10 @@ const CtxMenu = ({ x, y, onClose, items }) => {
 
 const taskStatusOpts = ["Pending", "In Progress", "Completed", "Hold"];
 const ticketStatusOpts = ["Open", "In Progress", "Resolved", "Closed"];
-const PRIO_BADGE = {
-  High: { bg: "#fff1f1", color: "#c0392b", dot: "#e74c3c", border: "#fecaca" },
-  Medium: { bg: "#fffbeb", color: "#b45309", dot: "#f59e0b", border: "#fde68a" },
-  Low: { bg: "#f0fdf4", color: "#15803d", dot: "#22c55e", border: "#bbf7d0" },
-};
-const STAT_COLORS = {
-  Pending: { bg: "#f5f3ff", color: "#6d28d9", border: "#ddd6fe" },
-  "In Progress": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
-  Completed: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
-  Hold: { bg: "#fff1f1", color: "#b91c1c", border: "#fecaca" },
-};
-const DEFAULT_STAT = { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" };
-const DEFAULT_PRIO = PRIO_BADGE.Medium;
+ 
+ 
 
-// Sticky header cell
-const Th = ({ children, w, align = "left" }) => (
+const Th = ({ children, w, minW, align = "left" }) => (
   <th style={{
     textAlign: align, padding: "9px 14px", fontSize: 10, fontWeight: 700,
     color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".7px",
@@ -265,15 +228,13 @@ const Th = ({ children, w, align = "left" }) => (
     borderBottom: "1.5px solid #e2e8f0",
     background: "linear-gradient(to bottom, #f8fafc, #f1f5f9)",
     position: "sticky", top: 0, zIndex: 2,
-    whiteSpace: "nowrap", width: w,
+    whiteSpace: "nowrap", width: w, minWidth: minW,
     boxShadow: "0 1px 0 #e2e8f0",
   }}>{children}</th>
 );
 
-
 const PRIO_COLORS = { High: { bg: "#fee2e2", c: "#b91c1c" }, Medium: { bg: "#fef3c7", c: "#b45309" }, Low: { bg: "#dcfce7", c: "#15803d" } };
 const STATUS_COLORS = { "Pending": { bg: "#f1f5f9", c: "#475569" }, "In Progress": { bg: "#e0f2fe", c: "#0369a1" }, "Completed": { bg: "#dcfce7", c: "#15803d" }, "Open": { bg: "#fef3c7", c: "#b45309" } };
-// ── Plain DD-MM-YYYY (+ time if present) formatter — normal text, no monospace/bold ──
 const fmtDT = (raw) => {
   if (!raw) return "";
   const hasTime = raw.length > 10;
@@ -290,7 +251,7 @@ const fmtDT = (raw) => {
   return `${dd}-${mm}-${yyyy}, ${h}:${m} ${ap}`;
 };
 
-const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
+const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected, hide = {} }) => {
   const dueDT = fmtDT(t.due_date);
   const assignDT = fmtDT(t.assign_datetime);
   const prioStyle = PRIO_COLORS[t.priority] || PRIO_COLORS.Medium;
@@ -298,11 +259,7 @@ const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
   const key = t._key || t.line_id;
   const clickTimer = useRef(null);
 
-  useEffect(() => () => { if (clickTimer.current) clearTimeout(clickTimer.current); }, []);
-
-  // ── Single click ka onOpen 220ms ke liye hold hota hai. Agar isi window me
-  // doosra click aa jaye (dblclick), to open cancel ho jaata hai aur seedha
-  // edit chalta hai — is tarah detail panel beech me flash nahi hota. ──
+  useEffect(() => () => { if (clickTimer.current) clearTimeout(clickTimer.current); }, []); 
   const handleClick = () => {
     if (clickTimer.current) return;
     clickTimer.current = setTimeout(() => {
@@ -324,7 +281,6 @@ const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
       onDoubleClick={handleDoubleClick}
       className={`task-row${selected ? " selected" : ""}`}>
 
-      {/* Assignee */}
       <td data-label="Assignee">
         {t.assigned_to_name ? (
           <span style={{
@@ -338,12 +294,11 @@ const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
           <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
         )}
       </td>
-
-      {/* Task */}
-      <td data-label="Task">
-        <div style={{
-          fontSize: 13, fontWeight: 600, color: "#0f172a",
-          whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.4,
+      <td data-label="Task" className="task-col">
+        <div title={t.work_plan || ""} style={{
+          fontSize: 13, fontWeight: 600, color: "#0f172a", lineHeight: 1.4,
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+          overflow: "hidden", wordBreak: "break-word",
         }}>
           {t.work_plan || "Untitled task"}
         </div>
@@ -356,57 +311,49 @@ const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
           </div>
         )}
       </td>
-
-      {/* Due Date + Time */}
       <td data-label="Due Date">
         {dueDT ? (
-          <span style={{ fontSize: 12, color: "#334155" }}>{dueDT}</span>
+          <span style={{ fontSize: 12, color: "#334155", whiteSpace: "nowrap" }}>{dueDT}</span>
         ) : (
           <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
         )}
       </td>
-
-      {/* Assigned By */}
-      <td data-label="Assigned By">
-        {t.assigned_by ? (
-          <span style={{
-            fontSize: 12, fontWeight: 500, color: "#334155",
-            overflow: "hidden", textOverflow: "ellipsis",
-            whiteSpace: "nowrap", maxWidth: 100, display: "inline-block",
-          }}>
-            {t.assigned_by}
-          </span>
-        ) : (
-          <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
-        )}
-      </td>
-
-      {/* Assign Date + Time */}
-      <td data-label="Assigned On">
-        {assignDT ? (
-          <span style={{ fontSize: 12, color: "#94a3b8" }}>{assignDT}</span>
-        ) : (
-          <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
-        )}
-      </td>
-
-      {/* Priority */}
+      {!hide.assignedBy && (
+        <td data-label="Assigned By">
+          {t.assigned_by ? (
+            <span style={{
+              fontSize: 12, fontWeight: 500, color: "#334155",
+              overflow: "hidden", textOverflow: "ellipsis",
+              whiteSpace: "nowrap", maxWidth: 100, display: "inline-block",
+            }}>
+              {t.assigned_by}
+            </span>
+          ) : (
+            <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
+          )}
+        </td>
+      )}
+      {!hide.assignedOn && (
+        <td data-label="Assigned On">
+          {assignDT ? (
+            <span style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}>{assignDT}</span>
+          ) : (
+            <span style={{ color: "#cbd5e1", fontSize: 12.5 }}>—</span>
+          )}
+        </td>
+      )}
       <td data-label="Priority">
         <span style={{
           fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
-          background: prioStyle.bg, color: prioStyle.c,
+          background: prioStyle.bg, color: prioStyle.c, whiteSpace: "nowrap",
         }}>{t.priority || "—"}</span>
       </td>
-
-      {/* Status */}
       <td data-label="Status">
         <span style={{
           fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
-          background: statusStyle.bg, color: statusStyle.c,
+          background: statusStyle.bg, color: statusStyle.c, whiteSpace: "nowrap",
         }}>{t.status || "—"}</span>
       </td>
-
-      {/* Delete */}
       <td className="task-del-cell">
         {canEdit && (
           <button
@@ -427,16 +374,35 @@ const TaskRows = memo(({ t, onOpen, onEdit, onDelete, canEdit, selected }) => {
 });
 
 export const TaskTable = ({ tasks, onOpen, onEdit, onDelete, onStatusChange, selectedKey, isEditable }) => {
+  const wrapRef = useRef(null);
+  const [wrapW, setWrapW] = useState(9999);
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(entries => {
+      for (const e of entries) setWrapW(e.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const hide = isMobile
+    ? {}
+    : { assignedOn: wrapW < 900, assignedBy: wrapW < 760 };
+  const colCount = 8 - (hide.assignedOn ? 1 : 0) - (hide.assignedBy ? 1 : 0);
+
   return (
-    <div className="task-table-wrap">
+    <div className="task-table-wrap" ref={wrapRef}>
       <table className="task-table">
         <thead>
           <tr>
             <Th w="12%">Assignee</Th>
-            <Th w="28%">Task</Th>
+            <Th w="30%" minW={200}>Task</Th>
             <Th w="14%">Due Date</Th>
-            <Th w="12%">Assigned By</Th>
-            <Th w="14%">Assigned On</Th>
+            {!hide.assignedBy && <Th w="12%">Assigned By</Th>}
+            {!hide.assignedOn && <Th w="14%">Assigned On</Th>}
             <Th w="8%">Priority</Th>
             <Th w="8%">Status</Th>
             <Th w="34px" />
@@ -445,7 +411,7 @@ export const TaskTable = ({ tasks, onOpen, onEdit, onDelete, onStatusChange, sel
         <tbody>
           {tasks.length === 0 ? (
             <tr>
-              <td colSpan={8}>
+              <td colSpan={colCount}>
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center",
                   padding: "48px 24px", gap: 10,
@@ -476,6 +442,7 @@ export const TaskTable = ({ tasks, onOpen, onEdit, onDelete, onStatusChange, sel
                 onOpen={onOpen}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                hide={hide}
                 canEdit={isEditable ? isEditable(t) : !t.assigned_by}
                 selected={selectedKey !== null && selectedKey !== undefined &&
                   (key === selectedKey || String(t.line_id) === String(selectedKey))}
@@ -493,6 +460,11 @@ export const TaskTable = ({ tasks, onOpen, onEdit, onDelete, onStatusChange, sel
         .task-table {
           width: 100%; border-collapse: collapse;
           font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        /* Desktop: never let the table crush below a readable width —
+           it scrolls horizontally instead of wrapping Task to one word per line */
+        @media (min-width: 681px) {
+          .task-table { min-width: 560px; }
         }
         .task-table td {
           padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top;
@@ -539,6 +511,8 @@ export const TaskTable = ({ tasks, onOpen, onEdit, onDelete, onStatusChange, sel
           /* Task sabse pehle aur poori width leta hai, baaki fields DOM order me
              apne aap 2-2 ke jode me sit ho jaate hain */
           .task-table td[data-label="Task"] { grid-column: 1 / -1; order: -1; }
+          /* Cards me clamp hata do — poora text dikhe */
+          .task-table td[data-label="Task"] > div:first-child { -webkit-line-clamp: unset; display: block; }
 
           .task-del-cell {
             position: absolute; top: 8px; right: 8px;
@@ -868,13 +842,7 @@ export const TaskRow = ({ task, onOpen, onToggle, onDelete, isAssignedToMe = fal
       </button>
     </motion.div>
   );
-};
-
-// ─── DetailPanel ─────────────────────────────────────────────────
-// ── Turns plain-text lines into real list markup: "- item" becomes a bullet <li>,
-// "1. item" / "1) item" becomes a numbered <li>, anything else is a paragraph.
-// This is what actually shows the Shift+Enter lists (built in TaskTableEntry) as
-// proper points on the frontend instead of squished plain text. ──
+}; 
 const renderFormatted = (text) => {
   if (!text) return null;
   const lines = text.split("\n");
@@ -1416,12 +1384,9 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
   const remarkRef = useRef(null);
   const saveRef = useRef(null);
   const modalBodyRef = useRef(null);
-
-  // ── Focus first editable field on open ──
   useEffect(() => {
     const t = setTimeout(() => {
       if (isAssignedByOther) {
-        // locked task → jump straight to status
         statRefs[0].current?.focus();
       } else {
         titleRef.current?.focus();
@@ -1429,8 +1394,6 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
     }, 30);
     return () => clearTimeout(t);
   }, []);
-
-  // ── Assignee focus when switching to delegate mode ──
   useEffect(() => {
     if (f.assign_type === "self") {
       setF(p => ({
@@ -1451,7 +1414,6 @@ export const TaskModal = ({ task, onClose, onSave, currentUser, employees = [], 
     if (!f.work_plan?.trim()) { setTouched(true); titleRef.current?.focus(); return; }
     onSave({ ...f, _pendingSubtasks: subtasks });
   }, [f, subtasks, onSave]);
-  // ── Alt+S to save ──
   useEffect(() => {
     const h = e => {
       if (e.altKey && (e.key === "s" || e.key === "S")) { e.preventDefault(); handleSave(); }

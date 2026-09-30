@@ -3,13 +3,7 @@ import * as XLSX from "xlsx";
 import { importEmployees } from "../../utils/api";
 
 const F = "'Inter','Segoe UI',system-ui,sans-serif";
-
-/* ── Frontend → Backend column mapping (same as employeeFieldMap.js) ─────
-   Every DB column from ACTLED is represented here (except Actled_id which
-   is an auto PK, Ledimg which comes from photo upload not import, and
-   Lastupdt which is a system timestamp). Op_id4 has no corresponding
-   frontend field anywhere in the form, so it is intentionally excluded —
-   add it here and to employeeFieldMap.js together if it gets a UI field. */
+ 
 const COLUMN_MAP = {
     "Title": "Title", "Gender": "Gender", "First Name": "Led_name",
     "Last Name": "Led_alias", "Date of Birth": "Dob", "Blood Group": "Blood",
@@ -52,22 +46,12 @@ const COLUMN_MAP = {
     "ESI Applicable": "Esi_applicable", "Gratuity": "Gratuity",
     "TDS Category": "Tds_category", "Previous Experience": "Prev_exp",
     "Total Experience": "Total_exp",
-    // --- newly added so every DB column has a sample/import path ---
     "Punch Number": "Punch_no",
     "TDS Applicable": "Is_tds",
 };
 
 const REQUIRED_COLS = ["First Name", "Mobile No", "Personal Email"];
-
-/* ── Sample data — 2 full rows matching real DB column types ────────────
-   - Op_id1/2/3/5/6 (Grade/Division/Department/Designation/ReportingMgr) → INT
-   - Basic, CTC, HRA, Special Allowance, Last CTC, No. of Children,
-     Previous Experience, Punch Number → INT / DECIMAL
-   - Is_tds (TDS Applicable) → INT flag (0/1)
-   - Gratuity → "Yes"/"No" text
-   - All dates → YYYY-MM-DD
-   - Everything else → VARCHAR/text as per DB
-───────────────────────────────────────────────────────────────────────── */
+ 
 const SAMPLE_ROWS = [
     {
         "Title": "Mr", "Gender": "Male", "First Name": "Ram", "Last Name": "Alias",
@@ -159,8 +143,6 @@ const downloadSample = () => {
     const headers = Object.keys(COLUMN_MAP);
     const rows = SAMPLE_ROWS.map(r => headers.map(h => r[h] !== undefined ? r[h] : ""));
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-
-    // Column widths for readability
     ws["!cols"] = headers.map(h => ({ wch: Math.max(13, Math.min(h.length + 4, 26)) }));
 
     const wb = XLSX.utils.book_new();
@@ -193,15 +175,13 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
             const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
             setRows(data);
             setPreview(data.slice(0, 5));
-
-            // Validate required columns
             const errs = [];
             data.forEach((row, i) => {
                 REQUIRED_COLS.forEach(col => {
                     if (!row[col]) errs.push(`Row ${i + 2}: "${col}" is required`);
                 });
             });
-            setValidationErrs(errs.slice(0, 10)); // show max 10
+            setValidationErrs(errs.slice(0, 10));  
             setStep(2);
         };
         reader.readAsBinaryString(f);
@@ -267,8 +247,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                 display: "flex", flexDirection: "column", overflow: "hidden",
                 boxShadow: "0 24px 48px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)",
             }}>
-
-                {/* ── Header ─────────────────────────────────────────────── */}
                 <div style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "16px 22px", borderBottom: "1px solid #f0f2f6",
@@ -309,8 +287,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                         }}>×</button>
                     </div>
                 </div>
-
-                {/* ── Step indicator ──────────────────────────────────────── */}
                 <div style={{
                     display: "flex", alignItems: "center", padding: "12px 22px",
                     borderBottom: "1px solid #f5f6fa", background: "#fafbff", gap: 0,
@@ -346,14 +322,9 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                         );
                     })}
                 </div>
-
-                {/* ── Body ───────────────────────────────────────────────── */}
                 <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
-
-                    {/* STEP 1 — Upload */}
                     {step === 1 && (
                         <div>
-                            {/* Drop zone */}
                             <div
                                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                                 onDragLeave={() => setDragOver(false)}
@@ -382,8 +353,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                                     Supports .xlsx, .xls, .csv — Max 5MB
                                 </p>
                             </div>
-
-                            {/* Column reference */}
                             <div style={{ background: "#f8f9fc", borderRadius: 10, border: "1px solid #eef0f6", overflow: "hidden" }}>
                                 <div style={{ padding: "10px 14px", borderBottom: "1px solid #eef0f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                     <p style={{ fontSize: 11, fontWeight: 700, color: "#374151", margin: 0, textTransform: "uppercase", letterSpacing: ".05em" }}>
@@ -411,11 +380,8 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                             </div>
                         </div>
                     )}
-
-                    {/* STEP 2 — Preview & Validate */}
                     {step === 2 && (
                         <div>
-                            {/* Stats bar */}
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
                                 {[
                                     { label: "Total rows", value: rows.length, color: "#185FA5", bg: "#E6F1FB" },
@@ -428,8 +394,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                                     </div>
                                 ))}
                             </div>
-
-                            {/* Validation errors */}
                             {validationErrs.length > 0 && (
                                 <div style={{ background: "#FCEBEB", border: "1px solid #FCA5A5", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
                                     <p style={{ fontSize: 11, fontWeight: 700, color: "#791F1F", margin: 0, marginBottom: 6 }}>
@@ -443,8 +407,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                                     )}
                                 </div>
                             )}
-
-                            {/* File info */}
                             <div style={{
                                 display: "flex", alignItems: "center", gap: 10,
                                 background: "#f5f6fa", borderRadius: 8, padding: "8px 12px", marginBottom: 14,
@@ -465,8 +427,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                                     Change file
                                 </button>
                             </div>
-
-                            {/* Preview table */}
                             <div style={{ borderRadius: 8, border: "1px solid #e8eaf0", overflow: "hidden" }}>
                                 <div style={{ padding: "8px 12px", borderBottom: "1px solid #f0f2f6", background: "#f5f6fa", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                     <p style={{ fontSize: 11, fontWeight: 600, color: "#374151", margin: 0 }}>
@@ -511,8 +471,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                             </div>
                         </div>
                     )}
-
-                    {/* STEP 3 — Result */}
                     {step === 3 && result && (
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 260, gap: 16 }}>
                             <div style={{
@@ -535,8 +493,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                                         : result.message}
                                 </p>
                             </div>
-
-                            {/* Failed rows detail */}
                             {result.failedRows?.length > 0 && (
                                 <div style={{ background: "#FAEEDA", border: "1px solid #FAC775", borderRadius: 8, padding: "10px 14px", width: "100%", maxWidth: 500 }}>
                                     <p style={{ fontSize: 11, fontWeight: 700, color: "#633806", margin: 0, marginBottom: 6 }}>Skipped rows:</p>
@@ -559,8 +515,6 @@ export default function EmployeeImportModal({ onClose, onSuccess }) {
                         </div>
                     )}
                 </div>
-
-                {/* ── Footer ─────────────────────────────────────────────── */}
                 {step !== 3 && (
                     <div style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",

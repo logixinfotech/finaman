@@ -1,11 +1,16 @@
 import { useMemo } from "react";
-
-// NOTE: assumes each row carries `qo` (qty ordered) and `qd` (qty
-// dispatched/delivered) — `qo` is confirmed (used elsewhere as o.qo in
-// TopBarChart "Top Customers by Order Qty"), but `qd` is a GUESS. Swap the
-// field name below to whatever tracks delivered/fulfilled qty in your rows.
+import ExportMenu from "./ExportMenu";
+import SectionHeader from "./SectionHeader";
+import { CheckCircle2 } from "lucide-react";
+const EXPORT_COLS = [
+  { key: "cust",      label: "Customer" },
+  { key: "ordered",   label: "Qty Ordered", type: "int" },
+  { key: "delivered", label: "Qty Delivered", type: "int" },
+  { key: (r) => r.ordered - r.delivered, label: "Qty Pending", type: "int" },
+  { key: "pct",       label: "Fulfillment %", type: "pct" },
+];
 export default function FulfillmentByCustomer({ rows, n = 10 }) {
-  const data = useMemo(() => {
+  const all = useMemo(() => {
     const byCust = {};
 (rows || []).forEach((r) => {
   if (!byCust[r.cust]) byCust[r.cust] = { ordered: 0, delivered: 0 };
@@ -18,13 +23,15 @@ export default function FulfillmentByCustomer({ rows, n = 10 }) {
         ...v,
         pct: v.ordered > 0 ? (v.delivered / v.ordered) * 100 : 0,
       }))
-      .sort((a, b) => a.pct - b.pct) // worst fulfillment first
-      .slice(0, n);
-  }, [rows, n]);
+      .sort((a, b) => a.pct - b.pct);
+  }, [rows]);
+  const data = useMemo(() => all.slice(0, n), [all, n]);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-4">✅ Fulfillment % by Customer</h4>
+      <SectionHeader icon={CheckCircle2} accent="emerald" title="Fulfillment % by Customer" className="mb-4">
+        <ExportMenu title="Fulfillment by Customer" columns={EXPORT_COLS} rows={all} />
+      </SectionHeader>
       <div className="space-y-2.5">
         {data.map((d) => {
           const low = d.pct < 60;

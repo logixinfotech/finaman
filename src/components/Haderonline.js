@@ -1,19 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import './Header.css';
-import darIcon from './icons/whatsapp.png';
-import emailIcon from './icons/email.png';
-import uploadIcon from './icons/upload.png';
-import downloadIcon from './icons/download.png';
-import notificationIcon from './icons/notification.png';
+ 
 import supportIcon from './icons/support.png';
 import exitIcon from './icons/exit.png';
-import logoIcon from './icons/logo.png'; // Add your logo icon import here
+import logoIcon from './icons/logo.png';  
 
 function Header() {
   const [masmodData, setMasmodData] = useState([]);
 
   useEffect(() => {
-    // Fetch data from the backend API
     fetch('http://localhost:5000/api/masmod')
       .then(response => response.json())
       .then(data => setMasmodData(data))
@@ -21,7 +16,7 @@ function Header() {
   }, []);
 
   const handleSupportClick = () => {
-    window.location.href = '/AnyDesk.exe'; // Replace with the actual path to aydesk.exe
+    window.location.href = '/AnyDesk.exe'; 
   };
 
   return (

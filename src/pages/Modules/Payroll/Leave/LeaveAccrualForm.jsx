@@ -2,11 +2,12 @@
 // FILE: LeaveAccrualForm.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 import React, { useState, useCallback, useEffect } from "react";
-import ERPHeader       from "../../../../components/Reusable/form/HeaderForm";
-import ERPFooter       from "../../../../components/Reusable/form/FooterForm";
+import ERPHeader from "../../../../components/Reusable/form/HeaderForm";
+import ERPFooter from "../../../../components/Reusable/form/FooterForm";
 import ERPAutocomplete from "../../../../components/Reusable/input/ERPAutocomplete";
-import ERPDateInput    from "../../../../components/Reusable/input/Date";
+import ERPDateInput from "../../../../components/Reusable/input/Date";
 import { getActledList, getLeaveTypes } from "../../../../utils/api";
+import { getEligibleFYMonths } from "./LeaveAccrual";
 
 const ACCRUAL_TYPE_OPTIONS = ["Monthly", "Quarterly", "Yearly"];
 const YEAR_OPTIONS = Array.from({ length: 6 }, (_, i) =>
@@ -22,14 +23,14 @@ export const LeaveAccrualForm = ({
   activeTab = "entry", onTabChange,
   initialData = {},
 }) => {
-  const [localData,  setLocalData]  = useState(initialData);
-  const [errors,     setErrors]     = useState({});
-  const [employees,  setEmployees]  = useState([]);
+  const [localData, setLocalData] = useState(initialData);
+  const [errors, setErrors] = useState({});
+  const [employees, setEmployees] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
 
   const isViewMode = mode === "view";
   const isEditMode = mode === "edit";
-  const isAddMode  = mode === "add";
+  const isAddMode = mode === "add";
   const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
   const requiredFields = ["employee_id", "leave_type_id", "financial_year", "accrual_type", "accrual_days"];
 
@@ -59,10 +60,17 @@ export const LeaveAccrualForm = ({
   }, [initialData]);
 
   useEffect(() => {
-    const accrual = parseFloat(localData.accrual_days)  || 0;
-    const cf      = parseFloat(localData.carry_forward) || 0;
+    const accrual = parseFloat(localData.accrual_days) || 0;
+    const cf = parseFloat(localData.carry_forward) || 0;
     setLocalData(p => ({ ...p, total_accrued: (accrual + cf).toFixed(2) }));
   }, [localData.accrual_days, localData.carry_forward]);
+
+  // Auto-calculate prorated accrual_days when employee, leave_type, or FY changes in add mode
+  const currentEmp = employees.find(e => Number(e.Actled_id) === Number(localData.employee_id));
+  const currentLT = leaveTypes.find(l => l.leave_type_id === localData.leave_type_id);
+  const fyYear = localData.financial_year ? parseInt(localData.financial_year) : new Date().getFullYear();
+  const eligibleFYMonths = currentEmp ? getEligibleFYMonths(currentEmp.Doj, fyYear) : [];
+  const eligibleMonthsCount = eligibleFYMonths.filter(m => m.isEligible).length;
 
   const handleChange = (field, value) => {
     let updated = { ...localData };
@@ -70,11 +78,37 @@ export const LeaveAccrualForm = ({
     if (field === "employee_name") {
       const emp = employees.find(e => (e.full_name || e.Led_name)?.trim() === value?.trim());
       updated.employee_name = value;
-      updated.employee_id   = emp ? Number(emp.Actled_id) : null;
+      updated.employee_id = emp ? Number(emp.Actled_id) : null;
+
+      if (emp && updated.leave_type_id && isAddMode) {
+        const lt = leaveTypes.find(l => l.leave_type_id === updated.leave_type_id);
+        const maxDays = parseFloat(lt?.max_days) || 12;
+        const eMonths = getEligibleFYMonths(emp.Doj, updated.financial_year || new Date().getFullYear());
+        const eCount = eMonths.filter(m => m.isEligible).length;
+        updated.accrual_days = ((maxDays / 12) * eCount).toFixed(2);
+      }
     } else if (field === "leave_name") {
       const lt = leaveTypes.find(l => l.leave_name?.trim() === value?.trim());
-      updated.leave_name    = value;
+      updated.leave_name = value;
       updated.leave_type_id = lt ? lt.leave_type_id : null;
+
+      if (lt && updated.employee_id && isAddMode) {
+        const emp = employees.find(e => Number(e.Actled_id) === Number(updated.employee_id));
+        const maxDays = parseFloat(lt.max_days) || 12;
+        const eMonths = getEligibleFYMonths(emp?.Doj, updated.financial_year || new Date().getFullYear());
+        const eCount = eMonths.filter(m => m.isEligible).length;
+        updated.accrual_days = ((maxDays / 12) * eCount).toFixed(2);
+      }
+    } else if (field === "financial_year") {
+      updated.financial_year = value;
+      if (updated.employee_id && updated.leave_type_id && isAddMode) {
+        const emp = employees.find(e => Number(e.Actled_id) === Number(updated.employee_id));
+        const lt = leaveTypes.find(l => l.leave_type_id === updated.leave_type_id);
+        const maxDays = parseFloat(lt?.max_days) || 12;
+        const eMonths = getEligibleFYMonths(emp?.Doj, value);
+        const eCount = eMonths.filter(m => m.isEligible).length;
+        updated.accrual_days = ((maxDays / 12) * eCount).toFixed(2);
+      }
     } else {
       updated[field] = value;
     }
@@ -98,7 +132,7 @@ export const LeaveAccrualForm = ({
     `w-full h-[32px] px-2 text-[15px] border rounded-md outline-none transition-colors
      ${errors[fieldName] ? "border-red-500" : "border-gray-300"}
      ${disabled ? "bg-[#eef1f6] text-gray-500 cursor-not-allowed"
-                : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"}`;
+      : "bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"}`;
 
   const Field = ({ label, required, children }) => (
     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -129,8 +163,10 @@ export const LeaveAccrualForm = ({
                 onChange={val => handleChange("employee_name", val)}
                 className={inp(isViewMode, "employee_id")} disabled={isViewMode} />
               {errors.employee_id && <span className="text-[11px] text-red-500">{errors.employee_id}</span>}
-              {localData.employee_id && (
-                <p className="text-[11px] text-blue-600 mt-0.5">ID: {localData.employee_id}</p>
+              {currentEmp && (
+                <p className="text-[11px] text-blue-600 mt-0.5">
+                  ID: {currentEmp.Actled_id} {currentEmp.Doj ? `· DOJ: ${new Date(currentEmp.Doj).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })} (${eligibleMonthsCount}/12 mo)` : ""}
+                </p>
               )}
             </Field>
             <Field label="Leave Type" required>

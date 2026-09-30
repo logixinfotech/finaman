@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import PdfView from "./PdfView";
+import config from "../../../../config";
 
 const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 
@@ -30,8 +31,6 @@ const Section = ({ title, extra, children, noPad = false }) => (
         {noPad ? children : <div className="px-3 py-2">{children}</div>}
     </div>
 );
-
-// ─── Compact info row ─────────────────────────────────────────────────────────
 const InfoRow = ({ label, value, children }) => (
     <div className="flex items-start justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">
         <span className="text-[12px] text-slate-400 shrink-0">{label}</span>
@@ -40,9 +39,7 @@ const InfoRow = ({ label, value, children }) => (
         </span>
     </div>
 );
-
-// ── DB se jo path aata hai usse full URL banao ────────────────────────────────
-const BASE_URL = "http://122.160.143.110:63554";
+const BASE_URL = config.apiUrl;
 
 const resolveAttachUrl = (raw) => {
     if (!raw) return null;
@@ -53,7 +50,6 @@ const resolveAttachUrl = (raw) => {
 
 const isImageUrl = (url) => !!url && /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
 
-// ─── Attachment pane (sits INSIDE the layout, beside / above the form) ────────
 const AttachPane = ({ url, onExpand }) => {
     if (!url) return null;
 
@@ -82,8 +78,6 @@ const AttachPane = ({ url, onExpand }) => {
         </div>
     );
 };
-
-// ─── Fullscreen viewer (Expand button) ───────────────────────────────────────
 const AttachViewer = ({ url, onClose, isMobile }) => {
     const fileName = url ? url.split("/").pop().split("?")[0] : "";
 
@@ -103,7 +97,6 @@ const AttachViewer = ({ url, onClose, isMobile }) => {
                 paddingBottom: "env(safe-area-inset-bottom)",
             } : undefined}
         >
-            {/* Viewer header */}
             <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-800 shrink-0">
                 <button
                     onClick={onClose}
@@ -131,8 +124,6 @@ const AttachViewer = ({ url, onClose, isMobile }) => {
                     Open
                 </a>
             </div>
-
-            {/* Content */}
             <div className="flex-1 overflow-hidden">
                 {isImageUrl(url) ? (
                     <div className="w-full h-full overflow-auto flex items-center justify-center">
@@ -145,8 +136,6 @@ const AttachViewer = ({ url, onClose, isMobile }) => {
         </div>
     );
 };
-
-// ─── Action input field ───────────────────────────────────────────────────────
 const ActionField = ({ label, required, error, children }) => (
     <div className="flex flex-col gap-0.5">
         <label className="text-[12px] text-slate-500">
@@ -156,8 +145,6 @@ const ActionField = ({ label, required, error, children }) => (
         {error && <p className="text-[11px] text-red-500">{error}</p>}
     </div>
 );
-
-// ─── Main form ─────────────────────────────────────────────────────────────────
 const POApprovalForm = ({
     formData,
     setFormData,
@@ -186,8 +173,6 @@ const POApprovalForm = ({
     const [errors, setErrors] = useState({});
     const [fullscreen, setFullscreen] = useState(false);
     const firstInputRef = useRef(null);
-
-    // ── Parse attach field → array of resolved URLs ───────────────────────────
     const attachments = (() => {
         const raw = formData?.attach;
         if (!raw) return [];
@@ -200,8 +185,6 @@ const POApprovalForm = ({
 
     const attachUrl = attachments[0] || null;   // single attachment
     const hasAttach = !!attachUrl;
-
-    // ── Reset on record change ────────────────────────────────────────────────
     useEffect(() => {
         setAppDate(todayStr);
         setAppTime(timeStr);
@@ -213,8 +196,6 @@ const POApprovalForm = ({
     useEffect(() => {
         if (!isViewMode && firstInputRef.current) firstInputRef.current.focus();
     }, [isViewMode]);
-
-    // ── Make the phone's hardware / gesture "back" close the fullscreen viewer ─
     useEffect(() => {
         if (!fullscreen) return;
         window.history.pushState({ poViewer: true }, "");
@@ -222,12 +203,9 @@ const POApprovalForm = ({
         window.addEventListener("popstate", onPop);
         return () => {
             window.removeEventListener("popstate", onPop);
-            // closed via the on-screen Back button → pop the entry we added
             if (window.history.state?.poViewer) window.history.back();
         };
     }, [fullscreen]);
-
-    // ── Enter / Backspace navigation between inputs ───────────────────────────
     const handleKeyDown = useCallback((e) => {
         const container = document.getElementById("po-action-form");
         if (!container) return;
@@ -281,10 +259,7 @@ const POApprovalForm = ({
 
     const isPending = !formData?.status || formData.status === "Pending" || formData.status === "Draft";
     const isActioned = ["Approved", "Rejected", "Hold"].includes(formData?.status);
-
-    const inputCls = (field) =>
-        `h-9 px-2.5 text-[13px] border rounded-lg outline-none focus:border-[#378ADD] transition-colors w-full ${errors[field] ? "border-red-400 bg-red-50" : "border-slate-200 bg-white"
-        }`; 
+ 
     const actionPanel = (
         <div id="po-action-form" className="px-3 py-3">
             {isActioned && (
