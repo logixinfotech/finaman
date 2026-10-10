@@ -300,7 +300,10 @@ const AddUserMaster = ({
     if (!newGroupData.group_name) return;
 
     setIsQuickSaving(true);
-    const res = await createUserGroup(newGroupData);
+   const res = await createUserGroup({
+      ...newGroupData,
+      group_type: "DESG",   // 🆕 isके bina group_type NULL save hota tha
+    });
 
     if (res.success) {
       await loadGroups();
@@ -384,11 +387,11 @@ const AddUserMaster = ({
             </div>
 
             <div className="flex flex-col sm:flex-row gap-1 sm:gap-0">
-              <label className="w-full sm:w-[110px]">Department</label>
+              <label className="w-full sm:w-[110px]"> Designation</label>
               <ERPAutocomplete
                 data-auto
                 value={formData.user_group || ""}
-                options={(options.department || []).map((g) => g.label)}
+                options={(options.designation || []).map((g) => g.label)}
                 onChange={(val) => handleChange("user_group", val)}
                 disabled={isViewMode}
                 onKeyDown={handleKeyDown}
@@ -619,8 +622,8 @@ const AddUserMaster = ({
           onClick={() => setShowGroupModal(false)}
         >
           <UserGroupForm
-            title="Department Master"
-            nameLabel="Department Name"
+            title="Designation Master"
+            nameLabel="Designation Name"
             formData={newGroupData}
             setFormData={setNewGroupData}
             onSave={handleQuickAddGroup}

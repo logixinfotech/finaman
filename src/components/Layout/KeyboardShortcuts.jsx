@@ -93,7 +93,9 @@ const Row = ({ s, recording, onRecord, onStop }) => {
             <span className={s.enabled ? "" : "opacity-40"}><Keys combo={s.keys} /></span>
           )}
 
-          <button
+       {/* btns are to modify shortcut key all bakend and shortcut are dynamic */}
+
+          {/* <button
             type="button"
             onClick={recording ? onStop : startRecording}
             disabled={!s.enabled && !recording}
@@ -113,7 +115,7 @@ const Row = ({ s, recording, onRecord, onStop }) => {
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
 
-          <Switch checked={s.enabled} onChange={handleToggle} label={`${s.enabled ? "Turn off" : "Turn on"} ${s.label}`} />
+          <Switch checked={s.enabled} onChange={handleToggle} label={`${s.enabled ? "Turn off" : "Turn on"} ${s.label}`} /> */}
         </div>
       </div>
 
@@ -267,7 +269,7 @@ const KeyboardShortcuts = () => {
       {fixedList.length > 0 && (
         <section className="mb-5">
           <h3 className="px-4 pb-1 text-[12px] font-semibold text-slate-500">
-            Form navigation <span className="font-normal text-slate-400">(built in, can't be changed)</span>
+            Form navigation <span className="font-normal text-slate-400"> </span>
           </h3>
           <div className="divide-y divide-slate-100">
             {fixedList.map((s) => (

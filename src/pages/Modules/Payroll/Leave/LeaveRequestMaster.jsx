@@ -104,7 +104,7 @@ const LeaveRequestMaster = ({ tab }) => {
             showToast({ icon: "error", title: "Please select an employee" });
             return;
         }
-        if (!updatedData.leave_type_id) {
+        if (!updatedData.leave_type_id && (!updatedData.split_requests || updatedData.split_requests.length === 0)) {
             showToast({ icon: "error", title: "Please select leave type" });
             return;
         }
@@ -121,7 +121,11 @@ const LeaveRequestMaster = ({ tab }) => {
         const response = await performSave("request_id", dataToSave);
 
         if (response?.success) {
-            showToast({ icon: "success", title: "Leave Request Submitted!" });
+            const isSplit = Array.isArray(updatedData.split_requests) && updatedData.split_requests.length > 1;
+            showToast({ 
+                icon: "success", 
+                title: isSplit ? `${updatedData.split_requests.length} Leave Requests Created (Paid & Unpaid)!` : "Leave Request Submitted!" 
+            });
 
             const freshList = await loadData();
 
@@ -137,8 +141,8 @@ const LeaveRequestMaster = ({ tab }) => {
                 );
             }
 
-            // Fallback — last record
-            if (newIndex === -1 && freshList.length > 0) newIndex = freshList.length - 1;
+            // Fallback — latest record
+            if (newIndex === -1 && freshList.length > 0) newIndex = 0;
 
             if (newIndex !== -1) {
                 setCurrentIndex(newIndex);

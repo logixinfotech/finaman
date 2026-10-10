@@ -122,7 +122,7 @@ const PageRegistry = {
     EmployeeMaster,
     CompanyMasterPage,
     MASMNU: MenuMasterPage,
-    global_setting: React.lazy(() => import("../components/Layout/SettingsPage.jsx")),
+    global_setting: React.lazy(() => import("../components/Layout/Settings/SettingsPage.jsx")),
     USERMA: UserMasterPage,
     NOTIFICATIONS_PAGE: NotificationsPage,
     PROFILE: ProfilePage,
@@ -215,6 +215,7 @@ const PageRegistry = {
     OOS: React.lazy(() => import("./Modules/QMS/OOS.jsx")),
     OOT: React.lazy(() => import("./Modules/QMS/OOT.jsx")),
     Logbook: React.lazy(() => import("./Modules/QMS/LogbookPage.jsx")),
+    RECENT_PAGE: React.lazy(() => import("../pages/RecentPage.jsx")),
     FIN_CUSORD: React.lazy(() => import("./Modules/Dashboard/SalesDashboard/CustomerSalesPage.jsx")),
     FIN_OPD: React.lazy(() => import("./Modules/Dashboard/SalesDashboard/OrderPatternPage.jsx")),
     FIN_FBC: React.lazy(() => import("./Modules/Dashboard/SalesDashboard/FulfillmentPage.jsx")),
@@ -231,7 +232,18 @@ const PageRegistry = {
     RecruitmentPrefixSetting: React.lazy(() => import("./Modules/Recruitment/PrefixSetting/RecruitmentPrefixSetting.jsx")),
     CandidateRegistration: React.lazy(() => import("./Modules/Recruitment/Candidate/CandidateRegistration.jsx")),
     CandidateTracking: React.lazy(() => import("./Modules/Recruitment/CandidateTracking/CandidateTracking.jsx")),
+    VacancyTracking: React.lazy(() => import("./Modules/Recruitment/VacancyTracking/VacancyTracking.jsx")),
+    AssessmentMaster: React.lazy(() => import("./Modules/Recruitment/AssessmentMaster/AssessmentMasterPage.jsx")),
+    Communication: React.lazy(() => import("./Modules/Recruitment/Communication/CommunicationPage.jsx")),
+    CallingManagement: React.lazy(() => import("./Modules/Recruitment/Communication/CommunicationPage.jsx")),
+    CallReceive: React.lazy(() => import("./Modules/Recruitment/Communication/CommunicationPage.jsx")),
+    ScheduledCallbacks: React.lazy(() => import("./Modules/Recruitment/Communication/CommunicationPage.jsx")),
+    WhatsAppDesk: React.lazy(() => import("./Modules/Recruitment/Communication/CommunicationPage.jsx")),
+    CommunicationTemplates: React.lazy(() => import("./Modules/Recruitment/Communication/CommunicationPage.jsx")),
+    InterviewScheduling: React.lazy(() => import("./Modules/Recruitment/InterviewScheduling/InterviewSchedulingPage.jsx")),
+    generalassessment: React.lazy(() => import("./Modules/Recruitment/GeneralAssessment/GeneralAssessmentPage.jsx")),
+    general_assessment: React.lazy(() => import("./Modules/Recruitment/GeneralAssessment/GeneralAssessmentPage.jsx")),
     ModuleMaster: ModuleMaster
 };
 
-export default PageRegistry;
+export default PageRegistry; 

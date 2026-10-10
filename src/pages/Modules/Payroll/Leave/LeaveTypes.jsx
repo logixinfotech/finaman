@@ -78,8 +78,14 @@ const LeaveTypes = ({ tab }) => {
   }, [loadData]);
 
   const handleTabChange = (targetTab) => {
-    if (targetTab === "search") setShowForm(false);
-    if (targetTab === "entry") setShowForm(true);
+    if (targetTab === "search") {
+      setShowForm(false);
+    } else if (targetTab === "entry") {
+      if (!formData?.leave_type_id && list.length > 0 && mode === "view") {
+        handleView(list[currentIndex] || list[0]);
+      }
+      setShowForm(true);
+    }
   };
 
   const handleRowSelect = (row) => {
@@ -87,6 +93,22 @@ const LeaveTypes = ({ tab }) => {
     if (index !== -1) setCurrentIndex(index);
     handleView(row);
   };
+
+  const handlePrev = useCallback(() => {
+    if (currentIndex > 0) {
+      const prevIdx = currentIndex - 1;
+      setCurrentIndex(prevIdx);
+      handleView(list[prevIdx]);
+    }
+  }, [currentIndex, list, handleView]);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex < list.length - 1) {
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      handleView(list[nextIdx]);
+    }
+  }, [currentIndex, list, handleView]);
 
   const handleSave = async (updatedData) => {
     if (!updatedData.leave_name || !updatedData.leave_code) {
@@ -111,45 +133,47 @@ const LeaveTypes = ({ tab }) => {
     loadData();
   };
 
-   const handleDeleteMultiple = async (selected) => {
-      const ids = (selected || []).map((item) =>
-        typeof item === "object" ? item.leave_name : item
-      );
-      if (ids.length === 0) return;
-  
-      const confirmed = await confirmDelete({ title: `Delete ${ids.length} record(s)?` });
-      if (!confirmed) return;
-  
-      try {
-        const results = await Promise.all(ids.map((id) => deleteLeaveType(id)));
-        const failed = results.filter((r) => !r?.success).length;
-        if (failed === 0) {
-          showToast({ icon: "success", title: `${ids.length} deleted` });
-        } else {
-          showToast({ icon: "warning", title: `${ids.length - failed} deleted, ${failed} failed` });
-        }
-        loadData();
-        setShowForm(false);
-      } catch (err) {
-        alertError("Delete Error", "Failed to delete some leave records");
+  const handleDeleteMultiple = async (selected) => {
+    const ids = (selected || []).map((item) =>
+      typeof item === "object" ? item.leave_name : item
+    );
+    if (ids.length === 0) return;
+
+    const confirmed = await confirmDelete({ title: `Delete ${ids.length} record(s)?` });
+    if (!confirmed) return;
+
+    try {
+      const results = await Promise.all(ids.map((id) => deleteLeaveType(id)));
+      const failed = results.filter((r) => !r?.success).length;
+      if (failed === 0) {
+        showToast({ icon: "success", title: `${ids.length} deleted` });
+      } else {
+        showToast({ icon: "warning", title: `${ids.length - failed} deleted, ${failed} failed` });
       }
-    };
-      useEffect(() => {
-    if (list.length > 0 && showForm) {
-      handleView(list[currentIndex]);
+      loadData();
+      setShowForm(false);
+    } catch (err) {
+      alertError("Delete Error", "Failed to delete some leave records");
     }
-  }, [currentIndex, list, showForm]);
-  
+  };
+
+  // Set initial record when data loads initially in view mode
+  useEffect(() => {
+    if (list.length > 0 && !formData?.leave_type_id && mode === "view") {
+      handleView(list[0]);
+    }
+  }, [list, formData?.leave_type_id, mode, handleView]);
+
   useEffect(() => {
     setERPHandlers({
-      onNextRecord: () => setCurrentIndex(p => Math.min(p + 1, list.length - 1)),
-      onPrevRecord: () => setCurrentIndex(p => Math.max(p - 1, 0)),
+      onNextRecord: handleNext,
+      onPrevRecord: handlePrev,
       onNew: handleAdd,
       onSave: () => handleSave(formData),
       onEsc: () => setShowForm(false),
       onBackspaceNavigation: true,
     });
-  }, [list, formData, handleAdd, setShowForm]);
+  }, [list, formData, handleAdd, setShowForm, handleNext, handlePrev]);
 
   return (
     <div className="h-full w-full">
@@ -170,23 +194,23 @@ const LeaveTypes = ({ tab }) => {
           onEditCancel={handleEditCancel}
           activeTab="entry"
           onTabChange={handleTabChange}
-          onPrevRecord={() => setCurrentIndex(p => Math.max(p - 1, 0))}
-          onNextRecord={() => setCurrentIndex(p => Math.min(p + 1, list.length - 1))}
+          onPrevRecord={handlePrev}
+          onNextRecord={handleNext}
         />
       ) : (
         <div className="bg-slate-50 h-full">
           <Table
-          activeTab="search"
-          onTabChange={handleTabChange}
-          
+            activeTab="search"
+            onTabChange={handleTabChange}
             title="Leave Type"
             onDeleteMultiple={handleDeleteMultiple}
             data={list}
             columns={columns}
             rowKey="leave_type_id"
             loading={loading}
-            onAdd={rights.add === 1 ? handleAdd : null}
+            onAdd={handleAdd}
             onRowDoubleClick={handleRowSelect}
+            onRowClick={handleRowSelect}
           />
         </div>
       )}

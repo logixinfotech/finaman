@@ -29,12 +29,19 @@ const SectionCard = ({
   right,
   className = "",
   bodyClassName = "grid grid-cols-1 sm:grid-cols-2",
+  collapsed,
+  onToggle,
   children,
 }) => {
   const t = SECTION_THEMES[theme] || SECTION_THEMES.slate;
+  const collapsible = typeof onToggle === "function";
+  const isCollapsed = collapsible && !!collapsed;
   return (
     <div className={`bg-white w-full flex flex-col border border-[#dde1ea] rounded-[6px] shadow-sm ${className}`}>
-      <div className={`px-[14px] py-[7px] shrink-0 flex items-center justify-between gap-2 border-b rounded-t-[5px] ${t.border} ${t.barBg}`}>
+      <div
+        onClick={collapsible ? onToggle : undefined}
+        className={`px-[14px] py-[7px] shrink-0 flex items-center justify-between gap-2 border-b rounded-t-[5px] ${t.border} ${t.barBg} ${collapsible ? "cursor-pointer select-none" : ""} ${isCollapsed ? "rounded-b-[5px] border-b-0" : ""}`}
+      >
         <div className="flex items-center gap-2.5 min-w-0">
           {icon && (
             <div className={`w-[18px] h-[18px] rounded-[3px] flex items-center justify-center text-[11px] shadow-sm shrink-0 ${t.iconBg}`}>
@@ -43,9 +50,16 @@ const SectionCard = ({
           )}
           <h3 className="text-[11.5px] font-bold uppercase tracking-[0.4px] text-[#0f2137] truncate">{title}</h3>
         </div>
-        {right && <div className="shrink-0">{right}</div>}
+        <div className="shrink-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {right}
+        </div>
+        {collapsible && (
+          <span className="shrink-0 text-slate-500 text-[11px] leading-none">{isCollapsed ? "▸" : "▾"}</span>
+        )}
       </div>
-      <div className={`p-[14px] gap-x-[12px] gap-y-[10px] content-start items-start flex-1 ${bodyClassName}`}>{children}</div>
+      {!isCollapsed && (
+        <div className={`p-[14px] gap-x-[12px] gap-y-[10px] content-start items-start flex-1 ${bodyClassName}`}>{children}</div>
+      )}
     </div>
   );
 };

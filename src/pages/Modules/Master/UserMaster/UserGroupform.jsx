@@ -51,7 +51,6 @@ const UserGroupForm = ({
   onCancel,
   onDelete,
   mode,
-
   onPrevRecord,
   onNextRecord,
   saving,
@@ -65,9 +64,10 @@ const UserGroupForm = ({
   onTabChange,
   showSettingsTab = false,
   showCategory = false,
+  showDepartment = false,
+  departmentOptions = [],
   showActive = false,
-  showDesignation = false,
-  // naye props (component signature me add karo)
+  showDesignation = false, 
   showExtraField = false,
   extraFieldKey = "extra_field",
   extraFieldLabel = "Extra Field",
@@ -229,6 +229,7 @@ const UserGroupForm = ({
                 )}
               </div>
 
+
               {showCategory && (
                 <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
                   <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
@@ -251,6 +252,7 @@ const UserGroupForm = ({
                   />
                 </div>
               )}
+
               {showGstContact && (
                 <>
                   <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
@@ -285,6 +287,21 @@ const UserGroupForm = ({
                     />
                   </div>
                 </>
+              )}
+              {showDepartment && (
+                <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
+                  <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
+                    Department
+                  </label>
+                  <ERPAutocomplete
+                    className={`${getInputStyle(false)} lg:min-w-[435px]`}
+                    value={formData.category || ""}
+                    onChange={(val) => setFormData({ ...formData, category: val })}
+                    onKeyDown={handleKeyDown}
+                    disabled={isViewMode}
+                    options={departmentOptions}
+                  />
+                </div>
               )}
               {showDesignation && (
                 <>

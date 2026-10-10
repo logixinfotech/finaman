@@ -85,10 +85,8 @@ const UserAuthenticationPage = ({ tab }) => {
           mode={mode}
           saving={saving}
           rights={rights}
- 
           currentRecord={list.length > 0 ? currentIndex + 1 : 0}
           totalRecords={list.length} 
- 
           onFirstRecord={()  => setCurrentIndex(0)}
           onLastRecord={()  => setCurrentIndex(list.length - 1)} 
           onModify={handleModify}

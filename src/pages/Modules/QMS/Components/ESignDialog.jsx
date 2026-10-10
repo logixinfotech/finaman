@@ -1,21 +1,28 @@
 import { useState } from "react";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
-export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCancel, requireReason = false, reasonLabel = "Reason", }) {
-  const [typedName, setTypedName] = useState("");
+export default function ESignDialog({
+  meaning, signingAsLabel, onConfirm, onCancel,
+  requireReason = false, reasonLabel = "Reason",
+}) {
+  const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [reason, setReason] = useState("");
 
-  const canConfirm = typedName.trim() && (!requireReason || reason.trim());
+  const canConfirm = password.trim() && (!requireReason || reason.trim());
 
   const handleConfirm = async () => {
-    if (!canConfirm) return;                                     
+    if (!canConfirm || busy) return;
     setBusy(true);
     setError("");
     try {
-      await onConfirm(typedName.trim(), reason.trim());        
+      await onConfirm(password, reason.trim());
+      setPassword("");                      // memory me password mat chhodo
     } catch (err) {
       setError(err?.message || "Signature failed");
+      setPassword("");                      // galat password → field saaf
     } finally {
       setBusy(false);
     }
@@ -39,6 +46,7 @@ export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCanc
           <span className="text-[11px] text-slate-400 uppercase tracking-wide">Signing as</span>
           <div className="text-[13px] font-semibold text-slate-700">{signingAsLabel}</div>
         </div>
+
         {requireReason && (
           <div className="mb-3">
             <label className="text-[11px] font-semibold text-[#334155] block mb-1">
@@ -55,30 +63,39 @@ export default function ESignDialog({ meaning, signingAsLabel, onConfirm, onCanc
         )}
 
         <label className="text-[11px] text-slate-500 mb-1 block">
-         Enter your password to confirm
+          Enter your password to confirm this signature
         </label>
-        <input
-          autoFocus
-          value={typedName}
-          onChange={(e) => setTypedName(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Full name"
-          className="w-full h-9 px-3 text-[13px] border border-slate-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-        />
+        <div className="relative">
+          <input
+            autoFocus
+            type={showPwd ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Password"
+            autoComplete="current-password"
+            className="w-full h-9 pl-3 pr-9 text-[13px] border border-slate-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShowPwd((v) => !v)}
+            title={showPwd ? "Hide password" : "Show password"}
+            className="absolute right-0 top-0 h-9 w-9 flex items-center justify-center text-slate-400 hover:text-slate-600"
+          >
+            {showPwd ? <FaEyeSlash className="text-[13px]" /> : <FaEye className="text-[13px]" />}
+          </button>
+        </div>
 
-        {error && (
-          <p className="text-[11.5px] text-red-500 mt-2">✕ {error}</p>
-        )}
-
-
+        {error && <p className="text-[11.5px] text-red-500 mt-2">✕ {error}</p>}
 
         <div className="flex gap-2 mt-4">
           <button
             onClick={handleConfirm}
-            disabled={!canConfirm || busy}                        
+            disabled={!canConfirm || busy}
             className="flex-1 h-9 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12.5px] font-semibold rounded-md transition-colors"
           >
-            {busy ? "Signing…" : "✓ Confirm Signature"}
+            {busy ? "Signing..." : "✓ Confirm Signature"}
           </button>
           <button
             onClick={onCancel}

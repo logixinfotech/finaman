@@ -76,8 +76,7 @@ export default function SalaryProcessing() {
   const loadPayroll = async () => {
     console.log("loadPayroll called, month:", month + "-01");
     const res = await getPayrollMonthly(month + "-01");
-    console.log("API response:", res);
-    console.log("res.data:", res?.data);
+ 
     if (res?.data) {
       setData(
         res.data.map((r) => ({
@@ -103,6 +102,7 @@ export default function SalaryProcessing() {
           pf: 0,
           esi: 0,
           pt: 0,
+         
           tds: 0,
           hra: 0,
           special: 0,
@@ -902,6 +902,8 @@ export default function SalaryProcessing() {
                     const sm = STATUS_META[row.status] || STATUS_META.Draft;
                     const hue = avatarHue(row.id);
                     const isExp = expandRow === row.pid;
+                     const attended = row.p + row.weekoff_days + row.holiday_days + row.paid_leave_days;
+
                     return [
                       <tr
                         key={row.pid}
@@ -994,7 +996,7 @@ export default function SalaryProcessing() {
                           style={{ padding: "8px 12px", textAlign: "center" }}
                         >
                           <div style={{ fontSize: 12, fontWeight: 600, color: "#2F9E44" }}>
-                            {row.p + row.weekoff_days + row.holiday_days}/{row.total_days}
+                            {attended}/{row.total_days}
                           </div>
                           {(row.lopD > 0 || row.otH > 0) && (
                             <div

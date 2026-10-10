@@ -8,11 +8,15 @@ import config from "../../../../config";
 import PipelineProgressBar from "./components/PipelineProgressBar";
 import StageStepper from "./components/StageStepper";
 import StatusChip from "./components/StatusChip";
+import SendAssessmentModal from "./components/SendAssessmentModal";
+import CandidateAssessmentReviewCard from "./components/CandidateAssessmentReviewCard";
+import UniversalCallModal from "../Communication/components/UniversalCallModal";
+import GlobalWhatsAppModal from "../../../../components/Reusable/whatsapp/GlobalWhatsAppModal";
 import {
   STAGES, TOTAL_STAGES, JOINED_STATUS, CATEGORY_STYLES, initials, styleFor,
   fmtDate, fmtDateTime, timeAgo, daysBetween, reasonScopeFor,
 } from "./pipelineConstants";
-import { GitBranch, Phone, FileText, ChevronRight, Lock, AlertTriangle, Send, History, Activity, ArrowLeft } from "lucide-react";
+import { GitBranch, Phone, PhoneCall, MessageSquare, FileText, Lock, AlertTriangle, Send, History, Activity, ArrowLeft, Award } from "lucide-react";
 
 const EMPTY_FORM = { to_status: "", reason: "", scheduled_at: "", remarks: "" };
 
@@ -24,6 +28,9 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [historyFilter, setHistoryFilter] = useState("All");
+  const [isSendAssessmentOpen, setIsSendAssessmentOpen] = useState(false);
+  const [callModalOpen, setCallModalOpen] = useState(false);
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const actionRef = useRef(null);
   const saveBtnRef = useRef(null);
 
@@ -133,27 +140,18 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
 
       <div className="flex-1 overflow-y-auto p-3 md:p-4">
         <div className="max-w-[1400px] mx-auto space-y-3">
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 text-[11px] text-slate-500" aria-label="Breadcrumb">
+          {/* Candidate header card */}
+          <div className="bg-white border border-[#dde1ea] rounded-[6px] shadow-sm px-3 py-2 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={onBack}
               aria-label="Back to Candidate Pipeline"
               title="Back (Esc)"
-              className="w-[26px] h-[26px] rounded-md border bg-white flex items-center justify-center text-slate-600 hover:text-[var(--icon-color)] hover:border-[var(--icon-color)] transition-colors shrink-0"
+              className="w-[28px] h-[28px] rounded-md border bg-white flex items-center justify-center text-slate-600 hover:text-[var(--icon-color)] hover:border-[var(--icon-color)] transition-colors shrink-0"
               style={{ borderColor: "#e2e8f0" }}
             >
-              <ArrowLeft size={14} strokeWidth={2.5} />
+              <ArrowLeft size={15} strokeWidth={2.5} />
             </button>
-            <button type="button" onClick={onBack} className="hover:underline" style={{ color: "var(--icon-color)" }}>Candidate Pipeline</button>
-            <ChevronRight size={12} />
-            <span className="truncate">{row.v_title}</span>
-            <ChevronRight size={12} />
-            <span className="font-semibold text-slate-800 truncate">{row.full_name}</span>
-          </nav>
-
-          {/* Candidate header card */}
-          <div className="bg-white border border-[#dde1ea] rounded-[6px] shadow-sm px-3 py-2 flex flex-wrap items-center gap-3">
             <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center text-[13px] font-bold shrink-0" style={{ background: "var(--accent-soft)", color: "var(--icon-color)" }}>
               {initials(row.full_name)}
             </span>
@@ -184,12 +182,31 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
               )}
               <button
                 type="button"
-                disabled={locked || !transitions.some((t) => t.is_call_attempt)}
-                onClick={() => { const c = transitions.find((t) => t.is_call_attempt); if (c) { setField("to_status", c.to_status); actionRef.current?.focus(); } }}
+                disabled={locked}
+                onClick={() => setIsSendAssessmentOpen(true)}
+                className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-md bg-purple-600 hover:bg-purple-700 text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Dispatch Online Assessment Link"
+              >
+                <Award size={13} /> Send Assessment
+              </button>
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => setWhatsappModalOpen(true)}
+                className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Send WhatsApp Message"
+              >
+                <MessageSquare size={13} /> WhatsApp
+              </button>
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => setCallModalOpen(true)}
                 className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-md text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: "var(--icon-color)" }}
+                title="Log Call, Audio Recording & Dispositions"
               >
-                <Phone size={13} /> Log Call
+                <PhoneCall size={13} /> Call / Disposition
               </button>
             </div>
           </div>
@@ -280,6 +297,13 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
                   </>
                 )}
               </SectionCard>
+
+              {/* Candidate Assessment Review & Manual Grading Card */}
+              <CandidateAssessmentReviewCard
+                pipelineId={pipelineId}
+                candidateId={row?.candidate_id}
+                onRefreshPipeline={load}
+              />
             </div>
 
             {/* RIGHT: history + comm log */}
@@ -300,23 +324,32 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
                 {filteredHistory.length === 0 ? (
                   <div className="p-3 bg-slate-50 border border-slate-200 rounded text-center text-xs text-slate-400">No history entries</div>
                 ) : (
-                  <div className="space-y-3 border-l-2 border-slate-200 ml-2 pl-4 max-h-[420px] overflow-y-auto pr-1">
-                    {filteredHistory.map((h) => {
+                  <ol className="max-h-[420px] overflow-y-auto pl-1 pr-1 pt-1">
+                    {filteredHistory.map((h, idx) => {
                       const hs = styleFor(h.category, h.to_status);
+                      const isLast = idx === filteredHistory.length - 1;
                       return (
-                        <div key={h.history_id} className="relative text-xs">
-                          <span className={`absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white ring-1 ${hs.dot} ${hs.ring}`} />
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <span className="text-[10px] text-slate-400 font-mono">{fmtDateTime(h.changed_at)}</span>
-                            <StatusChip status={h.to_status} category={h.category} statusBase={h.to_status} />
-                            <span className={`text-[10px] font-semibold ${hs.text}`}>{hs.label}</span>
+                        <li key={h.history_id} className={`relative flex gap-3 text-xs ${isLast ? "" : "pb-4"}`}>
+                          {/* rail: dot + connector to the next entry (inside the scroll box, so never clipped) */}
+                          <span className="relative w-[14px] shrink-0" aria-hidden="true">
+                            {!isLast && (
+                              <span className="absolute left-1/2 -translate-x-1/2 top-[14px] -bottom-[2px] w-[2px] rounded-full" style={{ background: "var(--border-main)" }} />
+                            )}
+                            <span className={`absolute left-1/2 -translate-x-1/2 top-[4px] w-[10px] h-[10px] rounded-full ring-[3px] ${hs.dot} ${hs.ring}`} style={{ "--tw-ring-opacity": 0.45 }} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                              <span className="text-[10px] text-slate-400 font-mono">{fmtDateTime(h.changed_at)}</span>
+                              <StatusChip status={h.to_status} category={h.category} statusBase={h.to_status} />
+                              <span className={`text-[10px] font-semibold ${hs.text}`}>{hs.label}</span>
+                            </div>
+                            {h.remarks && <p className="text-[11px] text-slate-600 mt-0.5">{h.remarks}</p>}
+                            <p className="text-[10px] text-slate-400">{h.is_system ? "System" : h.changed_by_name || "User"}{h.from_status ? ` · from ${h.from_status}` : ""}</p>
                           </div>
-                          {h.remarks && <p className="text-[11px] text-slate-600 mt-0.5">{h.remarks}</p>}
-                          <p className="text-[10px] text-slate-400">{h.is_system ? "System" : h.changed_by_name || "User"}{h.from_status ? ` · from ${h.from_status}` : ""}</p>
-                        </div>
+                        </li>
                       );
                     })}
-                  </div>
+                  </ol>
                 )}
               </SectionCard>
 
@@ -368,6 +401,54 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
         formData={row}
         moduleKey="pipeline"
       />
+
+      {/* Send Assessment Modal */}
+      <SendAssessmentModal
+        isOpen={isSendAssessmentOpen}
+        onClose={() => setIsSendAssessmentOpen(false)}
+        pipelineRow={row}
+        onSuccess={load}
+      />
+
+      {/* Universal Call / Disposition Modal */}
+      {callModalOpen && row && (
+        <UniversalCallModal
+          isOpen={callModalOpen}
+          candidate={{
+            candidate_id: row.candidate_id,
+            candidate_name: row.candidate_name,
+            phone: row.primary_contact,
+            email: row.primary_email,
+            job_title: row.job_title,
+            vacancy_id: row.vacancy_id,
+            pipeline_id: row.pipeline_id,
+            current_stage: row.current_stage,
+            current_status_name: row.current_status,
+            call_count: row.call_attempts_current_stage || 0,
+          }}
+          onClose={() => setCallModalOpen(false)}
+          onSuccess={() => {
+            setCallModalOpen(false);
+            load();
+          }}
+        />
+      )}
+
+      {/* Global Reusable WhatsApp Modal */}
+      {whatsappModalOpen && row && (
+        <GlobalWhatsAppModal
+          isOpen={whatsappModalOpen}
+          onClose={() => setWhatsappModalOpen(false)}
+          recipientPhone={row.primary_contact}
+          recipientName={row.candidate_name}
+          moduleName="Recruitment"
+          referenceType="candidate"
+          referenceId={row.candidate_id}
+          onMessageSent={() => {
+            showToast({ icon: "success", title: "WhatsApp message logged" });
+          }}
+        />
+      )}
     </div>
   );
 }

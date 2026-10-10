@@ -3,30 +3,50 @@
 ════════════════════════════════════════ */
 .chrome-tabbar {
     height: 33px;
+    width: 100%;
+    min-width: 0;
     background: var(--tabbar-bg);
     display: flex;
-    align-items: flex-end;
-    padding: 0 10px;
+    align-items: flex-end;          /* tabs neeche se connect rahein */
+    padding: 0 0 0 10px;            /* right padding 0 => search ekdum chipka */
     gap: 3px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.10);
     flex-shrink: 0;
 }
 
 .chrome-tab-list {
+    flex: 1 1 auto;
+    min-width: 0;                   /* zaroori: tabs zyada hone par yahi scroll karega */
     display: flex;
     align-items: flex-end;
     gap: 3px;
     height: 100%;
-    overflow-y: hidden; 
     overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
 }
 .chrome-tab-list::-webkit-scrollbar { display: none; }
 
-/* ── INACTIVE TAB ── now clearly visible ── */
+/* ── SEARCH: ekdum right end, chhoti width ── */
+.tabbar-search {
+    flex: 0 0 auto;
+    width: 170px;
+    height: 24px;
+    margin: 0 0 0 auto;             /* left auto = right end par push */
+    align-self: center;
+    position: relative;
+}
+.tabbar-search input {
+    font-size: 11.5px;
+    min-width: 0;
+    width: 100%;
+}
+
+/* ── INACTIVE TAB ── */
 .chrome-tab {
     display: flex;
     align-items: center;
+    flex-shrink: 0;                 /* tab compress nahi hoga */
     gap: 6px;
     height: 26px;
     min-width: 115px;
@@ -34,11 +54,11 @@
     padding: 0 11px;
     border-radius: 6px 6px 0 0;
     font-size: 11.5px;
-    color: #cdddef;                              /* brighter, readable */
+    color: #cdddef;
     cursor: pointer;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: none;
-    background: rgba(255, 255, 255, 0.10);        /* visible solid pill */
+    background: rgba(255, 255, 255, 0.10);
     transition: background 0.15s ease, color 0.15s ease;
     position: relative;
     overflow: hidden;
@@ -83,7 +103,7 @@
     border-radius: 50%;
 }
 
-/* ── ACTIVE TAB ── flips to form bg, connects below ── */
+/* ── ACTIVE TAB ── */
 .chrome-tab.active {
     background: var(--bg-main);
     color: var(--text-main);
@@ -124,7 +144,6 @@
     background: rgba(239, 68, 68, 0.7);
 }
 
-/* close button on active (light) tab needs dark default */
 .chrome-tab.active .chrome-tab-close {
     color: var(--text-muted);
     opacity: 0.6;

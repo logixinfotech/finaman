@@ -1,3 +1,4 @@
+// export default Dashboard;
 import React, { useEffect, useState, Suspense, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Dashboard.css";
@@ -9,8 +10,7 @@ import {
   FaRegWindowMaximize,
   FaStar,
   FaRegStar,
-  FaSearch,
-  FaTimesCircle,
+ 
   FaHistory,
   FaChevronRight,
   FaChevronDown,
@@ -19,9 +19,9 @@ import {
 } from "react-icons/fa";
 import RecentActivity from "./RecentActivity";
 import { fetchMasmnuData, fetchMasgrpList } from "../../utils/api"; import { useAuth } from "../../theme/AuthContext";
-import SalesDashboard from "../../pages/Modules/Dashboard/SalesDashboard/SalesDashboard";
-// import FinamanDashboard from "../../pages/FinamanDashboard";
-import MyWork from "../../pages/Modules/QMS/Components/MainDashboard";
+ 
+import HomeDashboard from "./HomeDashboard"; 
+import CustomizableHomeDashboard from "./CustHomeDashboard";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,6 +37,7 @@ function Dashboard({
   activeModule,
   tabs,
   activeTab,
+  onSelectModule,
   onOpenPage,
   onChangeActiveTab,
   onCloseTab,
@@ -70,6 +71,8 @@ function Dashboard({
   const { token } = useAuth();
   const searchInputRef = useRef(null);
   const constraintsRef = useRef(null);
+  // har tab ka "band karne se pehle poochna hai kya" function yahan store hota hai
+  const closeGuardsRef = useRef({});
 
   const toggleGroup = useCallback((key) => {
     setCollapsedGroups((prev) => {
@@ -164,9 +167,16 @@ const openContextMenu = useCallback((e, m) => {
   }, [activeTab]);
 
   const handleCloseTab = useCallback(
-    (tabId) => {
+    async (tabId) => {
+      // us tab ke andar agar unsaved form data hai, to pehle confirm le lo
+      const guard = closeGuardsRef.current[tabId];
+      if (guard) {
+        const ok = await guard();
+        if (!ok) return; // user ne "No" bola — tab mat band karo
+      }
       const idx = tabs.findIndex((t) => t.id === tabId);
       setLoadedTabs((prev) => prev.filter((id) => id !== tabId));
+      delete closeGuardsRef.current[tabId];
       onCloseTab(tabId);
       if (activeTab?.id === tabId && idx > 0) {
         onChangeActiveTab(tabs[idx - 1].id);
@@ -469,9 +479,9 @@ onContextMenu={(e) => openContextMenu(e, m)}
       animate={{ opacity: 1, x: 0 }}
       className="module-board modern-card h-full flex flex-col"
     >
-      
+     
 
-      <div className="dashboard-scroll-body">
+      <div className="dashboard-scroll-body mt-2">
         {loading ? (
           <div className="dashboard-loading">
             <div className="loading-shimmer" />
@@ -587,7 +597,9 @@ onContextMenu={(e) => openContextMenu(e, m)}
                 exit={{ opacity: 0 }}
                 style={{ height: "100%" }}
               >
-                <SalesDashboard />
+                <CustomizableHomeDashboard/>
+                {/* <HomeDashboard onOpenPage={onOpenPage} onSelectModule={onSelectModule}/> */}
+                {/* <SalesDashboard /> */}
                 {/* <FinamanDashboard/> */}
               </motion.div>
             ) : (
@@ -617,7 +629,10 @@ onContextMenu={(e) => openContextMenu(e, m)}
                     ) : (
                       <Suspense fallback={<div className="p-5 animate-pulse">Loading...</div>}>
                         {Component ? (
-                          <TabProvider closeTab={() => handleCloseTab(tab.id)}>
+                          <TabProvider
+                            closeTab={() => handleCloseTab(tab.id)}
+                            registerCloseGuard={(fn) => { closeGuardsRef.current[tab.id] = fn; }}
+                          >
                             <Component tab={tab} module={tab.module} onOpenPage={onOpenPage} />
                           </TabProvider>
                         ) : (

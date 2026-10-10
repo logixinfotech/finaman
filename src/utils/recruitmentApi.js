@@ -139,10 +139,54 @@ export const addToPipeline = (data) => handleApi(() => api.post(PIPELINE, data))
 export const getPipelineDetail = (id) => handleApi(() => api.get(`${PIPELINE}/${id}`));
 export const updatePipelineStatus = (id, data) => handleApi(() => api.post(`${PIPELINE}/${id}/status`, data));
 
+// ── Vacancy Tracking (read-only view) ────────────────────────────────────────
+export const getVacancyTracking = (params) => handleApi(() => api.get(`${PIPELINE}/vacancy-tracking`, { params }));
+export const getVacancyTrackingDetail = (id) => handleApi(() => api.get(`${PIPELINE}/vacancy-tracking/${id}`));
+
 export const importCandidatesExcel = (formData) =>
   handleApi(() =>
     api.post("/api/recruitment/candidates/import-excel", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     })
   );
+
+// ── Assessment Master API ─────────────────────────────────────────────────────
+const ASM = "/api/recruitment/assessment-master";
+export const getAssessments = (params) => handleApi(() => api.get(ASM, { params }));
+export const getActiveAssessments = () => handleApi(() => api.get(`${ASM}/active`));
+export const getAssessmentById = (id) => handleApi(() => api.get(`${ASM}/${id}`));
+export const getNextAssessmentCode = () => handleApi(() => api.get(`${ASM}/next-code`));
+export const createAssessment = (data) => {
+  if (data instanceof FormData) {
+    return handleApi(() => api.post(ASM, data, { headers: { "Content-Type": "multipart/form-data" } }));
+  }
+  return handleApi(() => api.post(ASM, data));
+};
+export const updateAssessment = (id, data) => {
+  if (data instanceof FormData) {
+    return handleApi(() => api.put(`${ASM}/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }));
+  }
+  return handleApi(() => api.put(`${ASM}/${id}`, data));
+};
+export const deleteAssessment = (id) => handleApi(() => api.delete(`${ASM}/${id}`));
+
+// ── Candidate Assessment & HR Grading API ─────────────────────────────────────
+const CAND_ASM = "/api/recruitment/candidate-assessment";
+export const issueCandidateAssessment = (data) => handleApi(() => api.post(`${CAND_ASM}/issue`, data));
+export const getCandidateAssessmentsByPipeline = (pipeline_id) =>
+  handleApi(() => api.get(`${CAND_ASM}/by-pipeline/${pipeline_id}`));
+export const getCandidateAssessmentDetail = (candidate_assessment_id) =>
+  handleApi(() => api.get(`${CAND_ASM}/detail/${candidate_assessment_id}`));
+export const submitHRGrades = (data) => handleApi(() => api.post(`${CAND_ASM}/grade`, data));
+
+// ── Interview Scheduling API ───────────────────────────────────────────────
+const SCHED = "/api/recruitment/interview-scheduling";
+export const getInterviewScheduleBoard = (params) => handleApi(() => api.get(`${SCHED}/board`, { params }));
+export const getActivePanelists = () => handleApi(() => api.get(`${SCHED}/panelists`));
+export const checkScheduleConflict = (data) => handleApi(() => api.post(`${SCHED}/check-conflict`, data));
+export const suggestScheduleSlot = (data) => handleApi(() => api.post(`${SCHED}/suggest-slot`, data));
+export const saveInterviewSchedule = (data) => handleApi(() => api.post(`${SCHED}/save`, data));
+export const dispatchBulkInvites = (data) => handleApi(() => api.post(`${SCHED}/dispatch-bulk`, data));
+
+
 

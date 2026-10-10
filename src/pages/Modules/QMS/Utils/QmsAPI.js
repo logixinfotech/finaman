@@ -33,8 +33,7 @@ export const getDeviations = async () => {
   const data = Array.isArray(res?.data) ? res.data : [];
   return { ...res, data: data.map(normalizeDeviation) };
 };
-
-// 🆕 ek record ki poori detail — lines ke saath
+ 
 export const getDeviation = (id) =>
   handleApi(() => api.get(`/api/qms/deviations/${id}`));
 
@@ -52,7 +51,8 @@ export const getRecordHistory = (moduleKey, recordNo) =>
 
 //========================================================recall==================================================
 
-export const getRecalls = () => handleApi(() => api.get("/api/qms/recalls"));
+export const getRecallsPage = (params) =>
+  handleApi(() => api.get("/api/qms/recalls", { params }));
 export const createRecall = (data) => handleApi(() => api.post("/api/qms/recalls", data));
 export const updateRecall = (id, data) => handleApi(() => api.put(`/api/qms/recalls/${id}`, data));
 export const deleteRecall = (id) => handleApi(() => api.delete(`/api/qms/recalls/${id}`));
@@ -102,11 +102,7 @@ export const deleteDmsRecord = (id) => handleApi(() => api.delete(`/api/qms/dms/
 export const getCalibrations = () => handleApi(() => api.get("/api/qms/calibrations"));
 export const createCalibration = (data) => handleApi(() => api.post("/api/qms/calibrations", data));
 export const updateCalibration = (id, data) => handleApi(() => api.put(`/api/qms/calibrations/${id}`, data));
-export const deleteCalibration = (id) => handleApi(() => api.delete(`/api/qms/calibrations/${id}`));
-
-
-
-// QmsAPI.js mein add karo (Recall wale functions ke paas hi)
+export const deleteCalibration = (id) => handleApi(() => api.delete(`/api/qms/calibrations/${id}`)); 
 
 export const getEnvironmentalMonitorings = (params) =>
   handleApi(() => api.get("/api/qms/environmental", { params }));
@@ -282,3 +278,11 @@ export const saveWorkflowRoles = (moduleKey, sections) =>
 
 export const resetWorkflowRoles = (moduleKey) =>
   handleApi(() => api.delete(`/api/qms/workflow-roles/${moduleKey}`));
+
+//==============================================Settings ==================================================================
+
+export const getQmsSettingsOverview = () => 
+  handleApi(() => api.get("/api/qms/settings-overview"));
+
+export const saveApplSettings = (applName, values) => 
+  handleApi(() => api.post(`/api/settings/${applName}`, values));

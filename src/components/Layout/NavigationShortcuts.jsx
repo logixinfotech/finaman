@@ -1,10 +1,11 @@
  
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSaveBus, useSaveSlot } from "./Settings/SaveBus"; // path apne folder ke hisaab se adjust kareinimport { createPortal } from "react-dom";
 import { Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { fetchSidebarMenu } from "../../utils/api";
 import { useNavShortcuts } from "../../utils/Shortcuts/NavShortcutContext";
 import { eventToCombo, formatCombo } from "../../utils/Shortcuts/ShortcutRegistry";
+import { createPortal } from "react-dom";
 
 const Keys = ({ combo }) => (
   <span className="flex items-center gap-1">
@@ -41,7 +42,7 @@ const Switch = ({ checked, onChange, label }) => (
 // Searchable dropdown. The list is rendered in a portal (position: fixed), so no parent
 // card can clip it, and it does not depend on the browser's native <select> popup.
 // data-dropdown-open on the panel keeps the ERP Enter-key navigation from stealing keys.
-const Dropdown = ({ value, options, onChange, placeholder, disabled, emptyText }) => {
+export const Dropdown = ({ value, options, onChange, placeholder, disabled, emptyText }) => {
   const btnRef = useRef(null);
   const panelRef = useRef(null);
   const inputRef = useRef(null);
@@ -138,6 +139,7 @@ const Dropdown = ({ value, options, onChange, placeholder, disabled, emptyText }
       if (!open) openPanel();
     }
   };
+  
 
   return (
     <>
@@ -241,6 +243,36 @@ const Editor = ({ initial, onSave, onCancel }) => {
   const [recording, setRecording] = useState(false);
   const [notice, setNotice] = useState(null); // { level: "error" | "warn", text }
   const exceptId = initial?.id;
+  const bus = useSaveBus();            // null ho to Editor Settings ke bahar chal raha hai
+
+// validation + save. Error throw karta hai, taaki Settings ka saveAll alertError dikha de
+const submit = () => {
+  if (!moduleId) throw new Error("Choose the module first.");
+  const t =
+    targets.find((x) => String(x.masmnu_id) === target) ||
+    (initial && String(initial.masmnu_id) === target ? initial : null);
+  if (!t) throw new Error("Choose the screen to open.");
+  if (!keys) throw new Error("Click Record, then press the key combination.");
+  const res = check(keys, exceptId);
+  if (res && res.level === "error") throw new Error(res.text);
+  onSave({ keys, masmnu_id: t.masmnu_id, appl_name: t.appl_name, label: t.label });
+};
+
+// stable save function (har render pe naya function banega to bus loop karega)
+const submitRef = useRef(submit);
+submitRef.current = submit;
+const slotSave = useCallback(() => submitRef.current(), []);
+
+const dirty = initial
+  ? keys !== initial.keys || target !== String(initial.masmnu_id)
+  : !!(keys || target || moduleId);
+
+useSaveSlot(`navsc:${initial?.id ?? "new"}`, dirty, slotSave);
+
+// bus na ho (standalone use) to purana inline Save chalega
+const handleSave = () => {
+  try { submit(); } catch (e) { setNotice({ level: "error", text: e.message }); }
+};
 
   useEffect(() => {
     let alive = true;
@@ -317,18 +349,7 @@ const Editor = ({ initial, onSave, onCancel }) => {
     setNotice(null);
   };
 
-  const handleSave = () => {
-    if (!moduleId) { setNotice({ level: "error", text: "Choose the module first." }); return; }
-    const t =
-      targets.find((x) => String(x.masmnu_id) === target) ||
-      (initial && String(initial.masmnu_id) === target ? initial : null);
-    if (!t) { setNotice({ level: "error", text: "Choose the screen to open." }); return; }
-    if (!keys) { setNotice({ level: "error", text: "Click Record, then press the key combination." }); return; }
-    const res = check(keys, exceptId);
-    if (res && res.level === "error") { setNotice(res); return; }
-    onSave({ keys, masmnu_id: t.masmnu_id, appl_name: t.appl_name, label: t.label });
-  };
-
+ 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-4">
       <div className="grid gap-4 md:grid-cols-3">
@@ -393,22 +414,30 @@ const Editor = ({ initial, onSave, onCancel }) => {
         </p>
       )}
 
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded-lg bg-indigo-500 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-indigo-600"
-        >
-          {initial ? "Save changes" : "Add shortcut"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-500 hover:bg-slate-100"
-        >
-          Cancel
-        </button>
-      </div>
+       <div className="mt-4 flex items-center gap-2">
+  {bus ? (
+    dirty && (
+      <span className="text-[11px] font-medium text-amber-600">
+        Unsaved  
+      </span>
+    )
+  ) : (
+    <button
+      type="button"
+      onClick={handleSave}
+      className="rounded-lg bg-indigo-500 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-indigo-600"
+    >
+      {initial ? "Save changes" : "Save"}
+    </button>
+  )}
+  <button
+    type="button"
+    onClick={onCancel}
+    className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-500 hover:bg-slate-100"
+  >
+    Cancel
+  </button>
+</div>
     </div>
   );
 };

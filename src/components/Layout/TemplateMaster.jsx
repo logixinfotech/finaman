@@ -1,12 +1,18 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import {
-  Pin, Filter, Save, RotateCcw, Maximize2, Minimize2, Printer, Download,
-  Pencil, Search, Plus, X, ChevronDown, Users, Mail, Building2, Copy,
-  Zap, Paperclip, FileText, AlertTriangle, CheckCheck,
+  Filter, Maximize2, Minimize2, Printer, Download, Pencil, Search, Plus, X,
+  ChevronDown, Users, Mail, Building2, Copy, Zap, Paperclip, FileText,
+  AlertTriangle, CheckCheck, SlidersHorizontal, ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "../../theme/AuthContext";
 import { DEPARTMENTS, deptName, LABEL_CLS, INPUT_CLS, useToast, Toast, useConfirm, Toggle } from "./commShared";
+
+/* ── Brand tokens — matches CommunicationSetup / ERPHeader navy identity ── */
+const NAVY = "#0B2447";
+const NAVY_SOFT = "#13335E";
+const NAVY_TINT = "#EEF2F8";
+const NAVY_RING = "#C7D4E8";
 
 // ── Mock data — replace with TMPMAS API calls later ─────────────────────────
 const MOCK_USERS = {
@@ -83,8 +89,12 @@ const attachmentLabel = (id) => ATTACHMENTS.find((a) => a.id === id)?.label || "
 // ── Small components ────────────────────────────────────────────────────────
 const ChannelBadge = ({ channel }) => (
   <span
-    className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset
-                ${channel === "EMAIL" ? "bg-indigo-50 text-indigo-600 ring-indigo-100" : "bg-emerald-50 text-emerald-600 ring-emerald-100"}`}
+    className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+    style={
+      channel === "EMAIL"
+        ? { background: NAVY_TINT, color: NAVY, boxShadow: `inset 0 0 0 1px ${NAVY_RING}` }
+        : { background: "#ECFDF5", color: "#059669", boxShadow: "inset 0 0 0 1px #A7F3D0" }
+    }
   >
     {channel === "EMAIL" ? <Mail className="h-3 w-3" /> : <FaWhatsapp className="h-3 w-3" />}
     {channel === "EMAIL" ? "Email" : "WhatsApp"}
@@ -100,24 +110,15 @@ const StatusBadge = ({ active }) => (
   </span>
 );
 
-const ToolbarButton = ({ icon: Icon, children, tone = "default", ...props }) => {
-  const tones = {
-    default: "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50",
-    indigo: "bg-indigo-50 text-indigo-600 ring-indigo-100 hover:bg-indigo-100",
-    emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100 hover:bg-emerald-100",
-    amber: "bg-amber-50 text-amber-600 ring-amber-100 hover:bg-amber-100",
-  };
-  return (
-    <button
-      {...props}
-      className={`inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold ring-1 ring-inset transition-colors
-                  first:rounded-l-lg last:rounded-r-lg -ml-px first:ml-0 disabled:opacity-40 disabled:cursor-not-allowed
-                  ${tones[tone]}`}
-    >
-      <Icon className="h-3.5 w-3.5" /> {children}
-    </button>
-  );
-};
+const IconBtn = ({ icon: Icon, active, ...props }) => (
+  <button
+    {...props}
+    className="flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-inset transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    style={active ? { background: NAVY_TINT, color: NAVY, boxShadow: `inset 0 0 0 1px ${NAVY_RING}` } : { background: "#fff", color: "#64748b", boxShadow: "inset 0 0 0 1px #e2e8f0" }}
+  >
+    <Icon className="h-3.5 w-3.5" />
+  </button>
+);
 
 const Kbd = ({ children }) => (
   <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">{children}</kbd>
@@ -132,12 +133,9 @@ const TemplateMaster = () => {
   const [templates, setTemplates] = useState(MOCK_TEMPLATES);
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedIds, setExpandedIds] = useState([]);
-  const [fixedHeader, setFixedHeader] = useState(true);
   const [search, setSearch] = useState("");
-  const [searchField, setSearchField] = useState("generic"); // 'generic' | 'name'
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({ department: "", channel: "", activeOnly: false });
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [draftFilters, setDraftFilters] = useState(filters);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -149,10 +147,12 @@ const TemplateMaster = () => {
   const bodyRef = useRef(null);
   const subjectRef = useRef(null);
   const searchRef = useRef(null);
+  const filterBtnRef = useRef(null);
   const lastFieldRef = useRef("body");
   const origDraftRef = useRef("");
 
   const visibleDepartments = isAdmin ? DEPARTMENTS : DEPARTMENTS.filter((d) => d.id === myDeptId);
+  const activeFilterCount = (filters.department ? 1 : 0) + (filters.channel ? 1 : 0) + (filters.activeOnly ? 1 : 0);
 
   const filtered = useMemo(() => {
     return templates.filter((t) => {
@@ -162,7 +162,6 @@ const TemplateMaster = () => {
       if (filters.activeOnly && !t.active) return false;
       if (search) {
         const q = search.toLowerCase();
-        if (searchField === "name") return t.name.toLowerCase().startsWith(q);
         return (
           t.name.toLowerCase().includes(q) ||
           t.subject.toLowerCase().includes(q) ||
@@ -172,18 +171,12 @@ const TemplateMaster = () => {
       }
       return true;
     });
-  }, [templates, filters, search, searchField, isAdmin, myDeptId]);
+  }, [templates, filters, search, isAdmin, myDeptId]);
 
   const allSelected = filtered.length > 0 && filtered.every((t) => selectedIds.includes(t.id));
+  const allExpanded = filtered.length > 0 && filtered.every((t) => expandedIds.includes(t.id));
 
-  const toggleSelectAll = async () => {
-    if (allSelected) {
-      if (await ask("Clear all templates?", "All selected rows will be unselected.", "Clear All")) setSelectedIds([]);
-    } else {
-      if (await ask("Select all templates?", `${filtered.length} templates will be selected.`, "Select All")) setSelectedIds(filtered.map((t) => t.id));
-    }
-  };
-
+  const toggleSelectAll = () => setSelectedIds(allSelected ? [] : filtered.map((t) => t.id));
   const toggleRow = (id) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const toggleExpand = (id) => setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -205,8 +198,8 @@ const TemplateMaster = () => {
       allUsers: false, allowedUsers: [], active: true,
     });
 
-  const openEdit = () => {
-    const t = templates.find((x) => x.id === selectedIds[0]);
+  const openEdit = (id) => {
+    const t = templates.find((x) => x.id === id);
     if (t) openEditor(t.id, { ...t, allowedUsers: [...t.allowedUsers] });
   };
 
@@ -274,11 +267,7 @@ const TemplateMaster = () => {
       allowedUsers: d.allowedUsers.some((x) => x.id === u.id) ? d.allowedUsers.filter((x) => x.id !== u.id) : [...d.allowedUsers, u],
     }));
 
-  const applyFilters = () => { setFilters(draftFilters); setShowFilterModal(false); };
-  const resetFilters = () => {
-    const cleared = { department: "", channel: "", activeOnly: false };
-    setFilters(cleared); setDraftFilters(cleared); setSearch("");
-  };
+  const clearFilters = () => { setFilters({ department: "", channel: "", activeOnly: false }); setSearch(""); };
 
   // ── Keyboard: N new · / search · Ctrl+S save · Esc close ──
   const keyRef = useRef();
@@ -289,7 +278,6 @@ const TemplateMaster = () => {
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); saveDraft(); }
       return;
     }
-    if (showFilterModal) { if (e.key === "Escape") setShowFilterModal(false); return; }
     const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName);
     if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "n" || e.key === "N") { e.preventDefault(); openNew(); }
@@ -310,220 +298,232 @@ const TemplateMaster = () => {
     .filter((g) => g.vars.length);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h3 className="text-sm font-semibold text-slate-900">Template Master</h3>
-        <div className="flex gap-2">
-          <button
-            onClick={openClone}
-            disabled={selectedIds.length !== 1}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Copy className="h-4 w-4 text-slate-400" /> Clone
-          </button>
-          <button
-            onClick={openNew}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all"
-          >
-            <Plus className="h-4 w-4" /> New Template
-          </button>
-        </div>
-      </div>
-
-      {/* Row 1 — Fixed Header · Filter Condition · Save Setting · Reset Setting */}
-      <div className="flex">
-        <ToolbarButton icon={Pin} tone={fixedHeader ? "indigo" : "default"} onClick={() => setFixedHeader((v) => !v)}>Fixed Header</ToolbarButton>
-        <ToolbarButton icon={Filter} tone="indigo" onClick={() => { setDraftFilters(filters); setShowFilterModal(true); }}>Filter Condition</ToolbarButton>
-        <ToolbarButton icon={Save} tone="emerald" onClick={() => showToast("Grid setting saved")}>Save Setting</ToolbarButton>
-        <ToolbarButton icon={RotateCcw} tone="amber" onClick={resetFilters}>Reset Setting</ToolbarButton>
-      </div>
-
-      {/* Row 2 — Expand All · Collapse All · Print · Export · Edit Data */}
-      <div className="flex">
-        <ToolbarButton icon={Maximize2} onClick={() => setExpandedIds(filtered.map((t) => t.id))}>Expand All</ToolbarButton>
-        <ToolbarButton icon={Minimize2} onClick={() => setExpandedIds([])}>Collapse All</ToolbarButton>
-        <ToolbarButton icon={Printer} onClick={() => showToast("Sent to printer")}>Print</ToolbarButton>
-        <ToolbarButton icon={Download} onClick={() => showToast("Exported")}>Export</ToolbarButton>
-        <ToolbarButton icon={Pencil} tone="emerald" disabled={selectedIds.length !== 1} onClick={openEdit}>Edit Data</ToolbarButton>
-      </div>
-
-      {/* Row 3 — Generic Search · Field Search · textbox */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex">
-          <ToolbarButton icon={Search} tone={searchField === "generic" ? "indigo" : "default"} onClick={() => setSearchField("generic")}>
-            Generic Search
-          </ToolbarButton>
-          <button
-            onClick={() => setSearchField("name")}
-            className={`h-8 px-3 text-xs font-semibold ring-1 ring-inset -ml-px transition-colors
-                        ${searchField === "name" ? "bg-indigo-50 text-indigo-600 ring-indigo-100" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"}`}
-          >
-            Field Search: Template Name
-          </button>
-          <input
-            ref={searchRef}
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Type to search…  ( / )"
-            className="h-8 w-56 px-3 text-[13px] rounded-r-lg border-y border-r border-slate-200 outline-none
-                       focus:border-indigo-400 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
-          />
-        </div>
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <span className="hidden md:inline-flex items-center gap-1"><Kbd>N</Kbd> new <Kbd>/</Kbd> search</span>
-          <span>{filtered.length} Records</span>
-        </div>
-      </div>
-
-      {/* Grid */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-auto max-h-[60vh]">
-        <table className="w-full text-sm">
-          <thead className={fixedHeader ? "sticky top-0 z-10" : ""}>
-            <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
-              <th className="w-10 px-3 py-2.5 text-center bg-slate-50">
-                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-              </th>
-              <th className="w-6 bg-slate-50"></th>
-              {["Template Name", "Department", "Channel", "Trigger", "Subject / Message", "Allowed Users", "Status"].map((h) => (
-                <th key={h} className="px-4 py-2.5 text-left font-semibold text-[11px] uppercase tracking-wider bg-slate-50 whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filtered.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-10 text-slate-400 text-sm">No templates match your search.</td></tr>
-            )}
-            {filtered.map((t) => {
-              const isExpanded = expandedIds.includes(t.id);
-              const isSelected = selectedIds.includes(t.id);
-              return (
-                <React.Fragment key={t.id}>
-                  <tr className={`transition-colors ${isSelected ? "bg-indigo-50/50" : "hover:bg-slate-50/60"}`}>
-                    <td className="px-3 py-2.5 text-center">
-                      <input type="checkbox" checked={isSelected} onChange={() => toggleRow(t.id)} />
-                    </td>
-                    <td className="text-center">
-                      <button onClick={() => toggleExpand(t.id)} className="text-slate-300 hover:text-slate-500">
-                        <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                      </button>
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-slate-800 whitespace-nowrap">{t.name}</td>
-                    <td className="px-4 py-2.5 text-slate-500">
-                      <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3 text-slate-300" />{deptName(t.department)}</span>
-                    </td>
-                    <td className="px-4 py-2.5"><ChannelBadge channel={t.channel} /></td>
-                    <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1">
-                        <Zap className={`h-3 w-3 ${t.trigger === "MANUAL" ? "text-slate-300" : "text-amber-500"}`} />
-                        {triggerLabel(t.trigger)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-500 max-w-[220px] truncate">{t.subject || t.body}</td>
-                    <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1">
-                        <Users className="h-3 w-3 text-slate-300" />
-                        {t.allUsers ? "All users" : `${t.allowedUsers.length} Users`}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5"><StatusBadge active={t.active} /></td>
-                  </tr>
-                  {isExpanded && (
-                    <tr className="bg-slate-50/60">
-                      <td colSpan={9} className="px-6 py-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px]">
-                          <div className="space-y-2">
-                            {t.subject && (
-                              <p><span className="font-semibold text-slate-600">Subject: </span><span className="text-slate-500">{t.subject}</span></p>
-                            )}
-                            <p className="whitespace-pre-wrap"><span className="font-semibold text-slate-600">Body: </span><span className="text-slate-500">{t.body}</span></p>
-                          </div>
-                          <div className="space-y-2">
-                            <p><span className="font-semibold text-slate-600">Trigger: </span><span className="text-slate-500">{triggerLabel(t.trigger)}</span></p>
-                            <p><span className="font-semibold text-slate-600">Attachment: </span><span className="text-slate-500">{attachmentLabel(t.attachment) || "No attachment"}</span></p>
-                            <div>
-                              <p className="font-semibold text-slate-600 mb-1.5">Allowed Users</p>
-                              {t.allUsers ? (
-                                <p className="text-slate-500">All users of {deptName(t.department)}</p>
-                              ) : t.allowedUsers.length === 0 ? (
-                                <p className="text-slate-400">No users assigned yet.</p>
-                              ) : (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {t.allowedUsers.map((u) => (
-                                    <span key={u.id} className="text-xs bg-white ring-1 ring-inset ring-slate-200 rounded-full px-2.5 py-1 text-slate-600">{u.name}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Filter Condition modal */}
-      {showFilterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4" onClick={() => setShowFilterModal(false)}>
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h3 className="text-[15px] font-bold text-slate-900">Filter Condition</h3>
-              <button onClick={() => setShowFilterModal(false)} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100">
-                <X className="h-4 w-4" />
+    <div className="relative">
+      <div className="space-y-3">
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-[15px] font-bold tracking-tight text-slate-900">Message Templates</h3> 
+          </div>
+          <div className="flex gap-2">
+            {selectedIds.length === 1 && (
+              <button
+                onClick={openClone}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-white px-2.5 text-[12px] font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+              >
+                <Copy className="h-3.5 w-3.5 text-slate-400" /> Clone
               </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className={LABEL_CLS}>Department</label>
-                <select value={draftFilters.department} onChange={(e) => setDraftFilters((f) => ({ ...f, department: e.target.value }))} className={INPUT_CLS}>
-                  <option value="">All</option>
-                  {visibleDepartments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={LABEL_CLS}>Channel</label>
-                <select value={draftFilters.channel} onChange={(e) => setDraftFilters((f) => ({ ...f, channel: e.target.value }))} className={INPUT_CLS}>
-                  <option value="">All</option>
-                  <option value="EMAIL">Email</option>
-                  <option value="WHATSAPP">WhatsApp</option>
-                </select>
-              </div>
-              <label className="flex items-center gap-2 text-[13px] text-slate-600">
-                <input type="checkbox" checked={draftFilters.activeOnly} onChange={(e) => setDraftFilters((f) => ({ ...f, activeOnly: e.target.checked }))} />
-                Active Only
-              </label>
-            </div>
-            <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100">
-              <button onClick={() => setShowFilterModal(false)} className="h-9 px-4 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">Close</button>
-              <button onClick={applyFilters} className="h-9 px-4 rounded-lg bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500">Apply</button>
-            </div>
+            )}
+            <button
+              onClick={openNew}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold text-white shadow-sm transition-all"
+              style={{ background: NAVY }}
+            >
+              <Plus className="h-3.5 w-3.5" /> New Template
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Template editor drawer — form + live preview */}
+        {/* Single toolbar row: search · filters · view/export · count */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search templates…  ( / )"
+              className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-2 text-[12.5px] outline-none placeholder:text-slate-400 focus:border-slate-400"
+            />
+          </div>
+
+          <div className="relative">
+            <button
+              ref={filterBtnRef}
+              onClick={() => setFiltersOpen((v) => !v)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors"
+              style={activeFilterCount ? { background: NAVY_TINT, color: NAVY, boxShadow: `inset 0 0 0 1px ${NAVY_RING}` } : { background: "#fff", color: "#475569", boxShadow: "inset 0 0 0 1px #e2e8f0" }}
+            >
+              <Filter className="h-3.5 w-3.5" /> Filters
+              {activeFilterCount > 0 && (
+                <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white" style={{ background: NAVY }}>
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+
+            {/* Filter popover — absolute within this component, not a page-level modal */}
+            {filtersOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setFiltersOpen(false)} style={{ position: "absolute" }} />
+                <div className="absolute left-0 top-full z-30 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                  <div className="space-y-3">
+                    <div>
+                      <label className={LABEL_CLS}>Department</label>
+                      <select value={filters.department} onChange={(e) => setFilters((f) => ({ ...f, department: e.target.value }))} className={INPUT_CLS}>
+                        <option value="">All departments</option>
+                        {visibleDepartments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={LABEL_CLS}>Channel</label>
+                      <select value={filters.channel} onChange={(e) => setFilters((f) => ({ ...f, channel: e.target.value }))} className={INPUT_CLS}>
+                        <option value="">All channels</option>
+                        <option value="EMAIL">Email</option>
+                        <option value="WHATSAPP">WhatsApp</option>
+                      </select>
+                    </div>
+                    <label className="flex items-center justify-between text-[13px] text-slate-600 pt-1">
+                      Active only
+                      <Toggle checked={filters.activeOnly} onChange={(v) => setFilters((f) => ({ ...f, activeOnly: v }))} />
+                    </label>
+                  </div>
+                  <div className="mt-4 flex justify-between border-t border-slate-100 pt-3">
+                    <button onClick={clearFilters} className="text-[12.5px] font-semibold text-slate-500 hover:text-slate-700">Clear all</button>
+                    <button onClick={() => setFiltersOpen(false)} className="h-8 px-3 rounded-lg text-[12.5px] font-semibold text-white" style={{ background: NAVY }}>Done</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="flex-1" />
+
+          <span className="text-[12.5px] text-slate-400 mr-1">{filtered.length} template{filtered.length === 1 ? "" : "s"}</span>
+          <IconBtn icon={allExpanded ? Minimize2 : Maximize2} onClick={() => setExpandedIds(allExpanded ? [] : filtered.map((t) => t.id))} title={allExpanded ? "Collapse all" : "Expand all"} />
+          <IconBtn icon={Printer} onClick={() => showToast("Sent to printer")} title="Print" />
+          <IconBtn icon={Download} onClick={() => showToast("Exported")} title="Export" />
+        </div>
+
+        {/* Grid */}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-auto max-h-[52vh]">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                <th className="w-10 px-3 py-2.5 text-center bg-slate-50">
+                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+                </th>
+                <th className="w-6 bg-slate-50"></th>
+                {["Template Name", "Department", "Channel", "Trigger", "Subject / Message", "Allowed Users", "Status", ""].map((h) => (
+                  <th key={h} className="px-4 py-2.5 text-left font-semibold text-[11px] uppercase tracking-wider bg-slate-50 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.length === 0 && (
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400 text-sm">No templates match your search.</td></tr>
+              )}
+              {filtered.map((t) => {
+                const isExpanded = expandedIds.includes(t.id);
+                const isSelected = selectedIds.includes(t.id);
+                return (
+                  <React.Fragment key={t.id}>
+                    <tr className="transition-colors hover:bg-slate-50/60" style={isSelected ? { background: NAVY_TINT } : undefined}>
+                      <td className="px-3 py-2.5 text-center">
+                        <input type="checkbox" checked={isSelected} onChange={() => toggleRow(t.id)} />
+                      </td>
+                      <td className="text-center">
+                        <button onClick={() => toggleExpand(t.id)} className="text-slate-300 hover:text-slate-500">
+                          <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                        </button>
+                      </td>
+                      <td className="px-4 py-2.5 font-medium text-slate-800 whitespace-nowrap">{t.name}</td>
+                      <td className="px-4 py-2.5 text-slate-500">
+                        <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3 text-slate-300" />{deptName(t.department)}</span>
+                      </td>
+                      <td className="px-4 py-2.5"><ChannelBadge channel={t.channel} /></td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          <Zap className={`h-3 w-3 ${t.trigger === "MANUAL" ? "text-slate-300" : "text-amber-500"}`} />
+                          {triggerLabel(t.trigger)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-500 max-w-[220px] truncate">{t.subject || t.body}</td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          <Users className="h-3 w-3 text-slate-300" />
+                          {t.allUsers ? "All users" : `${t.allowedUsers.length} Users`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5"><StatusBadge active={t.active} /></td>
+                      <td className="px-3 py-2.5 text-right">
+                        <button onClick={() => openEdit(t.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-slate-50/60">
+                        <td colSpan={9} className="px-6 py-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px]">
+                            <div className="space-y-2">
+                              {t.subject && (
+                                <p><span className="font-semibold text-slate-600">Subject: </span><span className="text-slate-500">{t.subject}</span></p>
+                              )}
+                              <p className="whitespace-pre-wrap"><span className="font-semibold text-slate-600">Body: </span><span className="text-slate-500">{t.body}</span></p>
+                            </div>
+                            <div className="space-y-2">
+                              <p><span className="font-semibold text-slate-600">Trigger: </span><span className="text-slate-500">{triggerLabel(t.trigger)}</span></p>
+                              <p><span className="font-semibold text-slate-600">Attachment: </span><span className="text-slate-500">{attachmentLabel(t.attachment) || "No attachment"}</span></p>
+                              <div>
+                                <p className="font-semibold text-slate-600 mb-1.5">Allowed Users</p>
+                                {t.allUsers ? (
+                                  <p className="text-slate-500">All users of {deptName(t.department)}</p>
+                                ) : t.allowedUsers.length === 0 ? (
+                                  <p className="text-slate-400">No users assigned yet.</p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {t.allowedUsers.map((u) => (
+                                      <span key={u.id} className="text-xs bg-white ring-1 ring-inset ring-slate-200 rounded-full px-2.5 py-1 text-slate-600">{u.name}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center gap-1 text-[11.5px] text-slate-400">
+          <Kbd>N</Kbd> new template <span className="mx-1">·</span> <Kbd>/</Kbd> search
+        </div>
+      </div>
+
+      {/* ── Template editor — fixed to the viewport (not clipped to this panel's div),
+           so it always fits the actual screen and is never cut off by a short panel.
+           Responsive: full-screen sheet on mobile, right-side drawer from md up. ── */}
       {editorOpen && draft && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40" onClick={closeEditor}>
-          <div className="flex h-full w-full max-w-5xl flex-col bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/40" onClick={closeEditor}>
+          <div
+            className="flex h-full w-full md:w-[min(94vw,1040px)] flex-col overflow-hidden bg-white shadow-2xl md:rounded-l-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <h3 className="text-[15px] font-bold text-slate-900">{editingId ? "Edit Template" : "New Template"}</h3>
+            <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100" style={{ background: NAVY }}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button onClick={closeEditor} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white md:hidden">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <h3 className="truncate text-[14.5px] font-bold text-white">{editingId ? "Edit Template" : "New Template"}</h3>
                 <ChannelBadge channel={draft.channel} />
               </div>
-              <button onClick={closeEditor} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100">
+              <button onClick={closeEditor} className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white md:flex">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-[1fr_400px]">
+            <div className="flex-1 overflow-y-auto lg:overflow-hidden grid grid-cols-1 lg:grid-cols-[1fr_380px]">
               {/* LEFT — form */}
-              <div className="lg:overflow-y-auto p-6 space-y-4">
+              <div className="lg:overflow-y-auto p-5 space-y-4">
                 <div>
                   <label className={LABEL_CLS}>Template Name</label>
                   <input type="text" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} className={INPUT_CLS} />
@@ -552,18 +552,21 @@ const TemplateMaster = () => {
                 <div>
                   <label className={LABEL_CLS}>Channel</label>
                   <div className="flex gap-2">
-                    {["EMAIL", "WHATSAPP"].map((ch) => (
-                      <button
-                        key={ch}
-                        type="button"
-                        onClick={() => { lastFieldRef.current = "body"; setDraft((d) => ({ ...d, channel: ch })); }}
-                        className={`h-9 px-4 rounded-lg text-sm font-semibold inline-flex items-center gap-2 ring-1 ring-inset
-                                    ${draft.channel === ch ? "bg-indigo-50 text-indigo-600 ring-indigo-200" : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"}`}
-                      >
-                        {ch === "EMAIL" ? <Mail className="h-4 w-4" /> : <FaWhatsapp className="h-4 w-4" />}
-                        {ch === "EMAIL" ? "Email" : "WhatsApp"}
-                      </button>
-                    ))}
+                    {["EMAIL", "WHATSAPP"].map((ch) => {
+                      const active = draft.channel === ch;
+                      return (
+                        <button
+                          key={ch}
+                          type="button"
+                          onClick={() => { lastFieldRef.current = "body"; setDraft((d) => ({ ...d, channel: ch })); }}
+                          className="h-8 px-3 rounded-lg text-[12.5px] font-semibold inline-flex items-center gap-1.5 ring-1 ring-inset transition-colors"
+                          style={active ? { background: NAVY_TINT, color: NAVY, boxShadow: `inset 0 0 0 1px ${NAVY_RING}` } : { background: "#fff", color: "#475569", boxShadow: "inset 0 0 0 1px #e2e8f0" }}
+                        >
+                          {ch === "EMAIL" ? <Mail className="h-4 w-4" /> : <FaWhatsapp className="h-4 w-4" />}
+                          {ch === "EMAIL" ? "Email" : "WhatsApp"}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -597,11 +600,11 @@ const TemplateMaster = () => {
                   </div>
                   <textarea
                     ref={bodyRef}
-                    rows={7}
+                    rows={6}
                     value={draft.body}
                     onFocus={() => { lastFieldRef.current = "body"; }}
                     onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-[13.5px] text-slate-700 outline-none focus:border-indigo-400 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] resize-y"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-[13.5px] text-slate-700 outline-none focus:border-slate-400 resize-y"
                   />
                   {unknown.length > 0 && (
                     <div className="mt-2 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
@@ -623,7 +626,7 @@ const TemplateMaster = () => {
                         value={varSearch}
                         onChange={(e) => setVarSearch(e.target.value)}
                         placeholder="Find variable…"
-                        className="h-7 w-40 pl-7 pr-2 rounded-md border border-slate-200 text-[12px] outline-none focus:border-indigo-400"
+                        className="h-7 w-36 pl-7 pr-2 rounded-md border border-slate-200 text-[12px] outline-none focus:border-slate-400"
                       />
                     </div>
                   </div>
@@ -639,7 +642,9 @@ const TemplateMaster = () => {
                             title={`{{${k}}}`}
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => insertVar(k)}
-                            className="text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-full px-2.5 py-1 text-slate-600 transition-colors"
+                            className="text-xs bg-slate-100 rounded-full px-2.5 py-1 text-slate-600 transition-colors hover:text-white"
+                            onMouseEnter={(e) => { e.currentTarget.style.background = NAVY; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "#F1F5F9"; }}
                           >
                             {label}
                           </button>
@@ -679,14 +684,14 @@ const TemplateMaster = () => {
                         </div>
                         <span className="text-[11px] text-slate-400 whitespace-nowrap">{draft.allowedUsers.length} of {deptUsers.length} selected</span>
                       </div>
-                      <div className="max-h-40 overflow-y-auto py-1">
+                      <div className="max-h-36 overflow-y-auto py-1">
                         {shownUsers.length === 0 && <p className="px-3 py-2 text-[12px] text-slate-400">No team members found.</p>}
                         {shownUsers.map((u) => {
                           const checked = draft.allowedUsers.some((x) => x.id === u.id);
                           return (
                             <label key={u.id} className="flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-slate-700 hover:bg-slate-50 cursor-pointer">
                               <input type="checkbox" checked={checked} onChange={() => toggleUser(u)} />
-                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-[10px] font-bold text-indigo-600">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: NAVY_TINT, color: NAVY }}>
                                 {u.name.split(" ").map((p) => p[0]).join("")}
                               </span>
                               {u.name}
@@ -705,7 +710,7 @@ const TemplateMaster = () => {
               </div>
 
               {/* RIGHT — live preview */}
-              <div className="lg:overflow-y-auto border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-5 space-y-4">
+              <div className="lg:overflow-y-auto border-t lg:border-t-0 lg:border-l border-slate-200 bg-slate-50 p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Live Preview</h4>
                   <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">Sample data</span>
@@ -720,7 +725,7 @@ const TemplateMaster = () => {
                         <p className="text-[10px] text-white/70">online</p>
                       </div>
                     </div>
-                    <div className="min-h-[280px] bg-[#efeae2] p-3">
+                    <div className="min-h-[240px] bg-[#efeae2] p-3">
                       <div className="ml-auto max-w-[88%] rounded-lg rounded-tr-none bg-[#d9fdd3] px-2.5 py-1.5 shadow-sm">
                         {draft.attachment && (
                           <div className="mb-1.5 flex items-center gap-2 rounded bg-white/70 px-2 py-1.5 text-[12px] text-slate-700">
@@ -743,7 +748,7 @@ const TemplateMaster = () => {
                       <p><span className="inline-block w-10 text-slate-400">To</span><span className="text-slate-700">{SAMPLE.contactPerson}</span></p>
                       <p className="pt-1.5 text-[14px] font-semibold text-slate-900 break-words">{fillSample(draft.subject) || "(no subject)"}</p>
                     </div>
-                    <div className="min-h-[200px] px-4 py-4 text-[13px] text-slate-700 whitespace-pre-wrap break-words">
+                    <div className="min-h-[180px] px-4 py-4 text-[13px] text-slate-700 whitespace-pre-wrap break-words">
                       {fillSample(draft.body) || <span className="italic text-slate-400">Your message will appear here</span>}
                     </div>
                     {draft.attachment && (
@@ -769,11 +774,11 @@ const TemplateMaster = () => {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between gap-2 px-6 py-3 border-t border-slate-100 bg-white">
+            <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-slate-100 bg-white">
               <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400"><Kbd>Ctrl+S</Kbd> save <Kbd>Esc</Kbd> close</span>
               <div className="flex gap-2 ml-auto">
-                <button onClick={closeEditor} className="h-9 px-4 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-                <button onClick={saveDraft} className="h-9 px-4 rounded-lg bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500">Save Template</button>
+                <button onClick={closeEditor} className="h-8 px-3.5 rounded-lg text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button onClick={saveDraft} className="h-8 px-3.5 rounded-lg text-[12.5px] font-semibold text-white" style={{ background: NAVY }}>Save Template</button>
               </div>
             </div>
           </div>

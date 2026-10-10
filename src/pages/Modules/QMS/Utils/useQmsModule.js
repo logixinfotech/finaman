@@ -25,7 +25,7 @@ export function useQmsModule({
   const { wfConfig } = useWorkflowConfig();
   const workflowConfig = wfConfig?.[moduleKey] || null;
   const { user } = useAuth();
-  const { closeTab } = useTab();
+ const { closeTab, registerCloseGuard } = useTab();
   const currentUserRole = String(user?.user_group ?? "").trim() || null;
   // 🆕 Sign ke liye current user ka display name
   const currentUserName = user?.user_name || user?.user_id || null;
@@ -274,6 +274,10 @@ const setCurrentIndexGuarded = useCallback((updater) => {
     }
   }, [performSave, loadData]);
   const handleSignedSave = useCallback(async (localData, typedName, newStatus, reason) => {
+    if (newStatus === "Rejected" && !localData?.Id) {
+      alertWarning("Nothing to reject", "Save the record first, or use Cancel to discard it.");
+      return;
+    }
     const payload = { ...localData, isDraft: false };
     delete payload.Sr;
 
@@ -365,7 +369,24 @@ const setCurrentIndexGuarded = useCallback((updater) => {
   }, [api, title, setShowForm, setActiveTab, loadData]);
   // Cancel / Discard — sirf edit chhodo, form khula rehne do
   // Cancel / Discard — reset karo, form khula rakho
+// Tab-bar ka X dabane se pehle poochta hai: "unsaved data hai, band karu?"
+// Yahi dirty-check hai jo handleFormExit "Cancel" button par bhi karta hai.
+const confirmCloseGuard = useCallback(async () => {
+  const wasAddMode = mode === "add";
+  const hasData = wasAddMode && Object.entries(formData || {}).some(([k, v]) => {
+    if (k === "RecordNo" || k === "Id" || k === "Status") return false;
+    if (initialState[k] !== undefined && initialState[k] === v) return false;
+    return String(v ?? "").trim() !== "";
+  });
+  const dirty = wasAddMode ? hasData : isDirty;
+  if (!dirty) return true;          // kuch bhi badla nahi, seedha band kar do
+  return await confirmWarning({});  // user se poocho
+}, [mode, formData, initialState, isDirty]);
 
+useEffect(() => {
+  registerCloseGuard?.(confirmCloseGuard);
+  return () => registerCloseGuard?.(null);
+}, [registerCloseGuard, confirmCloseGuard]);
   const handleFormExit = useCallback(async () => {
   const wasAddMode = mode === "add";
   const hasData = wasAddMode && Object.entries(formData || {}).some(([k, v]) => {

@@ -7,25 +7,18 @@ import { FIXED_SHORTCUTS, eventToCombo, formatCombo, validateCombo } from "./Sho
 import { fetchNavShortcuts, saveNavShortcuts } from "../api";
 
 const NavShortcutsContext = createContext(null);
-
-// Keys handled by hard-coded listeners elsewhere in the ERP (not in ShortcutRegistry).
-// Custom shortcuts can never take these. Add more here if another hard-coded key is found.
 const HARDCODED_COMBOS = {
   "mod+f": "the dashboard menu search (Ctrl+F)",
   "alt+1": "an existing ERP shortcut (Alt+1)",
   "alt+2": "an existing ERP shortcut (Alt+2)",
 };
-
-// Keys the browser may keep for itself: allowed, but the user gets a heads-up.
 const SOFT_WARN = {
   f5: "reloads the page",
   f11: "toggles full screen",
   f12: "opens the browser developer tools",
 };
-
 const cacheKey = (uid) => `erpNavShortcuts:${uid ?? "anon"}`;
 const dirtyKey = (uid) => `erpNavShortcutsDirty:${uid ?? "anon"}`;
-
 function readCache(uid) {
   try {
     const raw = JSON.parse(localStorage.getItem(cacheKey(uid)) || "[]");
@@ -46,11 +39,8 @@ const setDirty = (uid, on) => {
     else localStorage.removeItem(dirtyKey(uid));
   } catch { /* ignore */ }
 };
-
 const newId = () => `nav_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const pretty = (combo) => formatCombo(combo).join(" + ");
-
-// True when the key event comes from somewhere the user is typing or picking from a list.
 function isTypingTarget(el) {
   if (!el || !el.tagName) return false;
   const tag = el.tagName.toLowerCase();
@@ -60,12 +50,10 @@ function isTypingTarget(el) {
     "[contenteditable='true'], [role='combobox'], [role='listbox'], [role='textbox'], [data-dropdown-open='true']"
   );
 }
-
 const findTarget = (list, entry) =>
   list.find((t) => String(t.masmnu_id) === String(entry.masmnu_id)) ||
   list.find((t) => t.appl_name === entry.appl_name) ||
   null;
-
 export function NavShortcutsProvider({
   children, menus, tabs, activeTabId, onOpenPage, onChangeActiveTab,
 }) {
@@ -74,29 +62,23 @@ export function NavShortcutsProvider({
   const uid = isAuthenticated && token
     ? (user?.user_id ?? user?.userma_id ?? user?.id ?? user?._id ?? "me")
     : null;
-
   const [entries, setEntries] = useState(() => readCache(uid));
   const [loading, setLoading] = useState(true);
   const [syncState, setSyncState] = useState("idle"); // idle | local | saving | saved | error
   const latest = useRef(entries);
   const saveTimer = useRef(null);
-
-  // Load this user's shortcuts (only when logged in)
   useEffect(() => {
     let alive = true;
     const cached = readCache(uid);
     latest.current = cached;
     setEntries(cached);
     setSyncState("idle");
-
     if (!uid) { setLoading(false); return undefined; }
-
     setLoading(true);
     fetchNavShortcuts()
       .then((remote) => {
         if (!alive) return;
         if (isDirty(uid)) {
-          // Local changes never reached the server: push them instead of overwriting
           saveNavShortcuts(latest.current).then(() => setDirty(uid, false)).catch(() => {});
           return;
         }
@@ -106,10 +88,8 @@ export function NavShortcutsProvider({
       })
       .catch(() => { /* server down or 401: keep the cached copy */ })
       .finally(() => { if (alive) setLoading(false); });
-
     return () => { alive = false; };
   }, [uid]);
-
   const commit = useCallback((updater) => {
     const next = updater(latest.current);
     latest.current = next;
@@ -129,8 +109,6 @@ export function NavShortcutsProvider({
       }
     }, 600);
   }, [uid]);
-
-  // Screens the user can open, taken from the menu list App already loaded
   const targets = useMemo(() => {
     const base = (menus || [])
       .filter((m) => m && m.appl_name && m.menu_hide !== "Y")
@@ -146,8 +124,6 @@ export function NavShortcutsProvider({
       .map((t) => ({ ...t, display: count[t.label] > 1 ? `${t.label} (${t.appl_name})` : t.label }))
       .sort((a, b) => a.display.localeCompare(b.display));
   }, [menus]);
-
-  // Who already owns a combo among the existing (non-custom) shortcuts
   const existingOwner = useCallback((combo) => {
     if (HARDCODED_COMBOS[combo]) return HARDCODED_COMBOS[combo];
     const fixed = FIXED_SHORTCUTS.find((f) => f.keys === combo);
@@ -156,8 +132,6 @@ export function NavShortcutsProvider({
     if (s) return `"${s.label}"`;
     return null;
   }, [shortcuts]);
-
-  // Active bindings: existing shortcuts always win, then the first custom entry wins
   const { bindings, status } = useMemo(() => {
     const map = new Map();
     const st = {};
@@ -176,8 +150,6 @@ export function NavShortcutsProvider({
     });
     return { bindings: map, status: st };
   }, [entries, existingOwner]);
-
-  // Latest values for the long-lived key listener
   const bindingsRef = useRef(bindings);
   bindingsRef.current = bindings;
   const targetsRef = useRef(targets);
@@ -190,29 +162,22 @@ export function NavShortcutsProvider({
   openRef.current = onOpenPage;
   const changeRef = useRef(onChangeActiveTab);
   changeRef.current = onChangeActiveTab;
-
-  // The listener: document + capture phase, same level as the existing dispatcher.
-  // A recorder that calls stopImmediatePropagation on window (capture) hides keys from it.
   useEffect(() => {
     const onKey = (e) => {
       if (e.repeat || e.isComposing) return;
       if (bindingsRef.current.size === 0) return;
       if (document.body.classList.contains("swal2-shown")) return;
       if (isTypingTarget(e.target)) return;
-
       const combo = eventToCombo(e);
       if (!combo) return;
       const entry = bindingsRef.current.get(combo);
       if (!entry) return;
       const target = findTarget(targetsRef.current, entry);
-      if (!target) return; // screen no longer available: leave the key alone
-
+      if (!target) return;  
       e.preventDefault();
-
       const openTabs = tabsRef.current || [];
       const active = openTabs.find((t) => t.id === activeTabIdRef.current);
-      if (active && active.appl_name === target.appl_name) return; // already here
-
+      if (active && active.appl_name === target.appl_name) return; 
       const open = openTabs.find((t) => t.appl_name === target.appl_name);
       if (open) {
         if (changeRef.current) changeRef.current(open.id);
@@ -223,8 +188,6 @@ export function NavShortcutsProvider({
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
   }, []);
-
-  // Validation used by the Settings screen. Returns { level, text } or null.
   const check = useCallback((combo, exceptId) => {
     const err = validateCombo(combo);
     if (err) return { level: "error", text: err };
@@ -253,8 +216,6 @@ export function NavShortcutsProvider({
   const remove = useCallback((id) => {
     commit((list) => list.filter((e) => e.id !== id));
   }, [commit]);
-
-  // Returns { level:"error", text } if it cannot be turned on
   const toggle = useCallback((id) => {
     const e = entries.find((x) => x.id === id);
     if (!e) return null;

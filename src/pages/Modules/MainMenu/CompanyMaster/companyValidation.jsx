@@ -3,8 +3,7 @@
 import React, { memo } from "react";
 import {
   FaBuilding, FaPhoneAlt, FaIdCard, FaCertificate, FaMapMarkerAlt, 
-  FaCreditCard, FaMoneyBillWave, FaCogs, FaFileAlt, FaEnvelope, FaGlobe, FaShieldAlt,
-  FaExclamationTriangle, FaLink, FaTruck, FaGavel, FaCheckCircle
+  FaCreditCard, FaMoneyBillWave, FaCogs, FaFileAlt, FaEnvelope, FaGlobe, FaShieldAlt, 
 } from "react-icons/fa";
  
 export const TabIcon = memo(({ tab }) => {
@@ -46,23 +45,7 @@ export const configs = {
   "System Settings": "grid-cols-1 sm:grid-cols-3 2xl:grid-cols-3",
 };
 
-// ==========================================
-// 3. HEADER STYLES (Colors & Icons)
-// ==========================================
-// export const getHeaderStyle = (title) => {
-//   const t = (title || "").toLowerCase();
-  
-//   if (t.includes("basic") || t.includes("company")) return { icon: <FaBuilding />, barBg: "bg-[#eff6ff]", iconBg: "bg-[#2563eb]/15 text-[#2563eb]", text: "text-[#0f2137]", border: "border-[#bfdbfe]" };
-//   if (t.includes("communication") || t.includes("contact")) return { icon: <FaPhoneAlt />, barBg: "bg-[#e6f7f4]", iconBg: "bg-[#0d9488]/15 text-[#0d9488]", text: "text-[#0f2137]", border: "border-[#b2e3da]" };
-//   if (t.includes("tax") || t.includes("identifiers")) return { icon: <FaIdCard />, barBg: "bg-[#f3e8ff]", iconBg: "bg-[#7c3aed]/15 text-[#7c3aed]", text: "text-[#0f2137]", border: "border-[#d4b8f5]" };
-//   if (t.includes("license") || t.includes("compliance")) return { icon: <FaCertificate />, barBg: "bg-[#fff1f2]", iconBg: "bg-[#f43f5e]/15 text-[#e11d48]", text: "text-[#0f2137]", border: "border-[#fecdd3]" };
-//   if (t.includes("address")) return { icon: <FaMapMarkerAlt />, barBg: "bg-[#fff7ed]", iconBg: "bg-[#f97316]/15 text-[#f97316]", text: "text-[#0f2137]", border: "border-[#ffedd5]" };
-//   if (t.includes("bank") || t.includes("digital")) return { icon: <FaCreditCard />, barBg: "bg-[#e0f2fe]", iconBg: "bg-[#0284c7]/15 text-[#0284c7]", text: "text-[#0f2137]", border: "border-[#7dd3fc]" };
-//   if (t.includes("financial")) return { icon: <FaMoneyBillWave />, barBg: "bg-[#ecfdf5]", iconBg: "bg-[#10b981]/15 text-[#059669]", text: "text-[#0f2137]", border: "border-[#a7f3d0]" };
-//   if (t.includes("system")) return { icon: <FaCogs />, barBg: "bg-[#fefce8]", iconBg: "bg-[#eab308]/20 text-[#d97706]", text: "text-[#0f2137]", border: "border-[#fef08a]" };
-  
-//   return { icon: <FaFileAlt />, barBg: "bg-[#eef1f7]", iconBg: "bg-[#64748b]/15 text-[#475569]", text: "text-[#0f2137]", border: "border-[#dde1ea]" };
-// };
+ 
 export const getHeaderStyle = (title) => {
   const t = (title || "").toLowerCase();
   
@@ -76,10 +59,7 @@ export const getHeaderStyle = (title) => {
   if (t.includes("system")) return { icon: <FaCogs />, barBg: "bg-[#fefce8]", iconBg: "bg-[#eab308]/20 text-[#d97706]", text: "text-[#0f2137]", border: "border-[#fef08a]" };
 
 
-};
-// ==========================================
-// 4. VALIDATION & STRICTOR LENGTH RULES (Real-time slicing boundaries)
-// ==========================================
+}; 
 export const STRICT_LENGTHS = {
   com_code: 20,
   database: 100,
@@ -202,7 +182,7 @@ export const fieldGroups = {
       { key: "company_name", label: "Company Name", type: "text" },
       { key: "com_code", label: "Company Code", type: "text", placeholder: "e.g. LOGIX01" },
       { key: "database", label: "Database", type: "text", placeholder: "Tenant DB name" },
-      { key: "com_id", label: "Company ID", type: "text", placeholder: "Auto" },
+    
       { key: "trade_name", label: "Trade Name", type: "text" },
       { key: "business_type", label: "Business Type", type: "select", options: ["Manufacturing", "Trading", "Service", "Retail", "Multi Business"] },
     ],

@@ -31,7 +31,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const isAuthRoute = error.config?.url?.includes("/api/authenticate");
+    const isAuthRoute = error.config?.url?.includes("/api/authenticate")  ||  error.config?.url?.includes("/api/recent");
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.clear();
 
@@ -207,6 +207,27 @@ export const fetchRestrictedHolidays = async (year) => {
   }
 };
 
+export const fetchAllHolidays = async (year) => {
+  try {
+    const res = await api.get(`/api/holiday/all-dates${year ? `?year=${year}` : ""}`);
+    const rawData = res.data.success ? res.data.data : [];
+    return rawData.map((item) => {
+      const isRH = item.HolidayTypeCode === "Restricted" || item.HolidayTypeCode === "RH" || item.IsRestricted === 1 || item.IsRestricted === true;
+      return {
+        id: item.H_id,
+        date: item.H_date ? item.H_date.split("T")[0] : "",
+        purpose: item.Purpose,
+        remarks: item.Remarks,
+        holiday_type_code: item.HolidayTypeCode || (isRH ? "Restricted" : "National"),
+        is_restricted: isRH ? 1 : 0,
+      };
+    });
+  } catch (error) {
+    console.error("Fetch All Holidays Error:", error);
+    return [];
+  }
+};
+
 export const createHoliday = (data) =>
   handleApi(() => api.post("/api/holiday", data));
 
@@ -215,6 +236,8 @@ export const updateHoliday = (id, data) =>
 
 export const deleteHoliday = (id) =>
   handleApi(() => api.delete(`/api/holiday/${id}`));
+export const sendHolidayNotice = (id, forceResend = false) =>           // 👈 NEW
+  handleApi(() => api.post(`/api/holiday/${id}/send-notice`, { forceResend }));
 
 //------------------------------------ User Group Master --------------------------------------------------------
 export const fetchUserGroups = () =>
@@ -266,7 +289,12 @@ export const getCompanyList = (params) =>
       }
     })
   );
+export const provisionCompanyDb = (companyId) =>
+  api.post(`/api/companymaster/${companyId}/provision-db`, {}, { timeout: 10 * 60 * 1000 })
+     .then((r) => r.data);
 
+export const getCompanyDbStatus = (companyId) =>
+  api.get(`/api/companymaster/${companyId}/db-status`).then((r) => r.data);
 export const createCompany = async (companyData) => {
   try {
     const response = await api.post(
@@ -396,8 +424,19 @@ export const fetchUserPermissions = async (userma_id) => {
   );
   return response.data;
 };
-export const fetchDepartments = () =>
-  api.get("/departments").then((res) => res.data);
+export const fetchDepartments = async () => {
+  try {
+    const res = await api.get("/api/hr/departments");
+    return res.data;
+  } catch {
+    try {
+      const res2 = await api.get("/departments");
+      return res2.data;
+    } catch {
+      return { success: true, data: [] };
+    }
+  }
+};
 
 export const fetchDepartmentPermissions = (user_group) =>
   api
@@ -870,8 +909,17 @@ export const deleteTDS = (id) => handleApi(() => api.delete(`/api/statutory-mast
 
 
 // ───────────────────────────────────── loan-reimbursement ───────────────────────────────────────────────────
-export const getLoanReimbursement = () =>
-  handleApi(() => api.get("/api/loanReimbursement"));
+export const getLoanReimbursement = (params = {}) =>
+  handleApi(() => api.get("/api/loanReimbursement", { params }));
+
+export const getLoanMetrics = () =>
+  handleApi(() => api.get("/api/loanReimbursement/metrics"));
+
+export const getEmployeeLoanEligibility = (empId) =>
+  handleApi(() => api.get(`/api/loanReimbursement/eligibility/${empId}`));
+
+export const previewLoanSchedule = (data) =>
+  handleApi(() => api.post("/api/loanReimbursement/preview-schedule", data));
 
 export const createLoanReimbursement = (data) =>
   handleApi(() => api.post("/api/loanReimbursement", data));
@@ -881,6 +929,30 @@ export const updateLoanReimbursement = (id, data) =>
 
 export const deleteLoanReimbursement = (id) =>
   handleApi(() => api.delete(`/api/loanReimbursement/${id}`));
+
+export const submitLoanForApproval = (id) =>
+  handleApi(() => api.post(`/api/loanReimbursement/${id}/submit`));
+
+export const approveLoanRequest = (id) =>
+  handleApi(() => api.post(`/api/loanReimbursement/${id}/approve`));
+
+export const rejectLoanRequest = (id, reason) =>
+  handleApi(() => api.post(`/api/loanReimbursement/${id}/reject`, { reason }));
+
+export const returnLoanRequest = (id, remarks) =>
+  handleApi(() => api.post(`/api/loanReimbursement/${id}/return`, { remarks }));
+
+export const disburseLoanRequest = (id) =>
+  handleApi(() => api.post(`/api/loanReimbursement/${id}/disburse`));
+
+export const getLoanSchedule = (id) =>
+  handleApi(() => api.get(`/api/loanReimbursement/${id}/schedule`));
+
+export const getLoanLedger = (id) =>
+  handleApi(() => api.get(`/api/loanReimbursement/${id}/ledger`));
+
+export const prepayLoan = (id, data) =>
+  handleApi(() => api.post(`/api/loanReimbursement/${id}/prepay`, data));
 
 
 // ───────────────────────────────────── asset-master ───────────────────────────────────────────────────
@@ -966,10 +1038,33 @@ export const fetchMonthlyAttendanceSummary = (month, year) =>
 export const fetchEmployeeAttendanceDetail = (employeeId, month, year) =>
   handleApi(() => api.get(`/api/reports/employee-attendance-detail?employee_id=${employeeId}&month=${month}&year=${year}`));
 
-// ───────────────────────────────────── Attendance Register ─────────────────────────────────────────────────────────
+// ───────────────────────────────────── Attendance Register & Regularization (SPEC: LI/HR/TM/04/011) ──────────────────────────────────
 
-export const fetchAttendanceRegister = (month, year) =>
-  handleApi(() => api.get(`/api/reports/attendance-register?month=${month}&year=${year}`));
+export const fetchAttendanceRegister = (month, year) => {
+  if (typeof month === "object") {
+    const q = new URLSearchParams(month).toString();
+    return handleApi(() => api.get(`/api/reports/attendance-register?${q}`));
+  }
+  return handleApi(() => api.get(`/api/reports/attendance-register?month=${month}&year=${year}`));
+};
+
+export const saveAttendanceRegularization = (data) =>
+  handleApi(() => api.post("/api/attendregular", data));
+
+
+export const fetchEmployeesList = async () => {
+  try {
+    const res = await api.get("/api/hr/employees");
+    return res.data;
+  } catch {
+    try {
+      const res2 = await api.get("/api/actled");
+      return res2.data;
+    } catch {
+      return { success: true, data: [] };
+    }
+  }
+};
 
 // ───────────────────────────────────── Salary Structures  ──────────────────────────────────
 
@@ -1218,3 +1313,23 @@ export const saveNavShortcuts = async (entries) => {
   const list = res.data?.data?.entries;
   return Array.isArray(list) ? list : [];
 };
+
+// ─────────────────────────────────────────── Recent Module ───────────────────────────────────────────
+export const fetchRecent = () => handleApi(() => api.get("/api/recent"));
+export const trackRecentApi = (item) => api.post("/api/recent", item);
+export const toggleRecentPinApi = (key) => api.post("/api/recent/pin", { key });
+export const clearRecentApi = () => api.delete("/api/recent");
+
+
+
+//─────────────────────────────────────────── Customizable Dashboard───────────────────────────────────────────
+export const fetchDashboardLayout = () =>
+  handleApi(() => api.get("/api/dashboard/layout"));
+
+export const saveDashboardLayout = (layout) =>
+  handleApi(() => api.post("/api/dashboard/layout", { layout }));
+export const fetchDepartmentsWithDesignations = () =>
+  handleApi(() => api.get("/api/user/departments-with-designations"));
+
+export const bulkSavePermissions = (payload) =>
+  handleApi(() => api.post("/api/user/bulk-permissions", payload));

@@ -76,20 +76,7 @@ const MessageLog = () => {
   const resetFilters = () => { setSearch(""); setChannel(""); setStatus(""); setDepartment(""); };
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Messages (Today)", value: counts.total, cls: "text-slate-900" },
-          { label: "Delivered", value: counts.delivered, cls: "text-emerald-600" },
-          { label: "Failed", value: counts.failed, cls: "text-rose-600" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{s.label}</p>
-            <p className={`text-lg font-bold ${s.cls}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
+    <div className="space-y-3"> 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">

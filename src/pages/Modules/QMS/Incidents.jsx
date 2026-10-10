@@ -8,7 +8,7 @@ import { getHeaderStyle } from "./Utils/QmsValidation";
 import { useQmsModule } from "./Utils/useQmsModule";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
 import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
-import * as FaIcons from "react-icons/fa"; 
+import * as FaIcons from "react-icons/fa";
 import {
   incidentTabs, incidentTabStage, incidentTabLabels,
   getIncidentFieldGroups, getIncidentRequired,
@@ -32,7 +32,7 @@ const initialState = {
   DeviationRaised: "", DeviationRef: "", EscalatedTo: "",
   InvestigatedBy: "", RootCause: "", InvestigationSummary: "",
   CapaRef: "", TargetDate: "", ClosedBy: "", ClosureRemarks: "",
-    Department: "", Designation: "", ReportedOn: "",
+  Department: "", Designation: "", ReportedOn: "",
   ItemType: "", DocumentNo: "", ArNo: "", CodeNo: "",
   SupplierName: "", SupplierReceiptDate: "", SupplierQty: "",
   ImmediateActionDocRef: "", RelatedTo: "", RelatedToOther: "",
@@ -53,15 +53,15 @@ const initialState = {
   CapaVerificationStatus: "", CapaVerifiedBy: "", CapaVerifiedOn: "",
   ClosedOn: "",
 
-deptreview: [
-  { Department: "Engineering", RoleTitle: "Engineering Head" },
-  { Department: "Stores", RoleTitle: "Warehouse Head" },
-  { Department: "Production", RoleTitle: "Production Head" },
-  { Department: "Quality Control", RoleTitle: "QC Head" },
-  { Department: "Administration/HR", RoleTitle: "Administration Head" },
-  { Department: "Purchase", RoleTitle: "Purchase Head" },
-  { Department: "Any other dept.", exemptFromLock: true },
-],
+  deptreview: [
+    { Department: "Engineering", RoleTitle: "Engineering Head" },
+    { Department: "Stores", RoleTitle: "Warehouse Head" },
+    { Department: "Production", RoleTitle: "Production Head" },
+    { Department: "Quality Control", RoleTitle: "QC Head" },
+    { Department: "Administration/HR", RoleTitle: "Administration Head" },
+    { Department: "Purchase", RoleTitle: "Purchase Head" },
+    { Department: "Any other dept.", exemptFromLock: true },
+  ],
   extensions: [],
 };
 
@@ -84,7 +84,7 @@ export default function IncidentMasterPage({ tab }) {
   const m = useQmsModule({
     moduleKey: "incident",
     title: "Incident",
-    applName: "incident",
+    applName: tab?.appl_name || "Incidents",
     initialState,
     tabs: incidentTabs,
     tabStage: incidentTabStage,
@@ -123,10 +123,10 @@ export default function IncidentMasterPage({ tab }) {
         (filters.Severity === "All" || it.Severity === filters.Severity)
       );
   }, [m.list, filters]);
-     const ModuleIcon = useMemo(() => {
-      const name = tab?.icon_name || tab?.module?.icon_name;
-      return (name && FaIcons[name]) || FaClipboardList;
-    }, [tab?.icon_name, tab?.module?.icon_name]);
+  const ModuleIcon = useMemo(() => {
+    const name = tab?.icon_name || tab?.module?.icon_name;
+    return (name && FaIcons[name]) || FaClipboardList;
+  }, [tab?.icon_name, tab?.module?.icon_name]);
 
   const handlePrint = useCallback(() => {
     printWorkflow.openPrintFor(m.formData?.Id, {
@@ -148,7 +148,7 @@ export default function IncidentMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Incident"
-          subtitle={m.formData?.RecordNo || "New"}   
+          subtitle={m.formData?.RecordNo || "New"}
           TitleIcon={ModuleIcon}
           tabs={incidentTabs}
           tabLabels={incidentTabLabels}

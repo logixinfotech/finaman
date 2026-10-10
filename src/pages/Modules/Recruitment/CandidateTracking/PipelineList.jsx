@@ -11,25 +11,13 @@ import {
 import PipelineProgressBar from "./components/PipelineProgressBar";
 import StatusChip from "./components/StatusChip";
 import PipelineStageStrip from "./components/PipelineStageStrip";
+import KpiCard from "./components/KpiCard";
 import { CATEGORY_STYLES, STAGES, initials, styleFor, timeAgo } from "./pipelineConstants";
 import { GitBranch, Phone, ClipboardEdit, Eye, LayoutList, LayoutGrid } from "lucide-react";
 
 const SORT_MAP = { candidate: "candidate", vacancy: "vacancy", progress: "stage", status: "status", next_action: "since", recruiter: "recruiter" };
 const SOURCES = ["PublicURL", "InternalHR", "Bulk Excel", "Referral", "Career Portal", "Direct", "Naukri", "LinkedIn"];
-const EMPTY_FILTERS = { vacancy_id: "All", stage: "All", category: "All", recruiter_id: "All", source: "All", my_tasks: false };
-
-const KpiCard = ({ label, value, sub, tone = "slate" }) => {
-  const tones = { slate: "text-slate-800", blue: "text-blue-700", amber: "text-amber-600", emerald: "text-emerald-600", rose: "text-rose-600" };
-  return (
-    <div className="bg-white border border-[#dde1ea] rounded-[6px] shadow-sm px-2.5 py-1.5 min-w-0 flex items-center gap-2.5">
-      <span className={`text-[20px] font-bold leading-6 tabular-nums shrink-0 ${tones[tone]}`}>{value ?? "—"}</span>
-      <span className="min-w-0">
-        <span className="block text-[10.5px] font-semibold text-slate-600 truncate leading-tight">{label}</span>
-        <span className="block text-[9.5px] text-slate-400 truncate leading-tight">{sub}</span>
-      </span>
-    </div>
-  );
-};
+const EMPTY_FILTERS = { vacancy_id: "All", stage: "All", category: "All", recruiter_id: "All", source: "All", my_tasks: false, kpi: "All" };
 
 export default function PipelineList({ onOpen, onAdd, refreshKey = 0 }) {
   const [rows, setRows] = useState([]);
@@ -59,6 +47,7 @@ export default function PipelineList({ onOpen, onAdd, refreshKey = 0 }) {
       recruiter_id: filters.recruiter_id,
       source: filters.source,
       my_tasks: filters.my_tasks ? 1 : 0,
+      kpi: filters.kpi,
     });
     if (res?.success) {
       setRows(res.data || []);
@@ -149,16 +138,24 @@ export default function PipelineList({ onOpen, onAdd, refreshKey = 0 }) {
   }, [onOpen]);
 
   const k = summary.kpi || {};
+  // Picking a card starts from a clean filter set so the table count matches the card; clicking it again clears it
+  const kpiProps = (key) => ({
+    selected: filters.kpi === key,
+    onClick: () => {
+      setFilters(filters.kpi === key ? EMPTY_FILTERS : { ...EMPTY_FILTERS, kpi: key });
+      setQuery((q) => ({ ...q, page: 1 }));
+    },
+  });
   const filterPanel = (
     <div className="px-2.5 pt-2 pb-1.5 space-y-1.5 bg-[#eef1f8] border-b border-[#dde1ea]">
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-1.5">
-        <KpiCard label="Total in Pipeline" value={k.total} sub={`across ${k.vacancies || 0} open vacancies`} />
-        <KpiCard label="Active" value={k.active} sub="moving through stages" tone="blue" />
-        <KpiCard label="Comm Pending (My Tasks)" value={k.comm_pending_mine} sub={`${k.comm_pending_all || 0} total · recruiter action required`} tone="amber" />
-        <KpiCard label="Interviews Today" value={k.interviews_today} sub="R1 · R2 · Final" />
-        <KpiCard label="Rejected / Dropped" value={k.rejected_this_month} sub="this month" tone="rose" />
-        <KpiCard label="Joined" value={k.joined} sub="converted to employee" tone="emerald" />
+        <KpiCard {...kpiProps("total")} label="Total in Pipeline" value={k.total} sub={`across ${k.vacancies || 0} open vacancies`} />
+        <KpiCard {...kpiProps("active")} label="Active" value={k.active} sub="moving through stages" tone="blue" />
+        <KpiCard {...kpiProps("comm_pending_mine")} label="Comm Pending (My Tasks)" value={k.comm_pending_mine} sub={`${k.comm_pending_all || 0} total · recruiter action required`} tone="amber" />
+        <KpiCard {...kpiProps("interviews_today")} label="Interviews Today" value={k.interviews_today} sub="R1 · R2 · Final" />
+        <KpiCard {...kpiProps("rejected_this_month")} label="Rejected / Dropped" value={k.rejected_this_month} sub="this month" tone="rose" />
+        <KpiCard {...kpiProps("joined")} label="Joined" value={k.joined} sub="converted to employee" tone="emerald" />
       </div>
 
       {/* Pipeline by stage */}

@@ -22,6 +22,8 @@ import GlobalSearch from "./GlobalSearch";
 import { GiHamburgerMenu } from 'react-icons/gi';
 import { fetchSidebarMenu, fetchSwitchableCompanies, switchCompany } from "../../utils/api";
 import { useAuth } from "../../theme/AuthContext";
+import RecentMenu from "../Layout/Recentmenu";
+
 const DEFAULT_ACC_YEAR = "2024-2025";
 
 function Header({
@@ -340,6 +342,11 @@ function Header({
               </div>
             )}
           </div>
+          <RecentMenu
+            onOpen={(it) => it.page && onOpenPage(it.page, { reuse: true })}
+            onViewAll={() => onOpenPage({ masmnu_id: "RECENT", bar_name: "Recent", appl_name: "RECENT_PAGE" }, { reuse: true })}
+            className="text-white"
+          />
           <div className="relative">
             <div
               onClick={() => setIsMenuOpen(!isMenuOpen)}

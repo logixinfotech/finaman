@@ -321,12 +321,13 @@ const sectionDisplayTitle = useMemo(() => {
   // 1. compute
   const canReject = useMemo(() => {
     if (!workflowConfig || isAddMode || isRecordClosed) return false;
+    if (!formData?.Id) return false;                                      // 🆕 saved record hi reject ho
     if (workflowConfig.allowReject === false) return false;
     if (String(formData?.Status || '').toLowerCase() === 'rejected') return false;
     const allowed = workflowConfig.rejectableStages;
     if (allowed && !allowed.includes(currentStage)) return false;
     return isMyTurn;
-  }, [workflowConfig, isAddMode, isRecordClosed, currentStage, isMyTurn, formData?.Status]);
+  }, [workflowConfig, isAddMode, isRecordClosed, currentStage, isMyTurn, formData?.Status, formData?.Id]);
 
   const canDeleteNow = useMemo(() => {
   if (!workflowConfig?.sections?.length) return true;   // masters — hamesha allowed

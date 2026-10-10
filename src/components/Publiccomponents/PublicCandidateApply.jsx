@@ -50,6 +50,12 @@ const EMPTY_FORM = {
   source_channel: "Career Portal",
 };
 
+const vacancyFields = (v) => ({
+  vacancy_id: v.vacancy_id,
+  vacancy_no: v.vacancy_no,
+  job_title: v.job_title || v.designation_name || "Open Position",
+});
+
 /* Compact input styling */
 export const compactInputClass = (disabled, error) =>
   `w-full h-[30px] px-2.5 py-1 text-xs border rounded-md outline-none transition-colors ${disabled
@@ -62,6 +68,8 @@ export const compactInputClass = (disabled, error) =>
 /* ── Shared shell: ERP-style navy header + page background ── */
 function Shell({ children, wide = false }) {
   return (
+
+
     <div className="min-h-screen font-sans flex flex-col" style={{ background: ERP.page }}>
       <header style={{ background: ERP.navy }} className="w-full shrink-0 shadow-sm">
         <div className={`${wide ? "max-w-6xl" : "max-w-3xl"} mx-auto px-4 py-2.5 flex items-center justify-between`}>
@@ -162,8 +170,8 @@ function JobDescriptionCard({ vacancy, isCollapsible = false, defaultOpen = true
                   <span
                     key={idx}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-medium border ${s.is_preferred
-                        ? "bg-amber-50 text-amber-900 border-amber-300"
-                        : "bg-blue-50 text-blue-900 border-blue-200"
+                      ? "bg-amber-50 text-amber-900 border-amber-300"
+                      : "bg-blue-50 text-blue-900 border-blue-200"
                       }`}
                   >
                     <Tag className="w-2.5 h-2.5" />
@@ -257,22 +265,19 @@ export default function PublicCandidateApply() {
         if (isMounted && res?.data) {
           setVacancies(res.data);
 
-          if (initialVacancyId || initialVacancyNo) {
-            const matched = res.data.find(
+          // Preselect the vacancy from the URL, otherwise default to the first one
+          const matched =
+            (initialVacancyId || initialVacancyNo) &&
+            res.data.find(
               (v) =>
                 (initialVacancyId &&
                   (v.vacancy_id || "").toLowerCase() === initialVacancyId.toLowerCase()) ||
                 (initialVacancyNo &&
                   (v.vacancy_no || "").toLowerCase() === initialVacancyNo.toLowerCase())
             );
-            if (matched) {
-              setFormData((prev) => ({
-                ...prev,
-                vacancy_id: matched.vacancy_id,
-                vacancy_no: matched.vacancy_no,
-                job_title: matched.job_title || matched.designation_name || "Open Position",
-              }));
-            }
+          const defaultVac = matched || res.data[0];
+          if (defaultVac) {
+            setFormData((prev) => ({ ...prev, ...vacancyFields(defaultVac) }));
           }
         }
       } catch (err) {
@@ -374,7 +379,7 @@ export default function PublicCandidateApply() {
   };
 
   const resetForm = () => {
-    setFormData(EMPTY_FORM);
+    setFormData({ ...EMPTY_FORM, ...(vacancies[0] ? vacancyFields(vacancies[0]) : {}) });
     setErrors({});
     setDuplicateWarning(null);
     removeResume();
@@ -555,14 +560,14 @@ export default function PublicCandidateApply() {
           <div className={hasSelectedVacancy ? "lg:col-span-7 space-y-3" : "space-y-3"}>
             <form onSubmit={handleSubmit} className="space-y-3" noValidate>
 
-              {/* Section 1: Position Selection */}
+              {/* Single section: position, candidate details and actions */}
               <SectionCard
-                title="POSITION SELECTION"
+                title="APPLICATION DETAILS"
                 icon={<Briefcase className="w-3 h-3" />}
                 theme="indigo"
-                bodyClassName="space-y-2"
+                bodyClassName="grid grid-cols-1 sm:grid-cols-2 gap-2.5"
               >
-                <FormField label="Applying for" hint="Select from our open vacancies">
+                <FormField label="Applying for" hint="Select from our open vacancies" className="sm:col-span-2">
                   <select
                     value={formData.vacancy_id}
                     onChange={(e) => handleVacancyChange(e.target.value)}
@@ -579,19 +584,19 @@ export default function PublicCandidateApply() {
 
                 {/* ── Mobile-only vertical JD preview ── */}
                 {hasSelectedVacancy && (
-                  <div className="block lg:hidden mt-2">
+                  <div className="sm:col-span-2 block lg:hidden">
                     <JobDescriptionCard vacancy={selectedVacancy} isCollapsible={true} defaultOpen={true} />
                   </div>
                 )}
-              </SectionCard>
 
-              {/* Section 2: Candidate Details */}
-              <SectionCard
-                title="CANDIDATE DETAILS"
-                icon={<User className="w-3 h-3" />}
-                theme="indigo"
-                bodyClassName="grid grid-cols-1 sm:grid-cols-2 gap-2.5"
-              >
+                {/* Candidate Details sub-heading */}
+                <div className="sm:col-span-2 flex items-center gap-1.5 pt-2.5 mt-0.5 border-t border-slate-100">
+                  <User className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.4px] text-[#0f2137]">
+                    Candidate Details
+                  </span>
+                </div>
+
                 {/* Full Name */}
                 <FormField label="Full Name" required error={errors.full_name}>
                   <input
@@ -720,45 +725,42 @@ export default function PublicCandidateApply() {
                     </div>
                   </FormField>
                 </div>
-              </SectionCard>
 
-              {/* ERP-style footer action bar */}
-              <div
-                className="bg-white border rounded-lg shadow-sm px-3.5 py-2 flex items-center justify-between gap-3"
-                style={{ borderColor: ERP.border }}
-              >
-                <span className="text-[10.5px] text-slate-500">
-                  <span className="text-red-500 font-bold">*</span> Required fields
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    disabled={submitting}
-                    className="py-1.5 px-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-md transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    Reset
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="py-1.5 px-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-md shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        Submitting…
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" />
-                        Submit Application
-                      </>
-                    )}
-                  </button>
+                {/* Action bar */}
+                <div className="sm:col-span-2 pt-2.5 mt-0.5 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <span className="text-[10.5px] text-slate-500">
+                    <span className="text-red-500 font-bold">*</span> Required fields
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      disabled={submitting}
+                      className="py-1.5 px-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-md transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Reset
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="py-1.5 px-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs rounded-md shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Submitting…
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          Submit Application
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </SectionCard>
             </form>
           </div>
         </div>

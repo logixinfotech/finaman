@@ -13,6 +13,7 @@ import {
 import { confirmDelete, showToast, alertError } from "../../../../components/Reusable/alert";
 import { setERPHandlers } from "../../../../utils/erpShortcuts";
 import config from "../../../../config";
+import * as XLSX from "xlsx";
 import {
   UserCheck,
   Upload,
@@ -71,6 +72,7 @@ export default function CandidateRegistration({ tab }) {
   // Excel Bulk Import Modal State
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState(null);
+  const [previewRows, setPreviewRows] = useState([]);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const {
@@ -234,9 +236,76 @@ export default function CandidateRegistration({ tab }) {
     if (result?.success) loadList();
   };
 
+  // Parse and preview chosen Excel file
+  const handleFileChange = (file) => {
+    if (!file) {
+      setImportFile(null);
+      setPreviewRows([]);
+      setImportResult(null);
+      return;
+    }
+    setImportFile(file);
+    setImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: "binary" });
+        const sheetName = wb.SheetNames[0];
+        if (!sheetName) {
+          setPreviewRows([]);
+          return;
+        }
+        const ws = wb.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+        const mapped = data
+          .map((row, idx) => {
+            let mobile = (row["Mobile Number"] || row["Mobile"] || row["Phone"] || row["Contact"] || "").toString().trim();
+            if (mobile.endsWith(".0")) mobile = mobile.replace(/\.0$/, "");
+            const name = (row["Full Name"] || row["Name"] || row["Candidate Name"] || "").toString().trim();
+            const email = (row["Email"] || row["Email Address"] || "").toString().trim();
+            const vac = (row["Vacancy ID"] || row["Vacancy_Id"] || row["Vacancy Id"] || row["Vacancy No"] || row["Vacancy"] || row["Job Code"] || "").toString().trim();
+            const source = (row["Source Channel"] || row["Source"] || "Excel Import").toString().trim();
+            const location = (row["Current Location"] || row["Location"] || row["City"] || "").toString().trim();
+            const exp = row["Experience (Years)"] || row["Experience"] || "";
+            const cCtc = row["Current CTC"] || "";
+            const eCtc = row["Expected CTC"] || "";
+            const np = row["Notice Period (Days)"] || row["Notice Period"] || "";
+            const remarks = (row["HR Remarks"] || row["Remarks"] || "").toString().trim();
+
+            const isValid = Boolean(name || mobile || email);
+            return {
+              _idx: idx + 1,
+              name,
+              mobile,
+              email,
+              vacancy: vac,
+              source,
+              location,
+              exp,
+              cCtc,
+              eCtc,
+              np,
+              remarks,
+              isValid,
+            };
+          })
+          .filter((r) => r.isValid);
+
+        setPreviewRows(mapped);
+      } catch (err) {
+        console.error("Error reading Excel preview:", err);
+        setPreviewRows([]);
+        showToast({ icon: "error", title: "Could not parse Excel preview" });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   // Handle Excel Bulk Import
   const handleImportSubmit = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!importFile) {
       alertError("Please select an Excel file (.xlsx / .xls)");
       return;
@@ -264,6 +333,63 @@ export default function CandidateRegistration({ tab }) {
       alertError(err.message || "Failed to import Excel sheet");
     } finally {
       setImporting(false);
+    }
+  };
+
+  // Download Excel Import Template (Direct client-side generation + server fallback)
+  const handleDownloadTemplate = () => {
+    try {
+      const sampleVacancyNo = vacanciesList[0]?.vacancy_no || "VAC-2026-0001";
+      const sampleData = [
+        {
+          "Full Name": "Rahul Sharma",
+          "Mobile Number": "9876543210",
+          "Email": "rahul.sharma@example.com",
+          "Vacancy ID": sampleVacancyNo,
+          "Source Channel": "LinkedIn",
+          "Current Location": "New Delhi",
+          "Experience (Years)": 3.5,
+          "Current CTC": 450000,
+          "Expected CTC": 600000,
+          "Notice Period (Days)": 30,
+          "HR Remarks": "Sourced via LinkedIn Recruiter. Strong profile.",
+        },
+        {
+          "Full Name": "Pooja Verma",
+          "Mobile Number": "9812345678",
+          "Email": "pooja.v@example.com",
+          "Vacancy ID": "",
+          "Source Channel": "Naukri",
+          "Current Location": "Gurugram",
+          "Experience (Years)": 2.0,
+          "Current CTC": 350000,
+          "Expected CTC": 480000,
+          "Notice Period (Days)": 15,
+          "HR Remarks": "Immediate joiner from portal dump.",
+        },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(sampleData);
+      ws["!cols"] = [
+        { wch: 18 }, // Full Name
+        { wch: 15 }, // Mobile Number
+        { wch: 25 }, // Email
+        { wch: 18 }, // Vacancy ID
+        { wch: 15 }, // Source Channel
+        { wch: 16 }, // Current Location
+        { wch: 18 }, // Experience (Years)
+        { wch: 14 }, // Current CTC
+        { wch: 14 }, // Expected CTC
+        { wch: 20 }, // Notice Period (Days)
+        { wch: 35 }, // HR Remarks
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, "Candidates");
+      XLSX.writeFile(wb, "Candidate_Import_Template.xlsx");
+      showToast({ icon: "success", title: "Template downloaded successfully!" });
+    } catch (err) {
+      console.error("Error generating template:", err);
+      window.open(`${config.apiUrl || ""}/api/recruitment/candidates-template/download`, "_blank");
     }
   };
 
@@ -447,100 +573,304 @@ export default function CandidateRegistration({ tab }) {
         }}
       />
 
-      {/* Excel Bulk Import Modal */}
+      {/* Excel Bulk Import Modal with Interactive Preview Screen */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150">
-            <div className="bg-[#0f2137] text-white px-5 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-sm tracking-wide">Bulk Excel Sourcing Import</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-5 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh] transition-all duration-200 ${
+            previewRows.length > 0 ? "max-w-5xl" : "max-w-lg"
+          }`}>
+            {/* Modal Header */}
+            <div className="bg-[#0f2137] text-white px-5 py-3.5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm tracking-wide">Bulk Excel Sourcing Import</h3>
+                  <p className="text-[11px] text-slate-300">
+                    {previewRows.length > 0
+                      ? `Previewing ${previewRows.length} candidate record(s) before importing`
+                      : "Upload candidate spreadsheet into 'Raw Data' pipeline"}
+                  </p>
+                </div>
               </div>
               <button
-                onClick={() => setShowImportModal(false)}
-                className="text-slate-400 hover:text-white rounded-md p-1"
+                type="button"
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setPreviewRows([]);
+                  setImportResult(null);
+                }}
+                className="text-slate-400 hover:text-white rounded-lg p-1.5 hover:bg-white/10 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4 text-xs">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-800 space-y-1">
-                <p className="font-semibold text-blue-900">Import Guidelines:</p>
-                <ul className="list-disc list-inside space-y-0.5 text-[11px] text-blue-700">
-                  <li>Imported candidates are automatically tagged as <strong className="font-semibold text-blue-900">'Raw Data'</strong> pipeline status.</li>
-                  <li>Columns: Full Name, Mobile Number, Email, Vacancy No, Source Channel, Location, Experience, CTC, Notice Period, Remarks.</li>
-                </ul>
-              </div>
+            {/* Modal Content */}
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+              {/* Guidelines banner (when no file selected) */}
+              {previewRows.length === 0 && (
+                <>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-blue-900 space-y-1.5">
+                    <p className="font-bold text-blue-950 flex items-center gap-1.5">
+                      <span>Import Guidelines</span>
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-blue-800 leading-relaxed">
+                      <li>
+                        Imported candidates are automatically tagged with <strong className="font-semibold text-blue-950">'Raw Data'</strong> pipeline status and enrolled into Stage 1 sourcing.
+                      </li>
+                      <li>
+                        Supported Columns: <strong>Full Name, Mobile Number, Email, Vacancy ID, Source Channel, Current Location, Experience (Years), Current CTC, Expected CTC, Notice Period (Days), HR Remarks</strong>.
+                      </li>
+                      <li>
+                        <em>Note: Resumes / CV files are not included in Excel import and can be attached individually after sourcing.</em>
+                      </li>
+                    </ul>
+                  </div>
 
-              <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                <div>
-                  <span className="font-semibold text-slate-800 block">Download Template</span>
-                  <span className="text-[11px] text-slate-500">Use this pre-formatted sample Excel file</span>
-                </div>
-                <a
-                  href={`${config.apiUrl}/api/recruitment/candidates-template/download`}
-                  download="Candidate_Import_Template.xlsx"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-md text-xs font-semibold shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download</span>
-                </a>
-              </div>
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">Download Template</span>
+                      <span className="text-[11px] text-slate-500">Pre-formatted Excel sheet with 'Vacancy ID' header</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadTemplate}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 hover:border-blue-300 rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Sample</span>
+                    </button>
+                  </div>
+                </>
+              )}
 
-              <form onSubmit={handleImportSubmit} className="space-y-4">
-                <div className="border-2 border-dashed border-slate-300 hover:border-blue-400 bg-slate-50 rounded-lg p-6 text-center cursor-pointer transition-colors">
+              {/* Upload Dropzone (when no file selected) */}
+              {previewRows.length === 0 && (
+                <div className="border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/40 bg-slate-50 rounded-xl p-6 text-center cursor-pointer transition-all group">
                   <input
                     type="file"
+                    id="excel-file-input"
                     accept=".xlsx, .xls"
-                    onChange={(e) => setImportFile(e.target.files[0] || null)}
-                    className="w-full text-xs"
+                    onChange={(e) => handleFileChange(e.target.files[0] || null)}
+                    className="hidden"
                   />
+                  <label htmlFor="excel-file-input" className="cursor-pointer block space-y-2">
+                    <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div className="font-bold text-slate-800 text-xs">
+                      Click to choose Excel file or drag & drop here
+                    </div>
+                    <div className="text-[11px] text-slate-400">Supports .xlsx and .xls formats</div>
+                  </label>
                 </div>
+              )}
 
-                {importResult && (
-                  <div
-                    className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${importResult.success
-                        ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                        : "bg-rose-50 text-rose-800 border-rose-200"
-                      }`}
-                  >
-                    {importResult.success ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <span className="font-semibold">{importResult.message}</span>
-                      {importResult.errors && importResult.errors.length > 0 && (
-                        <div className="mt-1 text-[10px] space-y-0.5 max-h-20 overflow-y-auto">
-                          {importResult.errors.map((err, idx) => (
-                            <p key={idx}>• {err}</p>
-                          ))}
-                        </div>
-                      )}
+              {/* ── PREVIEW SCREEN (When Excel rows are parsed) ──────────────── */}
+              {previewRows.length > 0 && (
+                <div className="space-y-3">
+                  {/* File Info & Change File Ribbon */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold text-xs">
+                        XLS
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-800 text-xs block truncate max-w-xs sm:max-w-md" title={importFile?.name}>
+                          {importFile?.name || "Uploaded Spreadsheet"}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {importFile?.size ? `${(importFile.size / 1024).toFixed(1)} KB · ` : ""}
+                          <strong className="text-emerald-700 font-semibold">{previewRows.length} candidates detected</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadTemplate}
+                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-100"
+                        title="Download standard template"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Template</span>
+                      </button>
+                      <label
+                        htmlFor="excel-file-reinput"
+                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
+                      >
+                        <span>Change File</span>
+                        <input
+                          type="file"
+                          id="excel-file-reinput"
+                          accept=".xlsx, .xls"
+                          onChange={(e) => handleFileChange(e.target.files[0] || null)}
+                          className="hidden"
+                        />
+                      </label>
                     </div>
                   </div>
-                )}
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  {/* High-density preview table */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
+                    <div className="max-h-72 overflow-x-auto overflow-y-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="sticky top-0 bg-slate-100 border-b border-slate-200 text-slate-700 text-[10.5px] uppercase font-bold tracking-wider z-10">
+                          <tr>
+                            <th className="px-2.5 py-2 w-10 text-center border-r border-slate-200">#</th>
+                            <th className="px-3 py-2 border-r border-slate-200 min-w-[140px]">Full Name</th>
+                            <th className="px-2.5 py-2 border-r border-slate-200 min-w-[110px]">Mobile</th>
+                            <th className="px-2.5 py-2 border-r border-slate-200 min-w-[150px]">Email</th>
+                            <th className="px-2.5 py-2 border-r border-slate-200 min-w-[120px]">Vacancy ID</th>
+                            <th className="px-2.5 py-2 border-r border-slate-200 min-w-[90px]">Source</th>
+                            <th className="px-2.5 py-2 border-r border-slate-200 min-w-[90px]">Location</th>
+                            <th className="px-2 py-2 border-r border-slate-200 text-center min-w-[70px]">Exp (Yrs)</th>
+                            <th className="px-2 py-2 border-r border-slate-200 text-right min-w-[85px]">Current CTC</th>
+                            <th className="px-2 py-2 border-r border-slate-200 text-right min-w-[85px]">Expected CTC</th>
+                            <th className="px-2 py-2 border-r border-slate-200 text-center min-w-[75px]">Notice</th>
+                            <th className="px-3 py-2 min-w-[140px]">HR Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-[11px] text-slate-800">
+                          {previewRows.map((r, i) => (
+                            <tr key={i} className="hover:bg-blue-50/40 transition-colors">
+                              <td className="px-2.5 py-1.5 text-center font-mono text-slate-400 border-r border-slate-100 font-semibold">
+                                {r._idx}
+                              </td>
+                              <td className="px-3 py-1.5 font-bold text-slate-900 border-r border-slate-100 truncate" title={r.name}>
+                                {r.name || <span className="text-rose-400 italic">Missing Name</span>}
+                              </td>
+                              <td className="px-2.5 py-1.5 font-mono border-r border-slate-100">
+                                {r.mobile || <span className="text-slate-400">—</span>}
+                              </td>
+                              <td className="px-2.5 py-1.5 border-r border-slate-100 truncate" title={r.email}>
+                                {r.email || <span className="text-slate-400">—</span>}
+                              </td>
+                              <td className="px-2.5 py-1.5 border-r border-slate-100">
+                                {r.vacancy ? (
+                                  <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200">
+                                    {r.vacancy}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 italic">General</span>
+                                )}
+                              </td>
+                              <td className="px-2.5 py-1.5 border-r border-slate-100 text-slate-600">
+                                {r.source || "Excel"}
+                              </td>
+                              <td className="px-2.5 py-1.5 border-r border-slate-100 text-slate-600 truncate" title={r.location}>
+                                {r.location || "—"}
+                              </td>
+                              <td className="px-2 py-1.5 border-r border-slate-100 text-center font-semibold">
+                                {r.exp != null && r.exp !== "" ? `${r.exp}` : "—"}
+                              </td>
+                              <td className="px-2 py-1.5 border-r border-slate-100 text-right font-mono text-slate-700">
+                                {r.cCtc ? Number(r.cCtc).toLocaleString("en-IN") : "—"}
+                              </td>
+                              <td className="px-2 py-2 border-r border-slate-100 text-right font-mono text-slate-700">
+                                {r.eCtc ? Number(r.eCtc).toLocaleString("en-IN") : "—"}
+                              </td>
+                              <td className="px-2 py-1.5 border-r border-slate-100 text-center text-slate-600">
+                                {r.np ? `${r.np}d` : "—"}
+                              </td>
+                              <td className="px-3 py-1.5 text-slate-500 truncate" title={r.remarks}>
+                                {r.remarks || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>
+                      All <strong>{previewRows.length}</strong> candidates will be registered and enrolled into the <strong>'Raw Data - Sourced'</strong> recruitment calling queue.
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {/* Import Result Box */}
+              {importResult && (
+                <div
+                  className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-150 ${
+                    importResult.success
+                      ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                      : "bg-rose-50 text-rose-900 border-rose-200"
+                  }`}
+                >
+                  {importResult.success ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <span className="font-bold block text-sm">{importResult.message}</span>
+                    {importResult.errors && importResult.errors.length > 0 && (
+                      <div className="mt-2 text-[11px] space-y-1 max-h-28 overflow-y-auto bg-white/70 p-2 rounded-lg border border-rose-200">
+                        <span className="font-bold text-rose-800 block">Row-level notices:</span>
+                        {importResult.errors.map((err, idx) => (
+                          <p key={idx} className="text-rose-700">• {err}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Toolbar */}
+            <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-slate-200 bg-slate-50 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setPreviewRows([]);
+                  setImportResult(null);
+                }}
+                className="px-4 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                {importResult?.success ? "Done" : "Cancel"}
+              </button>
+
+              <div className="flex items-center gap-2">
+                {previewRows.length > 0 && !importResult?.success && (
                   <button
                     type="button"
-                    onClick={() => setShowImportModal(false)}
-                    className="px-4 py-1.5 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    onClick={() => {
+                      setImportFile(null);
+                      setPreviewRows([]);
+                      setImportResult(null);
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-lg transition-colors"
                   >
-                    Close
+                    Clear Preview
                   </button>
-                  <button
-                    type="submit"
-                    disabled={!importFile || importing}
-                    className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-md text-xs font-semibold shadow-xs"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{importing ? "Importing..." : "Upload & Import"}</span>
-                  </button>
-                </div>
-              </form>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleImportSubmit}
+                  disabled={!importFile || importing || importResult?.success}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>
+                    {importing
+                      ? "Importing..."
+                      : previewRows.length > 0
+                      ? `Import ${previewRows.length} Candidates`
+                      : "Upload & Import"}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

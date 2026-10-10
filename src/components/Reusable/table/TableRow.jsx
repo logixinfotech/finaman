@@ -17,15 +17,18 @@ const HighlightText = memo(({ text, search }) => {
 });
 HighlightText.displayName = "HighlightText";
 
+/**
+ * NOTE (Phase 1): `columns` yahan already FILTERED (sirf visible) aur RESOLVED aati hai
+ * — har column mein `width`, `isFrozen`, `stickyLeft`, `align` pehle se calculate hai
+ * (Table.jsx ke memoizedColumns se). Isse header aur body ka width/sticky offset
+ * hamesha match karega, aur memo sahi kaam karega.
+ */
 const TableRow = memo(
   forwardRef(
     (
       {
         row,
         columns,
-        visibleColumns,
-        columnWidths,
-        lockedColumns,
         onRowClick,
         onRowDoubleClick,
         actions,
@@ -34,15 +37,11 @@ const TableRow = memo(
         isSelected,
         onRowSelect,
         searchText,
-        setAnchorIndex,
         rowHeight,
       },
       ref
     ) => {
-      const baseBg =
-        index % 2 === 0
-          ? "bg-white"
-          : "bg-[#FAFAFA]";
+      const baseBg = index % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]";
 
       const handleClick = useCallback(
         (e) => {
@@ -58,91 +57,95 @@ const TableRow = memo(
             onRowSelect("single", index);
             onRowClick?.(row, index);
           }
-          setAnchorIndex?.(index);
         },
-        [onRowSelect, onRowClick, row, index, setAnchorIndex]
+        [onRowSelect, onRowClick, row, index]
       );
 
       const handleDoubleClick = useCallback(() => {
         onRowDoubleClick?.(row);
       }, [onRowDoubleClick, row]);
-      const visibleCols = columns.filter((c) => visibleColumns[c.key]);
-      const firstKey = visibleCols[0]?.key;
-      let leftOffset = 0;
+
+      const firstKey = columns[0]?.key;
+
       const rowClass = [
         "group relative border-b cursor-default transition-colors duration-[60ms]",
-        "text-[11.5px]",
+        "text-[13px]",
         isSelected
           ? "bg-amber-100 outline outline-[1.5px] outline-amber-400 outline-offset-[-1px] z-[1]"
           : [
-            isFocused
-              ? "bg-[#EFF6FF] outline outline-1 outline-blue-300 outline-offset-[-1px]"
-              : baseBg,
-            "hover:bg-slate-50",
-          ]
-            .filter(Boolean)
-            .join(" "),
+              isFocused
+                ? "bg-[#EFF6FF] outline outline-1 outline-blue-300 outline-offset-[-1px]"
+                : baseBg,
+              "hover:bg-slate-50",
+            ].join(" "),
         "border-slate-100",
-      ]
-        .filter(Boolean)
-        .join(" ");
+      ].join(" ");
+
+      // frozen cell bg ab selected row ke amber se match karta hai (pehle indigo tha)
+      const frozenBg = isSelected
+        ? "#FEF3C7"
+        : isFocused
+          ? "#EFF6FF"
+          : index % 2 === 0
+            ? "#ffffff"
+            : "#FAFAFA";
 
       return (
         <tr
           ref={ref}
           role="row"
+          data-row-index={index}
           aria-selected={isSelected}
           aria-rowindex={index + 2}
           onClick={handleClick}
           onDoubleClick={handleDoubleClick}
           className={rowClass}
-          style={{ height: rowHeight }}
+          style={{ height: rowHeight, scrollMarginTop: 36 }}
         >
-          {visibleCols.map((c) => {
-            const width = columnWidths[c.key] || 150;
-            const isFrozen = lockedColumns.includes(c.key);
+          {columns.map((c) => {
             const isFirst = c.key === firstKey;
-            const frozenBg = isSelected
-              ? "#E0E7FF"
-              : isFocused
-                ? "#EFF6FF"
-                : index % 2 === 0
-                  ? "#ffffff"
-                  : "#FAFAFA";
+            const isRight = c.align === "right";
+            const isCenter = c.align === "center";
 
-            const stickyStyle = isFrozen
+            const stickyStyle = c.isFrozen
               ? {
-                position: "sticky",
-                left: leftOffset,
-                zIndex: 5,
-                backgroundColor: frozenBg,
-                boxShadow: "1px 0 0 0 rgba(226,232,240,1)",
-              }
+                  position: "sticky",
+                  left: c.stickyLeft,
+                  zIndex: 5,
+                  backgroundColor: frozenBg,
+                  boxShadow: "1px 0 0 0 rgba(226,232,240,1)",
+                }
               : {};
 
-            if (isFrozen) leftOffset += width;
-
             const tdClass = [
-              "px-3 py-0 border-r border-slate-100",
+              "px-3 py-0 border-r border-slate-100 tabular-nums",
               "whitespace-nowrap overflow-hidden text-ellipsis align-middle",
               isSelected
                 ? "text-indigo-950 font-semibold"
-                : isFrozen
+                : c.isFrozen
                   ? "font-medium text-slate-800"
                   : "text-slate-700",
-            ]
-              .filter(Boolean)
-              .join(" ");
+            ].join(" ");
+
+            const raw = row[c.key];
+            const empty = raw === null || raw === undefined || raw === "";
+            // truncated value ka poora text hover par dikhe (sirf plain cells ke liye)
+            const tip =
+              !c.render && !empty && typeof raw !== "object"
+                ? String(raw)
+                : undefined;
 
             return (
               <td
                 key={c.key}
                 role="gridcell"
+                title={tip}
                 style={{
-                  width,
-                  maxWidth: width,
-                  lineHeight: `${rowHeight}px`, 
-                  ...stickyStyle
+                  width: c.width,
+                  maxWidth: c.width,
+                  lineHeight: `${rowHeight}px`,
+                  textAlign: c.align || "left",
+                  ...stickyStyle,
                 }}
                 className={tdClass}
               >
@@ -161,18 +164,18 @@ const TableRow = memo(
                 )}
 
                 <div
-                  className="truncate flex items-center gap-0"
-                  style={{ height: rowHeight }} // Maintains cell height
+                  className={[
+                    "truncate flex items-center gap-0",
+                    isRight ? "justify-end" : isCenter ? "justify-center" : "",
+                  ].join(" ")}
+                  style={{ height: rowHeight }}
                 >
-
-
                   {c.render ? (
                     c.render(row)
+                  ) : empty ? (
+                    <span className="text-slate-400">—</span>
                   ) : (
-                    <HighlightText
-                      text={row[c.key] ?? "—"}
-                      search={searchText}
-                    />
+                    <HighlightText text={raw} search={searchText} />
                   )}
                 </div>
               </td>
@@ -187,7 +190,7 @@ const TableRow = memo(
                 "border-l transition-colors duration-[60ms]",
                 "shadow-[-1px_0_0_0_rgba(226,232,240,1)]",
                 isSelected
-                  ? "bg-blue-100 border-blue-200"
+                  ? "bg-amber-100 border-amber-200"
                   : "bg-white border-slate-100 group-hover:bg-slate-50",
               ].join(" ")}
               style={{ width: 68, height: rowHeight }}

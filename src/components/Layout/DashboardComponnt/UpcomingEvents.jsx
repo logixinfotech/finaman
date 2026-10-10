@@ -1,3 +1,4 @@
+ 
 import React, {
   useState,
   useRef,
@@ -12,6 +13,7 @@ import {
   fetchHolidays,
   fetchUserGroupsByType,
   sendEventWish,
+  sendHolidayNotice,
 } from "../../../utils/api";
 
 const TABS = ["Today", "This week", "All"];
@@ -39,14 +41,7 @@ const FIELD_KEYS = {
   lastName: ["Led_alias", "last_name", "Last Name", "lastname"],
   middleName: ["Middle_name"],
   dob: ["Dob", "dob", "DOB", "date_of_birth", "Date of Birth"],
-  doj: [
-    "Doj",
-    "doj",
-    "DOJ",
-    "date_of_joining",
-    "Joining Date",
-    "joining_date",
-  ],
+  doj: ["Doj", "doj", "DOJ", "date_of_joining", "Joining Date", "joining_date"],
   department: ["department_name", "Department", "dept_name"],
   departmentId: ["department", "Department"],
   statusLeaving: [
@@ -87,12 +82,7 @@ const C = {
 
 const pick = (obj, keys) => {
   for (const k of keys) {
-    if (
-      obj &&
-      obj[k] !== undefined &&
-      obj[k] !== null &&
-      obj[k] !== ""
-    ) {
+    if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== "") {
       return obj[k];
     }
   }
@@ -107,9 +97,7 @@ const startOfDay = (d) => {
 };
 
 const daysBetween = (from, to) =>
-  Math.round(
-    (startOfDay(to) - startOfDay(from)) / 86400000
-  );
+  Math.round((startOfDay(to) - startOfDay(from)) / 86400000);
 
 const MONTHS_SHORT = [
   "Jan",
@@ -151,7 +139,7 @@ const nextOccurrence = (rawDate, today) => {
   if (isNaN(d.getTime())) return null;
 
   let occ = startOfDay(
-    new Date(today.getFullYear(), d.getMonth(), d.getDate())
+    new Date(today.getFullYear(), d.getMonth(), d.getDate()),
   );
 
   if (occ < startOfDay(today)) {
@@ -164,8 +152,7 @@ const nextOccurrence = (rawDate, today) => {
   };
 };
 
-const pct = (n, total) =>
-  total ? Math.round((n / total) * 100) : 0;
+const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
 
 const TYPE_STYLE = {
   birthday: {
@@ -189,7 +176,7 @@ const TYPE_STYLE = {
     icon: "ti ti-flag",
     color: C.amber,
     soft: C.amberSoft,
-    action: "View Policy",
+    action: "Send Notice",
   },
 
   probation: {
@@ -373,33 +360,20 @@ const UpcomingEvents = ({
 
   const [sendingWishId, setSendingWishId] = useState(null);
 
-  const today = useMemo(
-    () => startOfDay(new Date()),
-    []
-  );
+  const today = useMemo(() => startOfDay(new Date()), []);
 
   useEffect(() => {
     if (!isHalf) return;
 
     const handleClickOutside = (e) => {
-      if (
-        filterRef.current &&
-        !filterRef.current.contains(e.target)
-      ) {
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
         setFilterOpen(false);
       }
     };
 
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside
-    );
+    document.addEventListener("mousedown", handleClickOutside);
 
-    return () =>
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isHalf]);
 
   const pageRef = useRef(null);
@@ -428,7 +402,7 @@ const UpcomingEvents = ({
         ) {
           bottomLimit = Math.min(
             bottomLimit,
-            node.getBoundingClientRect().bottom
+            node.getBoundingClientRect().bottom,
           );
           break;
         }
@@ -436,9 +410,7 @@ const UpcomingEvents = ({
         node = node.parentElement;
       }
 
-      setPageHeight(
-        Math.max(320, bottomLimit - top - 16)
-      );
+      setPageHeight(Math.max(320, bottomLimit - top - 16));
     };
 
     recalc();
@@ -474,19 +446,13 @@ const UpcomingEvents = ({
     setError(false);
 
     try {
-      const [
-        empRes,
-        holidayRows,
-        deptRes,
-      ] = await Promise.all([
+      const [empRes, holidayRows, deptRes] = await Promise.all([
         getActledListAll(),
         fetchHolidays(),
         fetchUserGroupsByType("DEP"),
       ]);
 
-      setEmployees(
-        empRes?.success ? empRes.data || [] : []
-      );
+      setEmployees(empRes?.success ? empRes.data || [] : []);
 
       setHolidays(holidayRows || []);
 
@@ -499,10 +465,7 @@ const UpcomingEvents = ({
       setDeptMap(map);
       setLastUpdated(new Date());
     } catch (e) {
-      console.error(
-        "UpcomingEvents fetch error:",
-        e
-      );
+      console.error("UpcomingEvents fetch error:", e);
 
       setError(true);
     } finally {
@@ -516,17 +479,11 @@ const UpcomingEvents = ({
 
   const resolveDept = useCallback(
     (emp) => {
-      const name = pick(
-        emp,
-        FIELD_KEYS.department
-      );
+      const name = pick(emp, FIELD_KEYS.department);
 
       if (name) return name;
 
-      const id = pick(
-        emp,
-        FIELD_KEYS.departmentId
-      );
+      const id = pick(emp, FIELD_KEYS.departmentId);
 
       if (id && deptMap[id]) {
         return deptMap[id];
@@ -534,23 +491,19 @@ const UpcomingEvents = ({
 
       return "—";
     },
-    [deptMap]
+    [deptMap],
   );
 
   const resolveName = useCallback((emp) => {
-    const first =
-      pick(emp, FIELD_KEYS.firstName) || "";
+    const first = pick(emp, FIELD_KEYS.firstName) || "";
 
-    const middle =
-      pick(emp, FIELD_KEYS.middleName) || "";
+    const middle = pick(emp, FIELD_KEYS.middleName) || "";
 
-    const last =
-      pick(emp, FIELD_KEYS.lastName) || "";
+    const last = pick(emp, FIELD_KEYS.lastName) || "";
 
     return (
-      `${first} ${middle} ${last}`
-        .replace(/\s+/g, " ")
-        .trim() || "Unnamed Employee"
+      `${first} ${middle} ${last}`.replace(/\s+/g, " ").trim() ||
+      "Unnamed Employee"
     );
   }, []);
 
@@ -559,172 +512,115 @@ const UpcomingEvents = ({
     let autoId = 1;
 
     const isActive = (emp) => {
-      const leaving = pick(
-        emp,
-        FIELD_KEYS.statusLeaving
-      );
+      const leaving = pick(emp, FIELD_KEYS.statusLeaving);
 
-      const status = pick(
-        emp,
-        FIELD_KEYS.status
-      );
+      const status = pick(emp, FIELD_KEYS.status);
 
       if (leaving) return false;
 
-      if (
-        status &&
-        String(status).toLowerCase() ===
-          "inactive"
-      ) {
+      if (status && String(status).toLowerCase() === "inactive") {
         return false;
       }
 
       return true;
     };
 
-    employees
-      .filter(isActive)
-      .forEach((emp) => {
-        const name = resolveName(emp);
-        const dept = resolveDept(emp);
-        const empId = pick(
-          emp,
-          FIELD_KEYS.id
-        );
+    employees.filter(isActive).forEach((emp) => {
+      const name = resolveName(emp);
+      const dept = resolveDept(emp);
+      const empId = pick(emp, FIELD_KEYS.id);
 
-        const birthdayOcc = nextOccurrence(
-          pick(emp, FIELD_KEYS.dob),
-          today
-        );
+      const birthdayOcc = nextOccurrence(pick(emp, FIELD_KEYS.dob), today);
 
-        if (birthdayOcc) {
-          const diff = daysBetween(
-            today,
-            birthdayOcc.occ
+      if (birthdayOcc) {
+        const diff = daysBetween(today, birthdayOcc.occ);
+
+        if (diff <= EVENT_WINDOW_FUTURE_DAYS) {
+          list.push({
+            id: `bday-${autoId++}`,
+            employeeId: empId,
+            type: "birthday",
+            title: name,
+            sub: "Birthday" + (diff === 0 ? " today" : ""),
+            when: diff,
+            dept,
+            dateStr: formatDateStr(birthdayOcc.occ),
+          });
+        }
+      }
+
+      const dojRaw = pick(emp, FIELD_KEYS.doj);
+
+      const annivOcc = nextOccurrence(dojRaw, today);
+
+      if (annivOcc) {
+        const diff = daysBetween(today, annivOcc.occ);
+
+        const years = annivOcc.occ.getFullYear() - annivOcc.sourceYear;
+
+        if (diff <= EVENT_WINDOW_FUTURE_DAYS && years > 0) {
+          list.push({
+            id: `anniv-${autoId++}`,
+            employeeId: empId,
+            type: "anniversary",
+            title: name,
+            sub: `${years}-year work anniversary`,
+            when: diff,
+            dept,
+            dateStr: formatDateStr(annivOcc.occ),
+            years,
+          });
+        }
+      }
+
+      if (dojRaw) {
+        const dojDate = new Date(dojRaw);
+
+        if (!isNaN(dojDate.getTime())) {
+          const probationDate = startOfDay(
+            addMonths(dojDate, PROBATION_MONTHS),
           );
 
+          const diff = daysBetween(today, probationDate);
+
           if (
+            diff >= -EVENT_WINDOW_PAST_DAYS &&
             diff <= EVENT_WINDOW_FUTURE_DAYS
           ) {
             list.push({
-              id: `bday-${autoId++}`,
+              id: `prob-${autoId++}`,
               employeeId: empId,
-              type: "birthday",
+              type: "probation",
               title: name,
               sub:
-                "Birthday" +
-                (diff === 0 ? " today" : ""),
+                diff < 0
+                  ? "Probation ended — confirmation overdue"
+                  : "Probation ends — confirmation due",
               when: diff,
               dept,
-              dateStr: formatDateStr(
-                birthdayOcc.occ
-              ),
+              dateStr: formatDateStr(probationDate),
             });
           }
         }
-
-        const dojRaw = pick(
-          emp,
-          FIELD_KEYS.doj
-        );
-
-        const annivOcc = nextOccurrence(
-          dojRaw,
-          today
-        );
-
-        if (annivOcc) {
-          const diff = daysBetween(
-            today,
-            annivOcc.occ
-          );
-
-          const years =
-            annivOcc.occ.getFullYear() -
-            annivOcc.sourceYear;
-
-          if (
-            diff <= EVENT_WINDOW_FUTURE_DAYS &&
-            years > 0
-          ) {
-            list.push({
-              id: `anniv-${autoId++}`,
-              employeeId: empId,
-              type: "anniversary",
-              title: name,
-              sub: `${years}-year work anniversary`,
-              when: diff,
-              dept,
-              dateStr: formatDateStr(
-                annivOcc.occ
-              ),
-              years,
-            });
-          }
-        }
-
-        if (dojRaw) {
-          const dojDate = new Date(dojRaw);
-
-          if (!isNaN(dojDate.getTime())) {
-            const probationDate = startOfDay(
-              addMonths(
-                dojDate,
-                PROBATION_MONTHS
-              )
-            );
-
-            const diff = daysBetween(
-              today,
-              probationDate
-            );
-
-            if (
-              diff >= -EVENT_WINDOW_PAST_DAYS &&
-              diff <= EVENT_WINDOW_FUTURE_DAYS
-            ) {
-              list.push({
-                id: `prob-${autoId++}`,
-                employeeId: empId,
-                type: "probation",
-                title: name,
-                sub:
-                  diff < 0
-                    ? "Probation ended — confirmation overdue"
-                    : "Probation ends — confirmation due",
-                when: diff,
-                dept,
-                dateStr:
-                  formatDateStr(probationDate),
-              });
-            }
-          }
-        }
-      });
+      }
+    });
 
     holidays.forEach((h) => {
       if (!h.date) return;
 
-      const d = startOfDay(
-        new Date(h.date)
-      );
+      const d = startOfDay(new Date(h.date));
 
       if (isNaN(d.getTime())) return;
 
       const diff = daysBetween(today, d);
 
-      if (
-        diff >= 0 &&
-        diff <= EVENT_WINDOW_FUTURE_DAYS
-      ) {
+      if (diff >= 0 && diff <= EVENT_WINDOW_FUTURE_DAYS) {
         list.push({
           id: `hol-${h.id}`,
+          holidayId: h.id,
           type: "holiday",
           title: h.purpose || "Holiday",
-          sub:
-            (h.remarks
-              ? `${h.remarks} — `
-              : "") + "Office closed",
+          sub: (h.remarks ? `${h.remarks} — ` : "") + "Office closed",
           when: diff,
           dept: "All India",
           dateStr: formatDateStr(d),
@@ -736,24 +632,14 @@ const UpcomingEvents = ({
       const y = today.getFullYear();
       const m = today.getMonth();
 
-      let lastDay = startOfDay(
-        new Date(y, m + 1, 0)
-      );
+      let lastDay = startOfDay(new Date(y, m + 1, 0));
 
-      let diff = daysBetween(
-        today,
-        lastDay
-      );
+      let diff = daysBetween(today, lastDay);
 
       if (diff < 0) {
-        lastDay = startOfDay(
-          new Date(y, m + 2, 0)
-        );
+        lastDay = startOfDay(new Date(y, m + 2, 0));
 
-        diff = daysBetween(
-          today,
-          lastDay
-        );
+        diff = daysBetween(today, lastDay);
       }
 
       list.push({
@@ -771,16 +657,11 @@ const UpcomingEvents = ({
       .map((e) => {
         const eventDate = new Date(today);
 
-        eventDate.setDate(
-          eventDate.getDate() + e.when
-        );
+        eventDate.setDate(eventDate.getDate() + e.when);
 
         const style = TYPE_STYLE[e.type];
 
-        const dayColors = dayColorsFor(
-          e.when,
-          e.type
-        );
+        const dayColors = dayColorsFor(e.when, e.type);
 
         return {
           ...e,
@@ -788,21 +669,12 @@ const UpcomingEvents = ({
           iconBg: style.soft,
           iconColor: style.color,
           action: style.action,
-          day: dayLabelFor(
-            e.when,
-            eventDate
-          ),
+          day: dayLabelFor(e.when, eventDate),
           ...dayColors,
         };
       })
       .sort((a, b) => a.when - b.when);
-  }, [
-    employees,
-    holidays,
-    today,
-    resolveDept,
-    resolveName,
-  ]);
+  }, [employees, holidays, today, resolveDept, resolveName]);
 
   const filtered = EVENTS.filter((e) => {
     if (activeTab === "Today") {
@@ -816,188 +688,102 @@ const UpcomingEvents = ({
     return true;
   });
 
-  const groups = filtered.reduce(
-    (acc, e) => {
-      (acc[e.day] =
-        acc[e.day] || []).push(e);
+  const groups = filtered.reduce((acc, e) => {
+    (acc[e.day] = acc[e.day] || []).push(e);
 
-      return acc;
-    },
-    {}
-  );
+    return acc;
+  }, {});
 
-  const rangeTest =
-    RANGES.find(
-      (r) => r.key === range
-    )?.test || (() => true);
+  const rangeTest = RANGES.find((r) => r.key === range)?.test || (() => true);
 
   const detailedFiltered = useMemo(() => {
-    const q = searchTerm
-      .trim()
-      .toLowerCase();
+    const q = searchTerm.trim().toLowerCase();
 
     return EVENTS.filter((e) => {
       const matchSearch =
         !q ||
-        e.title
-          .toLowerCase()
-          .includes(q) ||
-        e.dept
-          .toLowerCase()
-          .includes(q) ||
-        e.sub
-          .toLowerCase()
-          .includes(q);
+        e.title.toLowerCase().includes(q) ||
+        e.dept.toLowerCase().includes(q) ||
+        e.sub.toLowerCase().includes(q);
 
-      const matchType =
-        selectedType === "All" ||
-        e.type === selectedType;
+      const matchType = selectedType === "All" || e.type === selectedType;
 
-      return (
-        matchSearch &&
-        matchType &&
-        rangeTest(e.when)
-      );
+      return matchSearch && matchType && rangeTest(e.when);
     });
-  }, [
-    EVENTS,
-    searchTerm,
-    selectedType,
-    rangeTest,
-  ]);
+  }, [EVENTS, searchTerm, selectedType, rangeTest]);
 
-  const countType = (
-    type,
-    list = EVENTS
-  ) =>
-    list.filter(
-      (e) => e.type === type
-    ).length;
+  const countType = (type, list = EVENTS) =>
+    list.filter((e) => e.type === type).length;
 
-  const todayCount = EVENTS.filter(
-    (e) => e.when === 0
-  ).length;
+  const todayCount = EVENTS.filter((e) => e.when === 0).length;
 
-  const weekCount = EVENTS.filter(
-    (e) =>
-      e.when >= 0 &&
-      e.when <= 6
-  ).length;
+  const weekCount = EVENTS.filter((e) => e.when >= 0 && e.when <= 6).length;
 
-  const overdueCount = EVENTS.filter(
-    (e) => e.when < 0
-  ).length;
+  const overdueCount = EVENTS.filter((e) => e.when < 0).length;
 
   const WEEKLY = useMemo(() => {
-    const q = searchTerm
-      .trim()
-      .toLowerCase();
+    const q = searchTerm.trim().toLowerCase();
 
     const base = EVENTS.filter(
       (e) =>
-        (selectedType === "All" ||
-          e.type === selectedType) &&
+        (selectedType === "All" || e.type === selectedType) &&
         (!q ||
-          e.title
-            .toLowerCase()
-            .includes(q) ||
-          e.dept
-            .toLowerCase()
-            .includes(q))
+          e.title.toLowerCase().includes(q) ||
+          e.dept.toLowerCase().includes(q)),
     );
 
-    const weeks = Array.from(
-      { length: 8 },
-      (_, i) => {
-        const start = new Date(today);
+    const weeks = Array.from({ length: 8 }, (_, i) => {
+      const start = new Date(today);
 
-        start.setDate(
-          start.getDate() + i * 7
-        );
+      start.setDate(start.getDate() + i * 7);
 
-        const byType = {};
+      const byType = {};
 
-        base.forEach((e) => {
-          if (
-            e.when >= i * 7 &&
-            e.when <= i * 7 + 6
-          ) {
-            byType[e.type] =
-              (byType[e.type] || 0) + 1;
-          }
-        });
+      base.forEach((e) => {
+        if (e.when >= i * 7 && e.when <= i * 7 + 6) {
+          byType[e.type] = (byType[e.type] || 0) + 1;
+        }
+      });
 
-        const total = Object.values(
-          byType
-        ).reduce(
-          (sum, value) =>
-            sum + value,
-          0
-        );
+      const total = Object.values(byType).reduce(
+        (sum, value) => sum + value,
+        0,
+      );
 
-        return {
-          label:
-            i === 0
-              ? "This wk"
-              : `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]}`,
-          byType,
-          total,
-        };
-      }
-    );
+      return {
+        label:
+          i === 0
+            ? "This wk"
+            : `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]}`,
+        byType,
+        total,
+      };
+    });
 
-    const max = Math.max(
-      1,
-      ...weeks.map(
-        (w) => w.total
-      )
-    );
+    const max = Math.max(1, ...weeks.map((w) => w.total));
 
     return {
       weeks,
       max,
     };
-  }, [
-    EVENTS,
-    selectedType,
-    searchTerm,
-    today,
-  ]);
+  }, [EVENTS, selectedType, searchTerm, today]);
 
   const BY_TYPE = useMemo(() => {
-    const entries = Object.keys(
-      TYPE_STYLE
-    ).map((type) => ({
+    const entries = Object.keys(TYPE_STYLE).map((type) => ({
       type,
       ...TYPE_STYLE[type],
-      count: countType(
-        type,
-        detailedFiltered
-      ),
+      count: countType(type, detailedFiltered),
     }));
 
-    const max = Math.max(
-      1,
-      ...entries.map(
-        (e) => e.count
-      )
-    );
+    const max = Math.max(1, ...entries.map((e) => e.count));
 
     return entries
       .map((e) => ({
         ...e,
-        pct: Math.round(
-          (e.count / max) * 100
-        ),
-        share: pct(
-          e.count,
-          detailedFiltered.length
-        ),
+        pct: Math.round((e.count / max) * 100),
+        share: pct(e.count, detailedFiltered.length),
       }))
-      .sort(
-        (a, b) =>
-          b.count - a.count
-      );
+      .sort((a, b) => b.count - a.count);
   }, [detailedFiltered]);
 
   const handleExportCSV = () => {
@@ -1010,69 +796,53 @@ const UpcomingEvents = ({
       "Department",
     ];
 
-    const rows =
-      detailedFiltered.map((e) => [
-        `"${e.title.replace(/"/g, '""')}"`,
-        `"${e.sub.replace(/"/g, '""')}"`,
-        `"${e.dateStr}"`,
-        `"${e.day}"`,
-        `"${e.type}"`,
-        `"${e.dept}"`,
-      ]);
+    const rows = detailedFiltered.map((e) => [
+      `"${e.title.replace(/"/g, '""')}"`,
+      `"${e.sub.replace(/"/g, '""')}"`,
+      `"${e.dateStr}"`,
+      `"${e.day}"`,
+      `"${e.type}"`,
+      `"${e.dept}"`,
+    ]);
 
     const csvContent = [
       headers.join(","),
-      ...rows.map((r) =>
-        r.join(",")
-      ),
+      ...rows.map((r) => r.join(",")),
     ].join("\n");
 
-    const blob = new Blob(
-      [csvContent],
-      {
-        type: "text/csv;charset=utf-8;",
-      }
-    );
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
 
-    const url =
-      URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
-    const link =
-      document.createElement("a");
+    const link = document.createElement("a");
 
     link.href = url;
-    link.download =
-      "upcoming_events_schedule.csv";
+    link.download = "upcoming_events_schedule.csv";
 
-    link.style.visibility =
-      "hidden";
+    link.style.visibility = "hidden";
 
-    document.body.appendChild(
-      link
-    );
+    document.body.appendChild(link);
 
     link.click();
 
-    document.body.removeChild(
-      link
-    );
+    document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
   };
 
   // Birthday and anniversary events call the API directly.
+  // Holiday events broadcast a notice to all active employees.
   // Other event types use the parent event action handler.
 
   const handleActionClick = async (e) => {
-    if (
-      e.type === "birthday" ||
-      e.type === "anniversary"
-    ) {
+    if (e.type === "birthday" || e.type === "anniversary") {
       if (!e.employeeId) {
         Swal.fire(
           "Error",
           "Employee ID is not available for this event.",
-          "error"
+          "error",
         );
 
         return;
@@ -1081,19 +851,13 @@ const UpcomingEvents = ({
       setSendingWishId(e.id);
 
       try {
-        const res =
-          await sendEventWish(
-            e.employeeId,
-            e.type,
-            e.years
-          );
+        const res = await sendEventWish(e.employeeId, e.type, e.years);
 
         if (res.success === false) {
           Swal.fire(
             "Info",
-            res.message ||
-              "The wish could not be sent.",
-            "info"
+            res.message || "The wish could not be sent.",
+            "info",
           );
 
           return;
@@ -1102,10 +866,7 @@ const UpcomingEvents = ({
         Swal.fire({
           icon: "success",
 
-          title:
-            e.type === "anniversary"
-              ? "Badge Sent! 🎉"
-              : "Sent! 🎂",
+          title: e.type === "anniversary" ? "Badge Sent! 🎉" : "Sent! 🎂",
 
           text:
             e.type === "anniversary"
@@ -1118,10 +879,56 @@ const UpcomingEvents = ({
       } catch (err) {
         Swal.fire(
           "Error",
-          err.response?.data?.message ||
-            err.message ||
-            "Something went wrong.",
-          "error"
+          err.response?.data?.message || err.message || "Something went wrong.",
+          "error",
+        );
+      } finally {
+        setSendingWishId(null);
+      }
+
+      return;
+    }
+
+    if (e.type === "holiday") {
+      if (!e.holidayId) {
+        Swal.fire(
+          "Error",
+          "Holiday ID is not available for this event.",
+          "error",
+        );
+
+        return;
+      }
+
+      setSendingWishId(e.id);
+
+      try {
+        const res = await sendHolidayNotice(e.holidayId);
+
+        if (res.success === false) {
+          Swal.fire(
+            "Info",
+            res.message || "The holiday notice could not be sent.",
+            "info",
+          );
+
+          return;
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Notice Sent! 📢",
+          text:
+            res.message ||
+            `The holiday notice for ${e.title} has been sent to all employees.`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        Swal.fire(
+          "Error",
+          err.response?.data?.message || err.message || "Something went wrong.",
+          "error",
         );
       } finally {
         setSendingWishId(null);
@@ -1147,31 +954,19 @@ const UpcomingEvents = ({
       <div style={styles.card}>
         <div style={styles.cardHdr}>
           <div>
-            <div style={styles.cardTitle}>
-              Upcoming events
-            </div>
+            <div style={styles.cardTitle}>Upcoming events</div>
 
             <div style={styles.cardSub}>
-              {MONTHS_SHORT[today.getMonth()]}{" "}
-              {today.getFullYear()}
+              {MONTHS_SHORT[today.getMonth()]} {today.getFullYear()}
             </div>
           </div>
 
-          <div
-            style={styles.filterWrap}
-            ref={filterRef}
-          >
+          <div style={styles.filterWrap} ref={filterRef}>
             <button
               style={styles.filterBtn}
-              onClick={() =>
-                setFilterOpen(
-                  (v) => !v
-                )
-              }
+              onClick={() => setFilterOpen((v) => !v)}
               aria-haspopup="true"
-              aria-expanded={
-                filterOpen
-              }
+              aria-expanded={filterOpen}
             >
               <i
                 className="ti ti-filter"
@@ -1181,9 +976,7 @@ const UpcomingEvents = ({
                 }}
               />
 
-              <span>
-                {activeTab}
-              </span>
+              <span>{activeTab}</span>
 
               <i
                 className="ti ti-chevron-down"
@@ -1195,38 +988,23 @@ const UpcomingEvents = ({
             </button>
 
             {filterOpen && (
-              <div
-                style={
-                  styles.filterMenu
-                }
-              >
+              <div style={styles.filterMenu}>
                 {TABS.map((t) => (
                   <div
                     key={t}
                     style={{
                       ...styles.filterOption,
-                      ...(activeTab ===
-                      t
-                        ? styles.filterOptionActive
-                        : {}),
+                      ...(activeTab === t ? styles.filterOptionActive : {}),
                     }}
                     onClick={() => {
                       setActiveTab(t);
-                      setFilterOpen(
-                        false
-                      );
+                      setFilterOpen(false);
                     }}
                   >
                     <span>{t}</span>
 
                     {t === "Today" && (
-                      <span
-                        style={
-                          styles.tabBadge
-                        }
-                      >
-                        {todayCount}
-                      </span>
+                      <span style={styles.tabBadge}>{todayCount}</span>
                     )}
                   </div>
                 ))}
@@ -1239,33 +1017,23 @@ const UpcomingEvents = ({
           <div
             style={{
               display: "flex",
-              flexDirection:
-                "column",
+              flexDirection: "column",
               gap: 8,
-              padding:
-                "10px 0",
+              padding: "10px 0",
             }}
           >
-            {[0, 1, 2].map(
-              (i) => (
-                <div
-                  key={i}
-                  className="ah-skeleton-fallback"
-                  style={
-                    styles.skeletonRow
-                  }
-                />
-              )
-            )}
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="ah-skeleton-fallback"
+                style={styles.skeletonRow}
+              />
+            ))}
           </div>
         )}
 
         {!loading && error && (
-          <div
-            style={
-              styles.empty
-            }
-          >
+          <div style={styles.empty}>
             <i
               className="ti ti-alert-triangle"
               aria-hidden="true"
@@ -1287,163 +1055,90 @@ const UpcomingEvents = ({
           </div>
         )}
 
-        {!loading &&
-          !error && (
-            <div
-              style={styles.list}
-            >
-              {Object.keys(
-                groups
-              ).length === 0 ? (
-                <div
-                  style={
-                    styles.empty
-                  }
+        {!loading && !error && (
+          <div style={styles.list}>
+            {Object.keys(groups).length === 0 ? (
+              <div style={styles.empty}>
+                <i
+                  className="ti ti-calendar-off"
+                  aria-hidden="true"
+                  style={{
+                    fontSize: 20,
+                    color: "#ccc",
+                  }}
+                />
+
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#aaa",
+                    marginTop: 4,
+                  }}
                 >
-                  <i
-                    className="ti ti-calendar-off"
-                    aria-hidden="true"
-                    style={{
-                      fontSize: 20,
-                      color: "#ccc",
-                    }}
-                  />
+                  No events
+                </span>
+              </div>
+            ) : (
+              Object.entries(groups).map(([day, events]) => (
+                <div key={day} style={styles.group}>
+                  <div style={styles.dayHdr}>
+                    <div style={styles.dayLine} />
 
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "#aaa",
-                      marginTop: 4,
-                    }}
-                  >
-                    No events
-                  </span>
-                </div>
-              ) : (
-                Object.entries(
-                  groups
-                ).map(
-                  ([
-                    day,
-                    events,
-                  ]) => (
-                    <div
-                      key={day}
-                      style={
-                        styles.group
-                      }
+                    <span
+                      style={{
+                        ...styles.dayLabel,
+                        background: events[0].dayBg,
+                        color: events[0].dayColor,
+                      }}
                     >
+                      {day}
+                    </span>
+
+                    <div style={styles.dayLine} />
+                  </div>
+
+                  {events.map((e) => (
+                    <div key={e.id} style={styles.eventRow}>
                       <div
-                        style={
-                          styles.dayHdr
-                        }
+                        style={{
+                          ...styles.iconBubble,
+                          background: e.iconBg,
+                        }}
                       >
-                        <div
-                          style={
-                            styles.dayLine
-                          }
-                        />
-
-                        <span
+                        <i
+                          className={e.icon}
+                          aria-hidden="true"
                           style={{
-                            ...styles.dayLabel,
-                            background:
-                              events[0]
-                                .dayBg,
-                            color:
-                              events[0]
-                                .dayColor,
+                            fontSize: 13,
+                            color: e.iconColor,
                           }}
-                        >
-                          {day}
-                        </span>
-
-                        <div
-                          style={
-                            styles.dayLine
-                          }
                         />
                       </div>
 
-                      {events.map(
-                        (e) => (
-                          <div
-                            key={
-                              e.id
-                            }
-                            style={
-                              styles.eventRow
-                            }
-                          >
-                            <div
-                              style={{
-                                ...styles.iconBubble,
-                                background:
-                                  e.iconBg,
-                              }}
-                            >
-                              <i
-                                className={
-                                  e.icon
-                                }
-                                aria-hidden="true"
-                                style={{
-                                  fontSize: 13,
-                                  color:
-                                    e.iconColor,
-                                }}
-                              />
-                            </div>
+                      <div style={styles.eventInfo}>
+                        <div style={styles.eventTitle}>{e.title}</div>
 
-                            <div
-                              style={
-                                styles.eventInfo
-                              }
-                            >
-                              <div
-                                style={
-                                  styles.eventTitle
-                                }
-                              >
-                                {e.title}
-                              </div>
+                        <div style={styles.eventSub}>{e.sub}</div>
+                      </div>
 
-                              <div
-                                style={
-                                  styles.eventSub
-                                }
-                              >
-                                {e.sub}
-                              </div>
-                            </div>
-
-                            <span
-                              style={{
-                                ...styles.typeChip,
-                                background:
-                                  e.iconBg,
-                                color:
-                                  e.iconColor,
-                              }}
-                            >
-                              {e.type}
-                            </span>
-                          </div>
-                        )
-                      )}
+                      <span
+                        style={{
+                          ...styles.typeChip,
+                          background: e.iconBg,
+                          color: e.iconColor,
+                        }}
+                      >
+                        {e.type}
+                      </span>
                     </div>
-                  )
-                )
-              )}
-            </div>
-          )}
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
-        <div
-          style={styles.footer}
-          onClick={
-            onViewFullCalendar
-          }
-        >
+        <div style={styles.footer} onClick={onViewFullCalendar}>
           <i
             className="ti ti-calendar-plus"
             aria-hidden="true"
@@ -1452,9 +1147,7 @@ const UpcomingEvents = ({
             }}
           />
 
-          <span>
-            View full calendar
-          </span>
+          <span>View full calendar</span>
         </div>
       </div>
     );
@@ -1464,9 +1157,7 @@ const UpcomingEvents = ({
     {
       label: "Today",
       val: todayCount,
-      sub: overdueCount
-        ? `${overdueCount} overdue`
-        : "nothing overdue",
+      sub: overdueCount ? `${overdueCount} overdue` : "nothing overdue",
       icon: "ti ti-calendar-event",
       color: C.indigo,
       soft: C.indigoSoft,
@@ -1492,9 +1183,7 @@ const UpcomingEvents = ({
 
     {
       label: "Anniversaries",
-      val: countType(
-        "anniversary"
-      ),
+      val: countType("anniversary"),
       sub: "next 120 days",
       icon: "ti ti-star",
       color: C.purple,
@@ -1520,11 +1209,7 @@ const UpcomingEvents = ({
     },
   ];
 
-  const SectionHead = ({
-    icon,
-    title,
-    right,
-  }) => (
+  const SectionHead = ({ icon, title, right }) => (
     <div style={styles.secHead}>
       <div style={styles.secTitle}>
         <i
@@ -1543,46 +1228,31 @@ const UpcomingEvents = ({
     </div>
   );
 
-  const rangeLabel =
-    RANGES.find(
-      (r) => r.key === range
-    )?.label;
+  const rangeLabel = RANGES.find((r) => r.key === range)?.label;
 
   return (
     <div
       ref={pageRef}
       style={{
         ...styles.page,
-        height: pageHeight
-          ? `${pageHeight}px`
-          : "90vh",
+        height: pageHeight ? `${pageHeight}px` : "90vh",
       }}
     >
       <div style={styles.header}>
         <div className="ue-header-top">
           <div className="ue-header-left">
-            <h2 style={styles.title}>
-              Upcoming Events
-            </h2>
+            <h2 style={styles.title}>Upcoming Events</h2>
 
-            <span
-              style={
-                styles.metaChip
-              }
-            >
+            <span style={styles.metaChip}>
               {loading
                 ? "Loading…"
                 : `${detailedFiltered.length.toLocaleString()} events`}
 
-              {lastUpdated &&
-              !loading
-                ? ` · ${lastUpdated.toLocaleTimeString(
-                    [],
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }
-                  )}`
+              {lastUpdated && !loading
+                ? ` · ${lastUpdated.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`
                 : ""}
             </span>
           </div>
@@ -1591,33 +1261,18 @@ const UpcomingEvents = ({
             <button
               style={{
                 ...styles.ghostBtn,
-                ...(showFilters
-                  ? styles.ghostBtnActive
-                  : null),
+                ...(showFilters ? styles.ghostBtnActive : null),
               }}
-              onClick={() =>
-                setShowFilters(
-                  (v) => !v
-                )
-              }
+              onClick={() => setShowFilters((v) => !v)}
             >
-              <i
-                className="ti ti-adjustments-horizontal"
-                aria-hidden="true"
-              />
-
+              <i className="ti ti-adjustments-horizontal" aria-hidden="true" />
               Filters
-
               <i
                 className="ti ti-chevron-down"
                 aria-hidden="true"
                 style={{
-                  transform:
-                    showFilters
-                      ? "rotate(180deg)"
-                      : "none",
-                  transition:
-                    "transform .15s",
+                  transform: showFilters ? "rotate(180deg)" : "none",
+                  transition: "transform .15s",
                 }}
               />
             </button>
@@ -1626,97 +1281,45 @@ const UpcomingEvents = ({
               <button
                 style={{
                   ...styles.ghostBtn,
-                  position:
-                    "relative",
+                  position: "relative",
                 }}
-                onClick={
-                  onAIClick
-                }
+                onClick={onAIClick}
               >
-                <i
-                  className="ti ti-sparkles"
-                  aria-hidden="true"
-                />
-
+                <i className="ti ti-sparkles" aria-hidden="true" />
                 AI
-
-                <span
-                  style={
-                    styles.aiDot
-                  }
-                />
+                <span style={styles.aiDot} />
               </button>
             )}
 
             <button
-              style={
-                styles.ghostBtn
-              }
-              onClick={
-                loadData
-              }
+              style={styles.ghostBtn}
+              onClick={loadData}
               disabled={loading}
             >
-              <i
-                className="ti ti-refresh"
-                aria-hidden="true"
-              />
+              <i className="ti ti-refresh" aria-hidden="true" />
 
-              {loading
-                ? "Refreshing…"
-                : "Refresh"}
+              {loading ? "Refreshing…" : "Refresh"}
             </button>
 
-            <button
-              style={
-                styles.primaryBtn
-              }
-              onClick={
-                handleExportCSV
-              }
-            >
-              <i
-                className="ti ti-download"
-                aria-hidden="true"
-              />
-
+            <button style={styles.primaryBtn} onClick={handleExportCSV}>
+              <i className="ti ti-download" aria-hidden="true" />
               Export
             </button>
           </div>
         </div>
 
         {showFilters && (
-          <div
-            style={
-              styles.filterArea
-            }
-          >
+          <div style={styles.filterArea}>
             <div className="ue-filter-row">
-              <div
-                className="ue-search"
-                style={
-                  styles.filterGroup
-                }
-              >
-                <label
-                  style={
-                    styles.filterLabel
-                  }
-                >
-                  Search
-                </label>
+              <div className="ue-search" style={styles.filterGroup}>
+                <label style={styles.filterLabel}>Search</label>
 
-                <div
-                  style={
-                    styles.searchBox
-                  }
-                >
+                <div style={styles.searchBox}>
                   <i
                     className="ti ti-search"
                     aria-hidden="true"
                     style={{
-                      color:
-                        C.faint,
+                      color: C.faint,
                       fontSize: 14,
                     }}
                   />
@@ -1724,18 +1327,9 @@ const UpcomingEvents = ({
                   <input
                     type="text"
                     placeholder="Employee, department or event…"
-                    value={
-                      searchTerm
-                    }
-                    onChange={(e) =>
-                      setSearchTerm(
-                        e.target
-                          .value
-                      )
-                    }
-                    style={
-                      styles.searchInput
-                    }
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={styles.searchInput}
                   />
 
                   {searchTerm && (
@@ -1743,180 +1337,95 @@ const UpcomingEvents = ({
                       className="ti ti-x"
                       aria-hidden="true"
                       style={{
-                        color:
-                          C.faint,
-                        cursor:
-                          "pointer",
+                        color: C.faint,
+                        cursor: "pointer",
                         fontSize: 13,
                       }}
-                      onClick={() =>
-                        setSearchTerm(
-                          ""
-                        )
-                      }
+                      onClick={() => setSearchTerm("")}
                     />
                   )}
                 </div>
               </div>
 
-              <div
-                style={
-                  styles.filterGroup
-                }
-              >
-                <label
-                  style={
-                    styles.filterLabel
-                  }
-                >
-                  Range
-                </label>
+              <div style={styles.filterGroup}>
+                <label style={styles.filterLabel}>Range</label>
 
-                <div
-                  style={
-                    styles.segment
-                  }
-                >
-                  {RANGES.map(
-                    (r) => (
-                      <button
-                        key={
-                          r.key
-                        }
-                        onClick={() =>
-                          setRange(
-                            r.key
-                          )
-                        }
-                        style={{
-                          ...styles.segBtn,
-                          ...(range ===
-                          r.key
-                            ? styles.segBtnActive
-                            : null),
-                        }}
-                      >
-                        {r.label}
-                      </button>
-                    )
-                  )}
+                <div style={styles.segment}>
+                  {RANGES.map((r) => (
+                    <button
+                      key={r.key}
+                      onClick={() => setRange(r.key)}
+                      style={{
+                        ...styles.segBtn,
+                        ...(range === r.key ? styles.segBtnActive : null),
+                      }}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div
-                style={
-                  styles.filterGroup
-                }
-              >
-                <label
-                  style={
-                    styles.filterLabel
-                  }
-                >
-                  Type
-                </label>
+              <div style={styles.filterGroup}>
+                <label style={styles.filterLabel}>Type</label>
 
                 <div
                   style={{
-                    display:
-                      "flex",
+                    display: "flex",
                     gap: 6,
-                    flexWrap:
-                      "wrap",
+                    flexWrap: "wrap",
                   }}
                 >
-                  {FILTER_TYPES.map(
-                    (t) => {
-                      const on =
-                        selectedType ===
-                        t;
+                  {FILTER_TYPES.map((t) => {
+                    const on = selectedType === t;
 
-                      const st =
-                        TYPE_STYLE[
-                          t
-                        ];
+                    const st = TYPE_STYLE[t];
 
-                      return (
-                        <button
-                          key={t}
-                          onClick={() =>
-                            setSelectedType(
-                              t
-                            )
-                          }
-                          style={{
-                            ...styles.chip,
-                            background:
-                              on
-                                ? st
-                                  ? st.soft
-                                  : C.indigoSoft
-                                : "#fff",
-                            color:
-                              on
-                                ? st
-                                  ? st.color
-                                  : C.indigo
-                                : C.muted,
-                            borderColor:
-                              on
-                                ? st
-                                  ? st.color
-                                  : C.indigo
-                                : C.line,
-                          }}
-                        >
-                          {st && (
-                            <i
-                              className={
-                                st.icon
-                              }
-                              aria-hidden="true"
-                              style={{
-                                fontSize: 12,
-                              }}
-                            />
-                          )}
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setSelectedType(t)}
+                        style={{
+                          ...styles.chip,
+                          background: on
+                            ? st
+                              ? st.soft
+                              : C.indigoSoft
+                            : "#fff",
+                          color: on ? (st ? st.color : C.indigo) : C.muted,
+                          borderColor: on ? (st ? st.color : C.indigo) : C.line,
+                        }}
+                      >
+                        {st && (
+                          <i
+                            className={st.icon}
+                            aria-hidden="true"
+                            style={{
+                              fontSize: 12,
+                            }}
+                          />
+                        )}
 
-                          {t ===
-                          "All"
-                            ? "All"
-                            : st.label}
-                        </button>
-                      );
-                    }
-                  )}
+                        {t === "All" ? "All" : st.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {(searchTerm ||
-                selectedType !==
-                  "All" ||
-                range !==
-                  "month") && (
+              {(searchTerm || selectedType !== "All" || range !== "month") && (
                 <button
                   style={{
                     ...styles.ghostBtn,
-                    alignSelf:
-                      "flex-end",
+                    alignSelf: "flex-end",
                   }}
                   onClick={() => {
-                    setSearchTerm(
-                      ""
-                    );
-                    setSelectedType(
-                      "All"
-                    );
-                    setRange(
-                      "month"
-                    );
+                    setSearchTerm("");
+                    setSelectedType("All");
+                    setRange("month");
                   }}
                 >
-                  <i
-                    className="ti ti-eraser"
-                    aria-hidden="true"
-                  />
-
+                  <i className="ti ti-eraser" aria-hidden="true" />
                   Clear
                 </button>
               )}
@@ -1926,44 +1435,28 @@ const UpcomingEvents = ({
       </div>
 
       {error && (
-        <div
-          style={
-            styles.errorBanner
-          }
-        >
+        <div style={styles.errorBanner}>
           Couldn't load events.{" "}
           <span
             style={{
-              textDecoration:
-                "underline",
-              cursor:
-                "pointer",
+              textDecoration: "underline",
+              cursor: "pointer",
             }}
-            onClick={
-              loadData
-            }
+            onClick={loadData}
           >
             Try again
           </span>
         </div>
       )}
 
-      <div
-        style={
-          styles.scrollArea
-        }
-      >
+      <div style={styles.scrollArea}>
         <div className="ue-kpi-grid">
           {KPIS.map((k) => (
-            <div
-              key={k.label}
-              style={styles.kpi}
-            >
+            <div key={k.label} style={styles.kpi}>
               <div
                 style={{
                   ...styles.kpiIcon,
-                  background:
-                    k.soft,
+                  background: k.soft,
                 }}
               >
                 <i
@@ -1971,8 +1464,7 @@ const UpcomingEvents = ({
                   aria-hidden="true"
                   style={{
                     fontSize: 16,
-                    color:
-                      k.color,
+                    color: k.color,
                   }}
                 />
               </div>
@@ -1982,44 +1474,25 @@ const UpcomingEvents = ({
                   minWidth: 0,
                 }}
               >
-                <div
-                  style={
-                    styles.kpiLabel
-                  }
-                >
-                  {k.label}
-                </div>
+                <div style={styles.kpiLabel}>{k.label}</div>
 
                 <div
                   style={{
                     ...styles.kpiVal,
-                    color:
-                      k.color,
+                    color: k.color,
                   }}
                 >
-                  {loading
-                    ? "—"
-                    : k.val}
+                  {loading ? "—" : k.val}
                 </div>
 
-                <div
-                  style={
-                    styles.kpiSub
-                  }
-                >
-                  {k.sub}
-                </div>
+                <div style={styles.kpiSub}>{k.sub}</div>
               </div>
             </div>
           ))}
         </div>
 
         <div className="ue-row2">
-          <div
-            style={
-              styles.panel
-            }
-          >
+          <div style={styles.panel}>
             <SectionHead
               icon="ti ti-chart-bar"
               title="Next 8 Weeks"
@@ -2027,264 +1500,119 @@ const UpcomingEvents = ({
                 <span
                   style={{
                     fontSize: 11,
-                    color:
-                      C.faint,
+                    color: C.faint,
                   }}
                 >
-                  {selectedType ===
-                  "All"
+                  {selectedType === "All"
                     ? "all types"
-                    : TYPE_STYLE[
-                        selectedType
-                      ].label}
+                    : TYPE_STYLE[selectedType].label}
                 </span>
               }
             />
 
-            <div
-              style={
-                styles.panelBody
-              }
-            >
-              <div
-                style={
-                  styles.hint
-                }
-              >
-                How many events land
-                in each week
-              </div>
+            <div style={styles.panelBody}>
+              <div style={styles.hint}>How many events land in each week</div>
 
-              <div
-                style={
-                  styles.weekChart
-                }
-              >
-                {WEEKLY.weeks.map(
-                  (w) => (
-                    <div
-                      key={
-                        w.label
-                      }
-                      style={
-                        styles.weekCol
-                      }
-                      title={`${w.label}: ${w.total}`}
-                    >
-                      <div
-                        style={
-                          styles.weekVal
-                        }
-                      >
-                        {w.total ||
-                          ""}
-                      </div>
-
-                      <div
-                        style={
-                          styles.weekBar
-                        }
-                      >
-                        {Object.entries(
-                          w.byType
-                        ).map(
-                          ([
-                            t,
-                            n,
-                          ]) => (
-                            <div
-                              key={
-                                t
-                              }
-                              style={{
-                                height: `${
-                                  (n /
-                                    WEEKLY.max) *
-                                  100
-                                }%`,
-                                background:
-                                  TYPE_STYLE[
-                                    t
-                                  ]
-                                    .color,
-                                minHeight:
-                                  n
-                                    ? 3
-                                    : 0,
-                              }}
-                              title={`${TYPE_STYLE[t].label}: ${n}`}
-                            />
-                          )
-                        )}
-                      </div>
-
-                      <div
-                        style={
-                          styles.weekLbl
-                        }
-                      >
-                        {w.label}
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div
-                style={
-                  styles.legend
-                }
-              >
-                {Object.keys(
-                  TYPE_STYLE
-                ).map((t) => (
-                  <span
-                    key={t}
-                    style={
-                      styles.legendItem
-                    }
+              <div style={styles.weekChart}>
+                {WEEKLY.weeks.map((w) => (
+                  <div
+                    key={w.label}
+                    style={styles.weekCol}
+                    title={`${w.label}: ${w.total}`}
                   >
+                    <div style={styles.weekVal}>{w.total || ""}</div>
+
+                    <div style={styles.weekBar}>
+                      {Object.entries(w.byType).map(([t, n]) => (
+                        <div
+                          key={t}
+                          style={{
+                            height: `${(n / WEEKLY.max) * 100}%`,
+                            background: TYPE_STYLE[t].color,
+                            minHeight: n ? 3 : 0,
+                          }}
+                          title={`${TYPE_STYLE[t].label}: ${n}`}
+                        />
+                      ))}
+                    </div>
+
+                    <div style={styles.weekLbl}>{w.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={styles.legend}>
+                {Object.keys(TYPE_STYLE).map((t) => (
+                  <span key={t} style={styles.legendItem}>
                     <span
                       style={{
                         ...styles.dot,
-                        background:
-                          TYPE_STYLE[
-                            t
-                          ].color,
+                        background: TYPE_STYLE[t].color,
                       }}
                     />
 
-                    {
-                      TYPE_STYLE[
-                        t
-                      ].label
-                    }
+                    {TYPE_STYLE[t].label}
                   </span>
                 ))}
               </div>
             </div>
           </div>
 
-          <div
-            style={
-              styles.panel
-            }
-          >
-            <SectionHead
-              icon="ti ti-category"
-              title="By Category"
-            />
+          <div style={styles.panel}>
+            <SectionHead icon="ti ti-category" title="By Category" />
 
-            <div
-              style={
-                styles.panelBody
-              }
-            >
-              <div
-                style={
-                  styles.hint
-                }
-              >
-                Share of events in the
-                current view (
-                {rangeLabel})
+            <div style={styles.panelBody}>
+              <div style={styles.hint}>
+                Share of events in the current view ({rangeLabel})
               </div>
 
               <div
                 style={{
-                  display:
-                    "flex",
-                  flexDirection:
-                    "column",
+                  display: "flex",
+                  flexDirection: "column",
                   gap: 8,
                   marginTop: 8,
                 }}
               >
-                {BY_TYPE.map(
-                  (t) => (
-                    <div
-                      key={
-                        t.type
-                      }
-                      style={
-                        styles.barRow
-                      }
-                    >
-                      <span
-                        style={
-                          styles.barLbl
-                        }
-                      >
-                        <i
-                          className={
-                            t.icon
-                          }
-                          aria-hidden="true"
-                          style={{
-                            color:
-                              t.color,
-                            marginRight: 5,
-                          }}
-                        />
+                {BY_TYPE.map((t) => (
+                  <div key={t.type} style={styles.barRow}>
+                    <span style={styles.barLbl}>
+                      <i
+                        className={t.icon}
+                        aria-hidden="true"
+                        style={{
+                          color: t.color,
+                          marginRight: 5,
+                        }}
+                      />
 
-                        {
-                          t.label
-                        }
-                      </span>
+                      {t.label}
+                    </span>
 
+                    <div style={styles.barBg}>
                       <div
-                        style={
-                          styles.barBg
-                        }
+                        style={{
+                          ...styles.barFill,
+                          width: `${t.pct}%`,
+                          background: t.color,
+                          minWidth: t.count ? 34 : 0,
+                        }}
                       >
-                        <div
-                          style={{
-                            ...styles.barFill,
-                            width: `${t.pct}%`,
-                            background:
-                              t.color,
-                            minWidth:
-                              t.count
-                                ? 34
-                                : 0,
-                          }}
-                        >
-                          {t.count >
-                            0 && (
-                            <span
-                              style={
-                                styles.barInner
-                              }
-                            >
-                              {
-                                t.share
-                              }
-                              %
-                            </span>
-                          )}
-                        </div>
+                        {t.count > 0 && (
+                          <span style={styles.barInner}>{t.share}%</span>
+                        )}
                       </div>
-
-                      <span
-                        style={
-                          styles.barVal
-                        }
-                      >
-                        {t.count}
-                      </span>
                     </div>
-                  )
-                )}
+
+                    <span style={styles.barVal}>{t.count}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        <div
-          style={
-            styles.panel
-          }
-        >
+        <div style={styles.panel}>
           <SectionHead
             icon="ti ti-list"
             title={`Events (${detailedFiltered.length})`}
@@ -2292,8 +1620,7 @@ const UpcomingEvents = ({
               <span
                 style={{
                   fontSize: 11,
-                  color:
-                    C.faint,
+                  color: C.faint,
                 }}
               >
                 {rangeLabel}
@@ -2301,60 +1628,29 @@ const UpcomingEvents = ({
             }
           />
 
-          <div
-            style={
-              styles.tableWrap
-            }
-          >
+          <div style={styles.tableWrap}>
             <table className="ue-table">
               <thead
                 style={{
-                  position:
-                    "sticky",
+                  position: "sticky",
                   top: 0,
-                  background:
-                    C.panel,
+                  background: C.panel,
                   zIndex: 1,
                 }}
               >
                 <tr>
-                  <th
-                    style={
-                      styles.th
-                    }
-                  >
-                    Event
-                  </th>
+                  <th style={styles.th}>Event</th>
 
-                  <th
-                    style={
-                      styles.th
-                    }
-                  >
-                    Date
-                  </th>
+                  <th style={styles.th}>Date</th>
 
-                  <th
-                    style={
-                      styles.th
-                    }
-                  >
-                    Category
-                  </th>
+                  <th style={styles.th}>Category</th>
 
-                  <th
-                    style={
-                      styles.th
-                    }
-                  >
-                    Department
-                  </th>
+                  <th style={styles.th}>Department</th>
 
                   <th
                     style={{
                       ...styles.th,
-                      textAlign:
-                        "right",
+                      textAlign: "right",
                     }}
                   >
                     Action
@@ -2365,12 +1661,7 @@ const UpcomingEvents = ({
               <tbody>
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan="5"
-                      style={
-                        styles.tdMsg
-                      }
-                    >
+                    <td colSpan="5" style={styles.tdMsg}>
                       Loading events…
                     </td>
                   </tr>
@@ -2380,208 +1671,148 @@ const UpcomingEvents = ({
                       colSpan="5"
                       style={{
                         ...styles.tdMsg,
-                        color:
-                          C.red,
+                        color: C.red,
                       }}
                     >
-                      Couldn't load
-                      events. Please
-                      refresh.
+                      Couldn't load events. Please refresh.
                     </td>
                   </tr>
                 ) : detailedFiltered.length ? (
-                  detailedFiltered.map(
-                    (e) => (
-                      <tr
-                        key={e.id}
+                  detailedFiltered.map((e) => (
+                    <tr
+                      key={e.id}
+                      style={{
+                        borderBottom: `1px solid ${C.line}`,
+                      }}
+                    >
+                      <td style={styles.td}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              ...styles.iconBubble,
+                              background: e.iconBg,
+                              width: 32,
+                              height: 32,
+                            }}
+                          >
+                            <i
+                              className={e.icon}
+                              aria-hidden="true"
+                              style={{
+                                fontSize: 15,
+                                color: e.iconColor,
+                              }}
+                            />
+                          </div>
+
+                          <div
+                            style={{
+                              minWidth: 0,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: 600,
+                                color: C.ink,
+                                fontSize: 13,
+                              }}
+                            >
+                              {e.title}
+                            </div>
+
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: C.faint,
+                              }}
+                            >
+                              {e.sub}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td
                         style={{
-                          borderBottom: `1px solid ${C.line}`,
+                          ...styles.td,
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        <td
-                          style={
-                            styles.td
-                          }
-                        >
-                          <div
-                            style={{
-                              display:
-                                "flex",
-                              alignItems:
-                                "center",
-                              gap: 10,
-                            }}
-                          >
-                            <div
-                              style={{
-                                ...styles.iconBubble,
-                                background:
-                                  e.iconBg,
-                                width: 32,
-                                height: 32,
-                              }}
-                            >
-                              <i
-                                className={
-                                  e.icon
-                                }
-                                aria-hidden="true"
-                                style={{
-                                  fontSize: 15,
-                                  color:
-                                    e.iconColor,
-                                }}
-                              />
-                            </div>
-
-                            <div
-                              style={{
-                                minWidth: 0,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontWeight: 600,
-                                  color:
-                                    C.ink,
-                                  fontSize: 13,
-                                }}
-                              >
-                                {
-                                  e.title
-                                }
-                              </div>
-
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  color:
-                                    C.faint,
-                                }}
-                              >
-                                {
-                                  e.sub
-                                }
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td
+                        <div
                           style={{
-                            ...styles.td,
-                            whiteSpace:
-                              "nowrap",
+                            fontWeight: 500,
+                            color: C.ink,
+                            fontSize: 12,
                           }}
                         >
-                          <div
-                            style={{
-                              fontWeight: 500,
-                              color:
-                                C.ink,
-                              fontSize: 12,
-                            }}
-                          >
-                            {
-                              e.dateStr
-                            }
-                          </div>
+                          {e.dateStr}
+                        </div>
 
-                          <span
-                            style={{
-                              ...styles.dayPill,
-                              color:
-                                e.dayColor,
-                              background:
-                                e.dayBg,
-                            }}
-                          >
-                            {e.day}
-                          </span>
-                        </td>
-
-                        <td
-                          style={
-                            styles.td
-                          }
-                        >
-                          <span
-                            style={{
-                              ...styles.statusChip,
-                              background:
-                                e.iconBg,
-                              color:
-                                e.iconColor,
-                            }}
-                          >
-                            {
-                              TYPE_STYLE[
-                                e.type
-                              ].label
-                            }
-                          </span>
-                        </td>
-
-                        <td
+                        <span
                           style={{
-                            ...styles.td,
-                            color:
-                              C.muted,
+                            ...styles.dayPill,
+                            color: e.dayColor,
+                            background: e.dayBg,
                           }}
                         >
-                          {e.dept}
-                        </td>
+                          {e.day}
+                        </span>
+                      </td>
 
-                        <td
+                      <td style={styles.td}>
+                        <span
                           style={{
-                            ...styles.td,
-                            textAlign:
-                              "right",
+                            ...styles.statusChip,
+                            background: e.iconBg,
+                            color: e.iconColor,
                           }}
                         >
-                          <button
-                            style={{
-                              ...styles.actionBtn,
-                              opacity:
-                                sendingWishId ===
-                                e.id
-                                  ? 0.6
-                                  : 1,
-                              cursor:
-                                sendingWishId ===
-                                e.id
-                                  ? "not-allowed"
-                                  : "pointer",
-                            }}
-                            onClick={() =>
-                              handleActionClick(
-                                e
-                              )
-                            }
-                            disabled={
-                              sendingWishId ===
-                              e.id
-                            }
-                          >
-                            {sendingWishId ===
-                            e.id
-                              ? "Sending…"
-                              : e.action}
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  )
+                          {TYPE_STYLE[e.type].label}
+                        </span>
+                      </td>
+
+                      <td
+                        style={{
+                          ...styles.td,
+                          color: C.muted,
+                        }}
+                      >
+                        {e.dept}
+                      </td>
+
+                      <td
+                        style={{
+                          ...styles.td,
+                          textAlign: "right",
+                        }}
+                      >
+                        <button
+                          style={{
+                            ...styles.actionBtn,
+                            opacity: sendingWishId === e.id ? 0.6 : 1,
+                            cursor:
+                              sendingWishId === e.id
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                          onClick={() => handleActionClick(e)}
+                          disabled={sendingWishId === e.id}
+                        >
+                          {sendingWishId === e.id ? "Sending…" : e.action}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
                 ) : (
                   <tr>
-                    <td
-                      colSpan="5"
-                      style={
-                        styles.tdMsg
-                      }
-                    >
-                      No events match this
-                      filter.
+                    <td colSpan="5" style={styles.tdMsg}>
+                      No events match this filter.
                     </td>
                   </tr>
                 )}
@@ -2597,8 +1828,7 @@ const UpcomingEvents = ({
 const styles = {
   card: {
     background: "#fff",
-    border:
-      "0.5px solid rgba(0,0,0,0.09)",
+    border: "0.5px solid rgba(0,0,0,0.09)",
     borderRadius: 8,
     padding: "13px 14px",
     display: "flex",
@@ -2643,8 +1873,7 @@ const styles = {
     fontSize: 11,
     padding: "4px 9px",
     borderRadius: 20,
-    border:
-      "0.5px solid #B5D4F4",
+    border: "0.5px solid #B5D4F4",
     background: "#E6F1FB",
     color: "#185FA5",
     cursor: "pointer",
@@ -2657,11 +1886,9 @@ const styles = {
     top: "calc(100% + 6px)",
     right: 0,
     background: "#fff",
-    border:
-      "0.5px solid rgba(0,0,0,0.1)",
+    border: "0.5px solid rgba(0,0,0,0.1)",
     borderRadius: 8,
-    boxShadow:
-      "0 4px 16px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
     minWidth: 130,
     zIndex: 20,
     overflow: "hidden",
@@ -2706,10 +1933,8 @@ const styles = {
   skeletonRow: {
     height: 28,
     borderRadius: 6,
-    background:
-      "linear-gradient(90deg,#eef0f2 25%,#f7f8f9 37%,#eef0f2 63%)",
-    backgroundSize:
-      "200px 100%",
+    background: "linear-gradient(90deg,#eef0f2 25%,#f7f8f9 37%,#eef0f2 63%)",
+    backgroundSize: "200px 100%",
   },
 
   group: {
@@ -2726,8 +1951,7 @@ const styles = {
   dayLine: {
     flex: 1,
     height: "0.5px",
-    background:
-      "rgba(0,0,0,0.08)",
+    background: "rgba(0,0,0,0.08)",
   },
 
   dayLabel: {
@@ -2743,8 +1967,7 @@ const styles = {
     alignItems: "center",
     gap: 9,
     padding: "6px 0",
-    borderBottom:
-      "0.5px solid rgba(0,0,0,0.05)",
+    borderBottom: "0.5px solid rgba(0,0,0,0.05)",
   },
 
   iconBubble: {
@@ -2802,8 +2025,7 @@ const styles = {
     cursor: "pointer",
     marginTop: 10,
     paddingTop: 8,
-    borderTop:
-      "0.5px solid rgba(0,0,0,0.07)",
+    borderTop: "0.5px solid rgba(0,0,0,0.07)",
     flexShrink: 0,
   },
 
@@ -2967,8 +2189,7 @@ const styles = {
   segBtnActive: {
     background: "#fff",
     color: C.indigo,
-    boxShadow:
-      "0 1px 2px rgba(0,0,0,0.08)",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
   },
 
   chip: {
@@ -2987,8 +2208,7 @@ const styles = {
   errorBanner: {
     background: C.redSoft,
     color: "#9A2F2F",
-    border:
-      "1px solid #F3C7C7",
+    border: "1px solid #F3C7C7",
     borderRadius: 8,
     padding: "10px 14px",
     fontSize: 13,
@@ -3207,8 +2427,7 @@ const styles = {
     maxHeight: 420,
     overflowY: "auto",
     overflowX: "auto",
-    WebkitOverflowScrolling:
-      "touch",
+    WebkitOverflowScrolling: "touch",
   },
 
   th: {
@@ -3258,8 +2477,7 @@ const styles = {
     fontWeight: 600,
     background: C.indigoSoft,
     color: C.indigo,
-    border:
-      "1px solid transparent",
+    border: "1px solid transparent",
     cursor: "pointer",
     whiteSpace: "nowrap",
   },

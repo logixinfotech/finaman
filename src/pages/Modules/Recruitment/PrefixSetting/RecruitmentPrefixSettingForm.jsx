@@ -96,12 +96,11 @@ const RecruitmentPrefixSettingForm = ({
   };
 
   const handlePrefixChange = (rawVal) => {
-    // Auto-uppercase and filter to letters/digits only (max 10 chars)
-    const cleaned = (rawVal || "")
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .slice(0, 10);
-    handleChange("prefix", cleaned);
+    handleChange("prefix", rawVal || "");
+  };
+
+  const handleSuffixChange = (rawVal) => {
+    handleChange("suffix", rawVal || "");
   };
 
   const getInputClass = (disabled, field) => {
@@ -130,21 +129,12 @@ const RecruitmentPrefixSettingForm = ({
 
     if (!formData.prefix?.trim()) {
       newErrors.prefix = "Prefix is required";
-    } else if (!/^[A-Z0-9]{1,10}$/.test(formData.prefix.trim())) {
-      newErrors.prefix = "Letters and digits only (max 10 chars)";
+    } else if (formData.prefix.trim().length > 30) {
+      newErrors.prefix = "Prefix cannot exceed 30 characters";
     }
 
-    // Client-side uniqueness check on prefix against other existing records
-    if (formData.prefix?.trim()) {
-      const targetPrefix = formData.prefix.trim().toUpperCase();
-      const duplicatePrefix = existingList.find((r) => {
-        const isCurrent =
-          formData.prefix_id && r.prefix_id === formData.prefix_id;
-        return !isCurrent && r.prefix?.trim().toUpperCase() === targetPrefix;
-      });
-      if (duplicatePrefix) {
-        newErrors.prefix = `Prefix "${targetPrefix}" is already used for ${duplicatePrefix.submenu_name}`;
-      }
+    if (formData.suffix?.trim() && formData.suffix.trim().length > 30) {
+      newErrors.suffix = "Suffix cannot exceed 30 characters";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -158,7 +148,7 @@ const RecruitmentPrefixSettingForm = ({
     }
 
     onSave && onSave(formData);
-  }, [formData, isViewMode, onSave, existingList]);
+  }, [formData, isViewMode, onSave]);
 
   const handleKeyDown = useCallback(
     (e) => {
@@ -221,11 +211,11 @@ const RecruitmentPrefixSettingForm = ({
       <div className="flex-1 p-2 md:p-4 overflow-y-auto">
         <div
           id="prefix-form-container"
-          className="w-full bg-white max-w-[750px] mx-auto border rounded-md p-4 md:p-6 shadow-xs"
+          className="w-full bg-white max-w-[850px] mx-auto border rounded-md p-4 md:p-6 shadow-xs"
         >
           <div className="mb-4 pb-2 border-b border-gray-100 flex items-center justify-between">
             <h3 className="text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wide">
-              Document Code Prefix Configuration
+              Document Code Prefix & Suffix Configuration
             </h3>
             {formData.submenu_key && (
               <span className="text-[11px] font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
@@ -234,7 +224,7 @@ const RecruitmentPrefixSettingForm = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
             {/* 1. Submenu Dropdown */}
             <div className="flex flex-col gap-1">
               <label className="text-[11px] md:text-xs font-semibold text-gray-700">
@@ -267,8 +257,8 @@ const RecruitmentPrefixSettingForm = ({
                 disabled={isViewMode}
                 onChange={(e) => handlePrefixChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="e.g. VAC, JD, SKL"
-                maxLength={10}
+                placeholder="e.g. VAN//, VAC-, CAN/"
+                maxLength={30}
                 className={getInputClass(isViewMode, "prefix")}
               />
               {errors.prefix && (
@@ -276,7 +266,27 @@ const RecruitmentPrefixSettingForm = ({
               )}
             </div>
 
-            {/* 3. Status Dropdown */}
+            {/* 3. Suffix Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] md:text-xs font-semibold text-gray-700">
+                Suffix
+              </label>
+              <input
+                name="suffix"
+                value={formData.suffix || ""}
+                disabled={isViewMode}
+                onChange={(e) => handleSuffixChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="e.g. /26-27, -A"
+                maxLength={30}
+                className={getInputClass(isViewMode, "suffix")}
+              />
+              {errors.suffix && (
+                <span className="text-[10px] text-red-500 font-medium">{errors.suffix}</span>
+              )}
+            </div>
+
+            {/* 4. Status Dropdown */}
             <div className="flex flex-col gap-1">
               <label className="text-[11px] md:text-xs font-semibold text-gray-700">
                 Status
@@ -301,8 +311,8 @@ const RecruitmentPrefixSettingForm = ({
               </span>
               <span className="font-mono font-bold text-blue-700 bg-white px-2 py-1 rounded border border-slate-200 shadow-2xs">
                 {formData.submenu_key === "JOB_VACANCY"
-                  ? `${formData.prefix}-${new Date().getFullYear()}-0001`
-                  : `${formData.prefix}-001`}
+                  ? `${formData.prefix}${formData.suffix || ""}`
+                  : `${formData.prefix}${formData.suffix || ""}`}
               </span>
             </div>
           )}

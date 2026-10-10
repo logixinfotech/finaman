@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import {
-  Mail, Lock, CheckCircle2, XCircle, Send, Loader2, QrCode, Building2,
-  ChevronRight, AlertTriangle, RefreshCw, Smartphone, Power, ShieldCheck,
+  Mail, CheckCircle2, XCircle, Send, Loader2, Building2,
+  AlertTriangle, RefreshCw, Smartphone, Power, ShieldCheck, Check,
 } from "lucide-react";
 import { useAuth } from "../../theme/AuthContext";
 import TemplateMaster from "./TemplateMaster";
@@ -10,7 +10,12 @@ import MessageLog from "./MessageLog";
 import {
   DEPARTMENTS, EMAIL_RE, LABEL_CLS, INPUT_CLS, timeAgo,
   useToast, Toast, useConfirm, Toggle,
-} from "./commShared";
+} from "./commShared"; 
+import { useSaveSlot } from "./Settings/SaveBus";
+ 
+const NAVY = "#0B2447"; 
+const NAVY_TINT = "#EEF2F8";
+const NAVY_RING = "#C7D4E8";
 
 // ── Config ──────────────────────────────────────────────────────────────────
 const SMTP_PRESETS = [
@@ -26,18 +31,21 @@ const ENCRYPTION = [
   { id: "NONE", label: "None" },
 ];
 
-const TABS = [
+const TOP_TABS = [
   { id: "channels", label: "Channels" },
   { id: "templates", label: "Templates" },
   { id: "log", label: "Message Log" },
 ];
 
+const CHANNEL_TABS = [
+  { id: "email", label: "Email", icon: Mail },
+  { id: "whatsapp", label: "WhatsApp", icon: FaWhatsapp },
+];
+
 const WA_STEPS = ["Enter Number", "Scan QR", "Connected"];
 const QR_SECONDS = 60;
 
-// Fields saved by the Save bar (drive the unsaved-changes check)
 const EMAIL_FIELDS = ["smtpProvider", "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPwd", "fromName", "fromMail", "useDefault"];
-// Changing any of these invalidates the SMTP verification
 const VERIFY_FIELDS = ["smtpProvider", "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPwd"];
 
 const DEFAULT_CHANNEL_STATE = {
@@ -49,8 +57,7 @@ const DEFAULT_CHANNEL_STATE = {
   waNumber: "", waInstId: "", waStatus: "disconnected", waConnectedAt: null,
   sentToday: 0, failedToday: 0,
 };
-
-// ── Mock data — replace with INTMAS API later ───────────────────────────────
+ 
 const HOUR = 3600 * 1000;
 const MOCK_INITIAL = {
   sales: {
@@ -69,6 +76,9 @@ const MOCK_INITIAL = {
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+const emailState = (f) => (f.verified ? "ok" : f.smtpHost ? "bad" : "bad");
+const waState = (f) => ({ connected: "ok", pending: "pending", dropped: "warn" }[f.waStatus] || "bad");
+
 const emailBadge = (f) =>
   f.verified ? { state: "ok", label: "Verified" }
   : f.smtpHost ? { state: "bad", label: "Not Verified" }
@@ -81,12 +91,65 @@ const waBadge = (f) =>
     dropped: { state: "warn", label: "Session Lost" },
   }[f.waStatus] || { state: "bad", label: "Not Connected" });
 
+const DOT_COLOR = { ok: "#10B981", pending: "#F59E0B", warn: "#F59E0B", bad: "#CBD5E1" };
+
 const fmtPhone = (n) => {
   const d = (n || "").replace(/\D/g, "");
   return d.length === 10 ? `+91 ${d.slice(0, 5)} ${d.slice(5)}` : n;
 };
 
 const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+const initials = (name) =>
+  (name || "")
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+ 
+function seededGrid(seed, size = 21) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const cells = [];
+  for (let i = 0; i < size * size; i++) {
+    h = (h * 1103515245 + 12345) >>> 0;
+    cells.push((h >>> 16) % 3 !== 0);
+  }
+  return cells;
+}
+
+function QrPattern({ seed, size = 160 }) {
+  const dim = 21;
+  const cell = size / dim;
+  const cells = seededGrid(seed || "finaman", dim);
+  const finder = (x, y) => (
+    <g key={`${x}-${y}`}>
+      <rect x={x} y={y} width={cell * 7} height={cell * 7} fill="#fff" />
+      <rect x={x} y={y} width={cell * 7} height={cell * 7} fill="none" stroke={NAVY} strokeWidth={cell} />
+      <rect x={x + cell * 2} y={y + cell * 2} width={cell * 3} height={cell * 3} fill={NAVY} />
+    </g>
+  );
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="WhatsApp pairing QR code">
+      <rect width={size} height={size} fill="#fff" />
+      {cells.map((on, i) => {
+        if (!on) return null;
+        const x = (i % dim) * cell;
+        const y = Math.floor(i / dim) * cell;
+        const inCorner =
+          (x < cell * 8 && y < cell * 8) ||
+          (x > size - cell * 8 && y < cell * 8) ||
+          (x < cell * 8 && y > size - cell * 8);
+        if (inCorner) return null;
+        return <rect key={i} x={x} y={y} width={cell} height={cell} fill={NAVY} />;
+      })}
+      {finder(0, 0)}
+      {finder(size - cell * 7, 0)}
+      {finder(0, size - cell * 7)}
+    </svg>
+  );
+}
 
 // ── Small components ────────────────────────────────────────────────────────
 const FieldInput = ({ label, ...props }) => (
@@ -109,46 +172,96 @@ const StatusBadge = ({ state, label }) => {
     </span>
   );
 };
-
-const StatChip = ({ icon: Icon, label, value, tone = "slate" }) => {
-  const tones = {
-    slate: "bg-slate-50 text-slate-500 ring-slate-200",
-    indigo: "bg-indigo-50 text-indigo-600 ring-indigo-100",
-    emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-  };
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <span className={`flex h-9 w-9 items-center justify-center rounded-lg ring-1 ring-inset ${tones[tone]}`}>
-        <Icon className="h-4 w-4" />
-      </span>
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="text-sm font-bold text-slate-900">{value}</p>
-      </div>
-    </div>
-  );
-};
-
-const CardHeader = ({ icon: Icon, tone, title, subtitle, badge }) => (
-  <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex items-center justify-between gap-3">
-    <div className="flex items-center gap-3">
-      <span
-        className={`flex h-9 w-9 items-center justify-center rounded-lg ring-1 ring-inset
-                    ${tone === "emerald" ? "bg-emerald-50 text-emerald-600 ring-emerald-100" : "bg-indigo-50 text-indigo-600 ring-indigo-100"}`}
-      >
-        <Icon className="h-4 w-4" />
-      </span>
-      <div>
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-        <p className="text-xs text-slate-400">{subtitle}</p>
-      </div>
-    </div>
-    <StatusBadge {...badge} />
+ 
+const MetaStrip = ({ configured, total, verifiedEmails, connectedWa }) => (
+  <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-slate-500">
+    <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">
+      <Building2 className="h-3.5 w-3.5" style={{ color: NAVY }} />
+      {configured} / {total} departments configured
+    </span>
+    <span className="h-3 w-px bg-slate-200" />
+    <span className="inline-flex items-center gap-1.5">
+      <Mail className="h-3.5 w-3.5 text-slate-400" /> {verifiedEmails} verified email{verifiedEmails === 1 ? "" : "s"}
+    </span>
+    <span className="h-3 w-px bg-slate-200" />
+    <span className="inline-flex items-center gap-1.5">
+      <FaWhatsapp className="h-3.5 w-3.5 text-emerald-500" /> {connectedWa} WhatsApp connected
+    </span>
   </div>
 );
+ 
+function DepartmentNav({ selectedDept, onSelect, data, dirty }) {
+  return (
+    <>
+      {/* Mobile / tablet — horizontal scroller */}
+      <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden -mx-1 px-1">
+        {DEPARTMENTS.map((d) => {
+          const f = data[d.id] || DEFAULT_CHANNEL_STATE;
+          const active = d.id === selectedDept;
+          return (
+            <button
+              key={d.id}
+              onClick={() => onSelect(d.id)}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold transition-colors"
+              style={
+                active
+                  ? { background: NAVY, color: "#fff", borderColor: NAVY }
+                  : { background: "#fff", color: "#475569", borderColor: "#e2e8f0" }
+              }
+            >
+              {d.name}
+              {active && dirty && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />}
+              <span className="flex gap-0.5">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: active ? "#ffffffaa" : DOT_COLOR[emailState(f)] }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: active ? "#ffffffaa" : DOT_COLOR[waState(f)] }} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-const BTN_PRIMARY = "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50";
-const BTN_SECONDARY = "inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50";
+      {/* Desktop — vertical rail */}
+      <nav className="hidden lg:flex lg:w-60 lg:shrink-0 lg:flex-col gap-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        {DEPARTMENTS.map((d) => {
+          const f = data[d.id] || DEFAULT_CHANNEL_STATE;
+          const active = d.id === selectedDept;
+          return (
+            <button
+              key={d.id}
+              onClick={() => onSelect(d.id)}
+              className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors"
+              style={active ? { background: NAVY_TINT } : undefined}
+              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#F8FAFC"; }}
+              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+            >
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold"
+                style={active ? { background: NAVY, color: "#fff" } : { background: "#F1F5F9", color: "#64748B" }}
+              >
+                {initials(d.name)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate text-[13px] font-semibold" style={{ color: active ? NAVY : "#334155" }}>
+                    {d.name}
+                  </span>
+                  {active && dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />}
+                </span>
+              </span>
+              <span className="flex shrink-0 gap-1">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: DOT_COLOR[emailState(f)] }} title="Email" />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: DOT_COLOR[waState(f)] }} title="WhatsApp" />
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    </>
+  );
+}
+
+const BTN_PRIMARY = "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold text-white shadow-sm transition-all disabled:opacity-50";
+const BTN_SECONDARY = "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-[12.5px] font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50";
 
 // ── Main ────────────────────────────────────────────────────────────────────
 const CommunicationSetup = () => {
@@ -159,10 +272,10 @@ const CommunicationSetup = () => {
   const userName = user?.name || user?.username || "You";
 
   const [activeTab, setActiveTab] = useState("channels");
+  const [activeChannel, setActiveChannel] = useState("email"); // email | whatsapp — device-friendly: one panel at a time
   const [selectedDept, setSelectedDept] = useState(isAdmin ? DEPARTMENTS[0].id : myDeptId);
   const [data, setData] = useState(MOCK_INITIAL);
   const [saved, setSaved] = useState(MOCK_INITIAL);
-  const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [editingPwd, setEditingPwd] = useState(false);
   const [qrLeft, setQrLeft] = useState(QR_SECONDS);
@@ -192,7 +305,6 @@ const CommunicationSetup = () => {
 
   const updateField = (field, value) => updateMany({ [field]: value });
 
-  // Patch a department directly (used by async actions); optionally mirror into the saved snapshot
   const patchDept = (id, patch, alsoSaved = false) => {
     setData((prev) => ({ ...prev, [id]: { ...(prev[id] || DEFAULT_CHANNEL_STATE), ...patch } }));
     if (alsoSaved) setSaved((prev) => ({ ...prev, [id]: { ...(prev[id] || DEFAULT_CHANNEL_STATE), ...patch } }));
@@ -219,23 +331,24 @@ const CommunicationSetup = () => {
     setEditingPwd(false);
     setSelectedDept(id);
   };
-
-  // ── Save / Discard ──
-  const handleSave = () => {
-    if (!isDirty || saving) return;
-    if (form.fromMail && !EMAIL_RE.test(form.fromMail)) { showToast("From Email is not a valid address", "error"); return; }
-    if (form.smtpPort && !/^\d+$/.test(form.smtpPort)) { showToast("Port must be a number", "error"); return; }
-    setSaving(true);
-    const id = selectedDept;
-    const next = { ...form, pwdSaved: form.pwdSaved || !!form.smtpPwd, smtpPwd: "" };
-    setTimeout(() => {
-      setData((prev) => ({ ...prev, [id]: { ...prev[id], pwdSaved: next.pwdSaved, smtpPwd: "" } }));
-      setSaved((prev) => ({ ...prev, [id]: next }));
-      setSaving(false);
-      setEditingPwd(false);
-      showToast(`${DEPARTMENTS.find((d) => d.id === id)?.name} settings saved`);
-    }, 600);
-  };
+ 
+  const handleSave = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (form.fromMail && !EMAIL_RE.test(form.fromMail)) { showToast("From Email is not a valid address", "error"); reject(new Error("invalid email")); return; }
+      if (form.smtpPort && !/^\d+$/.test(form.smtpPort)) { showToast("Port must be a number", "error"); reject(new Error("invalid port")); return; }
+      const id = selectedDept;
+      const next = { ...form, pwdSaved: form.pwdSaved || !!form.smtpPwd, smtpPwd: "" };
+      setTimeout(() => {
+        setData((prev) => ({ ...prev, [id]: { ...prev[id], pwdSaved: next.pwdSaved, smtpPwd: "" } }));
+        setSaved((prev) => ({ ...prev, [id]: next }));
+        setEditingPwd(false);
+        showToast(`${DEPARTMENTS.find((d) => d.id === id)?.name} settings saved`);
+        resolve();
+      }, 500);
+    });
+  }, [form, selectedDept, showToast]);
+ 
+  useSaveSlot("communication", isDirty, handleSave);
 
   const handleDiscard = () => {
     setData((prev) => ({ ...prev, [selectedDept]: savedForm }));
@@ -272,7 +385,6 @@ const CommunicationSetup = () => {
     patchDept(id, { waStatus: "pending", waInstId: `${companyCode}-${num}` }, true);
     setQrLeft(QR_SECONDS);
     clearTimeout(linkTimers.current[id]);
-    // Mock: gateway reports the scan after a few seconds — replace with status polling
     linkTimers.current[id] = setTimeout(() => {
       patchDept(id, { waStatus: "connected", waConnectedAt: Date.now() }, true);
       showToast("WhatsApp connected");
@@ -298,358 +410,350 @@ const CommunicationSetup = () => {
 
   const handleTestWhatsapp = () => showToast(`Test message sent to ${fmtPhone(form.waNumber)}`);
 
-  // QR countdown while waiting for scan
   useEffect(() => {
     if (form.waStatus !== "pending") return;
     const t = setInterval(() => setQrLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, [form.waStatus, selectedDept]);
 
-  // Clear pending link timers on unmount
   useEffect(() => {
     const timers = linkTimers.current;
     return () => Object.values(timers).forEach(clearTimeout);
   }, []);
 
-  // Keyboard: Ctrl+S saves the channel settings
-  const keyRef = useRef();
-  keyRef.current = (e) => {
-    if (confirmDialog || activeTab !== "channels") return;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      handleSave();
-    }
-  };
-  useEffect(() => {
-    const h = (e) => keyRef.current(e);
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, []);
-
   const waStepIndex = form.waStatus === "connected" ? 2 : form.waStatus === "pending" ? 1 : 0;
 
   return (
-    <div className="space-y-5">
-      {/* Overview strip — Admin only */}
-      {isAdmin && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <StatChip icon={Building2} label="Departments Set Up" value={`${configuredDepts} of ${DEPARTMENTS.length}`} />
-          <StatChip icon={Mail} label="Verified Emails" value={verifiedEmails} tone="indigo" />
-          <StatChip icon={FaWhatsapp} label="WhatsApp Connected" value={connectedWa} tone="emerald" />
+    <div className="space-y-4">
+      {/* Header: title + meta strip + top tabs, all in one compact block */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+           
+            {isAdmin ? (
+              <div className="mt-1">
+                <MetaStrip configured={configuredDepts} total={DEPARTMENTS.length} verifiedEmails={verifiedEmails} connectedWa={connectedWa} />
+              </div>
+            ) : (
+              <p className="mt-0.5 text-[12.5px] text-slate-400">Configuring channels for {dept.name}</p>
+            )}
+          </div>
+          {isDirty && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+              <AlertTriangle className="h-3 w-3" />
+              Unsaved in {dept.name}
+              <button onClick={handleDiscard} className="font-semibold text-amber-800 underline decoration-amber-400 underline-offset-2 hover:text-amber-900">
+                Discard
+              </button>
+            </span>
+          )}
         </div>
-      )}
 
-      {/* Tabs */}
-      <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-200">
-        <div className="flex space-x-6">
-          {TABS.map((tab) => (
+        <div className="flex border-b border-slate-200 overflow-x-auto">
+          {TOP_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap border-b-2 py-3 px-1 text-sm font-semibold transition-all
-                          ${activeTab === tab.id ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"}`}
+              className="whitespace-nowrap border-b-2 py-2 px-1 mr-4 text-[12.5px] font-semibold transition-all"
+              style={activeTab === tab.id ? { borderColor: NAVY, color: NAVY } : { borderColor: "transparent", color: "#64748b" }}
             >
               {tab.label}
             </button>
           ))}
         </div>
-        {activeTab === "channels" && !isAdmin && (
-          <span className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-[13px] text-slate-600">
-            <Lock className="h-3.5 w-3.5 text-slate-400" /> {dept.name}
-          </span>
-        )}
       </div>
 
       {activeTab === "channels" && (
-        <div className="space-y-5"> 
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start"> 
           {isAdmin && (
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-                <h3 className="text-sm font-semibold text-slate-900">Departments</h3>
-                <span className="text-xs text-slate-400">Click a department to configure it</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                      {["Department", "Email", "WhatsApp", "Last Verified", "Fallback", ""].map((h) => (
-                        <th key={h} className="px-4 py-2 text-left font-semibold text-[11px] uppercase tracking-wider">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {DEPARTMENTS.map((d) => {
-                      const f = data[d.id] || DEFAULT_CHANNEL_STATE;
-                      const active = d.id === selectedDept;
-                      return (
-                        <tr
-                          key={d.id}
-                          onClick={() => switchDept(d.id)}
-                          className={`cursor-pointer transition-colors ${active ? "bg-indigo-50/60" : "hover:bg-slate-50"}`}
-                        >
-                          <td className="px-4 py-2.5">
-                            <span className="flex items-center gap-2 font-medium text-slate-800">
-                              <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-indigo-500" : "bg-transparent"}`} />
-                              {d.name}
-                              {active && isDirty && (
-                                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 ring-1 ring-inset ring-amber-200">UNSAVED</span>
-                              )}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5"><StatusBadge {...emailBadge(f)} /></td>
-                          <td className="px-4 py-2.5"><StatusBadge {...waBadge(f)} /></td>
-                          <td className="px-4 py-2.5 text-xs text-slate-500">{timeAgo(f.verifiedAt)}</td>
-                          <td className="px-4 py-2.5 text-xs text-slate-500">{f.useDefault ? "Company default" : "None"}</td>
-                          <td className="px-4 py-2.5 text-right">
-                            <ChevronRight className={`h-4 w-4 inline ${active ? "text-indigo-400" : "text-slate-300"}`} />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DepartmentNav selectedDept={selectedDept} onSelect={switchDept} data={data} dirty={isDirty} />
           )}
 
-          {/* Email card */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="h-1 w-full bg-indigo-500" />
-            <CardHeader icon={Mail} title="Email (SMTP)" subtitle={`Outgoing mail for ${dept.name}`} badge={emailBadge(form)} />
-
-            {/* Health line */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 px-6 py-2.5 text-xs text-slate-500">
-              {form.verified ? (
-                <>
-                  <span className="inline-flex items-center gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                    Verified {timeAgo(form.verifiedAt)} by {form.verifiedBy}
-                  </span>
-                  <span>{form.sentToday} sent today</span>
-                  <span className={form.failedToday ? "text-rose-600 font-medium" : ""}>{form.failedToday} failed</span>
-                </>
-              ) : (
-                <span>Not verified — send a test email to verify these settings.</span>
-              )}
-            </div>
-
-            {form.lastError && (
-              <div className="mx-6 mt-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span><span className="font-semibold">Last test failed:</span> {form.lastError}</span>
-              </div>
-            )}
-
-            {/* Provider presets */}
-            <div className="px-6 pt-5">
-              <label className={LABEL_CLS}>Provider</label>
-              <div className="flex flex-wrap">
-                {SMTP_PRESETS.map((p) => (
+          {/* Content column */}
+          <div className="min-w-0 flex-1 space-y-4"> 
+            <div className="grid grid-cols-2 sm:inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm w-full sm:w-auto">
+              {CHANNEL_TABS.map((c) => {
+                const active = activeChannel === c.id;
+                const Icon = c.icon;
+                const badge = c.id === "email" ? emailBadge(form) : waBadge(form);
+                return (
                   <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => applyPreset(p.id)}
-                    className={`h-8 px-3 text-xs font-semibold ring-1 ring-inset -ml-px first:ml-0 first:rounded-l-lg last:rounded-r-lg transition-colors
-                                ${form.smtpProvider === p.id ? "relative z-10 bg-indigo-50 text-indigo-600 ring-indigo-200" : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"}`}
+                    key={c.id}
+                    onClick={() => setActiveChannel(c.id)}
+                    className="relative flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-colors"
+                    style={active ? { background: NAVY, color: "#fff" } : { color: "#475569" }}
                   >
-                    {p.label}
+                    <Icon className="h-3 w-3" />
+                    {c.label}
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: active ? "#fff" : DOT_COLOR[badge.state] }}
+                    />
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FieldInput label="SMTP Host" value={form.smtpHost} disabled={presetLocked} onChange={(e) => updateField("smtpHost", e.target.value)} />
-              <FieldInput label="Port" value={form.smtpPort} disabled={presetLocked} onChange={(e) => updateField("smtpPort", e.target.value)} />
-              <div>
-                <label className={LABEL_CLS}>Encryption</label>
-                <select value={form.smtpSecure} disabled={presetLocked} onChange={(e) => updateField("smtpSecure", e.target.value)} className={INPUT_CLS}>
-                  {ENCRYPTION.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
-                </select>
-              </div>
-              <FieldInput label="Username" value={form.smtpUser} autoComplete="off" onChange={(e) => updateField("smtpUser", e.target.value)} />
-              <div>
-                <label className={LABEL_CLS}>Password</label>
-                {form.pwdSaved && !editingPwd ? (
-                  <div className="flex h-9 items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3">
-                    <span className="text-[13.5px] tracking-widest text-slate-400">••••••••</span>
-                    <button type="button" onClick={() => setEditingPwd(true)} className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
-                      Change
-                    </button>
-                  </div>
-                ) : (
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder={form.pwdSaved ? "Enter new password" : ""}
-                    value={form.smtpPwd}
-                    onChange={(e) => updateField("smtpPwd", e.target.value)}
-                    className={INPUT_CLS}
-                  />
-                )}
-              </div>
-              <FieldInput label="From Name" value={form.fromName} onChange={(e) => updateField("fromName", e.target.value)} />
-              <FieldInput label="From Email" value={form.fromMail} onChange={(e) => updateField("fromMail", e.target.value)} />
-            </div>
-
-            <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 bg-slate-50/40 px-6 py-4">
-              <div className="w-full sm:w-72">
-                <FieldInput
-                  label="Send test to"
-                  placeholder="you@company.com"
-                  value={form.testTo}
-                  onChange={(e) => patchDept(selectedDept, { testTo: e.target.value })}
-                />
-              </div>
-              <button onClick={handleTestEmail} disabled={testingEmail} className={BTN_SECONDARY}>
-                {testingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 text-slate-400" />}
-                Send Test Email
-              </button>
-            </div>
-          </div>
-
-          {/* WhatsApp card */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="h-1 w-full bg-emerald-500" />
-            <CardHeader icon={FaWhatsapp} tone="emerald" title="WhatsApp" subtitle={`Outgoing messages for ${dept.name}`} badge={waBadge(form)} />
-
-            <div className="px-6 pt-5">
-              <div className="flex items-center gap-2 mb-5">
-                {WA_STEPS.map((step, i) => (
-                  <React.Fragment key={step}>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold
-                          ${i < waStepIndex ? "bg-emerald-500 text-white" : i === waStepIndex ? "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500" : "bg-slate-100 text-slate-400"}`}
-                      >
-                        {i < waStepIndex ? "✓" : i + 1}
+            {/* ── Email panel ── */}
+            {activeChannel === "email" && (
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 bg-slate-50/50 px-5 py-3 text-xs text-slate-500">
+                  {form.verified ? (
+                    <>
+                      <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                        Verified {timeAgo(form.verifiedAt)} by {form.verifiedBy}
                       </span>
-                      <span className={`text-[11px] font-medium ${i <= waStepIndex ? "text-slate-700" : "text-slate-400"}`}>{step}</span>
-                    </div>
-                    {i < WA_STEPS.length - 1 && <span className="flex-1 h-px bg-slate-200" />}
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
+                      <span>{form.sentToday} sent today</span>
+                      <span className={form.failedToday ? "text-rose-600 font-medium" : ""}>{form.failedToday} failed</span>
+                    </>
+                  ) : (
+                    <span>Not verified — send a test email to verify these settings.</span>
+                  )}
+                </div>
 
-            {form.waStatus === "dropped" && (
-              <div className="mx-6 mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>Session lost — the linked phone logged out or went offline. Messages are not being sent. Re-link to resume.</span>
+                {form.lastError && (
+                  <div className="mx-5 mt-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span><span className="font-semibold">Last test failed:</span> {form.lastError}</span>
+                  </div>
+                )}
+
+                <div className="px-5 pt-4">
+                  <label className={LABEL_CLS}>Provider</label>
+                  <div className="flex flex-wrap">
+                    {SMTP_PRESETS.map((p) => {
+                      const activePreset = form.smtpProvider === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => applyPreset(p.id)}
+                          className="h-7 px-2.5 text-[11px] font-semibold ring-1 ring-inset -ml-px first:ml-0 first:rounded-l-lg last:rounded-r-lg transition-colors"
+                          style={
+                            activePreset
+                              ? { position: "relative", zIndex: 10, background: NAVY_TINT, color: NAVY, boxShadow: `inset 0 0 0 1px ${NAVY_RING}` }
+                              : { background: "#fff", color: "#475569", boxShadow: "inset 0 0 0 1px #e2e8f0" }
+                          }
+                        >
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <FieldInput label="SMTP Host" value={form.smtpHost} disabled={presetLocked} onChange={(e) => updateField("smtpHost", e.target.value)} />
+                  <FieldInput label="Port" value={form.smtpPort} disabled={presetLocked} onChange={(e) => updateField("smtpPort", e.target.value)} />
+                  <div>
+                    <label className={LABEL_CLS}>Encryption</label>
+                    <select value={form.smtpSecure} disabled={presetLocked} onChange={(e) => updateField("smtpSecure", e.target.value)} className={INPUT_CLS}>
+                      {ENCRYPTION.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+                    </select>
+                  </div>
+                  <FieldInput label="Username" value={form.smtpUser} autoComplete="off" onChange={(e) => updateField("smtpUser", e.target.value)} />
+                  <div>
+                    <label className={LABEL_CLS}>Password</label>
+                    {form.pwdSaved && !editingPwd ? (
+                      <div className="flex h-8 items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5">
+                        <span className="text-[13px] tracking-widest text-slate-400">••••••••</span>
+                        <button type="button" onClick={() => setEditingPwd(true)} className="text-[11px] font-semibold hover:underline" style={{ color: NAVY }}>
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder={form.pwdSaved ? "Enter new password" : ""}
+                        value={form.smtpPwd}
+                        onChange={(e) => updateField("smtpPwd", e.target.value)}
+                        className={INPUT_CLS}
+                      />
+                    )}
+                  </div>
+                  <FieldInput label="From Name" value={form.fromName} onChange={(e) => updateField("fromName", e.target.value)} />
+                  <FieldInput label="From Email" value={form.fromMail} onChange={(e) => updateField("fromMail", e.target.value)} />
+                </div>
+
+                <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 bg-slate-50/40 px-5 py-4">
+                  <div className="w-full sm:w-72">
+                    <FieldInput
+                      label="Send test to"
+                      placeholder="you@company.com"
+                      value={form.testTo}
+                      onChange={(e) => patchDept(selectedDept, { testTo: e.target.value })}
+                    />
+                  </div>
+                  <button onClick={handleTestEmail} disabled={testingEmail} className={BTN_SECONDARY}>
+                    {testingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 text-slate-400" />}
+                    Send Test Email
+                  </button>
+                </div>
               </div>
             )}
 
-            <div className="px-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldInput
-                label="WhatsApp Number"
-                placeholder="10-digit mobile number"
-                value={form.waNumber}
-                disabled={form.waStatus !== "disconnected"}
-                onChange={(e) => updateField("waNumber", e.target.value)}
-              />
-              <FieldInput label="Instance ID (auto)" value={form.waInstId} disabled />
-            </div>
-
-            {form.waStatus === "pending" && (
-              <div className="mx-6 mt-4 flex flex-col sm:flex-row gap-5 rounded-lg border border-dashed border-slate-300 p-5">
-                <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
-                  {qrLeft > 0 ? <QrCode className="h-24 w-24 text-slate-700" /> : <QrCode className="h-24 w-24 text-slate-200" />}
+            {/* ── WhatsApp panel ── */}
+            {activeChannel === "whatsapp" && (
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="px-5 pt-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    {WA_STEPS.map((step, i) => (
+                      <React.Fragment key={step}>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold
+                              ${i < waStepIndex ? "bg-emerald-500 text-white" : i === waStepIndex ? "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500" : "bg-slate-100 text-slate-400"}`}
+                          >
+                            {i < waStepIndex ? "✓" : i + 1}
+                          </span>
+                          <span className={`text-[11px] font-medium ${i <= waStepIndex ? "text-slate-700" : "text-slate-400"}`}>{step}</span>
+                        </div>
+                        {i < WA_STEPS.length - 1 && <span className="flex-1 h-px bg-slate-200" />}
+                      </React.Fragment>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-[13px] text-slate-600">
-                  <p className="font-semibold text-slate-800 mb-2">Link this number</p>
-                  <ol className="list-decimal pl-4 space-y-1">
-                    <li>Open WhatsApp on the phone for {fmtPhone(form.waNumber)}</li>
-                    <li>Go to Settings → Linked Devices</li>
-                    <li>Tap "Link a device" and scan this QR</li>
-                  </ol>
-                  {qrLeft > 0 ? (
-                    <p className="mt-3 text-xs text-slate-400">QR expires in <span className="font-mono font-semibold text-slate-600">{fmtClock(qrLeft)}</span></p>
-                  ) : (
-                    <button onClick={() => setQrLeft(QR_SECONDS)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-500">
-                      <RefreshCw className="h-3.5 w-3.5" /> QR expired — Refresh QR
+
+                {form.waStatus === "dropped" && (
+                  <div className="mx-5 mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>Session lost — the linked phone logged out or went offline. Messages are not being sent. Re-link to resume.</span>
+                  </div>
+                )}
+
+                <div className="px-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FieldInput
+                    label="WhatsApp Number"
+                    placeholder="10-digit mobile number"
+                    value={form.waNumber}
+                    disabled={form.waStatus !== "disconnected"}
+                    onChange={(e) => updateField("waNumber", e.target.value)}
+                  />
+                  <FieldInput label="Instance ID (auto)" value={form.waInstId} disabled />
+                </div>
+
+                {form.waStatus === "pending" && (
+                  <div className="mx-5 mt-4 flex flex-col sm:flex-row gap-5 rounded-lg border border-dashed border-slate-300 p-5">
+                    <div className="relative flex h-40 w-40 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white overflow-hidden self-center sm:self-start">
+                      <QrPattern seed={form.waInstId} size={160} />
+                      {qrLeft <= 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/85 backdrop-blur-[1px]">
+                          <RefreshCw className="h-6 w-6 text-slate-300" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[13px] text-slate-600">
+                      <p className="font-semibold text-slate-800 mb-2">Link this number</p>
+                      <ol className="list-decimal pl-4 space-y-1">
+                        <li>Open WhatsApp on the phone for {fmtPhone(form.waNumber)}</li>
+                        <li>Go to Settings → Linked Devices</li>
+                        <li>Tap "Link a device" and scan this QR</li>
+                      </ol>
+                      {qrLeft > 0 ? (
+                        <p className="mt-3 text-xs text-slate-400">QR expires in <span className="font-mono font-semibold text-slate-600">{fmtClock(qrLeft)}</span></p>
+                      ) : (
+                        <button onClick={() => setQrLeft(QR_SECONDS)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold hover:underline" style={{ color: NAVY }}>
+                          <RefreshCw className="h-3.5 w-3.5" /> QR expired — Refresh QR
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {form.waStatus === "connected" && (
+                  <div className="mx-5 mt-4 flex items-center gap-2.5 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3.5 py-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-600 ring-1 ring-inset ring-emerald-100">
+                      <Smartphone className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="text-[12.5px]">
+                      <p className="font-semibold text-slate-800">{fmtPhone(form.waNumber)} · Linked via WhatsApp Web</p>
+                      <p className="text-xs text-slate-500">Connected {timeAgo(form.waConnectedAt)}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="px-5 py-4 flex flex-wrap gap-2">
+                  {form.waStatus === "disconnected" && (
+                    <button onClick={startLink} disabled={!form.waNumber} className={`${BTN_PRIMARY} bg-emerald-600 hover:bg-emerald-500`}>
+                      Connect
                     </button>
+                  )}
+                  {form.waStatus === "pending" && (
+                    <button onClick={cancelLink} className={BTN_SECONDARY}>Cancel</button>
+                  )}
+                  {form.waStatus === "connected" && (
+                    <>
+                      <button onClick={handleTestWhatsapp} className={BTN_SECONDARY}>
+                        <Send className="h-3.5 w-3.5 text-slate-400" /> Send Test Message
+                      </button>
+                      <button onClick={disconnectWa} className={`${BTN_SECONDARY} text-rose-600`}>
+                        <Power className="h-3.5 w-3.5" /> Disconnect
+                      </button>
+                    </>
+                  )}
+                  {form.waStatus === "dropped" && (
+                    <>
+                      <button onClick={startLink} className={`${BTN_PRIMARY} bg-emerald-600 hover:bg-emerald-500`}>
+                        <RefreshCw className="h-3.5 w-3.5" /> Re-link
+                      </button>
+                      <button onClick={disconnectWa} className={`${BTN_SECONDARY} text-rose-600`}>
+                        <Power className="h-3.5 w-3.5" /> Disconnect
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
             )}
 
-            {form.waStatus === "connected" && (
-              <div className="mx-6 mt-4 flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 px-4 py-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-emerald-600 ring-1 ring-inset ring-emerald-100">
-                  <Smartphone className="h-4 w-4" />
-                </span>
-                <div className="text-[13px]">
-                  <p className="font-semibold text-slate-800">{fmtPhone(form.waNumber)} · Linked via WhatsApp Web</p>
-                  <p className="text-xs text-slate-500">Connected {timeAgo(form.waConnectedAt)}</p>
+            {/* Fallback — compact settings row, not a separate full card */}
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm">
+              <div>
+                <h3 className="text-[13px] font-semibold text-slate-900">Fallback to company default</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  When {dept.name}'s channel is not configured or fails, send using the company default channel.
+                </p>
+              </div>
+              <Toggle checked={form.useDefault} onChange={(v) => updateField("useDefault", v)} />
+            </div>
+
+            {/* Admins only — compact department status table, collapsed under the rail on desktop
+                so it doesn't repeat what the rail already shows there. On mobile (no rail visible)
+                it's the only overview, so it stays. */}
+            {isAdmin && (
+              <details className="group rounded-xl border border-slate-200 bg-white shadow-sm lg:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3 text-[13px] font-semibold text-slate-700">
+                  All departments
+                  <Check className="h-4 w-4 text-slate-300 group-open:hidden" />
+                </summary>
+                <div className="overflow-x-auto border-t border-slate-100">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500">
+                        {["Department", "Email", "WhatsApp", "Last Verified"].map((h) => (
+                          <th key={h} className="px-4 py-2 text-left font-semibold text-[11px] uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {DEPARTMENTS.map((d) => {
+                        const f = data[d.id] || DEFAULT_CHANNEL_STATE;
+                        return (
+                          <tr key={d.id} onClick={() => switchDept(d.id)} className="cursor-pointer hover:bg-slate-50">
+                            <td className="px-4 py-2 font-medium text-slate-800">{d.name}</td>
+                            <td className="px-4 py-2"><StatusBadge {...emailBadge(f)} /></td>
+                            <td className="px-4 py-2"><StatusBadge {...waBadge(f)} /></td>
+                            <td className="px-4 py-2 text-xs text-slate-500">{timeAgo(f.verifiedAt)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+              </details>
             )}
-
-            <div className="px-6 py-6 flex flex-wrap gap-3">
-              {form.waStatus === "disconnected" && (
-                <button onClick={startLink} disabled={!form.waNumber} className={`${BTN_PRIMARY} bg-emerald-600 hover:bg-emerald-500`}>
-                  Connect
-                </button>
-              )}
-              {form.waStatus === "pending" && (
-                <button onClick={cancelLink} className={BTN_SECONDARY}>Cancel</button>
-              )}
-              {form.waStatus === "connected" && (
-                <>
-                  <button onClick={handleTestWhatsapp} className={BTN_SECONDARY}>
-                    <Send className="h-4 w-4 text-slate-400" /> Send Test Message
-                  </button>
-                  <button onClick={disconnectWa} className={`${BTN_SECONDARY} text-rose-600`}>
-                    <Power className="h-4 w-4" /> Disconnect
-                  </button>
-                </>
-              )}
-              {form.waStatus === "dropped" && (
-                <>
-                  <button onClick={startLink} className={`${BTN_PRIMARY} bg-emerald-600 hover:bg-emerald-500`}>
-                    <RefreshCw className="h-4 w-4" /> Re-link
-                  </button>
-                  <button onClick={disconnectWa} className={`${BTN_SECONDARY} text-rose-600`}>
-                    <Power className="h-4 w-4" /> Disconnect
-                  </button>
-                </>
-              )}
-            </div>
           </div>
-
-          {/* Fallback */}
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Fallback to company default</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                When {dept.name}'s channel is not configured or fails, send using the company default channel.
-              </p>
-            </div>
-            <Toggle checked={form.useDefault} onChange={(v) => updateField("useDefault", v)} />
-          </div>
-
-          {/* Sticky save bar */}
-          {isDirty && (
-            <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-900 px-5 py-3 shadow-xl">
-              <span className="flex items-center gap-2 text-[13px] text-slate-200">
-                <AlertTriangle className="h-4 w-4 text-amber-400" /> Unsaved changes in {dept.name}
-              </span>
-              <div className="flex gap-2">
-                <button onClick={handleDiscard} className="h-8 px-3 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800">
-                  Discard
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex h-8 items-center gap-2 rounded-lg bg-indigo-500 px-4 text-xs font-semibold text-white hover:bg-indigo-400 disabled:opacity-60"
-                >
-                  {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Save
-                  <kbd className="rounded bg-indigo-400/40 px-1.5 py-0.5 text-[10px] font-medium">Ctrl+S</kbd>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

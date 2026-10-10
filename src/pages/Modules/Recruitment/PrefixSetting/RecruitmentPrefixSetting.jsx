@@ -16,6 +16,7 @@ const initialState = {
   submenu_key: "",
   submenu_name: "",
   prefix: "",
+  suffix: "",
   status: "Active",
 };
 
@@ -25,15 +26,17 @@ const columns = [
     label: "Submenu",
     width: 220,
     render: (row) => (
-      <span className="font-medium text-slate-800">{row.submenu_name || "—"}</span>
+      <span className="font-semibold text-slate-800 text-xs">
+        {row.submenu_name || "—"}
+      </span>
     ),
   },
   {
     key: "submenu_key",
     label: "Submenu Key",
-    width: 180,
+    width: 170,
     render: (row) => (
-      <span className="font-mono text-[11px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+      <span className="inline-flex items-center font-mono text-[11px] text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
         {row.submenu_key || "—"}
       </span>
     ),
@@ -43,7 +46,7 @@ const columns = [
     label: "Prefix",
     width: 130,
     render: (row) => (
-      <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+      <span className="inline-flex items-center font-mono font-bold text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 shadow-2xs">
         {row.prefix || "—"}
       </span>
     ),
@@ -51,21 +54,47 @@ const columns = [
   {
     key: "status",
     label: "Status",
-    width: 120,
+    width: 110,
     render: (row) => {
       const active = row.status === "Active";
       return (
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-            active
-              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-              : "bg-slate-100 text-slate-600 border-slate-300"
-          }`}
+          className={`inline-flex items-center rounded-md border  px-2.5 py-1 text-[10.5px] font-semibold shadow-2xs ${active
+            ? "bg-emerald-50 text-emerald-700 rounded-md border-emerald-500"
+            : "bg-slate-100 text-slate-600 rounded-md border-slate-500"
+            }`}
         >
+          <span
+            className={`w-1.5 h-1.5  mr-1.5 ${active ? "bg-emerald-500" : "bg-slate-400"
+              }`}
+          />
           {row.status || "Active"}
         </span>
       );
     },
+  },
+  {
+    key: "suffix",
+    label: "Suffix",
+    width: 120,
+    render: (row) =>
+      row.suffix ? (
+        <span className="inline-flex items-center font-mono font-bold text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-200 shadow-2xs">
+          {row.suffix}
+        </span>
+      ) : (
+        <span className="text-slate-400 font-mono text-xs pl-2">—</span>
+      ),
+  },
+  {
+    key: "sample_code",
+    label: "Sample Code",
+    width: 160,
+    render: (row) => (
+      <span className="inline-flex items-center font-mono text-xs font-semibold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-300 shadow-2xs">
+        {row.prefix ? `${row.prefix}${row.suffix || ""}` : "—"}
+      </span>
+    ),
   },
 ];
 

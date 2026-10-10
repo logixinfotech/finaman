@@ -3,7 +3,7 @@ import { Settings2, RotateCcw, Check, AlertCircle } from "lucide-react";
 
 // ── Controls (unchanged) ──
 
-const CheckboxCtrl = ({ value, onChange }) => (
+export const CheckboxCtrl = ({ value, onChange }) => (
   <button
     type="button"
     role="switch"
@@ -138,6 +138,7 @@ const ERPSettings = ({
   onSave,
   onCancel,
   onRestore,
+   hideFooter = false, onChange 
 }) => {
   const [values, setValues] = useState(initialValues);
   const [isDirty, setIsDirty] = useState(false);
@@ -148,7 +149,7 @@ const ERPSettings = ({
   }, [initialValues, isDirty]);
 
   const handleChange = (key, value) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setValues((prev) => { const next = { ...prev, [key]: value }; onChange?.(next); return next; });
     setIsDirty(true);
   };
 
@@ -172,7 +173,7 @@ const ERPSettings = ({
   const isEmpty = !config || config.length === 0;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-[#eef1f8] w-full h-full" style={{ fontFamily: "'Inter','Tahoma',system-ui,sans-serif" }}> 
+    <div className="flex flex-col flex-1 min-h-0 bg-[#eef1f8] w-full h-full" style={{ fontFamily: "'Segoe UI', system-ui, Arial, sans-serif" }}> 
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
@@ -188,7 +189,7 @@ const ERPSettings = ({
         )}
       </div>
 
-      {/* Footer */}
+{!hideFooter && (
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 px-4 sm:px-6 py-2.5 bg-white border-t border-slate-200 shrink-0">
         <span className="text-[11px] text-slate-400">
           {isDirty ? "You have unsaved changes" : "All changes saved"}
@@ -218,6 +219,7 @@ const ERPSettings = ({
           </button>
         </div>
       </div>
+       )}
     </div>
   );
 };

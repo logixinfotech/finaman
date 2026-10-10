@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo  } from "react";
 import {
   FaExclamationTriangle, FaBullhorn, FaTruck,
   FaChartLine, FaFlagCheckered, FaHistory,
 } from "react-icons/fa";
+import * as FaIcons from "react-icons/fa";
 import Table from "../../../components/Reusable/table/Table";
 import ERPFormBuilder from "../../../components/Reusable/form/ERPFormBuilder";
 import UnivarsalFilter from "../../../components/Reusable/Filter/UnivarsalFilter.jsx";
@@ -10,19 +11,20 @@ import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
 import { getHeaderStyle } from "./Utils/QmsValidation";
 import { useQmsModule } from "./Utils/useQmsModule";
 import { useRefOptions } from "./Utils/useRefOptions";
+import { usePagedList } from "../../../Hooks/usePagedList.js";
 import {
   recallTabs, recallTabStage, recallTabLabels,
   getRecallFieldGroups, getRecallRequired,
   recallWidthConfig, recallSectionConfigs, recallTableColumns,
 } from "./Utils/Qmsconfigs";
-import { getRecalls, createRecall, updateRecall, deleteRecall } from "./Utils/QmsAPI";
+import { getRecallsPage, createRecall, updateRecall, deleteRecall } from "./Utils/QmsAPI";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
-import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
-import * as FaIcons from "react-icons/fa"; 
-// ── module-level constants (component ke bahar — stable references) ──
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx"; 
 const API = {
-  list: getRecalls, create: createRecall,
-  update: updateRecall, remove: deleteRecall,
+  list: () => getRecallsPage({ page: 1, pageSize: 50 }),
+  create: createRecall,
+  update: updateRecall,
+  remove: deleteRecall,
 };
 
 const initialState = {
@@ -61,6 +63,7 @@ const STATUS_OPTIONS = [
 ];
 
 const EMPTY_FILTERS = { Status: "All", Product: "", Classification: "All" };
+const PAGE_SIZE = 50;
 
 export default function ProductRecallMasterPage({ tab }) {
   const m = useQmsModule({
@@ -75,8 +78,8 @@ export default function ProductRecallMasterPage({ tab }) {
   });
 
   const printWorkflow = usePrintWorkflow({
-    printBaseUrl: '/api/qms-print/recall',      // ✅ 'recall' — registry key se match
-    applName: 'recall',                          // ✅ consistent
+    printBaseUrl: '/api/qms-print/recall',
+    applName: 'recall',
     emailEndpoint: '/api/qms-print/recall',
     shareLinkEndpoint: '/api/qms-print/recall',
   });
@@ -93,24 +96,24 @@ export default function ProductRecallMasterPage({ tab }) {
     [m.history]
   );
 
+  const ModuleIcon = useMemo(() => {
+    const name = tab?.icon_name || tab?.module?.icon_name;
+    return (name && FaIcons[name]) || FaIcons.FaClipboardList;
+  }, [tab?.icon_name, tab?.module?.icon_name]);
+ 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
   const [showFilter, setShowFilter] = useState(false);
-  const clearFilter = useCallback(() => setFilters(EMPTY_FILTERS), []);
-
-  const filteredList = useMemo(() => {
-    const has = (v, f) => String(v || "").toLowerCase().includes(f.toLowerCase());
-    return m.list
-      .map((item, i) => ({ ...item, Sr: i + 1, Status: item.Status || "Initiated" }))
-      .filter((it) =>
-        (filters.Status === "All" || it.Status === filters.Status) &&
-        (filters.Classification === "All" || it.Classification === filters.Classification) &&
-        (!filters.Product || has(it.Product, filters.Product))
-      );
-  }, [m.list, filters]);
-    const ModuleIcon = useMemo(() => {
-        const name = tab?.icon_name || tab?.module?.icon_name;
-        return (name && FaIcons[name]) || FaIcons.FaClipboardList;
-      }, [tab?.icon_name, tab?.module?.icon_name]);
+const { rows, total, loading, handlePageChange, refresh } = usePagedList({
+  fetchPage: getRecallsPage,
+  filters: appliedFilters,
+  mapRow: (r) => ({ ...r, Status: r.Status || "Initiated" }),
+});
+const applyFilter = useCallback(() => setAppliedFilters(filters), [filters]);
+  const clearFilter = useCallback(() => {
+    setFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+  }, []);
 
   const handlePrint = useCallback(() => {
     printWorkflow.openPrintFor(m.formData?.Id, {
@@ -132,11 +135,11 @@ export default function ProductRecallMasterPage({ tab }) {
       <div className="h-full w-full">
         <ERPFormBuilder
           title="Product Recall"
-            subtitle={m.formData?.RecordNo || "New"}   
+          subtitle={m.formData?.RecordNo || "New"}
           TitleIcon={ModuleIcon}
           tabs={recallTabs}
           tabLabels={recallTabLabels}
-          tabStage={recallTabStage} 
+          tabStage={recallTabStage}
           TabIcon={RecallTabIcon}
           fieldGroups={fieldGroups}
           customTabs={customTabs}
@@ -163,14 +166,14 @@ export default function ProductRecallMasterPage({ tab }) {
           settingsDefaults={m.settingsDefaults}
           onSettingsSave={m.onSettingsSave}
           onSave={m.handleSave}
-            onSaveDraft={m.handleSaveDraft}
+          onSaveDraft={m.handleSaveDraft}
           onSignedSave={m.handleSignedSave}
           onDelete={m.handleDelete}
           onModify={m.handleModifyGuarded}
           onPrint={handlePrint}
           canPrint={m.canPrint}
           onNewEntry={m.handleAddNewGuarded}
-          onCancel={m.handleTabExit }
+          onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
           currentRecord={m.list.length ? m.currentIndex + 1 : 0}
           totalRecords={m.list.length}
@@ -187,17 +190,22 @@ export default function ProductRecallMasterPage({ tab }) {
   return (
     <div className="h-full w-full">
       <Table
+        key={JSON.stringify(appliedFilters)}   // filter badle to table page 1 se dobara shuru
+        storageKey="qms-recall"
         title="Product Recall"
         TitleIcon={ModuleIcon}
-        data={filteredList}
+        data={rows}
         columns={recallTableColumns}
         rowKey="Id"
-        loading={m.loading}
+        loading={m.loading || loading}   
+        serverPagination
+       totalRecords={total}  
+        onPageChange={handlePageChange}
+        defaultPageSize={PAGE_SIZE}
         activeTab={m.activeTab}
         showSettingsTab
         onTabChange={m.handleHeaderTabChange}
-        onRefresh={m.loadData}
-        // onAdd={m.rights?.add === 1 ? m.handleAddNew : null}
+        onRefresh={refresh} 
         onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
         onRowDoubleClick={m.handleRowSelect}
         onDeleteMultiple={m.handleDeleteMultiple}
@@ -213,7 +221,7 @@ export default function ProductRecallMasterPage({ tab }) {
               status: STATUS_OPTIONS,
               classification: ["Class I", "Class II", "Class III"],
             }}
-            onApply={() => { }}
+            onApply={applyFilter}
             onClear={clearFilter}
           />
         }

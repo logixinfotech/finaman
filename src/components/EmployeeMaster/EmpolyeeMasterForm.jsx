@@ -525,6 +525,7 @@ const EmployeeMasterForm = forwardRef(
           } else {
             updated[field] = finalValue;
           }
+          if (field === "Department") updated["Designation"] = "";
           if (field === "Same as Correspondence") {
             if (finalValue === true) {
               updated["P_Address Line 1"] = updated["C_Address Line 1"] || "";
@@ -794,8 +795,14 @@ const EmployeeMasterForm = forwardRef(
           options = groupOptions.division.map((g) => g.group_name);
         if (field === "Department")
           options = groupOptions.department.map((g) => g.group_name);
-        if (field === "Designation")
-          options = groupOptions.designation.map((g) => g.group_name);
+         if (field === "Designation") {
+  const deptName = groupOptions.department.find(
+    (d) => String(d.group_id) === String(formData["Department"])
+  )?.group_name;
+  options = groupOptions.designation
+    .filter((g) => !deptName || g.category === deptName)
+    .map((g) => g.group_name);
+}
         if (field === "Grade / Level")
           options = groupOptions.grade.map((g) => g.group_name);
         if (field === "Reporting Manager")

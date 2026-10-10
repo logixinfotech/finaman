@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import ERPHeader from "../../../../../components/Reusable/form/HeaderForm";
 import ERPAutocomplete from "../../../../../components/Reusable/input/ERPAutocomplete";
+import Table from "../../../../../components/Reusable/table/Table";
 import {
   BaseButton,
   DiscardButton,
@@ -16,12 +17,8 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
-  Search,
   X,
-  CheckCircle2,
   Calendar,
-  CheckSquare,
-  Square,
   Sparkles,
   ArrowRight,
   Lock,
@@ -34,7 +31,11 @@ import {
   fetchActiveDeductionHeads,
   fetchActiveContributionHeads,
   createSalaryStructure,
+  fetchSalaryStructures,
+  fetchSalaryStructureById,
 } from "../../../../../utils/api";
+import { useGroupOptions } from "../../../../../Hooks/useUserGroupOption";
+import SalaryCalculatorSearch from "./SalaryCalculatorSearch";
 
 const FONT = `'Inter', 'Tahoma', system-ui, sans-serif`;
 
@@ -63,7 +64,7 @@ const DEFAULT_DEDUCTION_HEADS = [
   { deduction_head_id: 2, deduction_name: "EPF", head_code: "EPF", type: "percentage" },
 ];
 
-const getEmpId = (emp, idx) => {
+const getEmpId = (emp, idx = 0) => {
   if (!emp) return `emp-${idx}`;
   const id =
     emp.employee_id ??
@@ -80,6 +81,15 @@ const getEmpId = (emp, idx) => {
 };
 
 export default function SalaryCalculator() {
+  const [activeTab, setActiveTab] = useState("entry");
+  const [salaryStructures, setSalaryStructures] = useState([]);
+  const [loadingStructures, setLoadingStructures] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState("Pending");
+  const [sidebarSearch, setSidebarSearch] = useState("");
+  const [selectedEmpId, setSelectedEmpId] = useState("");
+
+  const { options: groupOptions } = useGroupOptions();
+
   const [primarySelect, setPrimarySelect] = useState("ctc");
   const [primaryVal, setPrimaryVal] = useState("0");
   const [lockPrimary, setLockPrimary] = useState(true);
@@ -96,7 +106,6 @@ export default function SalaryCalculator() {
   const [gratOn, setGratOn] = useState(true);
   const [ptOn, setPtOn] = useState(false);
   const [ptVal, setPtVal] = useState("200");
-
 
   const [lastEdited, setLastEdited] = useState("basic");
   const [stored, setStored] = useState({ ctc: 0, gross: 0, net: 0 });
@@ -121,7 +130,6 @@ export default function SalaryCalculator() {
 
   // Assignment Form State
   const [selectedEmpIds, setSelectedEmpIds] = useState(new Set());
-  const [searchEmp, setSearchEmp] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -347,10 +355,45 @@ export default function SalaryCalculator() {
   const ctcWithVariable = result.ctcMonthly + variableMonthlyEquiv;
   const isEsiDisabled = result.gross > 21000;
 
-  // Auto-load master data on mount so Income Head Master mappings are available immediately
+  const loadSalaryStructures = useCallback(async () => {
+    try {
+      setLoadingStructures(true);
+      const res = await fetchSalaryStructures();
+      const data = Array.isArray(res) ? res : res?.data || [];
+      setSalaryStructures(data);
+    } catch (err) {
+      console.error("Failed to load salary structures:", err);
+    } finally {
+      setLoadingStructures(false);
+    }
+  }, []);
+
+  // Auto-load master data and salary structures on mount
   useEffect(() => {
     loadMasterData();
-  }, []);
+    loadSalaryStructures();
+  }, [loadSalaryStructures]);
+
+  // Load employees only without touching master head configurations or resetting calculator
+  const loadEmployeesOnly = async () => {
+    setLoadingMaster(true);
+    try {
+      const empRes = await getActledList();
+      const empData = empRes?.data || empRes || [];
+      const activeEmpData = (Array.isArray(empData) ? empData : []).filter((e) => {
+        const isApproved = e.Approved === undefined || e.Approved === null ? true : Number(e.Approved) === 1;
+        const notLeft = !e.Dol && !e.status_leaving_date && !e["Status Leaving Date"];
+        const st = (e.status || e.Status || (isApproved ? "Active" : "Inactive")).toString().toLowerCase();
+        const isActive = st === "active" || st === "1" || st === "true";
+        return isApproved && notLeft && isActive;
+      });
+      setEmployees(activeEmpData);
+    } catch (err) {
+      console.error("Employee list load error:", err);
+    } finally {
+      setLoadingMaster(false);
+    }
+  };
 
   // Load master data for employee assignment & head mapping
   const loadMasterData = async () => {
@@ -385,13 +428,17 @@ export default function SalaryCalculator() {
       setContributionHeads(Array.isArray(conData) ? conData : []);
 
       if (fetchedIncome.length > 0) {
-        setSelectedIncomeHeadIds(
-          new Set(fetchedIncome.map((h) => String(h.income_head_id || h.id || h.head_code || h.income_name || h.name)))
+        setSelectedIncomeHeadIds((prev) =>
+          prev && prev.size > 0
+            ? prev
+            : new Set(fetchedIncome.map((h) => String(h.income_head_id || h.id || h.head_code || h.income_name || h.name)))
         );
       }
       if (fetchedDeductions.length > 0) {
-        setSelectedDeductionHeadIds(
-          new Set(fetchedDeductions.map((h) => String(h.deduction_head_id || h.id || h.head_code || h.deduction_name || h.name)))
+        setSelectedDeductionHeadIds((prev) =>
+          prev && prev.size > 0
+            ? prev
+            : new Set(fetchedDeductions.map((h) => String(h.deduction_head_id || h.id || h.head_code || h.deduction_name || h.name)))
         );
       }
     } catch (err) {
@@ -404,7 +451,394 @@ export default function SalaryCalculator() {
   const handleOpenAssignModal = () => {
     setShowAssignModal(true);
     setSelectedEmpIds(new Set());
-    loadMasterData();
+    if (employees.length === 0) {
+      loadEmployeesOnly();
+    }
+  };
+
+  // Status mapping & counts
+  const haveStructure = useMemo(() => {
+    const set = new Set();
+    (salaryStructures || []).forEach((s) => {
+      if (s.employee_id) set.add(String(s.employee_id));
+    });
+    return set;
+  }, [salaryStructures]);
+
+  const employeesWithStatus = useMemo(() => {
+    return (employees || []).map((emp, idx) => {
+      const empId = String(getEmpId(emp, idx));
+      const isCreated = haveStructure.has(empId);
+      const matchingGrade = (groupOptions?.grade || []).find(
+        (g) => String(g.value) === String(emp.Op_id1 || emp.grade)
+      );
+      return {
+        ...emp,
+        _id: empId,
+        _status: isCreated ? "Created" : "Pending",
+        _gradeLabel: matchingGrade ? matchingGrade.label : (emp.grade_label || emp.Op_id1 || emp.grade || ""),
+      };
+    });
+  }, [employees, haveStructure, groupOptions?.grade]);
+
+  const pendingEmp = useMemo(
+    () => employeesWithStatus.filter((e) => e._status === "Pending").length,
+    [employeesWithStatus]
+  );
+  const createdEmp = useMemo(
+    () => employeesWithStatus.filter((e) => e._status === "Created").length,
+    [employeesWithStatus]
+  );
+  const totalEmp = employeesWithStatus.length;
+
+  const sidebarEmployees = useMemo(() => {
+    let list = employeesWithStatus;
+    if (sidebarTab !== "All") {
+      list = list.filter((e) => e._status === sidebarTab);
+    }
+    if (sidebarSearch.trim()) {
+      const q = sidebarSearch.toLowerCase();
+      list = list.filter((e) => {
+        const name = (e.Led_name || e.employee_name || e.name || "").toLowerCase();
+        const id = String(e.Actled_id || e.employee_id || e._id || "").toLowerCase();
+        const grade = String(e._gradeLabel || "").toLowerCase();
+        return name.includes(q) || id.includes(q) || grade.includes(q);
+      });
+    }
+    return list;
+  }, [employeesWithStatus, sidebarTab, sidebarSearch]);
+
+  // Latest updated record per employee (deduplicated)
+  const latestStructuresList = useMemo(() => {
+    if (!Array.isArray(salaryStructures) || salaryStructures.length === 0) return [];
+    const map = new Map();
+    // Sort so latest record is prioritized
+    const sorted = [...salaryStructures].sort((a, b) => {
+      const dateA = new Date(a.effective_from || 0).getTime();
+      const dateB = new Date(b.effective_from || 0).getTime();
+      if (dateA !== dateB) return dateB - dateA;
+      const idA = Number(a.salary_structure_id || a.id || 0);
+      const idB = Number(b.salary_structure_id || b.id || 0);
+      return idB - idA;
+    });
+
+    sorted.forEach((item) => {
+      const empId = String(item.employee_id || "");
+      if (empId && !map.has(empId)) {
+        const matchingGrade = (groupOptions?.grade || []).find(
+          (g) => String(g.value) === String(item.grade)
+        );
+        map.set(empId, {
+          ...item,
+          grade_label: matchingGrade ? matchingGrade.label : (item.grade || "—"),
+          ctc: item.ctc != null && !isNaN(Number(item.ctc)) ? Number(item.ctc).toLocaleString("en-IN") : (item.ctc || "—"),
+          gross_monthly: item.gross_monthly != null && !isNaN(Number(item.gross_monthly)) ? Number(item.gross_monthly).toLocaleString("en-IN") : (item.gross_monthly || "—"),
+          net_salary: item.net_salary != null && !isNaN(Number(item.net_salary)) ? Number(item.net_salary).toLocaleString("en-IN") : (item.net_salary || "—"),
+          status: item.status || "Active",
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [salaryStructures, groupOptions?.grade]);
+
+  const searchColumns = [
+    { key: "employee_name", label: "Employee" },
+    { key: "grade_label", label: "Grade" },
+    { key: "type", label: "Type" },
+    { key: "effective_from", label: "Effective From" },
+    { key: "ctc", label: "CTC" },
+    { key: "gross_monthly", label: "Gross/mo" },
+    { key: "net_salary", label: "Net" },
+    { key: "status", label: "Status" },
+  ];
+
+  // Load structure figures into Calculator inputs
+  const loadStructureIntoCalculator = (structData, empRecord = null) => {
+    if (!structData) return;
+
+    const ctcVal = Number(structData.ctc) || 0;
+    const grossVal = Number(structData.gross_monthly || structData.total_income) || 0;
+    const netVal = Number(structData.net_salary) || 0;
+
+    // Set Primary Mode and values
+    const structType = (structData.type || "").toLowerCase();
+    if (structType === "gross") {
+      setPrimarySelect("gross");
+      setPrimaryVal(String(Math.round(grossVal)));
+      setLastEdited("gross");
+    } else if (structType.includes("net")) {
+      setPrimarySelect("net");
+      setPrimaryVal(String(Math.round(netVal)));
+      setLastEdited("net");
+    } else {
+      setPrimarySelect("ctc");
+      setPrimaryVal(String(Math.round(ctcVal > 0 ? ctcVal : grossVal)));
+      setLastEdited("ctc");
+    }
+    setLockPrimary(true);
+
+    const incLines = Array.isArray(structData.incomeLines) ? structData.incomeLines : [];
+    const dedLines = Array.isArray(structData.deductionLines) ? structData.deductionLines : [];
+    const conLines = Array.isArray(structData.contributionLines) ? structData.contributionLines : [];
+
+    const incList = incomeHeads.length > 0 ? incomeHeads : DEFAULT_INCOME_HEADS;
+    const dedList = deductionHeads.length > 0 ? deductionHeads : DEFAULT_DEDUCTION_HEADS;
+
+    let basicAmount = 0;
+    let medAmount = 0;
+    let trpAmount = 0;
+    let varAmount = 0;
+
+    const newIncomeConfigs = {};
+    const activeIncIds = new Set();
+
+    if (incLines.length > 0) {
+      incLines.forEach((line) => {
+        const lineName = (line.head_name || line.income_name || line.name || line.head_code || "").toLowerCase();
+        const lineHeadId = String(line.head_id || line.income_head_id || line.id || "");
+        const mAmount = Number(line.amount !== undefined && line.amount !== null ? line.amount : line.monthly_amount) || 0;
+
+        const matchedHead = incList.find((h) => {
+          const hId = String(h.income_head_id || h.id || h.head_code || "");
+          const hName = (h.income_name || h.name || "").toLowerCase();
+          const hCode = (h.head_code || h.code || "").toLowerCase();
+          return (
+            (hId && (hId === lineHeadId || hId === String(line.income_head_id))) ||
+            (hName && (hName === lineName || hName.includes(lineName) || lineName.includes(hName))) ||
+            (hCode && hCode === lineName)
+          );
+        });
+
+        const cfgId = matchedHead
+          ? String(matchedHead.income_head_id || matchedHead.id || matchedHead.head_code || matchedHead.income_name || matchedHead.name)
+          : String(line.income_head_id || line.head_id || line.head_name);
+
+        activeIncIds.add(cfgId);
+
+        if (lineName.includes("basic")) {
+          basicAmount = mAmount;
+        } else if (lineName.includes("medical")) {
+          medAmount = mAmount;
+        } else if (lineName.includes("transport") || lineName.includes("conveyance")) {
+          trpAmount = mAmount;
+        } else if (lineName.includes("variable") || lineName.includes("bonus") || lineName.includes("perf")) {
+          varAmount = mAmount * 12;
+        }
+
+        newIncomeConfigs[cfgId] = {
+          formula_type: line.formula_type || (line.percentage ? "PERCENT_BASIC" : "FIXED"),
+          value: line.percentage ? String(line.percentage) : String(mAmount),
+        };
+      });
+    }
+
+    // If no heads were mapped (e.g. only header figures were saved), enable all default heads
+    if (activeIncIds.size === 0) {
+      incList.forEach((h) => {
+        const cfgId = String(h.income_head_id || h.id || h.head_code || h.income_name || h.name);
+        activeIncIds.add(cfgId);
+      });
+    }
+
+    setSelectedIncomeHeadIds(activeIncIds);
+    setIncomeHeadConfigs((prev) => ({ ...prev, ...newIncomeConfigs }));
+
+    if (basicAmount > 0) {
+      setBasicVal(String(Math.round(basicAmount)));
+      setLockBasic(true);
+    } else {
+      const fallbackBasic = Math.round(grossVal > 0 ? grossVal * 0.5 : (ctcVal * 0.5));
+      if (fallbackBasic > 0) setBasicVal(String(fallbackBasic));
+    }
+
+    if (medAmount > 0) setMedicalVal(String(Math.round(medAmount)));
+    else setMedicalVal("0");
+
+    if (trpAmount > 0) setTransportVal(String(Math.round(trpAmount)));
+    else setTransportVal("0");
+
+    if (varAmount > 0) setVariableVal(String(Math.round(varAmount)));
+    else setVariableVal("0");
+
+    // Deductions & Statutory items
+    const activeDedIds = new Set();
+    const newDedConfigs = {};
+
+    let hasPf = false;
+    let hasEsi = false;
+    let hasGrat = false;
+    let hasPt = false;
+    let ptAmount = "200";
+
+    if (dedLines.length > 0) {
+      dedLines.forEach((line) => {
+        const lineName = (line.head_name || line.deduction_name || line.name || line.head_code || "").toLowerCase();
+        const lineHeadId = String(line.head_id || line.deduction_head_id || line.id || "");
+        const mAmount = Number(line.amount !== undefined && line.amount !== null ? line.amount : line.monthly_amount) || 0;
+
+        const matchedDed = dedList.find((h) => {
+          const hId = String(h.deduction_head_id || h.id || h.head_code || "");
+          const hName = (h.deduction_name || h.name || "").toLowerCase();
+          const hCode = (h.head_code || h.code || "").toLowerCase();
+          return (
+            (hId && (hId === lineHeadId || hId === String(line.deduction_head_id))) ||
+            (hName && (hName === lineName || hName.includes(lineName) || lineName.includes(hName))) ||
+            (hCode && hCode === lineName)
+          );
+        });
+
+        const cfgId = matchedDed
+          ? String(matchedDed.deduction_head_id || matchedDed.id || matchedDed.head_code || matchedDed.deduction_name || matchedDed.name)
+          : String(line.deduction_head_id || line.head_id || line.head_name);
+
+        activeDedIds.add(cfgId);
+
+        newDedConfigs[cfgId] = {
+          formula_type: line.formula_type || (line.percentage ? "PERCENT_BASIC" : "FIXED"),
+          value: line.percentage ? String(line.percentage) : String(mAmount),
+        };
+
+        if (lineName.includes("pf") || lineName.includes("epf") || lineName.includes("provident")) {
+          hasPf = true;
+        }
+        if (lineName.includes("esi") || lineName.includes("esic")) {
+          hasEsi = true;
+        }
+        if (lineName.includes("professional") || lineName.includes("pt")) {
+          hasPt = true;
+          if (mAmount > 0) ptAmount = String(Math.round(mAmount));
+        }
+        if (lineName.includes("grat")) {
+          hasGrat = true;
+        }
+      });
+    }
+
+    (conLines || []).forEach((line) => {
+      const lineName = (line.head_name || line.contribution_name || line.name || line.head_code || "").toLowerCase();
+      if (lineName.includes("grat")) hasGrat = true;
+      if (lineName.includes("pf")) hasPf = true;
+      if (lineName.includes("esi")) hasEsi = true;
+    });
+
+    if (dedLines.length === 0 && conLines.length === 0) {
+      hasPf = true;
+      hasEsi = true;
+      hasGrat = true;
+      dedList.forEach((h) => {
+        const cfgId = String(h.deduction_head_id || h.id || h.head_code || h.deduction_name || h.name);
+        activeDedIds.add(cfgId);
+      });
+    }
+
+    setPfOn(hasPf);
+    setEsiOn(hasEsi);
+    setGratOn(hasGrat);
+    setPtOn(hasPt);
+    if (ptAmount) setPtVal(ptAmount);
+
+    setSelectedDeductionHeadIds(activeDedIds);
+    setDeductionHeadConfigs((prev) => ({ ...prev, ...newDedConfigs }));
+
+    const targetEmpId = String(structData.employee_id || empRecord?.Actled_id || empRecord?.employee_id || empRecord?._id || "");
+    if (targetEmpId) {
+      setSelectedEmpIds(new Set([targetEmpId]));
+      setSelectedEmpId(targetEmpId);
+    }
+
+    if (structData.effective_from) {
+      setEffectiveFrom(structData.effective_from.split("T")[0]);
+    }
+    if (structData.revision_reason) {
+      setRevisionReason(structData.revision_reason);
+    }
+
+    setActiveTab("entry");
+  };
+
+  const handleTableRowDoubleClick = async (row) => {
+    if (!row) return;
+    const structId = row.salary_structure_id || row.id;
+    if (structId) {
+      try {
+        const full = await fetchSalaryStructureById(structId);
+        loadStructureIntoCalculator(full?.data || full || row);
+        alertSuccess("Loaded Structure", `Loaded salary structure for ${row.employee_name || "employee"}`);
+      } catch (e) {
+        console.error("Error fetching full structure:", e);
+        loadStructureIntoCalculator(row);
+      }
+    } else {
+      loadStructureIntoCalculator(row);
+    }
+  };
+
+  const handleSidebarEmployeePick = async (emp) => {
+    const empId = String(emp.Actled_id || emp.employee_id || emp._id);
+    setSelectedEmpId(empId);
+
+    if (emp._status === "Created") {
+      const struct = salaryStructures.find((s) => String(s.employee_id) === empId);
+      if (struct && (struct.salary_structure_id || struct.id)) {
+        try {
+          const full = await fetchSalaryStructureById(struct.salary_structure_id || struct.id);
+          loadStructureIntoCalculator(full?.data || full || struct, emp);
+          alertSuccess("Loaded Structure", `Loaded salary structure for ${emp.Led_name || emp.name || empId}`);
+          return;
+        } catch (e) {
+          console.error("Error fetching full structure:", e);
+          loadStructureIntoCalculator(struct, emp);
+          return;
+        }
+      }
+    }
+
+    // Pending employee: select for assignment and switch to Entry tab
+    setSelectedEmpIds(new Set([empId]));
+    setActiveTab("entry");
+    alertSuccess("Employee Selected", `Selected ${emp.Led_name || emp.name || empId} for calculation & assignment.`);
+  };
+
+  const loadedEmployee = useMemo(() => {
+    if (!selectedEmpId) return null;
+    return (
+      employeesWithStatus.find(
+        (e) => String(e.Actled_id || e.employee_id || e._id) === String(selectedEmpId)
+      ) || null
+    );
+  }, [employeesWithStatus, selectedEmpId]);
+
+  const employeeOptions = useMemo(() => {
+    return employeesWithStatus.map((emp) => {
+      const id = String(emp.Actled_id || emp.employee_id || emp._id);
+      const code = emp.Employee_code || emp.employee_code || id;
+      const name = emp.Led_name || emp.employee_name || emp.name || `Employee #${id}`;
+      return `${name} (${code})`;
+    });
+  }, [employeesWithStatus]);
+
+  const handleSelectEmployeeDropdown = async (selectedLabel) => {
+    if (!selectedLabel) {
+      setSelectedEmpId("");
+      setSelectedEmpIds(new Set());
+      return;
+    }
+    const found = employeesWithStatus.find((emp) => {
+      const id = String(emp.Actled_id || emp.employee_id || emp._id);
+      const code = emp.Employee_code || emp.employee_code || id;
+      const name = emp.Led_name || emp.employee_name || emp.name || `Employee #${id}`;
+      const label = `${name} (${code})`;
+      return (
+        label.toLowerCase() === selectedLabel.toLowerCase() ||
+        name.toLowerCase() === selectedLabel.toLowerCase() ||
+        code.toLowerCase() === selectedLabel.toLowerCase() ||
+        id === selectedLabel
+      );
+    });
+    if (found) {
+      await handleSidebarEmployeePick(found);
+    }
   };
 
   // Head Mapping Engine - Dynamic based on master data & active selections
@@ -728,56 +1162,16 @@ export default function SalaryCalculator() {
     }
   }, [primarySelect, stored, lockPrimary]);
 
-  // Filtered active employees
-  const filteredEmployees = useMemo(() => {
-    const safeEmpList = Array.isArray(employees) ? employees : [];
-    if (!searchEmp.trim()) return safeEmpList;
-    const q = searchEmp.toLowerCase();
-    return safeEmpList.filter((e) => {
-      const name = (
-        e.full_name ||
-        e.Led_name ||
-        e.employee_name ||
-        e.name ||
-        ""
-      ).toLowerCase();
-      const code = (
-        e.employee_code ||
-        e.Employee_code ||
-        e.Led_code ||
-        e.code ||
-        ""
-      ).toLowerCase();
-      const dept = (e.department || "").toLowerCase();
-      return name.includes(q) || code.includes(q) || dept.includes(q);
-    });
-  }, [employees, searchEmp]);
-
-  const toggleSelectEmp = (empId) => {
-    setSelectedEmpIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(empId)) next.delete(empId);
-      else next.add(empId);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (
-      selectedEmpIds.size === filteredEmployees.length &&
-      filteredEmployees.length > 0
-    ) {
-      setSelectedEmpIds(new Set());
-    } else {
-      const allIds = filteredEmployees.map((e, idx) => getEmpId(e, idx));
-      setSelectedEmpIds(new Set(allIds));
-    }
-  };
-
-  // Submit Bulk Structure Assignment
+  // Submit Structure Assignment for active loaded/selected employee
   const handleAssignSubmit = async () => {
-    if (selectedEmpIds.size === 0) {
-      alertWarning("Select Employees", "Please select at least one employee.");
+    const targetEmp =
+      loadedEmployee ||
+      employees.find(
+        (e, idx) => String(getEmpId(e, idx)) === String(selectedEmpId)
+      );
+
+    if (!targetEmp && !selectedEmpId) {
+      alertWarning("Select Employee", "Please select an employee before assigning structure.");
       return;
     }
     if (!effectiveFrom) {
@@ -786,63 +1180,49 @@ export default function SalaryCalculator() {
     }
 
     setSavingAssign(true);
-    let successCount = 0;
-    let failCount = 0;
 
     try {
-      const selectedList = employees.filter((e, idx) =>
-        selectedEmpIds.has(getEmpId(e, idx))
-      );
+      const empIdStr = targetEmp
+        ? String(getEmpId(targetEmp, 0))
+        : String(selectedEmpId);
+      const empName = targetEmp
+        ? targetEmp.Led_name || targetEmp.employee_name || targetEmp.name || ""
+        : "";
+      const empGrade = targetEmp
+        ? targetEmp.Op_id1 || targetEmp.grade || targetEmp.designation || null
+        : null;
 
-      for (const emp of selectedList) {
-        const empIdStr = getEmpId(emp, 0);
-        const payload = {
-          employee_id: empIdStr,
-          employee_name: emp.Led_name || emp.employee_name || emp.name || "",
-          grade: emp.grade || emp.designation || null,
-          type: "CTC",
-          effective_from: effectiveFrom,
-          ctc: Math.round(displayCtcMonthly),
-          gross_monthly: Math.round(displayGrossMonthly),
-          total_income: Math.round(displayGrossMonthly),
-          total_deduction: Math.round(displayDeductionMonthly),
-          net_salary: Math.round(displayTakeHomeMonthly),
-          revision_reason: revisionReason,
-          status: "Active",
-          incomeLines: mappedIncomeLines,
-          deductionLines: mappedDeductionLines,
-          contributionLines: mappedContributionLines,
-        };
+      const payload = {
+        employee_id: empIdStr,
+        employee_name: empName,
+        grade: empGrade,
+        type: "CTC",
+        effective_from: effectiveFrom,
+        ctc: Math.round(displayCtcMonthly),
+        gross_monthly: Math.round(displayGrossMonthly),
+        total_income: Math.round(displayGrossMonthly),
+        total_deduction: Math.round(displayDeductionMonthly),
+        net_salary: Math.round(displayTakeHomeMonthly),
+        revision_reason: revisionReason,
+        status: "Active",
+        incomeLines: mappedIncomeLines,
+        deductionLines: mappedDeductionLines,
+        contributionLines: mappedContributionLines,
+      };
 
-        try {
-          const res = await createSalaryStructure(payload);
-          if (res?.success || res?.data) {
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } catch (e) {
-          console.error(`Assignment error for ${empIdStr}:`, e);
-          failCount++;
-        }
-      }
-
-      if (failCount === 0) {
+      const res = await createSalaryStructure(payload);
+      if (res?.success || res?.data) {
         alertSuccess(
           "Structure Assigned",
-          `Salary structure assigned successfully to ${successCount} employee(s)!`
+          `Salary structure assigned successfully to ${empName || empIdStr}!`
         );
+        setShowAssignModal(false);
+        loadSalaryStructures();
       } else {
-        alertWarning(
-          "Assignment Completed",
-          `Assigned to ${successCount} employee(s), but ${failCount} failed.`
-        );
+        alertError("Assignment Failed", res?.message || "Failed to assign salary structure.");
       }
-
-      setShowAssignModal(false);
-      setSelectedEmpIds(new Set());
     } catch (err) {
-      console.error("Bulk assign error:", err);
+      console.error("Assign error:", err);
       alertError("Assignment Error", err?.message || "Error assigning structure");
     } finally {
       setSavingAssign(false);
@@ -859,13 +1239,15 @@ export default function SalaryCalculator() {
     setEsiOn(true);
     setGratOn(true);
     setPtOn(false);
+    setSelectedEmpId("");
+    setSelectedEmpIds(new Set());
     setIncomeHeadConfigs({});
     setDeductionHeadConfigs({});
     const activeIncomeList = incomeHeads.length > 0 ? incomeHeads : DEFAULT_INCOME_HEADS;
     const activeDeductionList = deductionHeads.length > 0 ? deductionHeads : DEFAULT_DEDUCTION_HEADS;
     setSelectedIncomeHeadIds(new Set(activeIncomeList.map((h) => getIncomeHeadConfig(h).id)));
     setSelectedDeductionHeadIds(new Set(activeDeductionList.map((h) => String(h.deduction_head_id || h.id || h.head_code || h.deduction_name || h.name))));
-    alertSuccess("Form Reset", "All inputs and statutory configurations have been reset.");
+    alertSuccess("Form Reset", "All inputs, employee selection, and statutory configurations have been reset.");
   };
 
   const otherKeys = ["ctc", "gross", "net"].filter((k) => k !== primarySelect);
@@ -873,608 +1255,668 @@ export default function SalaryCalculator() {
 
   return (
     <div
-      className="w-full h-full md:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden text-[13px] text-[#0f172a] leading-[1.4]"
-      style={{ fontFamily: FONT }}
+      className="w-full min-h-[calc(100dvh-100px)] lg:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-y-auto lg:overflow-hidden text-[13px] text-[#0f172a] leading-[1.4]" style={{ fontFamily: FONT }}
     >
-      {/* ERP Header Bar */}
-      <ERPHeader
-        title="Salary Calculator"
-        TitleIcon={Calculator}
-        isViewMode={true}
-        hideActionButtons={true}
-      />
+      {activeTab === "entry" ? (
+        <>
+          {/* ERP Header Bar */}
+          <ERPHeader
+            title="Salary Calculator"
+            TitleIcon={Calculator}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            isViewMode={true}
+            hideActionButtons={true}
+          />
 
-      <div className="flex-1 overflow-hidden p-2 md:p-3 h-full">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch h-full overflow-hidden">
-          {/* LEFT: CONTROL PANEL (6 Cols) */}
-          <div className="lg:col-span-6 bg-white rounded-md border border-gray-300 shadow-sm overflow-hidden flex flex-col h-full">
-            {/* Form Section Header */}
-            <div className="bg-slate-50 border-b border-gray-200 px-3.5 py-2 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-4 bg-blue-600 rounded-full shrink-0"></div>
-                <div className="flex items-baseline gap-2">
-                  <h2 className="text-[13.5px] font-semibold text-[#0f172a]">
-                    Control Panel
-                  </h2>
-                  <span className="text-[10.5px] text-[#64748b]">
-                    Primary inputs, editable in any order
-                  </span>
-                </div>
-              </div>
+          <div className="flex-1 lg:overflow-hidden p-2 md:p-3 lg:h-full">
+            <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch lg:h-full lg:overflow-hidden">
+              {/* LEFT: CONTROL PANEL (6 Cols) */}
+              <div className="lg:col-span-6 bg-white rounded-md border border-gray-300 shadow-sm overflow-hidden flex flex-col lg:h-full">
 
-              {/* Action Buttons: Reset + Assign to Employees */}
-              <div className="flex items-center gap-2">
-                <ResetButton onClick={handleResetForm} />
-                <BaseButton
-                  label="Assign to Employees"
-                  icon={<Users size={16} />}
-                  tone="emerald"
-                  onClick={handleOpenAssignModal}
-                />
-              </div>
-            </div>
-
-            <div className="p-2.5 space-y-2.5 flex-1 overflow-y-auto">
-              {/* Primary Figure Select Dropdown with Inline Input & Fix Button */}
-              <div className="space-y-1.5 bg-[#fafbfd] p-2.5 rounded-md border border-gray-200">
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                  <div className="sm:col-span-5">
-                    <ERPAutocomplete
-                      value={
-                        primarySelect === "ctc"
-                          ? "Cost to Company (CTC)"
-                          : primarySelect === "gross"
-                            ? "Gross Salary"
-                            : "Net Hand Salary"
-                      }
-                      options={["Cost to Company (CTC)", "Gross Salary", "Net Hand Salary"]}
-                      onChange={(val) => {
-                        const mapping = {
-                          "Cost to Company (CTC)": "ctc",
-                          "Gross Salary": "gross",
-                          "Net Hand Salary": "net",
-                        };
-                        const key = mapping[val] || "ctc";
-                        setPrimarySelect(key);
-                        setLastEdited(key);
-                      }}
-                      className="h-[28px] px-2 text-[12px] font-medium text-[#0f172a] border border-gray-300 rounded-md outline-none bg-white focus:border-blue-500 focus:ring-1 focus:ring-[#1a56db] w-full"
-                    />
+                {/* Form Section Header */}
+                <div className="bg-slate-50 border-b border-gray-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-1.5 h-4 bg-blue-600 rounded-full shrink-0"></div>
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      <h2 className="text-[13px] font-semibold text-[#0f172a] whitespace-nowrap">
+                        Control Panel
+                      </h2>
+                      <span className="text-[10px] text-[#64748b] hidden 2xl:inline whitespace-nowrap">
+                        Primary inputs, editable in any order
+                      </span>
+                    </div>
                   </div>
-                  <div className="sm:col-span-7 flex items-center w-full">
-                    <div className="w-full flex items-center bg-white border border-gray-300 rounded-md px-2 h-[28px] focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-[#1a56db] transition-all">
-                      <span className="text-[12px] text-[#64748b] font-mono mr-1">₹</span>
-                      <input
-                        type="number"
-                        value={primaryVal}
-                        onChange={(e) => {
-                          setLastEdited(primarySelect);
-                          setPrimaryVal(e.target.value);
-                        }}
-                        className="w-full text-right font-mono text-[13px] font-semibold text-[#0f172a] bg-transparent focus:outline-none"
+
+                  {/* Employee Dropdown + Action Buttons */}
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 min-w-0 flex-1 justify-end">
+                    {/* Employee Dropdown Selector */}
+                    <div className="w-full sm:w-[230px] relative">
+                      <ERPAutocomplete
+                        value={
+                          loadedEmployee
+                            ? `${loadedEmployee.Led_name || loadedEmployee.employee_name || loadedEmployee.name} (${loadedEmployee.Employee_code || loadedEmployee.employee_code || loadedEmployee.Actled_id})`
+                            : ""
+                        }
+                        options={employeeOptions}
+                        onChange={handleSelectEmployeeDropdown}
+                        placeholder="👤 Select / Loaded Employee..."
+                        className={`h-[28px] px-2 text-[11.5px] font-medium border rounded-md outline-none transition-all w-full ${loadedEmployee
+                          ? "bg-emerald-50 text-emerald-900 border-emerald-400 font-semibold focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                          : "bg-white text-slate-700 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          }`}
                       />
+                      {loadedEmployee && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEmpId("");
+                            setSelectedEmpIds(new Set());
+                          }}
+                          title="Clear loaded employee"
+                          className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-0.5 rounded-full z-10"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
                     </div>
 
-                    {/* Fix Selected Figure Switch - hidden / display: none */}
-                    <label
-                      className="hidden"
-                      style={{ display: "none" }}
-                      title={`Fix ${primarySelect === "ctc" ? "CTC" : primarySelect === "gross" ? "Gross" : "Net Hand"} — keep unchanged while editing other components`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={lockPrimary}
-                        onChange={(e) => setLockPrimary(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-8 h-4.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#0f6b5c] "></div>
-                    </label>
+                    <ResetButton onClick={handleResetForm} />
+                    <BaseButton
+                      label=""
+                      icon={<Users size={16} />}
+                      tone="emerald"
+                      onClick={handleOpenAssignModal}
+                    />
                   </div>
                 </div>
 
-                {/* Inline Stats Pill for other calculated figures */}
-                <div className="flex items-center justify-between text-[10.5px] font-medium bg-[#f0f4f8] px-2.5 py-1 rounded-md border border-[#d5dfeb] text-[#334155]">
-                  {otherKeys.map((k) => (
-                    <span key={k} className="flex items-center gap-1.5">
-                      <span className="font-medium text-[#64748b]">{otherNames[k]}:</span>
-                      <span className="font-mono font-semibold text-[#0f6b5c]">
-                        ₹{(stored[k] || 0).toLocaleString("en-IN")}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              </div>
+                <div className="p-2.5 space-y-2.5 flex-1 lg:overflow-y-auto">
+                  {/* Primary Figure Select Dropdown with Inline Input & Fix Button */}
+                  <div className="space-y-1.5 bg-[#fafbfd] p-2.5 rounded-md border border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                      <div className="sm:col-span-5">
+                        <ERPAutocomplete
+                          value={
+                            primarySelect === "ctc"
+                              ? "Cost to Company (CTC)"
+                              : primarySelect === "gross"
+                                ? "Gross Salary"
+                                : "Net Hand Salary"
+                          }
+                          options={["Cost to Company (CTC)", "Gross Salary", "Net Hand Salary"]}
+                          onChange={(val) => {
+                            const mapping = {
+                              "Cost to Company (CTC)": "ctc",
+                              "Gross Salary": "gross",
+                              "Net Hand Salary": "net",
+                            };
+                            const key = mapping[val] || "ctc";
+                            setPrimarySelect(key);
+                            setLastEdited(key);
+                          }}
+                          className="h-[28px] px-2 text-[12px] font-medium text-[#0f172a] border border-gray-300 rounded-md outline-none bg-white focus:border-blue-500 focus:ring-1 focus:ring-[#1a56db] w-full"
+                        />
+                      </div>
+                      <div className="sm:col-span-7 flex items-center w-full">
+                        <div className="w-full flex items-center flex-1 sm:flex-none bg-white border border-gray-300 rounded-md px-2 h-[28px] focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-[#1a56db] transition-all">
+                          <span className="text-[12px] text-[#64748b] font-mono mr-1">₹</span>
+                          <input
+                            type="number"
+                            value={primaryVal}
+                            onChange={(e) => {
+                              setLastEdited(primarySelect);
+                              setPrimaryVal(e.target.value);
+                            }}
+                            className="w-full text-right font-mono text-[13px] font-semibold text-[#0f172a] bg-transparent focus:outline-none"
+                          />
+                        </div>
 
-              {/* DYNAMIC SECTION 1: Earnings (Income heads) Card */}
-              <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
-                <div className="px-3 py-1.5 bg-[#eef5fc] border-b border-gray-200 flex items-center justify-between">
-                  <span className="text-[11.5px] font-semibold text-[#0f172a]    tracking-wider flex items-center gap-1.5">
-                    <div className="w-1.5 h-3.5 bg-[#1a56db] rounded-full shrink-0"></div>
-                    Earnings (Income heads)
-                  </span>
-                  <span className="text-[10px] font-medium text-[#1a56db] bg-blue-100/80 px-1.5 py-0.2 rounded">
-                    {selectedIncomeHeadIds.size} selected
-                  </span>
-                </div>
-
-                <div className="p-2 space-y-1.5 bg-[#fafbfd]">
-                  {(incomeHeads.length > 0 ? incomeHeads : DEFAULT_INCOME_HEADS).map((head) => {
-                    const cfg = getIncomeHeadConfig(head);
-                    const isSelected = selectedIncomeHeadIds.has(cfg.id);
-                    const name = head.income_name || head.name || "Income Head";
-
-                    return (
-                      <div
-                        key={cfg.id}
-                        className={`flex items-center justify-between gap-2 p-1.5 rounded-md border transition-all ${isSelected ? "bg-white border-blue-200 shadow-2xs" : "bg-slate-50/50 border-gray-200 opacity-60"
-                          }`}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        {/* Fix Selected Figure Switch - hidden / display: none */}
+                        <label
+                          className="hidden"
+                          style={{ display: "none" }}
+                          title={`Fix ${primarySelect === "ctc" ? "CTC" : primarySelect === "gross" ? "Gross" : "Net Hand"} — keep unchanged while editing other components`}
+                        >
                           <input
                             type="checkbox"
-                            checked={isSelected}
-                            onChange={(e) => {
-                              const next = new Set(selectedIncomeHeadIds);
-                              if (e.target.checked) next.add(cfg.id);
-                              else next.delete(cfg.id);
-                              setSelectedIncomeHeadIds(next);
-                            }}
-                            className="w-3.5 h-3.5 rounded text-[#1a56db] focus:ring-[#1a56db] cursor-pointer"
+                            checked={lockPrimary}
+                            onChange={(e) => setLockPrimary(e.target.checked)}
+                            className="sr-only peer"
                           />
-                          <span
-                            className={`text-[11.5px] font-medium truncate transition-colors ${isSelected ? "text-slate-800" : "text-slate-400 line-through"
-                              }`}
-                            title={name}
-                          >
-                            {name}
-                          </span>
-
-                          <span
-                            className={`text-[9.5px] font-normal px-1 py-0.1 rounded shrink-0 ${!isSelected
-                              ? "bg-slate-100 text-slate-400 border border-slate-200"
-                              : head.income_type?.toLowerCase() === "variable" || head.type?.toLowerCase() === "variable"
-                                ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              }`}
-                          >
-                            {head.income_type || head.type || "fixed"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <select
-                            value={cfg.formula_type}
-                            disabled={!isSelected}
-                            onChange={(e) => {
-                              const newFormula = e.target.value;
-                              let newVal = cfg.value;
-                              if (cfg.isHra) {
-                                if (newFormula === "FIXED" && (newVal === "50" || !newVal)) {
-                                  newVal = String(Math.round((Number(basicVal) || 0) * 0.5));
-                                } else if (newFormula === "PERCENT_BASIC" && (!newVal || newVal === String(Math.round((Number(basicVal) || 0) * 0.5)))) {
-                                  newVal = "50";
-                                }
-                              }
-                              newVal = capPctValue(newFormula, newVal);
-                              setIncomeHeadConfigs((prev) => ({
-                                ...prev,
-                                [cfg.id]: {
-                                  ...prev[cfg.id],
-                                  formula_type: newFormula,
-                                  value: newVal,
-                                },
-                              }));
-                            }}
-                            className="h-[25px] px-1.5 text-[11px] font-normal border border-gray-300 rounded bg-white outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
-                          >
-                            <option value="FIXED">Fixed</option>
-                            <option value="PERCENT_BASIC">% of Basic</option>
-                            <option value="PERCENT_CTC">% of CTC</option>
-                            <option value="BALANCING">Balancing (remainder)</option>
-                          </select>
-
-                          {cfg.formula_type !== "BALANCING" && (
-                            <div className={`flex items-center border border-gray-300 rounded px-1.5 h-[25px] w-20 ${!isSelected ? "bg-slate-100" : "bg-white"
-                              }`}>
-                              <span className="text-[10.5px] text-slate-400 mr-1">
-                                {cfg.formula_type?.startsWith("PERCENT") ? "%" : "₹"}
-                              </span>
-                              <input
-                                type="number"
-                                value={cfg.value || ""}
-                                disabled={!isSelected}
-                                onChange={(e) => {
-                                  const v = capPctValue(cfg.formula_type, e.target.value);
-                                  if (cfg.isBasic) {
-                                    setLastEdited("basic");
-                                    setBasicVal(v);
-                                  } else if (cfg.isMedical) {
-                                    setMedicalVal(v);
-                                  } else if (cfg.isTransport) {
-                                    setTransportVal(v);
-                                  }
-                                  setIncomeHeadConfigs((prev) => ({
-                                    ...prev,
-                                    [cfg.id]: { ...prev[cfg.id], formula_type: cfg.formula_type, value: v },
-                                  }));
-                                }}
-                                className="w-full text-right font-mono text-[11px] font-medium text-slate-800 outline-none bg-transparent disabled:text-slate-400"
-                              />
-                            </div>
-                          )}
-                        </div>
+                          <div className="w-8 h-4.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#0f6b5c] "></div>
+                        </label>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
 
-              {/* DYNAMIC SECTION 2: Deductions Card */}
-              <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
-                <div className="px-3 py-1.5 bg-[#fcf2f2] border-b border-gray-200 flex items-center justify-between">
-                  <span className="text-[11.5px] font-semibold text-[#0f172a]    tracking-wider flex items-center gap-1.5">
-                    <div className="w-1.5 h-3.5 bg-rose-600 rounded-full shrink-0"></div>
-                    Deductions
-                  </span>
-                  <span className="text-[10px] font-medium text-rose-700 bg-rose-100/80 px-1.5 py-0.2 rounded">
-                    {selectedDeductionHeadIds.size} selected
-                  </span>
-                </div>
+                    {/* Inline Stats Pill for other calculated figures */}
+                    <div className="flex items-center justify-between text-[10.5px] font-medium bg-[#f0f4f8] px-2.5 py-1 rounded-md border border-[#d5dfeb] text-[#334155]">
+                      {otherKeys.map((k) => (
+                        <span key={k} className="flex items-center gap-1.5">
+                          <span className="font-medium text-[#64748b]">{otherNames[k]}:</span>
+                          <span className="font-mono font-semibold text-[#0f6b5c]">
+                            ₹{(stored[k] || 0).toLocaleString("en-IN")}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
 
-                <div className="p-2 space-y-1.5 bg-[#fafbfd]">
-                  {(deductionHeads.length > 0 ? deductionHeads : DEFAULT_DEDUCTION_HEADS)
-                    .filter((h) => !((h.deduction_name || h.name || h.head_code || "").toLowerCase().includes("grat")))
-                    .map((head) => {
-                      const id = String(head.deduction_head_id || head.id || head.head_code || head.deduction_name || head.name);
-                      const isSelected = selectedDeductionHeadIds.has(id);
-                      const cfg = deductionHeadConfigs[id] || { formula_type: "PERCENT_BASIC", value: "12" };
-                      const name = head.deduction_name || head.name || "Deduction Head";
-                      const isEsiHead = name.toLowerCase().includes("esi");
-                      const headDisabled = isEsiHead && isEsiDisabled;
+                  {/* DYNAMIC SECTION 1: Earnings (Income heads) Card */}
+                  <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
+                    <div className="px-3 py-1.5 bg-[#eef5fc] border-b border-gray-200 flex items-center justify-between">
+                      <span className="text-[11.5px] font-semibold text-[#0f172a]    tracking-wider flex items-center gap-1.5">
+                        <div className="w-1.5 h-3.5 bg-[#1a56db] rounded-full shrink-0"></div>
+                        Earnings (Income heads)
+                      </span>
+                      <span className="text-[10px] font-medium text-[#1a56db] bg-blue-100/80 px-1.5 py-0.2 rounded">
+                        {selectedIncomeHeadIds.size} selected
+                      </span>
+                    </div>
 
-                      return (
-                        <div
-                          key={id}
-                          className={`flex items-center justify-between gap-2 p-1.5 rounded-md border transition-all ${headDisabled
-                            ? "bg-amber-50/40 border-amber-200 opacity-60"
-                            : isSelected
-                              ? "bg-white border-rose-200 shadow-2xs"
-                              : "bg-slate-50/50 border-gray-200 opacity-60"
-                            }`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <input
-                              type="checkbox"
-                              checked={headDisabled ? false : isSelected}
-                              disabled={headDisabled}
-                              onChange={(e) => {
-                                const next = new Set(selectedDeductionHeadIds);
-                                if (e.target.checked) next.add(id);
-                                else next.delete(id);
-                                setSelectedDeductionHeadIds(next);
+                    <div className="p-2 space-y-1.5 bg-[#fafbfd]">
+                      {(incomeHeads.length > 0 ? incomeHeads : DEFAULT_INCOME_HEADS).map((head) => {
+                        const cfg = getIncomeHeadConfig(head);
+                        const isSelected = selectedIncomeHeadIds.has(cfg.id);
+                        const name = head.income_name || head.name || "Income Head";
 
-                                if (name.toLowerCase().includes("pf")) setPfOn(e.target.checked);
-                                if (name.toLowerCase().includes("esi")) setEsiOn(e.target.checked);
-                                if (name.toLowerCase().includes("pt") || name.toLowerCase().includes("tax")) setPtOn(e.target.checked);
-                              }}
-                              className="w-3.5 h-3.5 rounded text-rose-600 focus:ring-rose-600 cursor-pointer disabled:cursor-not-allowed"
-                            />
-                            <span
-                              className={`text-[11.5px] font-medium truncate transition-colors ${isSelected && !headDisabled ? "text-slate-800" : "text-slate-400 line-through"
-                                }`}
-                              title={name}
-                            >
-                              {name}
-                            </span>
-
-                            {headDisabled ? (
-                              <span className="text-[9.5px] font-medium px-1 py-0.1 rounded shrink-0 bg-amber-100 text-amber-800 border border-amber-200">
-                                Disabled (&gt; ₹21k)
+                        return (
+                          <div
+                            key={cfg.id}
+                            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2 p-1.5 rounded-md border transition-all ${isSelected ? "bg-white border-blue-200 shadow-2xs" : "bg-slate-50/50 border-gray-200 opacity-60"
+                              }`}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const next = new Set(selectedIncomeHeadIds);
+                                  if (e.target.checked) next.add(cfg.id);
+                                  else next.delete(cfg.id);
+                                  setSelectedIncomeHeadIds(next);
+                                }}
+                                className="w-3.5 h-3.5 rounded text-[#1a56db] focus:ring-[#1a56db] cursor-pointer"
+                              />
+                              <span
+                                className={`text-[11.5px] font-medium truncate transition-colors ${isSelected ? "text-slate-800" : "text-slate-400 line-through"
+                                  }`}
+                                title={name}
+                              >
+                                {name}
                               </span>
-                            ) : (
+
                               <span
                                 className={`text-[9.5px] font-normal px-1 py-0.1 rounded shrink-0 ${!isSelected
                                   ? "bg-slate-100 text-slate-400 border border-slate-200"
-                                  : "bg-blue-50 text-blue-700 border border-blue-200"
+                                  : head.income_type?.toLowerCase() === "variable" || head.type?.toLowerCase() === "variable"
+                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                    : "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                   }`}
                               >
-                                {head.type || "percentage"}
+                                {head.income_type || head.type || "fixed"}
                               </span>
-                            )}
-                          </div>
+                            </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <select
-                              value={cfg.formula_type || "PERCENT_BASIC"}
-                              disabled={headDisabled || !isSelected}
-                              onChange={(e) => {
-                                const newFormula = e.target.value;
-                                setDeductionHeadConfigs((prev) => ({
-                                  ...prev,
-                                  [id]: {
-                                    ...prev[id],
-                                    formula_type: newFormula,
-                                    value: capPctValue(newFormula, prev[id]?.value || "12")
-                                  },
-                                }));
-                              }}
-                              className="h-[25px] px-1.5 text-[11px] font-normal border border-gray-300 rounded bg-white outline-none focus:border-rose-500 disabled:bg-slate-100 disabled:text-slate-400"
-                            >
-                              <option value="PERCENT_BASIC">% of Basic</option>
-                              <option value="PERCENT_GROSS">% of Gross</option>
-                              <option value="FIXED">Fixed</option>
-                            </select>
-
-                            <div className={`flex items-center border border-gray-300 rounded px-1.5 h-[25px] w-20 ${headDisabled || !isSelected ? "bg-slate-100" : "bg-white"
-                              }`}>
-                              <span className="text-[10.5px] text-slate-400 mr-1">
-                                {cfg.formula_type?.startsWith("PERCENT") ? "%" : "₹"}
-                              </span>
-                              <input
-                                type="number"
-                                value={headDisabled ? "0" : cfg.value || "0"}
-                                disabled={headDisabled || !isSelected}
+                            <div className="flex items-center gap-1.5 w-full sm:w-auto sm:shrink-0">
+                              <select
+                                value={cfg.formula_type}
+                                disabled={!isSelected}
                                 onChange={(e) => {
-                                  const formula = cfg.formula_type || "PERCENT_BASIC";
-                                  const v = capPctValue(formula, e.target.value);
-                                  setDeductionHeadConfigs((prev) => ({
+                                  const newFormula = e.target.value;
+                                  let newVal = cfg.value;
+                                  if (cfg.isHra) {
+                                    if (newFormula === "FIXED" && (newVal === "50" || !newVal)) {
+                                      newVal = String(Math.round((Number(basicVal) || 0) * 0.5));
+                                    } else if (newFormula === "PERCENT_BASIC" && (!newVal || newVal === String(Math.round((Number(basicVal) || 0) * 0.5)))) {
+                                      newVal = "50";
+                                    }
+                                  }
+                                  newVal = capPctValue(newFormula, newVal);
+                                  setIncomeHeadConfigs((prev) => ({
                                     ...prev,
-                                    [id]: { ...prev[id], value: v },
+                                    [cfg.id]: {
+                                      ...prev[cfg.id],
+                                      formula_type: newFormula,
+                                      value: newVal,
+                                    },
                                   }));
                                 }}
-                                className="w-full text-right font-mono text-[11px] font-medium text-slate-800 outline-none bg-transparent disabled:text-slate-400"
-                              />
+                                className="h-[25px] px-1.5 text-[11px] font-normal border border-gray-300 rounded bg-white outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+                              >
+                                <option value="FIXED">Fixed</option>
+                                <option value="PERCENT_BASIC">% of Basic</option>
+                                <option value="PERCENT_CTC">% of CTC</option>
+                                <option value="BALANCING">Balancing (remainder)</option>
+                              </select>
+
+                              {cfg.formula_type !== "BALANCING" && (
+                                <div className={`flex items-center border border-gray-300 rounded px-1.5 h-[25px] w-20 ${!isSelected ? "bg-slate-100" : "bg-white"
+                                  }`}>
+                                  <span className="text-[10.5px] text-slate-400 mr-1">
+                                    {cfg.formula_type?.startsWith("PERCENT") ? "%" : "₹"}
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={cfg.value || ""}
+                                    disabled={!isSelected}
+                                    onChange={(e) => {
+                                      const v = capPctValue(cfg.formula_type, e.target.value);
+                                      if (cfg.isBasic) {
+                                        setLastEdited("basic");
+                                        setBasicVal(v);
+                                      } else if (cfg.isMedical) {
+                                        setMedicalVal(v);
+                                      } else if (cfg.isTransport) {
+                                        setTransportVal(v);
+                                      }
+                                      setIncomeHeadConfigs((prev) => ({
+                                        ...prev,
+                                        [cfg.id]: { ...prev[cfg.id], formula_type: cfg.formula_type, value: v },
+                                      }));
+                                    }}
+                                    className="w-full text-right font-mono text-[11px] font-medium text-slate-800 outline-none bg-transparent disabled:text-slate-400"
+                                  />
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              {/* DYNAMIC SECTION 3: Company Contribution Card */}
-              <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
-                <div className="px-3 py-1.5 bg-[#f0f3ff] border-b border-gray-200 flex items-center justify-between">
-                  <span className="text-[11.5px] font-semibold text-[#0f172a]    tracking-wider flex items-center gap-1.5">
-                    <div className="w-1.5 h-3.5 bg-indigo-600 rounded-full shrink-0"></div>
-                    Company Contribution
-                  </span>
-                  <span className="text-[10px] font-medium text-indigo-700 bg-indigo-100/80 px-1.5 py-0.2 rounded">
-                    Employer Liability
-                  </span>
-                </div>
-
-                <div className="p-2 space-y-1.5 bg-[#fafbfd]">
-                  <div className={`flex items-center justify-between gap-2 p-1.5 rounded-md border transition-all ${gratOn ? "border-indigo-200 bg-white shadow-2xs" : "bg-slate-50/50 border-gray-200 opacity-60"
-                    }`}>
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={gratOn}
-                        onChange={(e) => setGratOn(e.target.checked)}
-                        className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-600 cursor-pointer"
-                      />
-                      <span
-                        className={`text-[11.5px] font-medium truncate transition-colors ${gratOn ? "text-slate-800" : "text-slate-400 line-through"
-                          }`}
-                        title="Gratuity"
-                      >
-                        Gratuity
+                  {/* DYNAMIC SECTION 2: Deductions Card */}
+                  <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
+                    <div className="px-3 py-1.5 bg-[#fcf2f2] border-b border-gray-200 flex items-center justify-between">
+                      <span className="text-[11.5px] font-semibold text-[#0f172a]    tracking-wider flex items-center gap-1.5">
+                        <div className="w-1.5 h-3.5 bg-rose-600 rounded-full shrink-0"></div>
+                        Deductions
                       </span>
-                      <span
-                        className={`text-[9.5px] font-normal px-1 py-0.1 rounded shrink-0 ${gratOn ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "bg-slate-100 text-slate-400 border border-slate-200"
-                          }`}
-                      >
-                        Employer
+                      <span className="text-[10px] font-medium text-rose-700 bg-rose-100/80 px-1.5 py-0.2 rounded">
+                        {selectedDeductionHeadIds.size} selected
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className={`h-[25px] px-2 text-[11px] font-normal flex items-center border rounded ${gratOn ? "text-slate-600 bg-slate-50 border-gray-200" : "text-slate-400 bg-slate-100 border-gray-200 line-through"
-                        }`}>
-                        % of Basic (4.81%)
+                    <div className="p-2 space-y-1.5 bg-[#fafbfd]">
+                      {(deductionHeads.length > 0 ? deductionHeads : DEFAULT_DEDUCTION_HEADS)
+                        .filter((h) => !((h.deduction_name || h.name || h.head_code || "").toLowerCase().includes("grat")))
+                        .map((head) => {
+                          const id = String(head.deduction_head_id || head.id || head.head_code || head.deduction_name || head.name);
+                          const isSelected = selectedDeductionHeadIds.has(id);
+                          const cfg = deductionHeadConfigs[id] || { formula_type: "PERCENT_BASIC", value: "12" };
+                          const name = head.deduction_name || head.name || "Deduction Head";
+                          const isEsiHead = name.toLowerCase().includes("esi");
+                          const headDisabled = isEsiHead && isEsiDisabled;
+
+                          return (
+                            <div
+                              key={id}
+                              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2 p-1.5 rounded-md border transition-all ${headDisabled
+                                ? "bg-amber-50/40 border-amber-200 opacity-60"
+                                : isSelected
+                                  ? "bg-white border-rose-200 shadow-2xs"
+                                  : "bg-slate-50/50 border-gray-200 opacity-60"
+                                }`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={headDisabled ? false : isSelected}
+                                  disabled={headDisabled}
+                                  onChange={(e) => {
+                                    const next = new Set(selectedDeductionHeadIds);
+                                    if (e.target.checked) next.add(id);
+                                    else next.delete(id);
+                                    setSelectedDeductionHeadIds(next);
+
+                                    if (name.toLowerCase().includes("pf")) setPfOn(e.target.checked);
+                                    if (name.toLowerCase().includes("esi")) setEsiOn(e.target.checked);
+                                    if (name.toLowerCase().includes("pt") || name.toLowerCase().includes("tax")) setPtOn(e.target.checked);
+                                  }}
+                                  className="w-3.5 h-3.5 rounded text-rose-600 focus:ring-rose-600 cursor-pointer disabled:cursor-not-allowed"
+                                />
+                                <span
+                                  className={`text-[11.5px] font-medium truncate transition-colors ${isSelected && !headDisabled ? "text-slate-800" : "text-slate-400 line-through"
+                                    }`}
+                                  title={name}
+                                >
+                                  {name}
+                                </span>
+
+                                {headDisabled ? (
+                                  <span className="text-[9.5px] font-medium px-1 py-0.1 rounded shrink-0 bg-amber-100 text-amber-800 border border-amber-200">
+                                    Disabled (&gt; ₹21k)
+                                  </span>
+                                ) : (
+                                  <span
+                                    className={`text-[9.5px] font-normal px-1 py-0.1 rounded shrink-0 ${!isSelected
+                                      ? "bg-slate-100 text-slate-400 border border-slate-200"
+                                      : "bg-blue-50 text-blue-700 border border-blue-200"
+                                      }`}
+                                  >
+                                    {head.type || "percentage"}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5 w-full sm:w-auto sm:shrink-0">
+                                <select
+                                  value={cfg.formula_type || "PERCENT_BASIC"}
+                                  disabled={headDisabled || !isSelected}
+                                  onChange={(e) => {
+                                    const newFormula = e.target.value;
+                                    setDeductionHeadConfigs((prev) => ({
+                                      ...prev,
+                                      [id]: {
+                                        ...prev[id],
+                                        formula_type: newFormula,
+                                        value: capPctValue(newFormula, prev[id]?.value || "12")
+                                      },
+                                    }));
+                                  }}
+                                  className="h-[25px] px-1.5 text-[11px] font-normal border border-gray-300 rounded bg-white outline-none focus:border-rose-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                >
+                                  <option value="PERCENT_BASIC">% of Basic</option>
+                                  <option value="PERCENT_GROSS">% of Gross</option>
+                                  <option value="FIXED">Fixed</option>
+                                </select>
+
+                                <div className={`flex items-center border border-gray-300 rounded px-1.5 h-[25px] w-20 ${headDisabled || !isSelected ? "bg-slate-100" : "bg-white"
+                                  }`}>
+                                  <span className="text-[10.5px] text-slate-400 mr-1">
+                                    {cfg.formula_type?.startsWith("PERCENT") ? "%" : "₹"}
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={headDisabled ? "0" : cfg.value || "0"}
+                                    disabled={headDisabled || !isSelected}
+                                    onChange={(e) => {
+                                      const formula = cfg.formula_type || "PERCENT_BASIC";
+                                      const v = capPctValue(formula, e.target.value);
+                                      setDeductionHeadConfigs((prev) => ({
+                                        ...prev,
+                                        [id]: { ...prev[id], value: v },
+                                      }));
+                                    }}
+                                    className="w-full text-right font-mono text-[11px] font-medium text-slate-800 outline-none bg-transparent disabled:text-slate-400"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* DYNAMIC SECTION 3: Company Contribution Card */}
+                  <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
+                    <div className="px-3 py-1.5 bg-[#f0f3ff] border-b border-gray-200 flex items-center justify-between">
+                      <span className="text-[11.5px] font-semibold text-[#0f172a]    tracking-wider flex items-center gap-1.5">
+                        <div className="w-1.5 h-3.5 bg-indigo-600 rounded-full shrink-0"></div>
+                        Company Contribution
                       </span>
-                      <div className={`flex items-center border border-gray-200 rounded px-1.5 h-[25px] w-20 ${gratOn ? "bg-slate-50" : "bg-slate-100"
+                      <span className="text-[10px] font-medium text-indigo-700 bg-indigo-100/80 px-1.5 py-0.2 rounded">
+                        Employer Liability
+                      </span>
+                    </div>
+
+                    <div className="p-2 space-y-1.5 bg-[#fafbfd]">
+                      <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2 p-1.5 rounded-md border transition-all ${gratOn ? "border-indigo-200 bg-white shadow-2xs" : "bg-slate-50/50 border-gray-200 opacity-60"
                         }`}>
-                        <span className="text-[10.5px] text-slate-400 mr-1">₹</span>
-                        <span className={`w-full text-right font-mono text-[11px] font-medium ${gratOn ? "text-slate-700" : "text-slate-400"
-                          }`}>
-                          {fmt(result.gratuity)}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={gratOn}
+                            onChange={(e) => setGratOn(e.target.checked)}
+                            className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                          />
+                          <span
+                            className={`text-[11.5px] font-medium truncate transition-colors ${gratOn ? "text-slate-800" : "text-slate-400 line-through"
+                              }`}
+                            title="Gratuity"
+                          >
+                            Gratuity
+                          </span>
+                          <span
+                            className={`text-[9.5px] font-normal px-1 py-0.1 rounded shrink-0 ${gratOn ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "bg-slate-100 text-slate-400 border border-slate-200"
+                              }`}
+                          >
+                            Employer
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto sm:shrink-0">
+                          <span className={`h-[25px] px-2 text-[11px] font-normal flex items-center border rounded ${gratOn ? "text-slate-600 bg-slate-50 border-gray-200" : "text-slate-400 bg-slate-100 border-gray-200 line-through"
+                            }`}>
+                            % of Basic (4.81%)
+                          </span>
+                          <div className={`flex items-center border border-gray-200 rounded px-1.5 h-[25px] w-20 ${gratOn ? "bg-slate-50" : "bg-slate-100"
+                            }`}>
+                            <span className="text-[10.5px] text-slate-400 mr-1">₹</span>
+                            <span className={`w-full text-right font-mono text-[11px] font-medium ${gratOn ? "text-slate-700" : "text-slate-400"
+                              }`}>
+                              {fmt(result.gratuity)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* RIGHT: SALARY STRUCTURE CARD (6 Cols) */}
-          <div className="lg:col-span-6 bg-white rounded-md border border-gray-300 shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="bg-slate-50 border-b border-gray-200 px-3.5 py-2 flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-4 bg-blue-600 rounded-full shrink-0"></div>
-                <h2 className="text-[13.5px] font-semibold text-[#0f172a]">
-                  Salary Structure
-                </h2>
+              {/* RIGHT: SALARY STRUCTURE CARD (6 Cols) */}
+              <div className="lg:col-span-6 bg-white rounded-md border border-gray-300 shadow-sm overflow-hidden flex flex-col lg:h-full">
+
+                <div className="bg-slate-50 border-b border-gray-200 px-3.5 py-2 flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-4 bg-blue-600 rounded-full shrink-0"></div>
+                    <h2 className="text-[13.5px] font-semibold text-[#0f172a]">
+                      Salary Structure
+                    </h2>
+                  </div>
+                  <span className="font-mono text-[11.5px] bg-emerald-100 border border-emerald-300 text-emerald-700 px-2 py-0.5 rounded-md font-semibold shadow-xs">
+                    CTC ₹{fmt(displayCtcYearly)} / yr
+                  </span>
+                </div>
+
+                <div className="flex-1 lg:overflow-y-auto overflow-x-auto">
+                  <table className="w-full text-left text-[12px] border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-[#475569] font-medium text-[10.5px] tracking-wider bg-[#f8fafc]">
+                        <th className="py-1.5 px-3 text-left">Particulars</th>
+                        <th className="py-1.5 px-3 text-right">Monthly</th>
+                        <th className="py-1.5 px-3 text-right">Yearly</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-[11.5px]">
+                      {/* INCOMES */}
+                      <tr className="bg-[#eff6ff] border-t border-b border-[#dbeafe]">
+                        <td
+                          colSpan="3"
+                          className="py-1.5 px-3 text-[13px] font-bold text-[#1e40af] tracking-wider"
+                        >
+                          Incomes
+                        </td>
+                      </tr>
+                      {mappedIncomeLines.map((line, idx) => (
+                        <tr key={line.income_head_id || `inc-${idx}`} className="bg-white hover:bg-blue-50/40 transition-colors">
+                          <td className="py-1 px-3 text-slate-700 font-medium">
+                            <span>{line.income_name}</span>
+                          </td>
+                          <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.monthly_amount)}</td>
+                          <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.annual_amount)}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-[#e0f2fe]/60 font-semibold text-[#0369a1] text-[11.5px] border-y border-[#bae6fd]">
+                        <td className="py-1 px-3">Gross</td>
+                        <td className="py-1 px-3 text-right font-mono">
+                          {fmt(displayGrossMonthly)}
+                        </td>
+                        <td className="py-1 px-3 text-right font-mono">
+                          {fmt(displayGrossYearly)}
+                        </td>
+                      </tr>
+                      {result._error && (
+                        <tr>
+                          <td colSpan="3" className="p-2 bg-rose-50 text-center border-b border-rose-200">
+                            <div className="flex items-start gap-1.5 text-rose-900 text-[11px] leading-tight font-medium">
+                              <span className="text-rose-600 font-semibold text-center shrink-0">⚠️ Shortfall Warning:</span>
+                              <span className="text-center text-rose-600">
+                                ⚠ Shortfall ₹{fmt(result._error.deficit)} — ₹{fmt(result._error.actualDeduction)} pulled from HRA{result._error.actualDeduction < result._error.deficit ? " (not fully covered)" : ""}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* GAP BEFORE DEDUCTIONS */}
+                      <tr className="h-2.5 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
+
+                      {/* DEDUCTIONS */}
+                      <tr className="bg-[#fff1f2] border-t border-b border-[#fecdd3]">
+                        <td
+                          colSpan="3"
+                          className="py-1.5 px-3 text-[13px] font-bold text-[#9f1239] tracking-wider"
+                        >
+                          Deductions
+                        </td>
+                      </tr>
+                      {mappedDeductionLines.length === 0 ? (
+                        <tr>
+                          <td colSpan="3" className="py-1 px-3 text-slate-400 italic bg-white">No deductions selected</td>
+                        </tr>
+                      ) : (
+                        mappedDeductionLines.map((line, idx) => (
+                          <tr key={line.deduction_head_id || `ded-${idx}`} className="bg-white hover:bg-rose-50/40 transition-colors">
+                            <td className="py-1 px-3 text-slate-700 font-medium">
+                              <span>{line.deduction_name}</span>
+                            </td>
+                            <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.monthly_amount)}</td>
+                            <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.annual_amount)}</td>
+                          </tr>
+                        ))
+                      )}
+                      <tr className="bg-[#ffe4e6]/60 font-semibold text-[#be123c] text-[11.5px] border-y border-[#fecdd3]">
+                        <td className="py-1 px-3">Total Deduction</td>
+                        <td className="py-1 px-3 text-right font-mono">
+                          {fmt(displayDeductionMonthly)}
+                        </td>
+                        <td className="py-1 px-3 text-right font-mono">
+                          {fmt(displayDeductionYearly)}
+                        </td>
+                      </tr>
+                      <tr className="bg-[#dcfce7] font-bold text-[#15803d] text-[12px] border-y-2 border-[#86efac]">
+                        <td className="py-1 px-3">Take Home</td>
+                        <td className="py-1 px-3 text-right font-mono text-[12px]">
+                          {fmt(displayTakeHomeMonthly)}
+                        </td>
+                        <td className="py-1 px-3 text-right font-mono text-[12px]">
+                          {fmt(displayTakeHomeYearly)}
+                        </td>
+                      </tr>
+
+                      {/* GAP BEFORE COMPANY CONTRIBUTION */}
+                      <tr className="h-2.5 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
+
+                      {/* COMPANY CONTRIBUTION */}
+                      <tr className="bg-[#f0f3ff] border-t border-b border-[#e0e7ff]">
+                        <td
+                          colSpan="3"
+                          className="py-1.5 px-3 text-[13px] font-bold text-[#3730a3] tracking-wider"
+                        >
+                          Company Contribution
+                        </td>
+                      </tr>
+                      {mappedContributionLines.length === 0 ? (
+                        <tr>
+                          <td colSpan="3" className="py-1 px-3 text-slate-400 italic bg-white">No contributions selected</td>
+                        </tr>
+                      ) : (
+                        mappedContributionLines.map((line, idx) => (
+                          <tr key={line.contribution_head_id || `con-${idx}`} className="bg-white hover:bg-indigo-50/40 transition-colors">
+                            <td className="py-1 px-3 text-slate-700 font-medium">
+                              <span>{line.contribution_name}</span>
+                            </td>
+                            <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.monthly_amount)}</td>
+                            <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.annual_amount)}</td>
+                          </tr>
+                        ))
+                      )}
+                      <tr className="bg-[#e0e7ff]/60 font-semibold text-[#4338ca] text-[11.5px] border-y border-[#c7d2fe]">
+                        <td className="py-1 px-3">Total Company Contribution</td>
+                        <td className="py-1 px-3 text-right font-mono">
+                          {fmt(displayContributionMonthly)}
+                        </td>
+                        <td className="py-1 px-3 text-right font-mono">
+                          {fmt(displayContributionYearly)}
+                        </td>
+                      </tr>
+
+                      {/* GAP BEFORE VARIABLE */}
+                      <tr className="h-2 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
+
+                      {/* VARIABLE */}
+                      <tr className="bg-[#fffbeb] border-t border-b border-[#fde68a]">
+                        <td
+                          colSpan="3"
+                          className="py-1.5 px-3 text-[13px] font-bold text-[#92400e] tracking-wider"
+                        >
+                          Variable
+                        </td>
+                      </tr>
+                      <tr className="bg-white hover:bg-amber-50/40 transition-colors">
+                        <td className="py-1 px-3 text-slate-700 font-medium">Performance Based Pay (Variable)</td>
+                        <td className="py-1 px-3 text-right font-mono text-slate-800">{dash(variableMonthlyEquiv)}</td>
+                        <td className="py-1 px-3 text-right font-mono text-slate-800">{dash(variableAnnual)}</td>
+                      </tr>
+
+                      {/* GAP BEFORE GRAND TOTAL */}
+                      <tr className="h-2.5 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
+
+                      {/* GRAND TOTAL */}
+                      <tr className="bg-[#ecfdf5] border-t-2 border-b-2 border-[#a7f3d0] font-bold text-[#047857] text-[14px]">
+                        <td className="py-2 px-3">Cost to Company</td>
+                        <td className="py-2 px-3 text-right font-mono text-[12.5px]">{fmt(displayCtcMonthly)}</td>
+                        <td className="py-2 px-3 text-right font-mono text-[12.5px]">{fmt(displayCtcYearly)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <span className="font-mono text-[11.5px] bg-emerald-100 border border-emerald-300 text-emerald-700 px-2 py-0.5 rounded-md font-semibold shadow-xs">
-                CTC ₹{fmt(displayCtcYearly)} / yr
-              </span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-              <table className="w-full text-left text-[12px] border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-200 text-[#475569] font-medium text-[10.5px] tracking-wider bg-[#f8fafc]">
-                    <th className="py-1.5 px-3 text-left">Particulars</th>
-                    <th className="py-1.5 px-3 text-right">Monthly</th>
-                    <th className="py-1.5 px-3 text-right">Yearly</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 text-[11.5px]">
-                  {/* INCOMES */}
-                  <tr className="bg-[#eff6ff] border-t border-b border-[#dbeafe]">
-                    <td
-                      colSpan="3"
-                      className="py-1.5 px-3 text-[13px] font-bold text-[#1e40af] tracking-wider"
-                    >
-                      Incomes
-                    </td>
-                  </tr>
-                  {mappedIncomeLines.map((line, idx) => (
-                    <tr key={line.income_head_id || `inc-${idx}`} className="bg-white hover:bg-blue-50/40 transition-colors">
-                      <td className="py-1 px-3 text-slate-700 font-medium">
-                        <span>{line.income_name}</span>
-                      </td>
-                      <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.monthly_amount)}</td>
-                      <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.annual_amount)}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-[#e0f2fe]/60 font-semibold text-[#0369a1] text-[11.5px] border-y border-[#bae6fd]">
-                    <td className="py-1 px-3">Gross</td>
-                    <td className="py-1 px-3 text-right font-mono">
-                      {fmt(displayGrossMonthly)}
-                    </td>
-                    <td className="py-1 px-3 text-right font-mono">
-                      {fmt(displayGrossYearly)}
-                    </td>
-                  </tr>
-                  {result._error && (
-                    <tr>
-                      <td colSpan="3" className="p-2 bg-rose-50 text-center border-b border-rose-200">
-                        <div className="flex items-start gap-1.5 text-rose-900 text-[11px] leading-tight font-medium">
-                          <span className="text-rose-600 font-semibold text-center shrink-0">⚠️ Shortfall Warning:</span>
-                          <span className="text-center text-rose-600">
-                            ⚠ Shortfall ₹{fmt(result._error.deficit)} — ₹{fmt(result._error.actualDeduction)} pulled from HRA{result._error.actualDeduction < result._error.deficit ? " (not fully covered)" : ""}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* GAP BEFORE DEDUCTIONS */}
-                  <tr className="h-2.5 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
-
-                  {/* DEDUCTIONS */}
-                  <tr className="bg-[#fff1f2] border-t border-b border-[#fecdd3]">
-                    <td
-                      colSpan="3"
-                      className="py-1.5 px-3 text-[13px] font-bold text-[#9f1239] tracking-wider"
-                    >
-                      Deductions
-                    </td>
-                  </tr>
-                  {mappedDeductionLines.length === 0 ? (
-                    <tr>
-                      <td colSpan="3" className="py-1 px-3 text-slate-400 italic bg-white">No deductions selected</td>
-                    </tr>
-                  ) : (
-                    mappedDeductionLines.map((line, idx) => (
-                      <tr key={line.deduction_head_id || `ded-${idx}`} className="bg-white hover:bg-rose-50/40 transition-colors">
-                        <td className="py-1 px-3 text-slate-700 font-medium">
-                          <span>{line.deduction_name}</span>
-                        </td>
-                        <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.monthly_amount)}</td>
-                        <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.annual_amount)}</td>
-                      </tr>
-                    ))
-                  )}
-                  <tr className="bg-[#ffe4e6]/60 font-semibold text-[#be123c] text-[11.5px] border-y border-[#fecdd3]">
-                    <td className="py-1 px-3">Total Deduction</td>
-                    <td className="py-1 px-3 text-right font-mono">
-                      {fmt(displayDeductionMonthly)}
-                    </td>
-                    <td className="py-1 px-3 text-right font-mono">
-                      {fmt(displayDeductionYearly)}
-                    </td>
-                  </tr>
-                  <tr className="bg-[#dcfce7] font-bold text-[#15803d] text-[12px] border-y-2 border-[#86efac]">
-                    <td className="py-1 px-3">Take Home</td>
-                    <td className="py-1 px-3 text-right font-mono text-[12px]">
-                      {fmt(displayTakeHomeMonthly)}
-                    </td>
-                    <td className="py-1 px-3 text-right font-mono text-[12px]">
-                      {fmt(displayTakeHomeYearly)}
-                    </td>
-                  </tr>
-
-                  {/* GAP BEFORE COMPANY CONTRIBUTION */}
-                  <tr className="h-2.5 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
-
-                  {/* COMPANY CONTRIBUTION */}
-                  <tr className="bg-[#f0f3ff] border-t border-b border-[#e0e7ff]">
-                    <td
-                      colSpan="3"
-                      className="py-1.5 px-3 text-[13px] font-bold text-[#3730a3] tracking-wider"
-                    >
-                      Company Contribution
-                    </td>
-                  </tr>
-                  {mappedContributionLines.length === 0 ? (
-                    <tr>
-                      <td colSpan="3" className="py-1 px-3 text-slate-400 italic bg-white">No contributions selected</td>
-                    </tr>
-                  ) : (
-                    mappedContributionLines.map((line, idx) => (
-                      <tr key={line.contribution_head_id || `con-${idx}`} className="bg-white hover:bg-indigo-50/40 transition-colors">
-                        <td className="py-1 px-3 text-slate-700 font-medium">
-                          <span>{line.contribution_name}</span>
-                        </td>
-                        <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.monthly_amount)}</td>
-                        <td className="py-1 px-3 text-right font-mono text-slate-800">{fmt(line.annual_amount)}</td>
-                      </tr>
-                    ))
-                  )}
-                  <tr className="bg-[#e0e7ff]/60 font-semibold text-[#4338ca] text-[11.5px] border-y border-[#c7d2fe]">
-                    <td className="py-1 px-3">Total Company Contribution</td>
-                    <td className="py-1 px-3 text-right font-mono">
-                      {fmt(displayContributionMonthly)}
-                    </td>
-                    <td className="py-1 px-3 text-right font-mono">
-                      {fmt(displayContributionYearly)}
-                    </td>
-                  </tr>
-
-                  {/* GAP BEFORE VARIABLE */}
-                  <tr className="h-2 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
-
-                  {/* VARIABLE */}
-                  <tr className="bg-[#fffbeb] border-t border-b border-[#fde68a]">
-                    <td
-                      colSpan="3"
-                      className="py-1.5 px-3 text-[13px] font-bold text-[#92400e] tracking-wider"
-                    >
-                      Variable
-                    </td>
-                  </tr>
-                  <tr className="bg-white hover:bg-amber-50/40 transition-colors">
-                    <td className="py-1 px-3 text-slate-700 font-medium">Performance Based Pay (Variable)</td>
-                    <td className="py-1 px-3 text-right font-mono text-slate-800">{dash(variableMonthlyEquiv)}</td>
-                    <td className="py-1 px-3 text-right font-mono text-slate-800">{dash(variableAnnual)}</td>
-                  </tr>
-
-                  {/* GAP BEFORE GRAND TOTAL */}
-                  <tr className="h-2.5 bg-[#f8fafc]"><td colSpan="3" className="p-0 border-0"></td></tr>
-
-                  {/* GRAND TOTAL */}
-                  <tr className="bg-[#ecfdf5] border-t-2 border-b-2 border-[#a7f3d0] font-bold text-[#047857] text-[14px]">
-                    <td className="py-2 px-3">Cost to Company</td>
-                    <td className="py-2 px-3 text-right font-mono text-[12.5px]">{fmt(displayCtcMonthly)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-[12.5px]">{fmt(displayCtcYearly)}</td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      ) : (
+        /* ── TAB 2: SEARCH / LIST VIEW (Assigned Salary Structures with Left Status Panel) ── */
+        <SalaryCalculatorSearch
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          pendingEmp={pendingEmp}
+          createdEmp={createdEmp}
+          totalEmp={totalEmp}
+          sidebarTab={sidebarTab}
+          setSidebarTab={setSidebarTab}
+          sidebarSearch={sidebarSearch}
+          setSidebarSearch={setSidebarSearch}
+          sidebarEmployees={sidebarEmployees}
+          selectedEmpId={selectedEmpId}
+          handleSidebarEmployeePick={handleSidebarEmployeePick}
+          latestStructuresList={latestStructuresList}
+          searchColumns={searchColumns}
+          loadingStructures={loadingStructures}
+          handleTableRowDoubleClick={handleTableRowDoubleClick}
+          loadSalaryStructures={loadSalaryStructures}
+        />
+      )}
 
       {/* ASSIGN SALARY STRUCTURE MODAL */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
           <div
-            className="bg-white rounded-md shadow-2xl border border-gray-300 w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+            className="bg-white rounded-md shadow-2xl border border-gray-300 w-full max-w-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden"
             style={{ fontFamily: FONT }}
           >
             {/* Modal Header */}
@@ -1483,10 +1925,10 @@ export default function SalaryCalculator() {
                 <div className="w-1.5 h-5 bg-blue-600 rounded-full shrink-0"></div>
                 <div>
                   <h3 className="text-[14px] font-bold text-[#0f172a]">
-                    Assign Salary Structure to Employees
+                    Assign Salary Structure
                   </h3>
                   <p className="text-[11px] text-[#64748b]">
-                    Apply this calculated structure &amp; match with Master Heads
+                    Apply this calculated structure to the employee and match with Master Heads
                   </p>
                 </div>
               </div>
@@ -1501,10 +1943,57 @@ export default function SalaryCalculator() {
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Target Employee Banner / Selector */}
+              <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-md p-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-[#0f6b5c] text-white flex items-center justify-center font-bold text-[14px] shrink-0 shadow-xs">
+                    {(loadedEmployee?.Led_name || loadedEmployee?.employee_name || loadedEmployee?.name || "E")[0].toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-[13px] text-[#0f172a] truncate">
+                        {loadedEmployee
+                          ? (loadedEmployee.Led_name || loadedEmployee.employee_name || loadedEmployee.name)
+                          : "No Employee Selected"}
+                      </span>
+                      {loadedEmployee && (
+                        <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded font-medium">
+                          {loadedEmployee.Employee_code || loadedEmployee.employee_code || loadedEmployee.Actled_id || ""}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-[#64748b] flex items-center gap-2 mt-0.5">
+                      <span>{loadedEmployee?.department || "Department: General"}</span>
+                      {loadedEmployee?._gradeLabel && (
+                        <>
+                          <span>•</span>
+                          <span className="font-medium text-slate-700">Grade: {loadedEmployee._gradeLabel}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Option to change/select employee */}
+                <div className="w-full sm:w-56 shrink-0">
+                  <ERPAutocomplete
+                    value={
+                      loadedEmployee
+                        ? `${loadedEmployee.Led_name || loadedEmployee.employee_name || loadedEmployee.name} (${loadedEmployee.Employee_code || loadedEmployee.employee_code || loadedEmployee.Actled_id})`
+                        : ""
+                    }
+                    options={employeeOptions}
+                    onChange={handleSelectEmployeeDropdown}
+                    placeholder="Select / Change Employee..."
+                    className="h-[28px] px-2 text-[11.5px] font-medium border border-emerald-300 rounded-md bg-white text-slate-700 focus:border-emerald-500 w-full"
+                  />
+                </div>
+              </div>
+
               {/* Top Details & Date Selector */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#fafbfd] p-3 rounded-md border border-gray-200">
                 <div>
-                  <label className="block text-[#1e293b] font-medium text-[11px]   tracking-[0.3px] mb-1">
+                  <label className="block text-[#1e293b] font-medium text-[11px] tracking-[0.3px] mb-1">
                     Effective From Date
                   </label>
                   <div className="flex items-center bg-white border border-gray-300 rounded-md px-2.5 h-[30px] focus-within:border-blue-50">
@@ -1519,7 +2008,7 @@ export default function SalaryCalculator() {
                 </div>
 
                 <div>
-                  <label className="block text-[#1e293b] font-medium text-[11px]  tracking-[0.3px] mb-1">
+                  <label className="block text-[#1e293b] font-medium text-[11px] tracking-[0.3px] mb-1">
                     Revision Reason / Note
                   </label>
                   <input
@@ -1531,7 +2020,7 @@ export default function SalaryCalculator() {
                 </div>
 
                 <div className="flex flex-col justify-center">
-                  <span className="text-[11px] text-[#64748b] font-semibold  tracking-[0.3px]">
+                  <span className="text-[11px] text-[#64748b] font-semibold tracking-[0.3px]">
                     Calculated Monthly CTC
                   </span>
                   <span className="text-[16px] font-bold font-mono text-[#0f6b5c]">
@@ -1544,14 +2033,14 @@ export default function SalaryCalculator() {
               <div className="border border-gray-200 rounded-md p-3 bg-slate-50/70 space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-[#0f6b5c]" />
-                  <h4 className="text-[11px] font-bold text-[#0f172a]  tracking-wider">
+                  <h4 className="text-[11px] font-bold text-[#0f172a] tracking-wider">
                     Income, Deduction &amp; Contribution Head Mapping
                   </h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[12px] font-mono">
                   {/* Income Lines */}
                   <div className="bg-white p-2.5 rounded-md border border-gray-200 space-y-1">
-                    <span className="font-bold text-[#0f6b5c] block font-sans mb-1 text-[11px]  tracking-[0.3px]">
+                    <span className="font-bold text-[#0f6b5c] block font-sans mb-1 text-[11px] tracking-[0.3px]">
                       Mapped Income Heads ({mappedIncomeLines.length})
                     </span>
                     {mappedIncomeLines.map((line, idx) => (
@@ -1571,7 +2060,7 @@ export default function SalaryCalculator() {
 
                   {/* Deduction Lines */}
                   <div className="bg-white p-2.5 rounded-md border border-gray-200 space-y-1">
-                    <span className="font-bold text-rose-700 block font-sans mb-1 text-[11px]  tracking-[0.3px]">
+                    <span className="font-bold text-rose-700 block font-sans mb-1 text-[11px] tracking-[0.3px]">
                       Mapped Deduction Heads ({mappedDeductionLines.length})
                     </span>
                     {mappedDeductionLines.length === 0 ? (
@@ -1595,7 +2084,7 @@ export default function SalaryCalculator() {
 
                   {/* Contribution Lines */}
                   <div className="bg-white p-2.5 rounded-md border border-gray-200 space-y-1">
-                    <span className="font-bold text-teal-700 block font-sans mb-1 text-[11px]  tracking-[0.3px]">
+                    <span className="font-bold text-teal-700 block font-sans mb-1 text-[11px] tracking-[0.3px]">
                       Mapped Contribution Heads ({mappedContributionLines.length})
                     </span>
                     {mappedContributionLines.length === 0 ? (
@@ -1618,107 +2107,22 @@ export default function SalaryCalculator() {
                   </div>
                 </div>
               </div>
-
-              {/* Employee Selection List */}
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-[12px] font-bold text-[#0f172a]  tracking-[0.3px]">
-                      Select Employees ({selectedEmpIds.size} / {employees.length} selected)
-                    </h4>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-white border border-gray-300 rounded-md px-2 h-[28px] focus-within:border-blue-50">
-                      <Search className="w-3.5 h-3.5 text-slate-400 mr-1.5" />
-                      <input
-                        type="text"
-                        placeholder="Search employee..."
-                        value={searchEmp}
-                        onChange={(e) => setSearchEmp(e.target.value)}
-                        className="w-40 text-[12px] font-medium text-[#0f172a] bg-transparent focus:outline-none"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={toggleSelectAll}
-                      className="text-[12px] font-semibold text-[#0f6b5c] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      {selectedEmpIds.size === filteredEmployees.length && filteredEmployees.length > 0 ? (
-                        <>
-                          <CheckSquare className="w-4 h-4" /> Deselect All
-                        </>
-                      ) : (
-                        <>
-                          <Square className="w-4 h-4" /> Select All
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {loadingMaster ? (
-                  <div className="p-6 text-center text-[12px] text-slate-500">
-                    Loading employees &amp; master heads...
-                  </div>
-                ) : filteredEmployees.length === 0 ? (
-                  <div className="p-6 text-center text-[12px] text-slate-400 border rounded-md border-dashed">
-                    No employees found.
-                  </div>
-                ) : (
-                  <div className="border border-gray-200 rounded-md overflow-hidden max-h-40 overflow-y-auto divide-y divide-gray-100">
-                    {filteredEmployees.map((emp, index) => {
-                      const empId = getEmpId(emp, index);
-                      const isSelected = selectedEmpIds.has(empId);
-                      const empName = emp.Led_name || emp.employee_name || emp.name || "Employee";
-                      const empCode = emp.employee_code || emp.Employee_code || emp.Led_code || emp.code || "";
-                      const dept = emp.department || "General";
-
-                      return (
-                        <div
-                          key={empId}
-                          onClick={() => toggleSelectEmp(empId)}
-                          className={`flex items-center justify-between p-2 cursor-pointer transition-colors ${isSelected ? "bg-emerald-50/60" : "hover:bg-slate-50"
-                            }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => { }}
-                              className="w-4 h-4 rounded text-[#0f6b5c] focus:ring-[#0f6b5c] cursor-pointer"
-                            />
-                            <div>
-                              <span className="text-[12px] font-bold text-[#0f172a] block">
-                                {empName}{" "}
-                                {empCode ? (
-                                  <span className="font-mono text-slate-500 font-normal">
-                                    ({empCode})
-                                  </span>
-                                ) : null}
-                              </span>
-                              <span className="text-[11px] text-slate-400">{dept}</span>
-                            </div>
-                          </div>
-
-                          {isSelected && (
-                            <span className="text-[11px] font-bold text-[#0f6b5c] flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Selected
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-slate-50 border-t border-gray-200 px-4 py-2.5 flex justify-between items-center">
+            <div className="bg-slate-50 border-t border-gray-200 px-4 py-2.5 flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
               <span className="text-[12px] font-medium text-[#475569]">
-                Ready to assign to {selectedEmpIds.size} employee(s)
+                {loadedEmployee ? (
+                  <>
+                    Assigning structure to{" "}
+                    <strong className="text-[#0f172a]">
+                      {loadedEmployee.Led_name || loadedEmployee.employee_name || loadedEmployee.name}
+                    </strong>{" "}
+                    ({loadedEmployee.Employee_code || loadedEmployee.employee_code || loadedEmployee.Actled_id})
+                  </>
+                ) : (
+                  <span className="text-amber-600 font-semibold">⚠️ Please select an employee to assign</span>
+                )}
               </span>
 
               <div className="flex items-center gap-2">
@@ -1729,7 +2133,7 @@ export default function SalaryCalculator() {
                   icon={!savingAssign && <ArrowRight className="w-4 h-4" />}
                   tone="emerald"
                   onClick={handleAssignSubmit}
-                  disabled={savingAssign || selectedEmpIds.size === 0}
+                  disabled={savingAssign || !loadedEmployee}
                   loading={savingAssign}
                 />
               </div>
