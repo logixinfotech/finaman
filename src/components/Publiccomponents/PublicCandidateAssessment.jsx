@@ -16,9 +16,13 @@ import {
   Check,
   ShieldAlert,
   HelpCircle,
+  Smartphone,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
 import {
   validateAssessmentToken,
+  verifyAssessmentPhone,
   startAssessment,
   saveCandidateAnswer,
   submitCandidateAssessment,
@@ -43,9 +47,13 @@ export default function PublicCandidateAssessment() {
   const [regError, setRegError] = useState("");
   const [registering, setRegistering] = useState(false);
 
-  const [screen, setScreen] = useState("loading"); // loading | register | instructions | test | submitted | error
+  const [screen, setScreen] = useState("loading"); // loading | register | verify_phone | instructions | test | submitted | error
   const [validationData, setValidationData] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [verifyMobile, setVerifyMobile] = useState("");
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
+  const [verifyPhoneError, setVerifyPhoneError] = useState("");
 
   const [assessment, setAssessment] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -87,7 +95,11 @@ export default function PublicCandidateAssessment() {
         const res = await validateAssessmentToken(db, token);
         if (res?.valid && res?.data) {
           setValidationData(res.data);
-          setScreen("instructions");
+          if (res.data.phone_verified) {
+            setScreen("instructions");
+          } else {
+            setScreen("verify_phone");
+          }
         } else {
           setErrorMessage(res?.message || "Invalid or expired assessment link.");
           setScreen("error");
@@ -98,6 +110,37 @@ export default function PublicCandidateAssessment() {
       }
     })();
   }, [db, token, assessmentIdParam]);
+
+  // ── Step 1.5: Candidate Phone Verification Handlers ─────────────────────────
+  const handleVerifyPhone = async (e) => {
+    e.preventDefault();
+    setVerifyPhoneError("");
+    const cleaned = (verifyMobile || "").replace(/\D/g, "");
+    if (cleaned.length !== 10) {
+      setVerifyPhoneError("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    try {
+      setVerifyingPhone(true);
+      const res = await verifyAssessmentPhone(db, token, cleaned);
+      if (res?.success) {
+        setValidationData((prev) => ({
+          ...prev,
+          phone_verified: true,
+          candidate_name: res.data?.candidate_name || prev?.candidate_name,
+        }));
+        setScreen("instructions");
+      } else {
+        setVerifyPhoneError(res?.message || "Entered mobile number does not match registered details.");
+      }
+    } catch (err) {
+      setVerifyPhoneError(
+        err.response?.data?.message || err.message || "Mobile verification failed. Please try again."
+      );
+    } finally {
+      setVerifyingPhone(false);
+    }
+  };
 
   // ── Open-link registration: candidate enters details, backend issues a token ──
   const handleRegister = async (e) => {
@@ -518,7 +561,131 @@ export default function PublicCandidateAssessment() {
     );
   }
 
-  // 4. Instructions / Welcome Screen
+  // 4. Verify with Phone Screen (Mandatory identity check)
+  if (screen === "verify_phone") {
+    return (
+      <div className="min-h-screen flex flex-col justify-between bg-[#f0f4f9] font-sans">
+        {/* Navy Header */}
+        <header style={{ background: ERP.navy }} className="py-3 px-4 shadow-sm text-white">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold tracking-wide block">FINAMAN ERP</span>
+              <span className="text-[10px] text-slate-300">Careers & Assessment Portal</span>
+            </div>
+            <span className="text-[11px] bg-white/10 px-2.5 py-0.5 rounded text-slate-200 font-medium flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
+              Candidate Verification
+            </span>
+          </div>
+        </header>
+
+        {/* Verification Card */}
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-md max-w-md w-full p-6 sm:p-7 space-y-5 border border-slate-200">
+            <div className="text-center space-y-2">
+              <div className="w-13 h-13 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto border border-blue-100 shadow-2xs">
+                <Smartphone className="w-6 h-6" />
+              </div>
+              <h1 className="text-lg font-bold text-slate-900">
+                Verify Your Mobile Number
+              </h1>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                Please enter your registered mobile number to verify your identity before taking the assessment.
+              </p>
+            </div>
+
+            {/* Assessment Info Pill */}
+            {validationData?.assessment_name && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-blue-900 font-semibold text-xs">
+                  <Award className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span className="truncate">{validationData.assessment_name}</span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                  <span>Questions: <strong>{validationData.total_questions || "--"}</strong></span>
+                  <span>Duration: <strong>{validationData.estimated_duration_minutes || 30} mins</strong></span>
+                  <span>Marks: <strong>{validationData.total_marks || "--"}</strong></span>
+                </div>
+              </div>
+            )}
+
+            {/* Hint if masked mobile available */}
+            {validationData?.masked_mobile && (
+              <div className="px-3 py-2 bg-blue-50/70 border border-blue-100 rounded-lg flex items-center gap-2 text-xs text-blue-800">
+                <Lock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span>
+                  Registered phone hint: <strong className="font-mono tracking-wider">{validationData.masked_mobile}</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleVerifyPhone} className="space-y-4">
+              <div>
+                <label className="block text-[11.5px] font-semibold text-slate-700 mb-1.5">
+                  Enter Registered Mobile Number <span className="text-red-500">*</span>
+                </label>
+                <div className="relative flex rounded-md shadow-2xs">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-slate-300 bg-slate-50 text-slate-600 font-medium text-xs">
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    autoFocus
+                    placeholder="Enter 10-digit mobile number"
+                    value={verifyMobile}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setVerifyMobile(val);
+                      if (verifyPhoneError) setVerifyPhoneError("");
+                    }}
+                    className="flex-1 min-w-0 block w-full px-3 py-2 text-xs border border-slate-300 rounded-none rounded-r-md outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium tracking-wider"
+                  />
+                </div>
+              </div>
+
+              {verifyPhoneError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-red-700">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 font-medium leading-relaxed">{verifyPhoneError}</div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={verifyingPhone || verifyMobile.length !== 10}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {verifyingPhone ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Verifying Identity...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Verify & Continue</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="pt-2 text-center text-[11px] text-slate-400 border-t">
+              This verification ensures your submission is linked to your candidate profile.
+            </div>
+          </div>
+        </main>
+
+        <footer className="text-center text-[10.5px] text-slate-400 py-3">
+          © {new Date().getFullYear()} FINHRMS Recruitment. All rights reserved.
+        </footer>
+      </div>
+    );
+  }
+
+  // 5. Instructions / Welcome Screen
   if (screen === "instructions") {
     return (
       <div className="min-h-screen flex flex-col justify-between bg-[#f0f4f9] font-sans">

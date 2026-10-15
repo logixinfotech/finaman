@@ -5,14 +5,13 @@ import { styleFor } from "../pipelineConstants";
 export default function StatusChip({ status, category, statusBase, sub, className = "", size = "sm" }) {
   const s = styleFor(category, statusBase || status);
   return (
-    <span className={`inline-flex flex-col min-w-0 ${className}`}>
+    <span className={`inline-flex flex-col min-w-0 max-w-full ${className}`}>
       <span
-        className={`inline-block max-w-full truncate rounded border font-semibold leading-4 ${s.chip} ${
-          size === "md" ? "px-2.5 py-1 text-[12px]" : "px-2 py-0.5 text-[11px]"
-        }`}
+        className={`inline-flex items-center max-w-full rounded-full border font-semibold leading-none whitespace-nowrap ${s.chip} ${size === "md" ? "h-[26px] px-3 text-[12px]" : "h-[20px] px-2.5 text-[10.5px]"
+          }`}
         title={status}
       >
-        {status}
+        <span className="truncate">{status}</span>
       </span>
       {sub && (
         <span className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-500 leading-3">

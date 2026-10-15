@@ -23,7 +23,7 @@
 }
  
 .login-title {
-  font-size: 26px;
+  font-size: calc(26rem / 16);
   font-weight: 700;
   text-align: center; 
   margin-bottom: 4px;
@@ -32,7 +32,7 @@
 
 .login-subtitle {
   text-align: center;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   color: var(--text-muted);
   margin-bottom: 30px;
 }
@@ -44,7 +44,7 @@
 }
 
 .login-field label {
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   margin-bottom: 6px;
   color: var(--text-muted);
 }
@@ -57,7 +57,7 @@
   background: #f9fafb;
   color: var(--text-main);
   outline: none;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   transition: all 0.2s ease;
 }
 
@@ -78,7 +78,7 @@
   border-radius: 14px;
   border: none;
   font-weight: 600;
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   cursor: pointer;
   background: linear-gradient(
     135deg,
@@ -104,13 +104,13 @@
   color: #9f1239;
   border-radius: 12px;
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   margin-bottom: 18px;
   text-align: center;
 } 
 .login-footer {
   margin-top: 24px;
-  font-size: 11px;
+  font-size: calc(11rem / 16);
   text-align: center;
   color: var(--text-muted);
 } 
@@ -155,13 +155,13 @@
   justify-content: center;
   align-items: center;
   gap: 8px;
-  font-size: 24px;
+  font-size: calc(24rem / 16);
   font-weight: 700;
   color: #1e3a8a;
 }
 
 .login-subtitle {
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   color: #475569;
 }
 
@@ -185,7 +185,7 @@
   border: none;
   outline: none;
   width: 100%;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   background: transparent;
 }
 
@@ -225,7 +225,7 @@
 .login-error {
   background: #fee2e2;
   color: #991b1b;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   padding: 8px;
   border-radius: 6px;
   margin-bottom: 12px;
@@ -236,7 +236,7 @@
 .login-footer {
   text-align: center;
   margin-top: 18px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: #64748b;
 }
 
@@ -290,27 +290,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: calc(26rem / 16);
   font-weight: 700;
   color: #ffffff;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
 }
 
 .profile-header-info h2 {
-  font-size: 20px;
+  font-size: calc(20rem / 16);
   font-weight: 700;
   color: var(--text-main);
   margin-bottom: 4px;
 }
 
 .profile-role {
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   color: var(--bg-active);
   font-weight: 600;
 }
 
 .profile-company {
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--text-muted);
 }
 
@@ -347,13 +347,13 @@
 }
 
 .profile-label {
-  font-size: 12.5px;
+  font-size: calc(12.5rem / 16);
   font-weight: 600;
   color: var(--text-muted);
 }
 
 .profile-value {
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 600;
   color: var(--text-main);
 }

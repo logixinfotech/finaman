@@ -24,6 +24,12 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
+  <script>
+  try {
+    var s = parseInt(localStorage.getItem("finaman-font-scale"), 10);
+    if (s >= 80 && s <= 140) document.documentElement.style.setProperty("--fs", s / 100);
+  } catch (e) {}
+</script>
     <title>FINAMAN APP</title>
   </head>
   <body>

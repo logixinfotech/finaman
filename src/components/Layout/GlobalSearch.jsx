@@ -142,7 +142,7 @@
 
 //   return (
 //     <div className="relative group">
-//       <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2   text-white/80 text-[10px] z-10 pointer-events-none" />
+//       <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2   text-white/80 text-[length:calc(10px*var(--fs,1))] z-10 pointer-events-none" />
 
 //       <input
 //         ref={searchRef}
@@ -168,7 +168,7 @@
 //           }}
 //           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors z-10"
 //         >
-//           <FaTimes className="text-[10px]" />
+//           <FaTimes className="text-[length:calc(10px*var(--fs,1))]" />
 //         </button>
 //       )}
 
@@ -183,10 +183,10 @@
 //           >
 //             {/* Header Tip */}
 //             <div className="px-3.5 py-2.5 bg-slate-50/80 border-b border-slate-100 flex justify-between items-center">
-//               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+//               <span className="text-[length:calc(9px*var(--fs,1))] font-bold text-slate-400 uppercase tracking-wider">
 //                 {filteredResults.length > 0 ? `${filteredResults.length} results` : "Navigator"}
 //               </span>
-//               <span className="text-[9px] text-slate-400 flex items-center gap-1">
+//               <span className="text-[length:calc(9px*var(--fs,1))] text-slate-400 flex items-center gap-1">
 //                 <kbd className="px-1 py-[1px] rounded-[4px] bg-white border border-slate-200 text-slate-400 font-sans">↑↓</kbd>
 //                 navigate
 //                 <kbd className="px-1 py-[1px] rounded-[4px] bg-white border border-slate-200 text-slate-400 font-sans">↵</kbd>
@@ -223,17 +223,17 @@
 //                         />
 //                       )}
 //                       <div
-//                         className="shrink-0 w-6 h-6 rounded-[7px] flex items-center justify-center text-[11px] font-bold"
+//                         className="shrink-0 w-6 h-6 rounded-[7px] flex items-center justify-center text-[length:calc(11px*var(--fs,1))] font-bold"
 //                         style={{ background: `${color}1c`, color }}
 //                       >
 //                         {getIcon(item) || (item.bar_name || "?").charAt(0).toUpperCase()}
 //                       </div>
 
 //                       <div className="flex flex-col gap-0.5 min-w-0">
-//                         <span className="text-[11.5px] font-semibold tracking-tight truncate text-slate-700">
+//                         <span className="text-[length:calc(11.5px*var(--fs,1))] font-semibold tracking-tight truncate text-slate-700">
 //                           {renderHighlighted(item.bar_name || "", debouncedQuery, color)}
 //                         </span>
-//                         <span className="text-[9px] uppercase font-bold tracking-wide text-slate-400">
+//                         <span className="text-[length:calc(9px*var(--fs,1))] uppercase font-bold tracking-wide text-slate-400">
 //                           {moduleName}
 //                         </span>
 //                       </div>
@@ -243,9 +243,9 @@
 //               </div>
 //             ) : (
 //               <div className="px-4 py-6 flex flex-col items-center gap-1.5 text-center">
-//                 <FaSearch className="text-slate-300 text-[16px]" />
-//                 <span className="text-[11px] font-medium text-slate-500">No matches found</span>
-//                 <span className="text-[9.5px] text-slate-400">Try a different keyword</span>
+//                 <FaSearch className="text-slate-300 text-[length:calc(16px*var(--fs,1))]" />
+//                 <span className="text-[length:calc(11px*var(--fs,1))] font-medium text-slate-500">No matches found</span>
+//                 <span className="text-[length:calc(9.5px*var(--fs,1))] text-slate-400">Try a different keyword</span>
 //               </div>
 //             )}
 //           </motion.div>
@@ -398,7 +398,7 @@ const GlobalSearch = ({ allMenus, modules = [], onOpenPage }) => {
 
   return (
     <div className="relative group">
-      <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2   text-white/80 text-[10px] z-10 pointer-events-none" />
+      <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2   text-white/80 text-[length:calc(10px*var(--fs,1))] z-10 pointer-events-none" />
 
       <input
         ref={searchRef}
@@ -424,7 +424,7 @@ const GlobalSearch = ({ allMenus, modules = [], onOpenPage }) => {
           }}
           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors z-10"
         >
-          <FaTimes className="text-[10px]" />
+          <FaTimes className="text-[length:calc(10px*var(--fs,1))]" />
         </button>
       )}
 
@@ -439,10 +439,10 @@ const GlobalSearch = ({ allMenus, modules = [], onOpenPage }) => {
           >
             {/* Header Tip */}
             <div className="px-3.5 py-2.5 bg-slate-50/80 border-b border-slate-100 flex justify-between items-center">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <span className="text-[length:calc(9px*var(--fs,1))] font-bold text-slate-400 uppercase tracking-wider">
                 {filteredResults.length > 0 ? `${filteredResults.length} results` : "Navigator"}
               </span>
-              <span className="text-[9px] text-slate-400 flex items-center gap-1">
+              <span className="text-[length:calc(9px*var(--fs,1))] text-slate-400 flex items-center gap-1">
                 <kbd className="px-1 py-[1px] rounded-[4px] bg-white border border-slate-200 text-slate-400 font-sans">↑↓</kbd>
                 navigate
                 <kbd className="px-1 py-[1px] rounded-[4px] bg-white border border-slate-200 text-slate-400 font-sans">↵</kbd>
@@ -479,17 +479,17 @@ const GlobalSearch = ({ allMenus, modules = [], onOpenPage }) => {
                         />
                       )}
                       <div
-                        className="shrink-0 w-6 h-6 rounded-[7px] flex items-center justify-center text-[11px] font-bold"
+                        className="shrink-0 w-6 h-6 rounded-[7px] flex items-center justify-center text-[length:calc(11px*var(--fs,1))] font-bold"
                         style={{ background: `${color}1c`, color }}
                       >
                         {getIcon(item) || (item.bar_name || "?").charAt(0).toUpperCase()}
                       </div>
 
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="text-[11.5px] font-semibold tracking-tight truncate text-slate-700">
+                        <span className="text-[length:calc(11.5px*var(--fs,1))] font-semibold tracking-tight truncate text-slate-700">
                           {renderHighlighted(item.bar_name || "", debouncedQuery, color)}
                         </span>
-                        <span className="text-[9px] uppercase font-bold tracking-wide text-slate-400">
+                        <span className="text-[length:calc(9px*var(--fs,1))] uppercase font-bold tracking-wide text-slate-400">
                           {moduleName}
                         </span>
                       </div>
@@ -499,9 +499,9 @@ const GlobalSearch = ({ allMenus, modules = [], onOpenPage }) => {
               </div>
             ) : (
               <div className="px-4 py-6 flex flex-col items-center gap-1.5 text-center">
-                <FaSearch className="text-slate-300 text-[16px]" />
-                <span className="text-[11px] font-medium text-slate-500">No matches found</span>
-                <span className="text-[9.5px] text-slate-400">Try a different keyword</span>
+                <FaSearch className="text-slate-300 text-[length:calc(16px*var(--fs,1))]" />
+                <span className="text-[length:calc(11px*var(--fs,1))] font-medium text-slate-500">No matches found</span>
+                <span className="text-[length:calc(9.5px*var(--fs,1))] text-slate-400">Try a different keyword</span>
               </div>
             )}
           </motion.div>

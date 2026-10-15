@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { getPendingRequests } from "../../../utils/api";
 import { useAuth } from "../../../theme/AuthContext";
+import { useNavigate } from "react-router-dom";
+
 const REQ_KEYS = {
   id: ["id", "transaction_id", "request_id", "approval_id"],
   employeeName: ["employee_name", "emp_name", "name", "Led_name"],
@@ -106,12 +108,16 @@ const getInitials = (name) => {
 };
 
 
-const ApprovalWorkflow = ({ onManageAllClick }) => {
+const ApprovalWorkflow = ({ onManageAllClick,calendarPage="ApprovalTransaction" }) => {
+    const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rawRequests, setRawRequests] = useState([]);
   const { user } = useAuth();
-
+   const handleViewCalendar = useCallback(() => {
+      if (onManageAllClick) return onManageAllClick(); // parent ne diya ho to wahi
+      navigate(`/app?page=${calendarPage}`);
+    }, [onManageAllClick, navigate, calendarPage]);
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(false);
@@ -187,7 +193,7 @@ const ApprovalWorkflow = ({ onManageAllClick }) => {
     <div style={styles.card}>
       <div style={styles.cardHdr}>
         <span style={styles.cardTitle}>Approval workflow</span>
-        <span style={styles.action} onClick={onManageAllClick}>Manage all ↗️</span>
+        <span style={styles.action} onClick={handleViewCalendar}>Manage all ↗️</span>
       </div>
 
       {loading && (

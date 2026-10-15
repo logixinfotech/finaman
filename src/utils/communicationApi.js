@@ -56,3 +56,6 @@ export const getCommunicationHistory = (params = {}) =>
 
 export const getCandidateCommunicationHistory = (candidateId) =>
   handleApi(() => api.get(`${BASE}/candidate/${candidateId}/history`));
+
+export const deleteCommunicationLogs = (log_ids) =>
+  handleApi(() => api.post(`${BASE}/history/delete`, { log_ids }));

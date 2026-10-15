@@ -26,9 +26,9 @@ const AssessmentMasterSearch = ({
     {
       key: "assessment_code",
       label: "Assessment Code",
-      width: 120,
+      width: 130,
       render: (row) => (
-        <span className="font-mono font-semibold text-blue-700 hover:underline cursor-pointer">
+        <span className="block whitespace-nowrap font-mono font-semibold text-blue-700 hover:underline cursor-pointer">
           {row.assessment_code}
         </span>
       ),
@@ -36,23 +36,25 @@ const AssessmentMasterSearch = ({
     {
       key: "assessment_name",
       label: "Assessment Title",
+      width: 340,
       render: (row) => (
-        <div>
-          <span className="font-semibold text-slate-800 block">{row.assessment_name}</span>
+        <span
+          className="block min-w-0 truncate"
+          title={`${row.assessment_name || ""}${row.description ? " — " + row.description : ""}`}
+        >
+          <span className="font-semibold text-slate-800">{row.assessment_name}</span>
           {row.description && (
-            <span className="text-[11px] text-slate-400 font-normal truncate max-w-xs block" title={row.description}>
-              {row.description}
-            </span>
+            <span className="text-[11px] text-slate-400 font-normal"> · {row.description}</span>
           )}
-        </div>
+        </span>
       ),
     },
     {
       key: "total_questions",
       label: "Questions",
-      width: 90,
+      width: 100,
       render: (row) => (
-        <span className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-[11px] border border-slate-200">
+        <span className="inline-flex items-center justify-center h-[20px] min-w-[28px] px-2.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-[11px] leading-none border border-slate-200">
           {row.total_questions || row.question_count || 0}
         </span>
       ),
@@ -60,20 +62,20 @@ const AssessmentMasterSearch = ({
     {
       key: "estimated_duration_minutes",
       label: "Duration",
-      width: 100,
+      width: 110,
       render: (row) => (
-        <div className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-slate-700">
           <Clock className="w-3 h-3 text-slate-400" />
           {row.estimated_duration_minutes || 30} mins
-        </div>
+        </span>
       ),
     },
     {
       key: "total_marks",
       label: "Total Marks",
-      width: 80,
+      width: 100,
       render: (row) => (
-        <span className="font-bold text-emerald-700 text-xs">
+        <span className="block whitespace-nowrap font-bold text-emerald-700 text-xs">
           {row.total_marks || 0}
         </span>
       ),
@@ -81,9 +83,9 @@ const AssessmentMasterSearch = ({
     {
       key: "passing_marks",
       label: "Passing Marks",
-      width: 80,
+      width: 110,
       render: (row) => (
-        <span className="font-semibold text-blue-700 text-xs">
+        <span className="block whitespace-nowrap font-semibold text-blue-700 text-xs">
           {row.passing_marks || 0}
         </span>
       ),
@@ -91,9 +93,9 @@ const AssessmentMasterSearch = ({
     {
       key: "assigned_count",
       label: "Candidates",
-      width: 90,
+      width: 100,
       render: (row) => (
-        <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold text-[11px] border border-blue-200">
+        <span className="inline-flex items-center justify-center h-[20px] min-w-[28px] px-2.5 rounded-full bg-blue-50 text-blue-700 font-semibold text-[11px] leading-none border border-blue-200">
           {row.assigned_count || 0}
         </span>
       ),
@@ -101,7 +103,7 @@ const AssessmentMasterSearch = ({
     {
       key: "public_link",
       label: "Public Link",
-      width: 110,
+      width: 120,
       render: (row) => (
         <button
           type="button"
@@ -111,7 +113,7 @@ const AssessmentMasterSearch = ({
             await copyToClipboard(buildOpenLink(row.assessment_id));
             showToast({ icon: "success", title: "Public link copied" });
           }}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100"
+          className="inline-flex items-center gap-1 h-[22px] px-2 rounded text-[11px] font-semibold leading-none whitespace-nowrap text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 cursor-pointer"
         >
           <Link2 className="w-3 h-3" />
           Copy Link
@@ -121,16 +123,15 @@ const AssessmentMasterSearch = ({
     {
       key: "status",
       label: "Status",
-      width: 100,
+      width: 110,
       render: (row) => {
         const isActive = row.status === "Active";
         return (
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold border ${
-              isActive
+            className={`inline-flex items-center gap-1 h-[20px] px-2.5 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap border ${isActive
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                 : "bg-slate-100 text-slate-500 border-slate-200"
-            }`}
+              }`}
           >
             {isActive ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
             {row.status || "Active"}

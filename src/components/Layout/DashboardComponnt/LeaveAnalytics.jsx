@@ -18,6 +18,7 @@ import {
   getLeaveEncashments,
   getLeaveBalance,
 } from "../../../utils/api";
+import { useNavigate } from "react-router-dom";
 
 ChartJS.register(ArcElement, LineElement, PointElement, CategoryScale, LinearScale, Filler, Tooltip, Legend);
 const REQ_KEYS = {
@@ -180,8 +181,13 @@ const useResponsiveCss = () => {
   }, []);
 };
 
-const LeaveAnalytics = ({ isHalf = false, onViewAllClick, onAIClick }) => {
+const LeaveAnalytics = ({ isHalf = false, onViewAllClick, onAIClick ,calendarPage="LeaveAnalytics"}) => {
   useResponsiveCss();
+   const navigate = useNavigate();
+    const handleViewCalendar = useCallback(() => {
+      if (onViewAllClick) return onViewAllClick(); 
+      navigate(`/app?page=${calendarPage}`);
+    }, [onViewAllClick, navigate, calendarPage]);
   const currentDate = useMemo(() => new Date(), []);
   const today = useMemo(() => toDateOnly(currentDate), [currentDate]);
 
@@ -470,7 +476,7 @@ const LeaveAnalytics = ({ isHalf = false, onViewAllClick, onAIClick }) => {
       <div style={styles.card}>
         <div style={styles.cardHdr}>
           <span style={styles.cardTitle}>Leave analytics — {monthLabel}</span>
-          <span style={styles.action} onClick={onViewAllClick}>View all ↗️</span>
+          <span style={styles.action} onClick={handleViewCalendar}>View all ↗️</span>
         </div>
 
         {loading ? (

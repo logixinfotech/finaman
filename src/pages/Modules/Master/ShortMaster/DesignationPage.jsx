@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useERPMode } from "../../../../components/Reusable/form/useFormMode";
 import Table from "../../../../components/Reusable/table/Table";
 import UserGroupForm from "../UserMaster/UserGroupform";
+import useEmbeddedMaster from "../../../../components/Reusable/QuickAdd/useEmbeddedMaster";
+
 import {
     fetchUserGroupsByType, deleteUserGroup, createUserGroup, updateUserGroup,
 } from "../../../../utils/api";
@@ -27,7 +29,7 @@ const columns = [
     { key: "remarks", label: "Remarks" },
 ];
 
-const DesignationMasterPage = ({ tab }) => {
+const DesignationMasterPage = ({ tab, embedded = false, initialName = "", onSaved, onClose }) => {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -79,7 +81,10 @@ const DesignationMasterPage = ({ tab }) => {
             setLoading(false);
         }
     }, []);
-
+const emb = useEmbeddedMaster({
+    embedded, initialName, onSaved, onClose,
+    handleAdd, setFormData, nameKey: "group_name",
+});
     useEffect(() => { loadGroups(); }, [loadGroups]);
 
     useEffect(() => {
@@ -94,33 +99,73 @@ const DesignationMasterPage = ({ tab }) => {
         handleView(row);
         setShowForm(true);
     };
-
     const handleSave = async () => {
-        if (!formData.group_name) {
-            alertError("Validation", "Designation Name is required");
+    if (!formData.group_name?.trim()) {
+        alertError("Validation", "Designation Name is required");
+        return;
+    }
+
+    // Duplicate check (sirf naye record par)
+    if (mode === "add") {
+        const dup = list.find(
+            (g) => g.group_name?.trim().toLowerCase() === formData.group_name.trim().toLowerCase()
+        );
+        if (dup) {
+            if (emb.afterSave(dup.group_name)) return;   // embedded: wahi existing select
+            alertError("Duplicate", `"${dup.group_name}" already exists.`);
             return;
         }
+    }
 
-        const savedData = await performSave("group_id");
+    const savedData = await performSave("group_id");
 
-        if (savedData?.success) {
-            showToast({ icon: "success", title: "Saved Successfully" });
+    if (savedData?.success) {
+        showToast({ icon: "success", title: "Saved Successfully" });
 
-            const freshList = await loadGroups();
-            const savedId = savedData?.group_id ?? savedData?.data?.group_id ?? formData?.group_id;
-            let newIndex = freshList.findIndex((item) => item.group_id === savedId);
-            if (newIndex === -1) {
-                newIndex = freshList.findIndex((item) => item.group_name === formData?.group_name);
-            }
-            if (newIndex === -1) newIndex = 0;
+        if (emb.afterSave(formData.group_name.trim())) return;   // embedded: yahin khatam
 
-            setCurrentIndex(newIndex);
-            setFormData({ ...freshList[newIndex] });
-
-        } else if (savedData?.message) {
-            alertError("Save failed", savedData.message);
+        const freshList = await loadGroups();
+        const savedId = savedData?.group_id ?? savedData?.data?.group_id ?? formData?.group_id;
+        let newIndex = freshList.findIndex((item) => item.group_id === savedId);
+        if (newIndex === -1) {
+            newIndex = freshList.findIndex((item) => item.group_name === formData?.group_name);
         }
-    };
+        if (newIndex === -1) newIndex = 0;
+
+        setCurrentIndex(newIndex);
+        setFormData({ ...freshList[newIndex] });
+
+    } else if (savedData?.message) {
+        alertError("Save failed", savedData.message);
+    }
+};
+
+    // const handleSave = async () => {
+    //     if (!formData.group_name) {
+    //         alertError("Validation", "Designation Name is required");
+    //         return;
+    //     }
+
+    //     const savedData = await performSave("group_id");
+
+    //     if (savedData?.success) {
+    //         showToast({ icon: "success", title: "Saved Successfully" });
+
+    //         const freshList = await loadGroups();
+    //         const savedId = savedData?.group_id ?? savedData?.data?.group_id ?? formData?.group_id;
+    //         let newIndex = freshList.findIndex((item) => item.group_id === savedId);
+    //         if (newIndex === -1) {
+    //             newIndex = freshList.findIndex((item) => item.group_name === formData?.group_name);
+    //         }
+    //         if (newIndex === -1) newIndex = 0;
+
+    //         setCurrentIndex(newIndex);
+    //         setFormData({ ...freshList[newIndex] });
+
+    //     } else if (savedData?.message) {
+    //         alertError("Save failed", savedData.message);
+    //     }
+    // };
 
     const listWithSr = list.map((item, index) => ({ ...item, Sr: index + 1 }));
 
@@ -176,10 +221,11 @@ const DesignationMasterPage = ({ tab }) => {
         });
     }, [list, handleAdd, handleSave]);
 
-    const handleTabChange = (targetTab) => {
-        if (targetTab === "search") setShowForm(false);
-        if (targetTab === "entry") setShowForm(true);
-    };
+ const handleTabChange = (targetTab) => {
+    if (emb.isEmbedded) return;
+    if (targetTab === "search") setShowForm(false);
+    if (targetTab === "entry") setShowForm(true);
+};
 
     return (
         <div className="h-full">
@@ -190,7 +236,11 @@ const DesignationMasterPage = ({ tab }) => {
                     formData={formData}
                     setFormData={setFormData}
                     onSave={handleSave}
-                    onCancel={() => { setShowForm(false); setFormData(initialState); }}
+                   onCancel={() => {
+    if (emb.isEmbedded) { emb.handleClose(); return; }
+    setShowForm(false); setFormData(initialState);
+}}
+compact={emb.isEmbedded}
                     onDelete={handleDelete}
                     mode={mode}
                     saving={saving}

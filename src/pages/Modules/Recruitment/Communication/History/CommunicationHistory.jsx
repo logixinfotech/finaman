@@ -13,11 +13,13 @@ import {
   Play,
   Download,
   FileAudio,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from "lucide-react";
 import Table from "../../../../../components/Reusable/table/Table";
 import { showToast } from "../../../../../components/Reusable/alert";
 import { formInputClass } from "../../../../../components/Reusable/form/SectionCard";
-import { getCommunicationHistory } from "../../../../../utils/communicationApi";
+import { getCommunicationHistory, deleteCommunicationLogs } from "../../../../../utils/communicationApi";
 import { DISPOSITION_STYLES } from "../communicationConstants";
 import { initials } from "../../CandidateTracking/pipelineConstants";
 import { BaseButton, RefreshButton, ResetButton } from "../../../../../components/Reusable/button/ActionButon";
@@ -52,6 +54,21 @@ export default function CommunicationHistory() {
       setLoading(false);
     }
   }, []);
+  const handleDeleteLogs = useCallback(async (ids) => {
+    if (!ids?.length) return;
+    if (!window.confirm(`Delete ${ids.length} selected log${ids.length > 1 ? "s" : ""}?`)) return;
+    try {
+      const res = await deleteCommunicationLogs(ids);
+      if (res?.success) {
+        showToast({ icon: "success", title: res.message || "Deleted successfully" });
+        loadHistory();
+      } else {
+        showToast({ icon: "error", title: res?.message || "Failed to delete" });
+      }
+    } catch (err) {
+      showToast({ icon: "error", title: "Error deleting logs" });
+    }
+  }, [loadHistory]);
 
   useEffect(() => {
     loadHistory();
@@ -88,23 +105,32 @@ export default function CommunicationHistory() {
     {
       key: "comm_type",
       label: "Channel",
-      width: 150,
+      width: 170,
       render: (row) => {
         const ch = channelOf(row);
         const dir = row.direction || "Outbound";
+        const isIn = dir === "Inbound";
         let Icon = Phone;
         let badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
         if (ch === "WhatsApp") { Icon = MessageSquare; badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200"; }
         else if (ch === "Email") { Icon = Mail; badgeColor = "bg-purple-50 text-purple-700 border-purple-200"; }
         else if (ch === "SMS") { Icon = Smartphone; badgeColor = "bg-amber-50 text-amber-700 border-amber-200"; }
+        const DirIcon = isIn ? ArrowDownLeft : ArrowUpRight;
         return (
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeColor}`}>
+          <div className="flex items-center gap-1.5 h-full whitespace-nowrap">
+            <span className={`inline-flex items-center self-center gap-1 h-[20px] px-2 rounded-full text-[10px] font-bold leading-none border ${badgeColor}`}>
               <Icon size={10} />
               {ch}
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">{dir}</span>
-          </span>
+            <span
+              className={`inline-flex items-center self-center gap-0.5 h-[20px] px-1.5 rounded-full text-[10px] font-medium leading-none border ${isIn ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-500 border-slate-200"
+                }`}
+              title={dir}
+            >
+              <DirIcon size={10} />
+              {isIn ? "In" : "Out"}
+            </span>
+          </div>
         );
       },
     },
@@ -121,16 +147,22 @@ export default function CommunicationHistory() {
     {
       key: "disposition",
       label: "Disposition",
-      width: 210,
+      width: 230,
       render: (row) => {
         const disp = row.disposition || "Logged";
         const style = DISPOSITION_STYLES[disp] || { bg: "bg-slate-50", text: "text-slate-700", border: "border-slate-200" };
         const detail = row.rejection_category || row.reason;
         return (
-          <span className="flex items-center gap-1.5 min-w-0">
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{disp}</span>
-            {detail && <span className="text-[10px] text-slate-500 truncate" title={detail}>{detail}</span>}
-          </span>
+          <div className="flex items-center gap-1.5 h-full min-w-0">
+            <span className={`inline-flex items-center self-center shrink-0 h-[20px] px-2.5 rounded-full text-[10px] font-bold leading-none border whitespace-nowrap ${style.bg} ${style.text} ${style.border}`}>
+              {disp}
+            </span>
+            {detail && (
+              <span className="text-[10px] text-slate-500 truncate" title={detail}>
+                {detail}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -189,11 +221,10 @@ export default function CommunicationHistory() {
               key={ch}
               type="button"
               onClick={() => setSelectedChannel(ch)}
-              className={`h-[24px] px-2.5 rounded text-[10.5px] font-bold transition-all ${
-                selectedChannel === ch
-                  ? "bg-blue-100 text-blue-900 shadow-2xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`h-[24px] px-2.5 rounded text-[10.5px] font-bold transition-all ${selectedChannel === ch
+                ? "bg-blue-100 text-blue-900 shadow-2xs font-bold"
+                : "text-slate-600 hover:text-slate-900"
+                }`}
             >
               {ch}
             </button>
@@ -249,9 +280,10 @@ export default function CommunicationHistory() {
           TitleIcon={History}
           columns={columns}
           data={visibleLogs}
-          rowKey="log_id"
+          rowKey="comm_id"
           loading={loading}
           onRefresh={loadHistory}
+          onDeleteMultiple={handleDeleteLogs}
           onToggleFilter={() => setShowFilters((v) => !v)}
           showForm={showFilters}
           formComponent={filterPanel}
@@ -272,7 +304,7 @@ export default function CommunicationHistory() {
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-wrap justify-center">
-            <RefreshButton onClick={loadHistory} loading={loading} />
+            {/* <RefreshButton onClick={loadHistory} loading={loading} /> */}
             {hasActiveFilters && (
               <ResetButton
                 onClick={() => {

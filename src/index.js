@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./theme/AuthContext";
+import { FontScaleProvider } from "./theme/FontScaleContext";
+ 
 
 import "./index.css";
 import App from "./App";
@@ -19,9 +21,11 @@ root.render(
     v7_relativeSplatPath: true,
   }}>
      <AuthProvider>
-      <NotificationProvider   wsUrl={null}  apiUrl={null}>
-        <App />
-      </NotificationProvider>
+      <FontScaleProvider>
+          <NotificationProvider wsUrl={null} apiUrl={null}>
+            <App />
+          </NotificationProvider>
+        </FontScaleProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

@@ -178,6 +178,10 @@ export const getCandidateAssessmentsByPipeline = (pipeline_id) =>
 export const getCandidateAssessmentDetail = (candidate_assessment_id) =>
   handleApi(() => api.get(`${CAND_ASM}/detail/${candidate_assessment_id}`));
 export const submitHRGrades = (data) => handleApi(() => api.post(`${CAND_ASM}/grade`, data));
+export const getEvaluationCandidateList = (params) =>
+  handleApi(() => api.get(`${CAND_ASM}/evaluations`, { params }));
+export const getCandidateAssessments = (candidate_id) =>
+  handleApi(() => api.get(`${CAND_ASM}/by-candidate/${candidate_id}`));
 
 // ── Interview Scheduling API ───────────────────────────────────────────────
 const SCHED = "/api/recruitment/interview-scheduling";

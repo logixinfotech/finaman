@@ -19,11 +19,15 @@ export default function CandidateTracking({ tab }) {
   };
 
   if (view.mode === "detail") {
-    return <PipelineDetail pipelineId={view.pipelineId} intent={view.intent} onBack={backToList} rights={rights} />;
+    return (
+      <div className="h-full w-full min-w-0 min-h-0 overflow-hidden">
+        <PipelineDetail pipelineId={view.pipelineId} intent={view.intent} onBack={backToList} rights={rights} />
+      </div>
+    );
   }
 
   return (
-    <div className="bg-slate-50 h-full w-full min-w-0">
+    <div className="bg-slate-50 h-full w-full min-w-0 min-h-0 overflow-hidden">
       <PipelineList
         refreshKey={refreshKey}
         onOpen={(row, intent = "view") => setView({ mode: "detail", pipelineId: row.pipeline_id, intent })}

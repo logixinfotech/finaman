@@ -34,6 +34,8 @@ const STATIC_SECTIONS = [
   { id: "communication", label: "Communication Setup", meta: "Email & WhatsApp channels, message templates", icon: MessageSquare, component: lazy(() => import("../CommunicationSetup")) },
   { id: "shortcuts", label: "Keyboard Shortcuts", meta: "View, change or turn off shortcuts, and open any screen with your own keys", icon: Keyboard, component: ShortcutsTab },
   { id: "authentication", label: "Authentication", meta: "Coming soon", icon: ShieldCheck, comingSoon: true },
+   { id: "textsizes", label: "Text Sizes", meta: "Coming soon", icon: ShieldCheck,component: lazy(() => import("../../../components/FontSizeControl"))  },
+  
 ];
 
 // modules with a module-wide panel (shared rules), keyed by sidebar mod_name

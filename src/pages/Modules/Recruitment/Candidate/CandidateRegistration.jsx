@@ -197,8 +197,9 @@ export default function CandidateRegistration({ tab }) {
     navigateRecord,
   ]);
 
-  const handleRowClick = (row, idx) => {
-    setCurrentIndex(idx);
+  const handleRowClick = (row) => {
+    const idx = list.findIndex((c) => c.candidate_id === row.candidate_id);
+    setCurrentIndex(idx >= 0 ? idx : 0);
     handleView(row);
   };
 
@@ -216,6 +217,34 @@ export default function CandidateRegistration({ tab }) {
       loadList();
     } catch (err) {
       showToast({ icon: "error", title: err.message || "Failed to delete candidate." });
+    }
+  };
+
+  const handleDeleteMultiple = async (selected) => {
+    const ids = (selected || []).map((item) =>
+      typeof item === "object" ? item.candidate_id : item
+    );
+    if (ids.length === 0) return;
+    const confirmed = await confirmDelete({
+      title: `Delete ${ids.length} candidate(s)?`,
+      text: `Are you sure you want to delete ${ids.length} candidate record(s)?`,
+    });
+    if (!confirmed) return;
+    try {
+      const results = await Promise.all(ids.map((id) => deleteCandidate(id)));
+      const failed = results.filter((r) => !r?.success).length;
+      if (failed === 0) {
+        showToast({ icon: "success", title: `${ids.length} deleted successfully.` });
+      } else {
+        showToast({
+          icon: "warning",
+          title: `${ids.length - failed} deleted, ${failed} failed`,
+        });
+      }
+      loadList();
+      setShowForm(false);
+    } catch (err) {
+      alertError("Delete Error", "Failed to delete candidates");
     }
   };
 
@@ -400,7 +429,16 @@ export default function CandidateRegistration({ tab }) {
       label: "Candidate Code",
       width: 130,
       render: (row) => (
-        <span className="font-semibold text-blue-700 hover:underline cursor-pointer">
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            const idx = list.findIndex((c) => c.candidate_id === row.candidate_id);
+            if (idx !== -1) setCurrentIndex(idx);
+            handleView(row);
+          }}
+          className="font-semibold text-blue-700 hover:underline cursor-pointer"
+          title="Click to view candidate"
+        >
           {row.candidate_code || "—"}
         </span>
       ),
@@ -556,10 +594,9 @@ export default function CandidateRegistration({ tab }) {
         columns={columns}
         rowKey="candidate_id"
         loading={loading}
-        onRowClick={handleRowClick}
         onRowDoubleClick={handleRowClick}
+        onDeleteMultiple={handleDeleteMultiple}
         onAdd={() => handleAdd(initialState)}
-        onDelete={handleDelete}
         rights={rights}
         activeTab="search"
         onTabChange={(tabKey) => {
@@ -576,9 +613,8 @@ export default function CandidateRegistration({ tab }) {
       {/* Excel Bulk Import Modal with Interactive Preview Screen */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-5 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh] transition-all duration-200 ${
-            previewRows.length > 0 ? "max-w-5xl" : "max-w-lg"
-          }`}>
+          <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh] transition-all duration-200 ${previewRows.length > 0 ? "max-w-5xl" : "max-w-lg"
+            }`}>
             {/* Modal Header */}
             <div className="bg-[#0f2137] text-white px-5 py-3.5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -799,11 +835,10 @@ export default function CandidateRegistration({ tab }) {
               {/* Import Result Box */}
               {importResult && (
                 <div
-                  className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-150 ${
-                    importResult.success
-                      ? "bg-emerald-50 text-emerald-900 border-emerald-200"
-                      : "bg-rose-50 text-rose-900 border-rose-200"
-                  }`}
+                  className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-150 ${importResult.success
+                    ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                    : "bg-rose-50 text-rose-900 border-rose-200"
+                    }`}
                 >
                   {importResult.success ? (
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
@@ -866,8 +901,8 @@ export default function CandidateRegistration({ tab }) {
                     {importing
                       ? "Importing..."
                       : previewRows.length > 0
-                      ? `Import ${previewRows.length} Candidates`
-                      : "Upload & Import"}
+                        ? `Import ${previewRows.length} Candidates`
+                        : "Upload & Import"}
                   </span>
                 </button>
               </div>

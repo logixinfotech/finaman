@@ -392,35 +392,31 @@ const JobVacancyApproval = () => {
     {
       key: "actions",
       label: "Approval Actions",
-      width: 210, // Approve + Reject + Eye need ~190px — 160 was clipping the eye icon
+      width: 210,
       render: (row) => {
         const s = (row.vacancy_status || "").trim();
-        const isApproved = s === "Approved" || s === "Open";
+        const canApprove = ["Draft", "Pending Approval", "On Hold", "Rejected"].includes(s);
+        const canReject = ["Draft", "Pending Approval", "On Hold"].includes(s);
+        const canHold = ["Approved", "Open"].includes(s);
 
         return (
           <div
             className="flex items-center gap-1.5 py-0.5 whitespace-nowrap"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Quick Approve Button */}
-            {!isApproved ? (
+            {canApprove && (
               <button
                 type="button"
                 onClick={() => handleOpenAction("Approved", row)}
-                title="Approve Vacancy"
+                title={s === "Rejected" ? "Re-approve Vacancy" : "Approve Vacancy"}
                 className="h-[22px] px-2 text-[10.5px] font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <CheckCircle size={11} />
-                Approve
+                {s === "Rejected" ? "Re-Approve" : "Approve"}
               </button>
-            ) : (
-              <span className="text-[10.5px] text-emerald-700 font-medium flex items-center gap-1 bg-emerald-50 px-2 h-[22px] rounded border border-emerald-200">
-                <CheckCheck size={11} /> Approved
-              </span>
             )}
 
-            {/* Quick Reject Button */}
-            {s !== "Rejected" && (
+            {canReject && (
               <button
                 type="button"
                 onClick={() => handleOpenAction("Rejected", row)}
@@ -432,7 +428,18 @@ const JobVacancyApproval = () => {
               </button>
             )}
 
-            {/* Quick Details Eye */}
+            {canHold && (
+              <button
+                type="button"
+                onClick={() => handleOpenAction("On Hold", row)}
+                title="Put Vacancy On Hold"
+                className="h-[22px] px-2 text-[10.5px] font-medium bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Clock size={11} />
+                On Hold
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => openDetailModal(row.vacancy_id)}
@@ -503,7 +510,7 @@ const JobVacancyApproval = () => {
         />
       ) : (
         /* ── MOBILE: header + search + filter + card list ─────────────── */
-        <div className="h-full flex flex-col">
+        <div className="h-full min-h-0 flex flex-col overflow-hidden">
           <div className="flex-none bg-white border-b border-slate-200 px-3 py-2 flex items-center gap-2">
             <FaUserCheck className="text-blue-600 shrink-0" size={16} />
             <h1 className="text-sm font-bold text-slate-800 truncate flex-1">Job Vacancy Approval</h1>
@@ -556,7 +563,7 @@ const JobVacancyApproval = () => {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2.5">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 pb-24 space-y-2.5">
             {loading && mobileList.length === 0 ? (
               <div className="flex justify-center py-10">
                 <div className="w-7 h-7 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -566,7 +573,6 @@ const JobVacancyApproval = () => {
             ) : (
               mobileList.map((row) => {
                 const st = (row.vacancy_status || "Draft").trim();
-                const isApproved = st === "Approved" || st === "Open";
                 const p = row.priority || "Normal";
                 const min = row.min_ctc ? Number(row.min_ctc).toLocaleString("en-IN") : "0";
                 const max = row.max_ctc ? Number(row.max_ctc).toLocaleString("en-IN") : "0";
@@ -624,36 +630,48 @@ const JobVacancyApproval = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                      {!isApproved ? (
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                      {/* Approve / Re-Approve: Draft, Pending Approval, On Hold, Rejected */}
+                      {["Draft", "Pending Approval", "On Hold", "Rejected"].includes(st) && (
                         <button
                           type="button"
                           onClick={() => handleOpenAction("Approved", row)}
-                          className="flex-1 h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md flex items-center justify-center gap-1 cursor-pointer"
+                          className="flex-1 min-w-0 h-9 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-md flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <CheckCircle size={13} /> Approve
+                          <CheckCircle size={13} /> {st === "Rejected" ? "Re-Approve" : "Approve"}
                         </button>
-                      ) : (
-                        <span className="flex-1 h-8 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md flex items-center justify-center gap-1">
-                          <CheckCheck size={13} /> Approved
-                        </span>
                       )}
-                      {st !== "Rejected" && (
+
+                      {/* Reject: Draft, Pending Approval, On Hold */}
+                      {["Draft", "Pending Approval", "On Hold"].includes(st) && (
                         <button
                           type="button"
                           onClick={() => handleOpenAction("Rejected", row)}
-                          className="flex-1 h-8 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md flex items-center justify-center gap-1 cursor-pointer"
+                          className="flex-1 min-w-0 h-9 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <XCircle size={13} /> Reject
                         </button>
                       )}
+
+                      {/* On Hold: Approved, Open */}
+                      {["Approved", "Open"].includes(st) && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAction("On Hold", row)}
+                          className="flex-1 min-w-0 h-9 text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-md flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Clock size={13} /> On Hold
+                        </button>
+                      )}
+
+                      {/* Eye: always visible */}
                       <button
                         type="button"
                         onClick={() => openDetailModal(row.vacancy_id)}
                         title="View details"
-                        className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:text-blue-600 cursor-pointer"
+                        className="h-9 w-9 shrink-0 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:text-blue-600 cursor-pointer ml-auto"
                       >
-                        <Eye size={14} />
+                        <Eye size={15} />
                       </button>
                     </div>
                   </div>
@@ -966,7 +984,7 @@ const JobVacancyApproval = () => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md max-h-full flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150"
+              className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md max-h-full min-h-0 flex flex-col overflow-hidden overflow-hidden animate-in fade-in zoom-in duration-150"
             >
               <div
                 className={`px-4 py-3 border-b flex items-center justify-between gap-2 flex-none ${actionModal.type === "Approved"
@@ -1042,13 +1060,12 @@ const JobVacancyApproval = () => {
                 <button
                   onClick={handleConfirmAction}
                   disabled={actionLoading}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
-                    actionModal.type === "Approved"
-                      ? "bg-emerald-600 hover:bg-emerald-700"
-                      : actionModal.type === "Rejected"
-                        ? "bg-rose-600 hover:bg-rose-700"
-                        : "bg-purple-600 hover:bg-purple-700"
-                  }`}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${actionModal.type === "Approved"
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : actionModal.type === "Rejected"
+                      ? "bg-rose-600 hover:bg-rose-700"
+                      : "bg-purple-600 hover:bg-purple-700"
+                    }`}
                 >
                   {actionLoading ? (
                     <Loader2 size={13} className="animate-spin" />

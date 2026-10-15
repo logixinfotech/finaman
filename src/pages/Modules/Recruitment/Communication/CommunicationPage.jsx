@@ -36,7 +36,7 @@ export default function CommunicationPage({ initialTab = "calling" }) {
   };
 
   return (
-    <div className="bg-slate-50 h-full flex flex-col w-full min-w-0 overflow-hidden">
+    <div className="bg-slate-50 h-full min-h-0 flex flex-col w-full min-w-0 overflow-hidden">
       <ERPHeader
         title="COMMUNICATION"
         isHidden={true}
@@ -44,17 +44,20 @@ export default function CommunicationPage({ initialTab = "calling" }) {
         TitleIcon={PhoneCall}
       />
 
-      <ERPTabBar tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
+      {/* Tabs scroll sideways on small screens instead of being cut off */}
+      <div className="shrink-0 overflow-x-auto overflow-y-hidden whitespace-nowrap [&::-webkit-scrollbar]:hidden [&_button]:shrink-0 [&_button]:whitespace-nowrap">
+        <ERPTabBar tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
+      </div>
 
-      <div className="flex-1 min-h-0 p-2.5 w-full min-w-0">
+      <div className="flex-1 min-h-0 overflow-hidden p-0 w-full min-w-0">
         {activeTab === "calling" && (
           <CallingManagement onNavigateToEmail={handleNavigateToEmail} />
         )}
-        {activeTab === "inbound" && <div className="h-full overflow-y-auto"><CallReceive /></div>}
+        {activeTab === "inbound" && <div className="h-full min-h-0 overflow-y-auto overscroll-contain"><CallReceive /></div>}
         {activeTab === "callbacks" && <ScheduledCallbacks />}
-        {activeTab === "whatsapp" && <div className="h-full overflow-y-auto"><WhatsAppMessageDesk /></div>}
+        {activeTab === "whatsapp" && <div className="h-full min-h-0 overflow-y-auto overscroll-contain"><WhatsAppMessageDesk /></div>}
         {activeTab === "email" && (
-          <div className="h-full overflow-y-auto">
+          <div className="h-full min-h-0 overflow-y-auto overscroll-contain">
             <EmailMessageDesk
               initialData={emailInitialData}
               onClearInitialData={() => setEmailInitialData(null)}

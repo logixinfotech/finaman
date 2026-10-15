@@ -355,7 +355,7 @@ input:-webkit-autofill:focus {
 
 .footer-actions .btn {
   height: 28px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   padding: 0 12px;
   border-radius: 6px;
 }
@@ -375,7 +375,7 @@ input:-webkit-autofill:focus {
 }
 
 .menu-master-toolbar-title {
-  font-size: 13.5px;
+  font-size: calc(13.5rem / 16);
   font-weight: 700;
   color: var(--text-main);
 }
@@ -389,7 +389,7 @@ input:-webkit-autofill:focus {
 .menu-master-search {
   width: 160px;
   height: 28px;
-  font-size: 11.5px;
+  font-size: calc(11.5rem / 16);
   padding: 0 8px;
   border-radius: 6px;
   border: 1px solid var(--border-main);
@@ -442,7 +442,7 @@ input:-webkit-autofill:focus {
 .toolbar-dropdown-item {
   width: 100%;
   padding: 6px 10px;
-  font-size: 11.5px;
+  font-size: calc(11.5rem / 16);
   text-align: left;
   background: none;
   border: none;
@@ -458,7 +458,7 @@ input:-webkit-autofill:focus {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  font-size: 11.5px;
+  font-size: calc(11.5rem / 16);
   cursor: pointer;
 }
 
@@ -532,7 +532,7 @@ input:-webkit-autofill:focus {
 }
 
 .erp-toast-title {
-  font-size: 13.5px !important;
+  font-size: calc(13.5rem / 16) !important;
   font-weight: 600 !important;
   color: #0f172a !important;
 }
@@ -542,7 +542,7 @@ input:-webkit-autofill:focus {
 }
 
 .section-title {
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
   margin-bottom: 16px;
   color: var(--primary-color);
@@ -561,7 +561,7 @@ input:-webkit-autofill:focus {
 }
 
 .form-group label {
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 500;
   color: var(--text-muted);
 }/* Sabhi elements par apply karne ke liye universal selector (*) ka use */
@@ -585,7 +585,7 @@ input:-webkit-autofill:focus {
   border-radius: 8px;
   border: 1px solid #e0e0e0;
   transition: 0.2s ease;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
 }
 
 .form-group input:focus,
@@ -667,7 +667,7 @@ input:-webkit-autofill:focus {
 .status-badge {
   padding: 4px 10px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 600;
 }
 
@@ -754,7 +754,7 @@ select,
   color: #fff;
   padding: 3px 10px;
   border-radius: 12px;
-  font-size: 9.5px;
+  font-size: calc(9.5rem / 16);
   font-weight: 800;
   letter-spacing: 0.8px;
   background: linear-gradient(120deg, #7c3aed, #2f6fed, #0ea5b7, #7c3aed);

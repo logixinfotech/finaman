@@ -208,12 +208,12 @@ export default function ScheduledCallbacks() {
       {/* Footer Action Bar */}
       <div className="w-full border-t bg-slate-50/90 backdrop-blur-md rounded-b-xl px-2 sm:px-4 py-2 mt-1 shrink-0">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-xs text-slate-600">
+          {/* <div className="flex items-center gap-2 text-xs text-slate-600">
             <span className="font-semibold text-slate-800">
               {callbacks.length} {callbacks.length === 1 ? "callback" : "callbacks"}
             </span>
             <span>in {activeTabLabel} (Overdue: {counts.overdue || 0}, Today: {counts.today || 0}, Upcoming: {counts.upcoming || 0})</span>
-          </div>
+          </div> */}
           <div className="flex items-center gap-1.5 flex-wrap justify-center">
             {callbacks.length > 0 && (
               <BaseButton
@@ -224,7 +224,7 @@ export default function ScheduledCallbacks() {
                 title="Call next pending scheduled callback"
               />
             )}
-            <RefreshButton onClick={loadCallbacks} loading={loading} />
+            {/* <RefreshButton onClick={loadCallbacks} loading={loading} /> */}
             {hasActiveFilters && (
               <ResetButton onClick={() => setFilters(EMPTY_FILTERS)} label="Reset Filters" />
             )}

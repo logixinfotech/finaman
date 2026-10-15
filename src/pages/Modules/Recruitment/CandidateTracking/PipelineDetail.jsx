@@ -128,7 +128,7 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
   const commTemplate = selected?.comm_template;
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden bg-[#eef1f8] font-sans">
+    <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-[#eef1f8] font-sans">
       <ERPHeader
         title="CANDIDATE PIPELINE"
         subtitle={`${row.full_name} · ${row.candidate_code}`}
@@ -138,53 +138,62 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
         onTabChange={(t) => t === "search" && onBack()}
       />
 
-      <div className="flex-1 overflow-y-auto p-3 md:p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 pb-6 md:p-4">
         <div className="max-w-[1400px] mx-auto space-y-3">
           {/* Candidate header card */}
-          <div className="bg-white border border-[#dde1ea] rounded-[6px] shadow-sm px-3 py-2 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back to Candidate Pipeline"
-              title="Back (Esc)"
-              className="w-[28px] h-[28px] rounded-md border bg-white flex items-center justify-center text-slate-600 hover:text-[var(--icon-color)] hover:border-[var(--icon-color)] transition-colors shrink-0"
-              style={{ borderColor: "#e2e8f0" }}
-            >
-              <ArrowLeft size={15} strokeWidth={2.5} />
-            </button>
-            <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center text-[13px] font-bold shrink-0" style={{ background: "var(--accent-soft)", color: "var(--icon-color)" }}>
-              {initials(row.full_name)}
-            </span>
-            <div className="min-w-[220px] flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[15px] font-bold text-slate-900">{row.full_name}</span>
-                <span className="font-mono text-[11px] text-slate-500">{row.candidate_code}</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${st.chip}`}>{st.label}</span>
+          <div className="bg-white border border-[#dde1ea] rounded-[6px] shadow-sm px-3 py-2.5 space-y-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Back to Candidate Pipeline"
+                title="Back (Esc)"
+                className="w-[28px] h-[28px] rounded-md border bg-white flex items-center justify-center text-slate-600 hover:text-[var(--icon-color)] hover:border-[var(--icon-color)] transition-colors shrink-0 cursor-pointer"
+                style={{ borderColor: "#e2e8f0" }}
+              >
+                <ArrowLeft size={15} strokeWidth={2.5} />
+              </button>
+              <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center text-[13px] font-bold shrink-0" style={{ background: "var(--accent-soft)", color: "var(--icon-color)" }}>
+                {initials(row.full_name)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap">
+                  <span className="text-[15px] font-bold text-slate-900 truncate max-w-full">{row.full_name}</span>
+                  <span className="font-mono text-[11px] text-slate-500 whitespace-nowrap">{row.candidate_code}</span>
+                  <span className={`inline-flex items-center h-[20px] px-2 rounded-full text-[10px] font-bold leading-none border ${st.chip}`}>{st.label}</span>
+                </div>
+                <div className="text-[11px] text-slate-600 mt-0.5 truncate" title={`${row.v_title} · ${row.vacancy_no || ""}`}>
+                  {row.v_title} · <span className="font-mono">{row.vacancy_no || "—"}</span>{row.department_name ? ` · ${row.department_name}` : ""}
+                </div>
               </div>
-              <div className="text-[11px] text-slate-600 mt-0.5">{row.v_title} · <span className="font-mono">{row.vacancy_no || "—"}</span>{row.department_name ? ` · ${row.department_name}` : ""}</div>
             </div>
-            <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-1 text-[11px]">
+
+            <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-1.5 text-[11px]">
               {[
                 ["Mobile", row.mobile], ["Email", row.email],
                 ["Source", row.entry_channel === "PublicURL" ? "Public URL" : row.source_channel || row.entry_channel],
                 ["Sourced", fmtDate(row.sourced_at)], ["Recruiter", row.recruiter_name],
               ].map(([k, v]) => (
-                <div key={k} className="min-w-0"><dt className="text-slate-400 text-[10px]">{k}</dt><dd className="font-medium text-slate-800 truncate" title={v || ""}>{v || "—"}</dd></div>
+                <div key={k} className="min-w-0">
+                  <dt className="text-slate-400 text-[10px]">{k}</dt>
+                  <dd className="font-medium text-slate-800 truncate" title={v || ""}>{v || "—"}</dd>
+                </div>
               ))}
             </dl>
-            <div className="flex items-center gap-1.5 ml-auto">
+
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:justify-end">
               {row.resume_file_path ? (
-                <a href={`${config.apiUrl}${row.resume_file_path}`} target="_blank" rel="noopener noreferrer" className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-semibold border border-slate-300 rounded-md bg-white hover:bg-slate-50 text-slate-700">
+                <a href={`${config.apiUrl}${row.resume_file_path}`} target="_blank" rel="noopener noreferrer" className="h-[30px] sm:h-[26px] px-2.5 inline-flex items-center justify-center gap-1 text-[11px] font-semibold border border-slate-300 rounded-md bg-white hover:bg-slate-50 text-slate-700 whitespace-nowrap">
                   <FileText size={13} /> Resume
                 </a>
               ) : (
-                <span className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-semibold border border-slate-200 rounded-md bg-slate-50 text-slate-400" title="No resume attached"><FileText size={13} /> Resume</span>
+                <span className="h-[30px] sm:h-[26px] px-2.5 inline-flex items-center justify-center gap-1 text-[11px] font-semibold border border-slate-200 rounded-md bg-slate-50 text-slate-400 whitespace-nowrap" title="No resume attached"><FileText size={13} /> Resume</span>
               )}
               <button
                 type="button"
                 disabled={locked}
                 onClick={() => setIsSendAssessmentOpen(true)}
-                className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-md bg-purple-600 hover:bg-purple-700 text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="h-[30px] sm:h-[26px] px-2.5 inline-flex items-center justify-center gap-1 text-[11px] font-bold rounded-md bg-purple-600 hover:bg-purple-700 text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap cursor-pointer"
                 title="Dispatch Online Assessment Link"
               >
                 <Award size={13} /> Send Assessment
@@ -193,7 +202,7 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
                 type="button"
                 disabled={locked}
                 onClick={() => setWhatsappModalOpen(true)}
-                className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="h-[30px] sm:h-[26px] px-2.5 inline-flex items-center justify-center gap-1 text-[11px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap cursor-pointer"
                 title="Send WhatsApp Message"
               >
                 <MessageSquare size={13} /> WhatsApp
@@ -202,7 +211,7 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
                 type="button"
                 disabled={locked}
                 onClick={() => setCallModalOpen(true)}
-                className="h-[26px] px-2.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-md text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-[30px] sm:h-[26px] px-2.5 inline-flex items-center justify-center gap-1 text-[11px] font-bold rounded-md text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
                 style={{ background: "var(--icon-color)" }}
                 title="Log Call, Audio Recording & Dispositions"
               >
@@ -212,12 +221,17 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
           </div>
 
           {/* Stage stepper */}
+          {/* Stage stepper */}
           <div className="bg-white border border-[#dde1ea] rounded-[6px] shadow-sm px-3 py-2">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 mb-1.5">
               <span className="text-[11.5px] font-bold uppercase tracking-[0.4px] text-[#0f2137]">Pipeline Progress · Stage {row.current_stage} of {TOTAL_STAGES}</span>
               <span className="text-[11px] text-slate-500">{daysBetween(row.entered_pipeline_at)} days in pipeline · {clearedCount} stages cleared · {milestones} milestones reached</span>
             </div>
-            <StageStepper currentStage={row.current_stage} category={row.category} statusBase={row.current_status_base} history={history} scheduledAt={row.scheduled_at} statusSince={row.status_since} />
+            <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden">
+              <div className="min-w-[640px]">
+                <StageStepper currentStage={row.current_stage} category={row.category} statusBase={row.current_status_base} history={history} scheduledAt={row.scheduled_at} statusSince={row.status_since} />
+              </div>
+            </div>
             <PipelineProgressBar currentStage={row.current_stage} category={row.category} statusBase={row.current_status_base} className="mt-2" />
           </div>
 
@@ -252,7 +266,7 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
                 title="UPDATE STATUS"
                 icon={<Send className="w-3 h-3" />}
                 theme="sky"
-                right={<span className="text-[10px] text-slate-500">Only transitions valid from the current stage are listed</span>}
+                right={<span className="hidden sm:inline text-[10px] text-slate-500">Only transitions valid from the current stage are listed</span>}
                 bodyClassName="grid grid-cols-1 sm:grid-cols-2 gap-2.5"
               >
                 {locked ? (
@@ -281,7 +295,7 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
                       </select>
                     </FormField>
                     <FormField label="Reschedule / Callback Date & Time" required={!!selected?.schedule_required} error={errors.scheduled_at} hint={selected?.schedule_required ? "" : "not applicable"}>
-                      <input type="datetime-local" value={form.scheduled_at} onChange={(e) => setField("scheduled_at", e.target.value)} disabled={!selected?.schedule_required || !canModify} className={`${formInputClass(!selected?.schedule_required || !canModify, errors.scheduled_at)} font-mono`} />
+                      <input type="datetime-local" value={form.scheduled_at} onChange={(e) => setField("scheduled_at", e.target.value)} disabled={!selected?.schedule_required || !canModify} className={`${formInputClass(!selected?.schedule_required || !canModify, errors.scheduled_at)}  font-mono text-[16px] sm:text-[11px]`} />
                     </FormField>
                     <FormField label="Recruiter Remarks" className="sm:col-span-2">
                       <textarea rows={3} value={form.remarks} onChange={(e) => setField("remarks", e.target.value)} disabled={!canModify} placeholder="Call notes, candidate response, panel remarks..." className={`${formInputClass(!canModify, false)} !h-auto py-1.5 resize-y`} maxLength={2000} />
@@ -374,7 +388,7 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
                             <td className="px-3 py-1.5 text-slate-800 font-medium max-w-[200px] truncate" title={c.trigger_status}>{c.trigger_status}</td>
                             <td className="px-3 py-1.5 text-slate-600">{c.channel}</td>
                             <td className="px-3 py-1.5 text-slate-600 max-w-[220px] truncate" title={c.template_name}>{c.template_name}</td>
-                            <td className="px-3 py-1.5"><span className={`px-1.5 py-0.5 rounded border text-[10px] font-semibold ${c.delivery_status === "Delivered" || c.delivery_status === "Opened" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : c.delivery_status === "Failed" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-amber-50 text-amber-800 border-amber-200"}`}>{c.delivery_status}</span></td>
+                            <td className="px-3 py-1.5"><span className={`inline-flex items-center h-[18px] px-2 rounded-full border text-[10px] font-semibold leading-none whitespace-nowrap ${c.delivery_status === "Delivered" || c.delivery_status === "Opened" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : c.delivery_status === "Failed" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-amber-50 text-amber-800 border-amber-200"}`}>{c.delivery_status}</span></td>
                             <td className="px-3 py-1.5 text-slate-400 font-mono whitespace-nowrap">{fmtDateTime(c.created_at)}</td>
                           </tr>
                         ))}
@@ -389,18 +403,20 @@ export default function PipelineDetail({ pipelineId, intent = "view", onBack, ri
       </div>
 
       {/* Reused footer: Save & Update Status / Cancel (Alt+S / Esc) */}
-      <ERPFooter
-        isAddMode={!locked && canModify}
-        isViewMode={locked || !canModify}
-        saveBtnRef={saveBtnRef}
-        saving={saving || !selected}
-        handleSubmit={handleSave}
-        onEditCancel={() => (form.to_status || form.remarks ? resetForm() : onBack())}
-        onCancel={onBack}
-        rights={rights}
-        formData={row}
-        moduleKey="pipeline"
-      />
+      <div className="shrink-0 pb-[env(safe-area-inset-bottom)] bg-white relative z-20">
+        <ERPFooter
+          isAddMode={!locked && canModify}
+          isViewMode={locked || !canModify}
+          saveBtnRef={saveBtnRef}
+          saving={saving || !selected}
+          handleSubmit={handleSave}
+          onEditCancel={() => (form.to_status || form.remarks ? resetForm() : onBack())}
+          onCancel={onBack}
+          rights={rights}
+          formData={row}
+          moduleKey="pipeline"
+        />
+      </div>
 
       {/* Send Assessment Modal */}
       <SendAssessmentModal

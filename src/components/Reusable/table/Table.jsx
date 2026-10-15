@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { registerShortcutAction } from "../../../utils/erpShortcuts";
 import { useShortcutLabel } from "../../../utils/Shortcuts/ShortcutsContext";
-import TableRow from "./TableRow"; 
+import TableRow from "./TableRow";
 
 const TAB_CONFIG_BASE = [
   { id: "entry", Icon: FileText, label: "Entry" },
@@ -56,7 +56,8 @@ const readDensity = () => {
     return "comfortable";
   }
 };
- 
+
+// ── saved layout (per table, per browser) ──
 const loadLayout = (k) => {
   try {
     return k ? JSON.parse(localStorage.getItem(k) || "null") : null;
@@ -81,8 +82,6 @@ const buildLayout = (cols, saved) => {
     locked: (saved?.lockedColumns || []).filter((k) => keys.includes(k)),
   };
 };
-
-// ── parsing helpers ──
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 const DATE_ISO = /^\d{4}-\d{2}-\d{2}/;
 const DATE_DMY = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/;
@@ -316,10 +315,14 @@ const Table = ({
   onDeleteMultiple,
   onRefresh,
   onExportAll,
-  isHidden, 
+  isHidden,
+  hideTabs = false,
+
   onAdd,
   onSearch,
   actions,
+  alwaysShowActions = false,
+  actionWidth,
   showForm,
   formComponent,
   onToggleFilter,
@@ -340,14 +343,17 @@ const Table = ({
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
-  const [pageInput, setPageInput] = useState("1"); 
+  const [pageInput, setPageInput] = useState("1");
+  // multi-sort: [{ key, dir: "asc" | "desc" }]
   const [sorts, setSorts] = useState([]);
   const sortField = sorts[0]?.key || "";
   const sortOrder = sorts[0]?.dir || "asc";
   const sortsSig = sorts.map((s) => s.key + s.dir).join("|");
 
   const [searchText, setSearchText] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState(""); 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // column filters
   const [showFilterRow, setShowFilterRow] = useState(false);
   const [filters, setFilters] = useState({});
   const [debouncedFilters, setDebouncedFilters] = useState({});
@@ -533,8 +539,6 @@ const Table = ({
   useEffect(() => {
     setPageSize(defaultPageSize);
   }, [defaultPageSize]);
-
-  // columns ke keys badlein tabhi layout dobara build ho (saved layout ke saath)
   const firstLayoutRun = useRef(true);
   useEffect(() => {
     if (firstLayoutRun.current) {
@@ -546,10 +550,8 @@ const Table = ({
     setVisibleColumns(l.visible);
     setColumnWidths(l.widths);
     setLockedColumns(l.locked);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnsSig]);
 
-  // layout auto-save (debounced)
   useEffect(() => {
     if (!layoutKey) return;
     const t = setTimeout(() => {
@@ -577,9 +579,6 @@ const Table = ({
     return () => clearTimeout(t);
   }, []);
 
-  // ── search debounce ──
-  // onSearch sirf tab jaye jab text sach mein badla ho (mount par onSearch("") se
-  // double heavy API call hoti thi)
   const lastSearchSent = useRef("");
   useEffect(() => {
     const t = setTimeout(() => {
@@ -590,7 +589,8 @@ const Table = ({
         onSearch?.(searchText);
       }
     }, SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(t); 
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText]);
 
   // ── column filter debounce ──
@@ -618,14 +618,12 @@ const Table = ({
       onColumnFilterChangeRef.current(Object.fromEntries(activeFilterEntries));
       setPage(1);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersSig]);
 
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, sortsSig, filtersSig]);
 
-  // page / search / sort / filter badalne par focus + selection reset
   useEffect(() => {
     setFocusedRowIndex(0);
     setSelectedRows([]);
@@ -724,7 +722,6 @@ const Table = ({
       return a.i - b.i;
     });
     return dec.map((d) => d.row);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredData, sortsSig, serverPagination]);
 
   const totalPages = serverPagination
@@ -770,7 +767,6 @@ const Table = ({
   const selectedSet = useMemo(() => new Set(selectedRows), [selectedRows]);
   const visibleColCount = memoizedColumns.length;
 
-  // ── footer aggregates (client: poora filtered data; server: current page) ──
   const aggColumns = useMemo(
     () => memoizedColumns.filter((c) => c.aggregate && AGG_LABEL[c.aggregate]),
     [memoizedColumns],
@@ -798,10 +794,7 @@ const Table = ({
         label: `${c.label} ${AGG_LABEL[c.aggregate]}`,
         text: fmtAgg(c, computeAgg(rows, c.key, c.aggregate)),
       }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRows, aggColumns, curData, selectedSet, rowKey]);
-
-  // ── copy (Excel mein paste hone layak TSV) ──
   const copyRows = useCallback(
     async (rows) => {
       if (!rows.length) return;
@@ -1090,7 +1083,7 @@ const Table = ({
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {!isHidden && (
+        {!isHidden && !hideTabs && (
           <>
             {/* Desktop segmented tabs */}
             <div className="hidden sm:flex shrink-0 items-center gap-0.5 bg-slate-100 rounded-[10px] p-[3px]">
@@ -1146,9 +1139,8 @@ const Table = ({
                 <span>{activeTabConfig.label}</span>
                 <ChevronDown
                   size={13}
-                  className={`shrink-0 transition-transform duration-200 ${
-                    mobileTabsOpen ? "rotate-180" : ""
-                  }`}
+                  className={`shrink-0 transition-transform duration-200 ${mobileTabsOpen ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -1179,11 +1171,10 @@ const Table = ({
                             onTabChange(id);
                             setMobileTabsOpen(false);
                           }}
-                          className={`flex items-center gap-2 w-full text-left px-2.5 py-2 rounded-[8px] text-[13px] transition-colors ${
-                            active
+                          className={`flex items-center gap-2 w-full text-left px-2.5 py-2 rounded-[8px] text-[13px] transition-colors ${active
                               ? "font-medium bg-slate-50"
                               : "text-slate-500 font-normal hover:bg-slate-50"
-                          }`}
+                            }`}
                           style={
                             active
                               ? { color: isSettings ? "#b45309" : "var(--icon-color)" }
@@ -1201,7 +1192,7 @@ const Table = ({
             </div>
           </>
         )}
-        {!isHidden && (
+        {!isHidden && Boolean(title) && (
           <div className="hidden sm:flex absolute left-[43%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center">
             <div
               className="flex items-center gap-1.5 min-w-0 px-2 py-[4px] rounded-md"
@@ -1228,7 +1219,7 @@ const Table = ({
             </div>
           </div>
         )}
-        {isHidden && (
+        {isHidden && Boolean(title) && (
           <div
             className="flex items-center gap-3.5 px-4 py-2 self-stretch bg-slate-50/60 rounded-tl-xl mx-auto"
             style={{
@@ -1293,11 +1284,10 @@ const Table = ({
             <button
               onClick={() => setShowFilterRow((v) => !v)}
               title="Column filters (text, >100, 10..20, = blank)"
-              className={`relative shrink-0 h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
-                showFilterRow || activeFilterEntries.length
+              className={`relative shrink-0 h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${showFilterRow || activeFilterEntries.length
                   ? "bg-blue-50 border-blue-300 text-blue-600"
                   : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"
-              }`}
+                }`}
             >
               <SlidersHorizontal size={12} />
               {activeFilterEntries.length > 0 && (
@@ -1342,11 +1332,10 @@ const Table = ({
               ref={columnBtnRef}
               onClick={() => setShowColumnMenu((p) => !p)}
               title="Columns, density & layout"
-              className={`h-7 shrink-0 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
-                showColumnMenu
+              className={`h-7 shrink-0 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${showColumnMenu
                   ? "bg-slate-200 border-slate-400 text-slate-700"
                   : "bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200"
-              }`}
+                }`}
             >
               <Settings size={12} />
             </button>
@@ -1381,11 +1370,10 @@ const Table = ({
             <button
               onClick={onToggleFilter}
               title="Filters"
-              className={`shrink-0 h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${
-                showForm
+              className={`shrink-0 h-7 min-w-[32px] px-2.5 inline-flex items-center justify-center gap-1.5 text-[11.5px] font-medium border rounded-md transition-colors duration-75 select-none ${showForm
                   ? "bg-amber-100 border-amber-400 text-amber-700"
                   : "bg-amber-50 border-amber-300 text-amber-600 hover:bg-amber-100"
-              }`}
+                }`}
             >
               <Filter size={12} />
             </button>
@@ -1438,7 +1426,6 @@ const Table = ({
         </div>
       )}
 
-      {/* ── TABLE CONTAINER WITH OPTIONAL LEFT PANEL ── */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0 w-full">
         {leftPanel && (
           <div className="shrink-0 flex flex-col overflow-hidden border-b md:border-b-0 md:border-r border-slate-200 bg-white">
@@ -1453,246 +1440,248 @@ const Table = ({
           <table
             className="w-full border-collapse border-spacing-0 text-[13px]"
             style={{ tableLayout: "fixed" }}
-          role="grid"
-          aria-label={title}
-          aria-rowcount={displayCount}
-        >
-          <colgroup>
-            {memoizedColumns.map((c) => (
-              <col key={c.key} style={{ width: c.width }} />
-            ))}
-            {actions && <col style={{ width: 70 }} />}
-          </colgroup>
+            role="grid"
+            aria-label={title}
+            aria-rowcount={displayCount}
+          >
+            <colgroup>
+              {memoizedColumns.map((c) => (
+                <col key={c.key} style={{ width: c.width }} />
+              ))}
+              {actions && <col style={{ width: actionWidth || 70 }} />}
+            </colgroup>
 
-          <thead className="sticky top-0 z-40">
-            <tr>
-              {memoizedColumns.map((c) => {
-                const sortIdx = sorts.findIndex((s) => s.key === c.key);
-                const isSorted = sortIdx !== -1;
-                const dir = isSorted ? sorts[sortIdx].dir : null;
-                const stickyStyle = c.isFrozen
-                  ? {
+            <thead className="sticky top-0 z-40">
+              <tr>
+                {memoizedColumns.map((c) => {
+                  const sortIdx = sorts.findIndex((s) => s.key === c.key);
+                  const isSorted = sortIdx !== -1;
+                  const dir = isSorted ? sorts[sortIdx].dir : null;
+                  const stickyStyle = c.isFrozen
+                    ? {
                       position: "sticky",
                       left: c.stickyLeft,
                       zIndex: 42,
                       boxShadow: "2px 0 4px -2px rgba(0,0,0,0.07)",
                     }
-                  : {};
-                return (
-                  <th
-                    key={c.key}
-                    draggable
-                    onDragStart={() => handleDragStart(c.key)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(c.key)}
-                    onClick={(e) => handleSortClick(c.key, e.shiftKey)}
-                    className={`relative px-3 border-b-2 border-r border-slate-200 bg-slate-100 whitespace-nowrap select-none cursor-pointer hover:bg-slate-200 transition-colors ${alignClass(c.align)}`}
-                    style={{ ...stickyStyle, width: c.width, height: 36 }}
-                    title={`${c.label} — click: sort, Shift+click: multi-sort`}
-                    aria-sort={
-                      isSorted ? (dir === "asc" ? "ascending" : "descending") : undefined
-                    }
-                  >
-                    <div className={`flex items-center gap-1 ${justifyClass(c.align)}`}>
-                      <span className="text-[12px] font-semibold text-slate-700 truncate">
-                        {c.label}
-                      </span>
-                      {c.isFrozen && <Lock size={10} className="text-blue-500 shrink-0" />}
-                      {isSorted && (
-                        <span className="inline-flex items-center text-blue-600 shrink-0">
-                          {dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-                          {sorts.length > 1 && (
-                            <span className="text-[10px] font-bold ml-px">{sortIdx + 1}</span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        startResize(e, c.key);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        autoFit(c.key);
-                      }}
-                      title="Drag: resize · Double-click: auto-fit"
-                      className="absolute right-0 top-1 bottom-1 w-[4px] cursor-col-resize rounded hover:bg-blue-500 z-10"
-                    />
-                  </th>
-                );
-              })}
-
-              {actions && (
-                <th
-                  className="border-b-2 border-l border-slate-200 bg-slate-100 sticky right-0 z-40 text-right px-2.5"
-                  style={{
-                    height: 36,
-                    boxShadow: "-2px 0 4px -2px rgba(0,0,0,0.07)",
-                  }}
-                >
-                  <span className="text-[12px] font-semibold text-slate-700">Actions</span>
-                </th>
-              )}
-            </tr>
-
-            {/* column filter row */}
-            {filterRowVisible && (
-              <tr>
-                {memoizedColumns.map((c) => {
-                  const stickyStyle = c.isFrozen
-                    ? { position: "sticky", left: c.stickyLeft, zIndex: 42 }
                     : {};
                   return (
                     <th
                       key={c.key}
-                      className="px-1.5 border-b border-r border-slate-200 bg-slate-50 font-normal"
-                      style={{ ...stickyStyle, width: c.width, height: 32 }}
+                      draggable
+                      onDragStart={() => handleDragStart(c.key)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleDrop(c.key)}
+                      onClick={(e) => handleSortClick(c.key, e.shiftKey)}
+                      className={`relative px-3 border-b-2 border-r border-slate-200 bg-slate-100 whitespace-nowrap select-none cursor-pointer hover:bg-slate-200 transition-colors ${alignClass(c.align)}`}
+                      style={{ ...stickyStyle, width: c.width, height: 36 }}
+                      title={`${c.label} — click: sort, Shift+click: multi-sort`}
+                      aria-sort={
+                        isSorted ? (dir === "asc" ? "ascending" : "descending") : undefined
+                      }
                     >
-                      <input
-                        value={filters[c.key] ?? ""}
-                        onChange={(e) =>
-                          setFilters((p) => ({ ...p, [c.key]: e.target.value }))
-                        }
+                      <div className={`flex items-center gap-1 ${justifyClass(c.align)}`}>
+                        <span className="text-[12px] font-semibold text-slate-700 truncate">
+                          {c.label}
+                        </span>
+                        {c.isFrozen && <Lock size={10} className="text-blue-500 shrink-0" />}
+                        {isSorted && (
+                          <span className="inline-flex items-center text-blue-600 shrink-0">
+                            {dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                            {sorts.length > 1 && (
+                              <span className="text-[10px] font-bold ml-px">{sortIdx + 1}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          startResize(e, c.key);
+                        }}
                         onClick={(e) => e.stopPropagation()}
-                        placeholder="Filter"
-                        title="Text ya: >100  <=50  10..20  =exact  != (non-blank)  = (blank)"
-                        className={`w-full h-6 px-1.5 text-[12px] bg-white border border-slate-200 rounded outline-none placeholder:text-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/30 ${alignClass(c.align)} ${
-                          filters[c.key] ? "border-blue-300 bg-blue-50/50" : ""
-                        }`}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          autoFit(c.key);
+                        }}
+                        title="Drag: resize · Double-click: auto-fit"
+                        className="absolute right-0 top-1 bottom-1 w-[4px] cursor-col-resize rounded hover:bg-blue-500 z-10"
                       />
                     </th>
                   );
                 })}
+
                 {actions && (
                   <th
-                    className="border-b border-l border-slate-200 bg-slate-50 sticky right-0 z-40"
-                    style={{ height: 32 }}
-                  />
+                    className="border-b-2 border-l border-slate-200 bg-slate-100 sticky right-0 z-40 text-right px-2.5"
+                    style={{
+                      width: actionWidth || 70,
+                      height: 36,
+                      boxShadow: "-2px 0 4px -2px rgba(0,0,0,0.07)",
+                    }}
+                  >
+                    <span className="text-[12px] font-semibold text-slate-700">Actions</span>
+                  </th>
                 )}
               </tr>
-            )}
-          </thead>
 
-          <tbody>
-            {(loading || awaitingFirstLoad) && paginatedData.length === 0 ? (
-              // skeleton rows
-              Array.from({ length: Math.min(pageSize, 12) }).map((_, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-slate-100"
-                  style={{ height: rowHeight }}
-                >
-                  {memoizedColumns.map((c) => (
-                    <td key={c.key} className="px-3">
-                      <div
-                        className="h-3 rounded bg-slate-200/70 animate-pulse"
-                        style={{ width: `${45 + ((i * 13 + c.key.length * 7) % 45)}%` }}
-                      />
-                    </td>
-                  ))}
-                  {actions && <td />}
-                </tr>
-              ))
-            ) : paginatedData.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={visibleColCount + (actions ? 1 : 0)}
-                  className="py-16 text-center"
-                >
-                  <div className="flex flex-col items-center gap-2 text-slate-500">
-                    <Inbox size={36} strokeWidth={1} />
-                    <span className="text-[13px] font-medium">
-                      {debouncedSearch || activeFilterEntries.length
-                        ? "No records match your search / filters"
-                        : "No records found"}
-                    </span>
-                    {(debouncedSearch || activeFilterEntries.length > 0) && (
-                      <button
-                        className="text-[12px] text-blue-600 hover:underline"
-                        onClick={() => {
-                          setSearchText("");
-                          clearAllFilters();
-                        }}
+              {/* column filter row */}
+              {filterRowVisible && (
+                <tr>
+                  {memoizedColumns.map((c) => {
+                    const stickyStyle = c.isFrozen
+                      ? { position: "sticky", left: c.stickyLeft, zIndex: 42 }
+                      : {};
+                    return (
+                      <th
+                        key={c.key}
+                        className="px-1.5 border-b border-r border-slate-200 bg-slate-50 font-normal"
+                        style={{ ...stickyStyle, width: c.width, height: 32 }}
                       >
-                        Clear search & filters
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              paginatedData.map((row, index) => {
-                const rowId = row[rowKey];
-                return (
-                  <TableRow
-                    key={rowId ?? index}
-                    row={row}
-                    index={index}
-                    columns={memoizedColumns}
-                    onRowClick={stableRowClick}
-                    onRowDoubleClick={stableRowDoubleClick}
-                    actions={actions}
-                    isFocused={index === focusedRowIndex}
-                    isSelected={selectedSet.has(rowId)}
-                    onRowSelect={handleRowSelect}
-                    searchText={debouncedSearch}
-                    rowHeight={rowHeight}
-                  />
-                );
-              })
-            )}
-          </tbody>
+                        <input
+                          value={filters[c.key] ?? ""}
+                          onChange={(e) =>
+                            setFilters((p) => ({ ...p, [c.key]: e.target.value }))
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder="Filter"
+                          title="Text ya: >100  <=50  10..20  =exact  != (non-blank)  = (blank)"
+                          className={`w-full h-6 px-1.5 text-[12px] bg-white border border-slate-200 rounded outline-none placeholder:text-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/30 ${alignClass(c.align)} ${filters[c.key] ? "border-blue-300 bg-blue-50/50" : ""
+                            }`}
+                        />
+                      </th>
+                    );
+                  })}
+                  {actions && (
+                    <th
+                      className="border-b border-l border-slate-200 bg-slate-50 sticky right-0 z-40"
+                      style={{ height: 32 }}
+                    />
+                  )}
+                </tr>
+              )}
+            </thead>
 
-          {/* footer totals */}
-          {footerValues && paginatedData.length > 0 && (
-            <tfoot className="sticky bottom-0 z-40">
-              <tr>
-                {memoizedColumns.map((c, i) => {
-                  const stickyStyle = c.isFrozen
-                    ? {
+            <tbody>
+              {(loading || awaitingFirstLoad) && paginatedData.length === 0 ? (
+                // skeleton rows
+                Array.from({ length: Math.min(pageSize, 12) }).map((_, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-slate-100"
+                    style={{ height: rowHeight }}
+                  >
+                    {memoizedColumns.map((c) => (
+                      <td key={c.key} className="px-3">
+                        <div
+                          className="h-3 rounded bg-slate-200/70 animate-pulse"
+                          style={{ width: `${45 + ((i * 13 + c.key.length * 7) % 45)}%` }}
+                        />
+                      </td>
+                    ))}
+                    {actions && <td />}
+                  </tr>
+                ))
+              ) : paginatedData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={visibleColCount + (actions ? 1 : 0)}
+                    className="py-16 text-center"
+                  >
+                    <div className="flex flex-col items-center gap-2 text-slate-500">
+                      <Inbox size={36} strokeWidth={1} />
+                      <span className="text-[13px] font-medium">
+                        {debouncedSearch || activeFilterEntries.length
+                          ? "No records match your search / filters"
+                          : "No records found"}
+                      </span>
+                      {(debouncedSearch || activeFilterEntries.length > 0) && (
+                        <button
+                          className="text-[12px] text-blue-600 hover:underline"
+                          onClick={() => {
+                            setSearchText("");
+                            clearAllFilters();
+                          }}
+                        >
+                          Clear search & filters
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedData.map((row, index) => {
+                  const rowId = row[rowKey];
+                  return (
+                    <TableRow
+                      key={rowId ?? index}
+                      row={row}
+                      index={index}
+                      columns={memoizedColumns}
+                      onRowClick={stableRowClick}
+                      onRowDoubleClick={stableRowDoubleClick}
+                      actions={actions}
+                      alwaysShowActions={alwaysShowActions}
+                      actionWidth={actionWidth}
+                      isFocused={index === focusedRowIndex}
+                      isSelected={selectedSet.has(rowId)}
+                      onRowSelect={handleRowSelect}
+                      searchText={debouncedSearch}
+                      rowHeight={rowHeight}
+                    />
+                  );
+                })
+              )}
+            </tbody>
+
+            {/* footer totals */}
+            {footerValues && paginatedData.length > 0 && (
+              <tfoot className="sticky bottom-0 z-40">
+                <tr>
+                  {memoizedColumns.map((c, i) => {
+                    const stickyStyle = c.isFrozen
+                      ? {
                         position: "sticky",
                         left: c.stickyLeft,
                         zIndex: 42,
                         boxShadow: "2px 0 4px -2px rgba(0,0,0,0.07)",
                       }
-                    : {};
-                  const hasAgg = !!c.aggregate && AGG_LABEL[c.aggregate];
-                  return (
-                    <td
-                      key={c.key}
-                      className={`px-3 border-t-2 border-r border-slate-300 bg-slate-100 whitespace-nowrap overflow-hidden text-ellipsis tabular-nums text-[12.5px] font-semibold text-slate-800 ${alignClass(c.align)}`}
-                      style={{ ...stickyStyle, height: 36 }}
-                    >
-                      {hasAgg ? (
-                        <>
-                          <span className="text-[11px] font-medium text-slate-500 mr-1">
-                            {AGG_LABEL[c.aggregate]}
+                      : {};
+                    const hasAgg = !!c.aggregate && AGG_LABEL[c.aggregate];
+                    return (
+                      <td
+                        key={c.key}
+                        className={`px-3 border-t-2 border-r border-slate-300 bg-slate-100 whitespace-nowrap overflow-hidden text-ellipsis tabular-nums text-[12.5px] font-semibold text-slate-800 ${alignClass(c.align)}`}
+                        style={{ ...stickyStyle, height: 36 }}
+                      >
+                        {hasAgg ? (
+                          <>
+                            <span className="text-[11px] font-medium text-slate-500 mr-1">
+                              {AGG_LABEL[c.aggregate]}
+                            </span>
+                            {fmtAgg(c, footerValues[c.key])}
+                          </>
+                        ) : i === 0 ? (
+                          <span className="text-slate-600">
+                            {serverPagination ? "Page total" : "Total"}
                           </span>
-                          {fmtAgg(c, footerValues[c.key])}
-                        </>
-                      ) : i === 0 ? (
-                        <span className="text-slate-600">
-                          {serverPagination ? "Page total" : "Total"}
-                        </span>
-                      ) : null}
-                    </td>
-                  );
-                })}
-                {actions && (
-                  <td
-                    className="border-t-2 border-l border-slate-300 bg-slate-100 sticky right-0 z-40"
-                    style={{ height: 36 }}
-                  />
-                )}
-              </tr>
-            </tfoot>
-          )}
-        </table>
+                        ) : null}
+                      </td>
+                    );
+                  })}
+                  {actions && (
+                    <td
+                      className="border-t-2 border-l border-slate-300 bg-slate-100 sticky right-0 z-40"
+                      style={{ height: 36 }}
+                    />
+                  )}
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
       </div>
 
-      {/* ── SELECTION BAR ── */}
       {selectedRows.length > 0 && (
         <div
           className="flex items-center justify-between px-3.5 border-t border-blue-200 bg-blue-50 flex-shrink-0"
@@ -1738,7 +1727,6 @@ const Table = ({
           </div>
         </div>
       )}
-      </div>
 
       {/* ── FOOTER ── */}
       <div

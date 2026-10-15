@@ -7,6 +7,7 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
   getActledListAll,
@@ -338,9 +339,14 @@ const UpcomingEvents = ({
   onViewFullCalendar,
   onAIClick,
   onEventAction,
+   calendarPage = "UpcomingEvents",
 }) => {
   useResponsiveCss();
-
+ const navigate = useNavigate();
+  const handleViewCalendar = useCallback(() => {
+    if (onViewFullCalendar) return onViewFullCalendar(); // parent ne diya ho to wahi
+    navigate(`/app?page=${calendarPage}`);
+  }, [onViewFullCalendar, navigate, calendarPage]);
   const [activeTab, setActiveTab] = useState("Today");
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef(null);
@@ -1138,17 +1144,10 @@ const UpcomingEvents = ({
           </div>
         )}
 
-        <div style={styles.footer} onClick={onViewFullCalendar}>
-          <i
-            className="ti ti-calendar-plus"
-            aria-hidden="true"
-            style={{
-              fontSize: 12,
-            }}
-          />
-
-          <span>View full calendar</span>
-        </div>
+    <button type="button" style={styles.footer} onClick={handleViewCalendar}>
+  <i className="ti ti-calendar-plus" aria-hidden="true" style={{ fontSize: 12 }} />
+  <span>View full </span>
+</button>
       </div>
     );
   }

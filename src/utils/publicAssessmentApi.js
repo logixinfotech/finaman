@@ -34,6 +34,15 @@ export const validateAssessmentToken = async (db, token) => {
   return res.data;
 };
 
+export const verifyAssessmentPhone = async (db, token, mobile) => {
+  const res = await publicClient.post(
+    `/api/public/recruitment-assessment/verify-phone`,
+    { token, mobile, db },
+    { params: { db } }
+  );
+  return res.data;
+};
+
 export const startAssessment = async (db, token, honeypot = "") => {
   const res = await publicClient.post(
     `/api/public/recruitment-assessment/start`,

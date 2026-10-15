@@ -243,6 +243,10 @@ const PageRegistry = {
     InterviewScheduling: React.lazy(() => import("./Modules/Recruitment/InterviewScheduling/InterviewSchedulingPage.jsx")),
     generalassessment: React.lazy(() => import("./Modules/Recruitment/GeneralAssessment/GeneralAssessmentPage.jsx")),
     general_assessment: React.lazy(() => import("./Modules/Recruitment/GeneralAssessment/GeneralAssessmentPage.jsx")),
+    InterviewEvaluation: React.lazy(() => import("./Modules/Recruitment/InterviewEvaluation/InterviewEvaluationPage.jsx")),
+    "Interview Evaluation": React.lazy(() => import("./Modules/Recruitment/InterviewEvaluation/InterviewEvaluationPage.jsx")),
+    interview_evaluation: React.lazy(() => import("./Modules/Recruitment/InterviewEvaluation/InterviewEvaluationPage.jsx")),
+    interviewevaluation: React.lazy(() => import("./Modules/Recruitment/InterviewEvaluation/InterviewEvaluationPage.jsx")),
     ModuleMaster: ModuleMaster
 };
 

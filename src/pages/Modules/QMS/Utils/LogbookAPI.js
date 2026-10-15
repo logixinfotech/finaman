@@ -3,11 +3,19 @@ import { handleApi } from "../../../../utils/apiHandler";
 import { api } from "../../../../utils/api";
 
 const BASE = "/api/qms/logbook";
+const tk = (k) => encodeURIComponent(k);
 
-// ── types (config) ──
-export const getLogbookTypes = () => handleApi(() => api.get(`${BASE}/types`));
-export const saveLogbookType = (typeKey, body) => handleApi(() => api.put(`${BASE}/types/${typeKey}`, body));
-export const resetLogbookType = (typeKey) => handleApi(() => api.delete(`${BASE}/types/${typeKey}`));
+// ── templates (types) — version controlled: Draft → In review → Effective ──
+export const getLogbookTypes = () => handleApi(() => api.get(`${BASE}/types`));                       // { data, me }
+export const getTypeVersions = (typeKey) => handleApi(() => api.get(`${BASE}/types/${tk(typeKey)}/versions`));
+export const getTypeVersion = (typeKey, v) => handleApi(() => api.get(`${BASE}/types/${tk(typeKey)}/versions/${v}`));
+export const createLogbookType = (body) => handleApi(() => api.post(`${BASE}/types`, body));          // { definition, changeReason }
+export const saveTypeDraft = (typeKey, body) => handleApi(() => api.put(`${BASE}/types/${tk(typeKey)}/draft`, body));   // { definition, changeReason, rowVer }
+export const submitTypeDraft = (typeKey, body) => handleApi(() => api.post(`${BASE}/types/${tk(typeKey)}/draft/submit`, body));   // { typedName, rowVer }
+export const approveTypeDraft = (typeKey, body) => handleApi(() => api.post(`${BASE}/types/${tk(typeKey)}/draft/approve`, body)); // { typedName, comment, applyToActive }
+export const returnTypeDraft = (typeKey, body) => handleApi(() => api.post(`${BASE}/types/${tk(typeKey)}/draft/return`, body));   // { comment }
+export const discardTypeDraft = (typeKey, body) => handleApi(() => api.post(`${BASE}/types/${tk(typeKey)}/draft/discard`, body)); // { reason }
+export const setTypeRetired = (typeKey, body) => handleApi(() => api.post(`${BASE}/types/${tk(typeKey)}/retire`, body));          // { retire, reason, typedName }
 
 // ── registers ──
 export const getRegisters = (status = "All") => handleApi(() => api.get(`${BASE}/registers?status=${status}`));
@@ -32,4 +40,3 @@ export const getRoleOptions = () => handleApi(() => api.get(`/api/qms/workflow-r
 // ── reused: record-history (audit trail + e-signatures) — same endpoint every QMS module uses ──
 export const getLogbookHistory = (recordNo) =>
   handleApi(() => api.get(`/api/qms/record-history/logbook/${encodeURIComponent(recordNo)}`));
-export const createLogbookType = (body) => handleApi(() => api.post(`${BASE}/types`, body));   // company-defined type

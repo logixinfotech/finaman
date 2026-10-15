@@ -91,9 +91,9 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {isCollapsed ? (
-            <FaChevronRight className="text-[10px]" />
+            <FaChevronRight className="text-[length:calc(10px*var(--fs,1))]" />
           ) : (
-            <FaChevronLeft className="text-[10px]" />
+            <FaChevronLeft className="text-[length:calc(10px*var(--fs,1))]" />
           )}
         </button>
       )}
@@ -162,7 +162,7 @@ function Sidebar({ onMenuItemClick, collapsed = false, onToggleSidebar }) {
                 <DynamicIcon name={module.icon_name} />
               </div>
               {!isCollapsed && (
-                <span className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="text-[length:calc(13px*var(--fs,1))] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
                   {module.mod_name}
                 </span>
               )}

@@ -2,7 +2,16 @@
 export { STAGES, TOTAL_STAGES, fmtDate, fmtDateTime, timeAgo, daysBetween, initials } from "../CandidateTracking/pipelineConstants";
 
 export const VACANCY_STATUSES = ["Draft", "Pending Approval", "Approved", "Open", "On Hold", "Closed", "Rejected", "Cancelled"];
-export const PRIORITIES = ["Urgent", "High", "Medium", "Low"];
+export const PRIORITIES = ["Urgent", "High", "Normal", "Medium", "Low"];
+
+export const PRIORITY_STYLES = {
+  Urgent: "bg-rose-50 text-rose-700 border-rose-300",
+  High: "bg-orange-50 text-orange-700 border-orange-300",
+  Normal: "bg-slate-50 text-slate-700 border-slate-200",
+  Medium: "bg-amber-50 text-amber-700 border-amber-300",
+  Low: "bg-slate-50 text-slate-600 border-slate-200",
+};
+// export const PRIORITIES = ["Urgent", "High", "Medium", "Low"];
 
 export const STATUS_STYLES = {
   Draft: "bg-slate-100 text-slate-700 border-slate-300",
@@ -15,12 +24,12 @@ export const STATUS_STYLES = {
   Cancelled: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
-export const PRIORITY_STYLES = {
-  Urgent: "bg-rose-50 text-rose-700 border-rose-300",
-  High: "bg-orange-50 text-orange-700 border-orange-300",
-  Medium: "bg-amber-50 text-amber-700 border-amber-300",
-  Low: "bg-slate-50 text-slate-600 border-slate-200",
-};
+// export const PRIORITY_STYLES = {
+//   Urgent: "bg-rose-50 text-rose-700 border-rose-300",
+//   High: "bg-orange-50 text-orange-700 border-orange-300",
+//   Medium: "bg-amber-50 text-amber-700 border-amber-300",
+//   Low: "bg-slate-50 text-slate-600 border-slate-200",
+// };
 
 export const statusStyle = (s) => STATUS_STYLES[s] || STATUS_STYLES.Draft;
 export const priorityStyle = (p) => PRIORITY_STYLES[p] || PRIORITY_STYLES.Low;

@@ -1,16 +1,21 @@
  
-import React from "react";
+import React, { useCallback } from "react";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS, CategoryScale, LinearScale,
   BarElement, Tooltip, Legend,
 } from "chart.js";
+import { useNavigate } from "react-router-dom";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
  
-const WorkDiarySummary = ({ data, loading }) => {
+const WorkDiarySummary = ({ data, loading ,calendarPage="WorkDiaryForm"}) => {
+  const navigate = useNavigate();
+  const handleViewCalendar = useCallback(() => {
+     
+      navigate(`/app?page=${calendarPage}`);
+    }, [  navigate, calendarPage]);
   const stats   = data?.work_diary?.stats      || {};
-  const members = data?.work_diary?.by_member  || [];
   const tasks   = data?.work_diary?.recent_tasks || [];
 
   const STATS = [
@@ -40,7 +45,7 @@ const WorkDiarySummary = ({ data, loading }) => {
     <div style={styles.card}>
       <div style={styles.cardHdr}>
         <span style={styles.cardTitle}>Work diary — task status</span>
-        <span style={styles.action}>Open diary ↗️</span>
+        <span style={styles.action} onClick={handleViewCalendar}>Open diary ↗️</span>
       </div>
       <div style={styles.statsRow}>
         {STATS.map((s) => (

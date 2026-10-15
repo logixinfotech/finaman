@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo  } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   FaExclamationTriangle, FaBullhorn, FaTruck,
   FaChartLine, FaFlagCheckered, FaHistory,
@@ -11,7 +11,6 @@ import RecordAuditPanel from "./Utils/RecordAuditPanel.jsx";
 import { getHeaderStyle } from "./Utils/QmsValidation";
 import { useQmsModule } from "./Utils/useQmsModule";
 import { useRefOptions } from "./Utils/useRefOptions";
-import { usePagedList } from "../../../Hooks/usePagedList.js";
 import {
   recallTabs, recallTabStage, recallTabLabels,
   getRecallFieldGroups, getRecallRequired,
@@ -19,9 +18,10 @@ import {
 } from "./Utils/Qmsconfigs";
 import { getRecallsPage, createRecall, updateRecall, deleteRecall } from "./Utils/QmsAPI";
 import { usePrintWorkflow } from "../../../Hooks/usePrintWorkflow.js";
-import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx"; 
+import ERPPrintPreview from "../../../components/Reusable/ERPPrintPreview.jsx";
+
+// ── module-level constants (component ke bahar — stable references) ──
 const API = {
-  list: () => getRecallsPage({ page: 1, pageSize: 50 }),
   create: createRecall,
   update: updateRecall,
   remove: deleteRecall,
@@ -64,8 +64,14 @@ const STATUS_OPTIONS = [
 
 const EMPTY_FILTERS = { Status: "All", Product: "", Classification: "All" };
 const PAGE_SIZE = 50;
+const mapRecallRow = (r) => ({ ...r, Status: r.Status || "Initiated" });
 
 export default function ProductRecallMasterPage({ tab }) {
+  // filters: form mein jo likha hai | appliedFilters: server ko jo gaya
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+
   const m = useQmsModule({
     moduleKey: "recall",
     title: "Product Recall",
@@ -75,6 +81,9 @@ export default function ProductRecallMasterPage({ tab }) {
     tabStage: recallTabStage,
     getRequired: getRecallRequired,
     api: API,
+    fetchPage: getRecallsPage,     // paged mode
+    filters: appliedFilters,
+    mapRow: mapRecallRow,
   });
 
   const printWorkflow = usePrintWorkflow({
@@ -100,16 +109,8 @@ export default function ProductRecallMasterPage({ tab }) {
     const name = tab?.icon_name || tab?.module?.icon_name;
     return (name && FaIcons[name]) || FaIcons.FaClipboardList;
   }, [tab?.icon_name, tab?.module?.icon_name]);
- 
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
-  const [showFilter, setShowFilter] = useState(false);
-const { rows, total, loading, handlePageChange, refresh } = usePagedList({
-  fetchPage: getRecallsPage,
-  filters: appliedFilters,
-  mapRow: (r) => ({ ...r, Status: r.Status || "Initiated" }),
-});
-const applyFilter = useCallback(() => setAppliedFilters(filters), [filters]);
+
+  const applyFilter = useCallback(() => setAppliedFilters(filters), [filters]);
   const clearFilter = useCallback(() => {
     setFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
@@ -175,8 +176,8 @@ const applyFilter = useCallback(() => setAppliedFilters(filters), [filters]);
           onNewEntry={m.handleAddNewGuarded}
           onCancel={m.handleTabExit}
           onEditCancel={m.handleFormExit}
-          currentRecord={m.list.length ? m.currentIndex + 1 : 0}
-          totalRecords={m.list.length}
+          currentRecord={m.currentRecord}
+          totalRecords={m.totalCount}
           onPrevRecord={() => m.setCurrentIndex((p) => Math.max(p - 1, 0))}
           onNextRecord={() => m.setCurrentIndex((p) => Math.min(p + 1, m.list.length - 1))}
           headerActiveTab={m.activeTab}
@@ -194,18 +195,18 @@ const applyFilter = useCallback(() => setAppliedFilters(filters), [filters]);
         storageKey="qms-recall"
         title="Product Recall"
         TitleIcon={ModuleIcon}
-        data={rows}
+        data={m.rows}
         columns={recallTableColumns}
         rowKey="Id"
-        loading={m.loading || loading}   
+        loading={m.loading}
         serverPagination
-       totalRecords={total}  
-        onPageChange={handlePageChange}
+        totalRecords={m.total}
+        onPageChange={m.handlePageChange}
         defaultPageSize={PAGE_SIZE}
         activeTab={m.activeTab}
         showSettingsTab
         onTabChange={m.handleHeaderTabChange}
-        onRefresh={refresh} 
+        onRefresh={m.refresh}
         onAdd={m.rights?.add === 1 ? m.handleAddNewGuarded : null}
         onRowDoubleClick={m.handleRowSelect}
         onDeleteMultiple={m.handleDeleteMultiple}

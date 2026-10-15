@@ -24,7 +24,7 @@
   margin: 0 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(16rem / 16);
   transition: background-color 0.3s ease;
 }
 
@@ -46,7 +46,7 @@
 .user-ma .user-entry h2,
 .user-ma .user-search h2 {
   margin-bottom: 20px;
-  font-size: 24px;
+  font-size: calc(24rem / 16);
   color: #333;
   text-align: center;
 }
@@ -89,7 +89,7 @@
   margin-top: 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(16rem / 16);
   transition: background-color 0.3s ease;
 }
 
@@ -123,7 +123,7 @@
   padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: calc(16rem / 16);
   transition: background-color 0.3s ease;
 }
 

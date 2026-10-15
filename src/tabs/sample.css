@@ -10,6 +10,6 @@
 }
 
 .tab-content p {
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   color: #666;
 }

@@ -597,8 +597,8 @@ onContextMenu={(e) => openContextMenu(e, m)}
                 exit={{ opacity: 0 }}
                 style={{ height: "100%" }}
               >
-                <CustomizableHomeDashboard/>
-                {/* <HomeDashboard onOpenPage={onOpenPage} onSelectModule={onSelectModule}/> */}
+                {/* <CustomizableHomeDashboard  onOpenPage={onOpenPage}/> */}
+                <HomeDashboard onOpenPage={onOpenPage} onSelectModule={onSelectModule}/>
                 {/* <SalesDashboard /> */}
                 {/* <FinamanDashboard/> */}
               </motion.div>

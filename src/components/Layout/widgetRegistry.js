@@ -8,14 +8,14 @@ import QmsSummaryWidget from "./QmsSummaryWidget";
 import SalesSummaryWidget from "./SalesSummaryWidget";
 export const WIDGET_REGISTRY = [
 
-  { id: "Maindashboard",      label: "QMS — My Work",          module: "QMS",  span: 1, Component: QmsSummaryWidget },
+  { id: "Maindashboard",   label: "QMS — My Work",          module: "QMS",  span: 1, Component: QmsSummaryWidget },
   { id: "sales-summary",   label: "Sales — Today",          module: "Sales",span: 1, Component: SalesSummaryWidget },
-  { id: "hrms-attendance", label: "Attendance Heatmap",     module: "HRMS", span: 1, Component: AttendanceHeatmap },
-  { id: "hrms-leave",      label: "Leave Analytics",        module: "HRMS", span: 1, Component: LeaveAnalytics, props:{isHalf:true}},
-  { id: "hrms-approval",   label: "Approval Workflow",      module: "HRMS", span: 1, Component: ApprovalWorkflow },
-  { id: "hrms-workdiary",  label: "Work Diary Summary",     module: "HRMS", span: 1, Component: WorkDiarySummary },
-  { id: "hrms-payroll",    label: "Payroll Overview",       module: "HRMS", span: 2, Component: PayrollOverview },
-  { id: "hrms-events",     label: "Upcoming Events",        module: "HRMS", span: 1, Component: UpcomingEvents ,props:{isHalf:true}},
+  { id: "hrms-attendance", label: "Attendance Heatmap",     module: "HRMS", span: 1,hasOwnTitle: true ,Component: AttendanceHeatmap },
+  { id: "hrms-leave",      label: "Leave Analytics",        module: "HRMS", span: 1,hasOwnTitle: true , Component: LeaveAnalytics, props:{isHalf:true}},
+  { id: "hrms-approval",   label: "Approval Workflow",      module: "HRMS", span: 1,hasOwnTitle: true , Component: ApprovalWorkflow ,needsSummary: true},
+  { id: "hrms-workdiary",  label: "Work Diary Summary",     module: "HRMS", span: 1,hasOwnTitle: true , Component: WorkDiarySummary },
+  { id: "hrms-payroll",    label: "Payroll Overview",       module: "HRMS", span: 2,hasOwnTitle: true , Component: PayrollOverview },
+  { id: "hrms-events",     label: "Upcoming Events",        module: "HRMS", span: 1,hasOwnTitle: true , Component: UpcomingEvents ,props:{isHalf:true}},
 
 ];
 

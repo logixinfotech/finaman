@@ -93,13 +93,13 @@ export default function VacancyList({ onOpen, refreshKey = 0 }) {
     {
       key: "vacancy",
       label: "Vacancy",
-      width: 230,
+      width: 210,
       render: (row) => (
         <span className="flex items-center gap-2 min-w-0">
-          <span className="w-[26px] h-[26px] rounded-md flex items-center justify-center shrink-0" style={{ background: "var(--accent-soft)", color: "var(--icon-color)" }}>
-            <Briefcase size={13} />
+          <span className="w-[22px] h-[22px] rounded-md flex items-center justify-center shrink-0" style={{ background: "var(--accent-soft)", color: "var(--icon-color)" }}>
+            <Briefcase size={12} />
           </span>
-          <span className="min-w-0 truncate">
+          <span className="min-w-0 truncate" title={`${vacancyTitle(row)} · ${row.vacancy_no || ""}`}>
             <span className="font-semibold text-slate-800">{vacancyTitle(row)}</span>
             <span className="text-slate-400 text-[10.5px] font-mono"> · {row.vacancy_no || "—"}</span>
           </span>
@@ -109,7 +109,7 @@ export default function VacancyList({ onOpen, refreshKey = 0 }) {
     {
       key: "department",
       label: "Department · Location",
-      width: 170,
+      width: 150,
       render: (row) => (
         <span className="truncate block" title={`${row.department_name || ""} · ${row.location_name || ""}`}>
           <span className="font-medium text-slate-800">{row.department_name || "—"}</span>
@@ -120,22 +120,28 @@ export default function VacancyList({ onOpen, refreshKey = 0 }) {
     {
       key: "status",
       label: "Status · Priority",
-      width: 180,
+      width: 160,
       render: (row) => (
-        <span className="flex items-center gap-1.5">
-          <span className={`text-[10.5px] font-semibold px-2 py-0.5 rounded border ${statusStyle(row.vacancy_status)}`}>{row.vacancy_status || "Draft"}</span>
-          {row.priority && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${priorityStyle(row.priority)}`}>{row.priority}</span>}
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className={`inline-flex items-center h-[20px] px-2 rounded-full border text-[10.5px] font-semibold leading-none ${statusStyle(row.vacancy_status)}`}>
+            {row.vacancy_status || "Draft"}
+          </span>
+          {row.priority && (
+            <span className={`inline-flex items-center h-[20px] px-2 rounded-full border text-[10px] font-semibold leading-none ${priorityStyle(row.priority)}`}>
+              {row.priority}
+            </span>
+          )}
         </span>
       ),
     },
-    { key: "positions", label: "Positions", width: 150, render: (row) => <PositionsBar filled={row.filled_positions} total={row.number_of_positions} /> },
-    { key: "funnel", label: "Funnel (Stage 1 → 7)", width: 190, render: (row) => <FunnelStrip row={row} /> },
+    { key: "positions", label: "Positions", width: 140, render: (row) => <PositionsBar filled={row.filled_positions} total={row.number_of_positions} /> },
+    { key: "funnel", label: "Funnel (Stage 1 → 7)", width: 165, render: (row) => <FunnelStrip row={row} /> },
     {
       key: "candidates",
       label: "Candidates",
-      width: 190,
+      width: 165,
       render: (row) => (
-        <span className="flex items-center gap-2 text-[10.5px] tabular-nums">
+        <span className="flex items-center gap-2 text-[10.5px] tabular-nums whitespace-nowrap">
           <span className="font-bold text-slate-800 text-[11.5px]">{row.total_candidates || 0}</span>
           <span className="text-blue-700" title="Active">{row.active || 0} active</span>
           {row.pending > 0 && <span className="text-amber-600" title="Comm pending">{row.pending}P</span>}
@@ -147,11 +153,11 @@ export default function VacancyList({ onOpen, refreshKey = 0 }) {
     {
       key: "aging",
       label: "Days Open · Target",
-      width: 170,
+      width: 165,
       render: (row) => {
         const overdue = isOverdue(row);
         return (
-          <span className="flex items-center gap-1.5 min-w-0">
+          <span className="flex items-center gap-1.5 min-w-0 whitespace-nowrap">
             <span className="font-semibold text-slate-800 tabular-nums">{row.days_open ?? 0}d</span>
             <span className={`text-[10.5px] truncate ${overdue ? "text-rose-600 font-semibold" : "text-slate-500"}`} title={overdue ? "Target joining date has passed" : ""}>
               {overdue && <AlertTriangle size={11} className="inline mr-0.5 -mt-[2px]" />}
@@ -161,20 +167,47 @@ export default function VacancyList({ onOpen, refreshKey = 0 }) {
         );
       },
     },
-    { key: "owner", label: "Owner · Manager", width: 170, render: (row) => (
-      <span className="truncate block" title={`${row.recruitment_owner_name || ""} · ${row.reporting_manager_name || ""}`}>
-        <span className="text-slate-800">{row.recruitment_owner_name || "—"}</span>
-        {row.reporting_manager_name && <span className="text-slate-400 text-[10.5px]"> · {row.reporting_manager_name}</span>}
-      </span>
-    ) },
-    { key: "last_activity", label: "Last Activity", width: 110, render: (row) => <span className="text-slate-500 text-[10.5px]">{row.last_activity ? timeAgo(row.last_activity) : "—"}</span> },
-  ], []);
+    {
+      key: "owner",
+      label: "Owner · Manager",
+      width: 140,
+      render: (row) => (
+        <span className="truncate block" title={`${row.recruitment_owner_name || ""} · ${row.reporting_manager_name || ""}`}>
+          <span className="text-slate-800">{row.recruitment_owner_name || "—"}</span>
+          {row.reporting_manager_name && <span className="text-slate-400 text-[10.5px]"> · {row.reporting_manager_name}</span>}
+        </span>
+      ),
+    },
+    {
+      key: "last_activity",
+      label: "Last Activity",
+      width: 95,
+      render: (row) => <span className="block whitespace-nowrap text-slate-500 text-[10.5px]">{row.last_activity ? timeAgo(row.last_activity) : "—"}</span>,
+    },
+    {
+      key: "action",
+      label: "Action",
+      width: 70,
+      render: (row) => (
+        <button
+          type="button"
+          aria-label="View vacancy"
+          title="View vacancy"
+          onClick={(e) => { e.stopPropagation(); onOpen(row); }}
+          className="inline-flex items-center gap-1 h-[22px] px-2 rounded text-[11px] font-semibold leading-none whitespace-nowrap text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 cursor-pointer"
+        >
+          <Eye size={12} />
+          View
+        </button>
+      ),
+    },
+  ], [onOpen]);
 
-  const actions = useCallback((row) => (
-    <button type="button" aria-label="View vacancy" title="View" onClick={(e) => { e.stopPropagation(); onOpen(row); }} className="w-[20px] h-[20px] rounded flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors">
-      <Eye size={12} />
-    </button>
-  ), [onOpen]);
+  // const actions = useCallback((row) => (
+  //   <button type="button" aria-label="View vacancy" title="View" onClick={(e) => { e.stopPropagation(); onOpen(row); }} className="w-[20px] h-[20px] rounded flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors">
+  //     <Eye size={12} />
+  //   </button>
+  // ), [onOpen]);
 
   const kpiProps = (key) => ({
     selected: filters.kpi === key,
@@ -229,9 +262,9 @@ export default function VacancyList({ onOpen, refreshKey = 0 }) {
       onToggleFilter={() => setShowFilters((v) => !v)}
       showForm={showFilters}
       formComponent={filterPanel}
-      actions={actions}
+      // actions={actions}
       activeTab="search"
-      onTabChange={() => {}}
+      onTabChange={() => { }}
     />
   );
 }

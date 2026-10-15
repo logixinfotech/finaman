@@ -73,6 +73,8 @@ const PILL = {
 export function Pill({ tone = "gray", children, title }) {
   return <span title={title} className={`${erp.pill} ${PILL[tone] || PILL.gray}`}>{children}</span>;
 }
+/** Template lifecycle tone (Draft / InReview / Effective / Superseded / Retired) */
+export const templateTone = (s) => ({ Effective: "green", Draft: "amber", InReview: "blue", Retired: "red" }[s] || "gray");
 export const statusTone = (s) => (s === "Verified" || s === "Recorded" || s === "Active" ? "green" : s === "Entered" ? "amber" : s === "Cancelled" ? "red" : "gray");
 
 /* ── section card with the same header bar as FormCard ──────────────────── */
@@ -136,18 +138,23 @@ export const entryNo = (recordNo, seq) => `${recordNo}/${String(seq).padStart(3,
 export const validateDraft = (cols, draft) => {
   const err = {};
   cols.forEach((c) => {
-    if (!isVisible(c, draft)) return;
+    if (c.type === "duration" || !isVisible(c, draft)) return;   // duration is calculated by the server
     const v = String(draft[c.key] ?? "").trim();
     if (!v) { if (c.required) err[c.key] = `${c.label} is required`; return; }
     if (c.type === "number" && Number.isNaN(Number(v))) err[c.key] = `${c.label} must be a number`;
     if (c.type === "time" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) err[c.key] = `${c.label} must be a valid time`;
     if (c.type === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(v)) err[c.key] = `${c.label} must be a valid date`;
   });
-  // start/end style pairs: end must not be before start (same day)
-  const pairs = [["StartTime", "EndTime"], ["InTime", "OutTime"]];
+  // "must not be before": explicit afterField on the column, plus the legacy StartTime/EndTime & InTime/OutTime pairs
+  // (same rule as backend validateEntry)
+  const pairs = cols.filter((c) => c.afterField).map((c) => [c.afterField, c.key]);
+  [["StartTime", "EndTime"], ["InTime", "OutTime"]].forEach(([a, b]) => {
+    const cb = cols.find((c) => c.key === b);
+    if (cb && !cb.afterField && cols.some((c) => c.key === a)) pairs.push([a, b]);
+  });
   pairs.forEach(([a, b]) => {
     const va = draft[a], vb = draft[b];
-    if (va && vb && !err[a] && !err[b] && cols.some((c) => c.key === a) && cols.some((c) => c.key === b) && vb < va) err[b] = `${cols.find((c) => c.key === b)?.label || b} cannot be before ${cols.find((c) => c.key === a)?.label || a}`;
+    if (va && vb && !err[a] && !err[b] && isVisible(cols.find((c) => c.key === b) || {}, draft) && vb < va) err[b] = `${cols.find((c) => c.key === b)?.label || b} cannot be before ${cols.find((c) => c.key === a)?.label || a}`;
   });
   return err;
 };

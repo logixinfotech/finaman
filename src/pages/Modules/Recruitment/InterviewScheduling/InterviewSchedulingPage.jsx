@@ -39,7 +39,7 @@ import {
   dispatchBulkInvites,
   getActiveVacanciesWithJD
 } from "../../../../utils/recruitmentApi";
-import { BaseButton, RefreshButton, ResetButton } from "../../../../components/Reusable/button/ActionButon";
+import { BaseButton, ResetButton } from "../../../../components/Reusable/button/ActionButon";
 import { fmtDate, fmtDateTime, initials } from "../CandidateTracking/pipelineConstants";
 
 const ROUND_OPTIONS = [
@@ -63,6 +63,9 @@ const ROOM_OPTIONS = [
   "Interview Cabin 1",
   "HR Discussion Room"
 ];
+// Compact controls matching the ERP theme (26px high, 11px text)
+const CTL = "h-[26px] px-2 text-[11px] border border-slate-300 rounded bg-white text-slate-800 focus:outline-none focus:border-[var(--icon-color)] min-w-0";
+const CELL_CTL = "h-[24px] px-1.5 text-[11px] border border-slate-300 rounded bg-white text-slate-800 focus:outline-none focus:border-[var(--icon-color)] w-full min-w-0";
 
 const EMPTY_RESOLVE_MODAL = {
   open: false,
@@ -458,44 +461,40 @@ export default function InterviewSchedulingPage() {
   };
 
   // ── Shared cell renderers (used by both the table and the mobile cards) ─────
-  const renderRoundSelect = (r, draft) => (
-    <select
-      value={draft.round_no || "Round 1"}
-      onChange={(e) => updateDraftField(r.pipeline_id, "round_no", e.target.value)}
-      className="px-2 py-1 rounded-full text-xs font-semibold border bg-white focus:outline-none focus:border-blue-500 cursor-pointer w-full xl:w-auto max-w-full"
-    >
-      {ROUND_OPTIONS.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
+  const renderRoundSelect = (r, draft) => {
+    const match = ROUND_OPTIONS.find((o) => o.value === (draft.round_no || "Round 1")) || ROUND_OPTIONS[0];
+    return (
+      <select
+        value={draft.round_no || "Round 1"}
+        onChange={(e) => updateDraftField(r.pipeline_id, "round_no", e.target.value)}
+        className={`h-[22px] px-2 rounded-full text-[10.5px] font-semibold border focus:outline-none cursor-pointer w-full xl:w-auto max-w-full ${match.pillBg}`}
+      >
+        {ROUND_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+      </select>
+    );
+  };
 
   const renderPreferred = (r) =>
     r.preferred_start_datetime || r.pipeline_scheduled_at ? (
-      <div className="flex items-center gap-1.5 text-xs text-slate-600">
-        <Clock size={13} className="text-slate-400 shrink-0" />
-        <span>{fmtDateTime(r.preferred_start_datetime || r.pipeline_scheduled_at)}</span>
-      </div>
+      <span className="flex items-center gap-1.5 text-[11px] text-slate-600 whitespace-nowrap">
+        <Clock size={12} className="text-slate-400 shrink-0" />
+        {fmtDateTime(r.preferred_start_datetime || r.pipeline_scheduled_at)}
+      </span>
     ) : (
-      <div className="flex items-center gap-1.5 text-xs text-slate-400 italic">
-        <Clock size={13} className="text-slate-300 shrink-0" />
-        <span>10:00 AM - 10:30 AM (Ref)</span>
-      </div>
+      <span className="flex items-center gap-1.5 text-[11px] text-slate-400 italic whitespace-nowrap">
+        <Clock size={12} className="text-slate-300 shrink-0" />
+        Not provided
+      </span>
     );
 
   const renderConfirmedSlot = (r, draft, hasConflict) => (
-    <div
-      className={`flex items-center gap-1 px-2 py-1 rounded border bg-white w-full min-w-0 ${hasConflict ? "border-red-500 ring-1 ring-red-400" : "border-slate-300"
-        }`}
-    >
-      <CalendarIcon size={12} className={hasConflict ? "text-red-500 shrink-0" : "text-slate-400 shrink-0"} />
+    <div className={`flex items-center gap-1 px-1.5 h-[24px] rounded border bg-white w-full min-w-0 ${hasConflict ? "border-red-500 ring-1 ring-red-300" : "border-slate-300"}`}>
+      <CalendarIcon size={11} className={hasConflict ? "text-red-500 shrink-0" : "text-slate-400 shrink-0"} />
       <input
         type="datetime-local"
         value={draft.confirmed_start_datetime || ""}
         onChange={(e) => updateDraftField(r.pipeline_id, "confirmed_start_datetime", e.target.value)}
-        className="text-xs text-slate-800 bg-transparent focus:outline-none w-full min-w-0"
+        className="text-[11px] text-slate-800 bg-transparent focus:outline-none w-full min-w-0"
       />
     </div>
   );
@@ -504,28 +503,22 @@ export default function InterviewSchedulingPage() {
     <select
       value={draft.interview_mode || "Telephonic"}
       onChange={(e) => updateDraftField(r.pipeline_id, "interview_mode", e.target.value)}
-      className="px-2 py-1 border border-slate-300 rounded text-xs text-slate-800 bg-white focus:outline-none focus:border-blue-500 w-full"
+      className={CELL_CTL}
     >
-      {MODE_OPTIONS.map((m) => (
-        <option key={m.value} value={m.value}>
-          {m.label}
-        </option>
-      ))}
+      {MODE_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
     </select>
   );
 
   const renderPanelistVenue = (r, draft) => (
-    <div className="space-y-0.5 min-w-0">
+    <div className="space-y-1 min-w-0">
       <select
         value={draft.panelist_employee_id || ""}
         onChange={(e) => updateDraftField(r.pipeline_id, "panelist_employee_id", e.target.value)}
-        className="font-bold text-slate-900 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-blue-500 w-full"
+        className={`${CELL_CTL} font-semibold`}
       >
         <option value="">Select Panelist...</option>
         {panelists.map((p) => (
-          <option key={p.employee_id} value={p.employee_id}>
-            {p.employee_name} ({p.employee_code || "Lead"})
-          </option>
+          <option key={p.employee_id} value={p.employee_id}>{p.employee_name} ({p.employee_code || "Lead"})</option>
         ))}
       </select>
 
@@ -533,13 +526,9 @@ export default function InterviewSchedulingPage() {
         <select
           value={draft.venue_room || ""}
           onChange={(e) => updateDraftField(r.pipeline_id, "venue_room", e.target.value)}
-          className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 w-full focus:outline-none"
+          className={`${CELL_CTL} text-slate-600 bg-slate-50`}
         >
-          {ROOM_OPTIONS.map((rm) => (
-            <option key={rm} value={rm}>
-              {rm}
-            </option>
-          ))}
+          {ROOM_OPTIONS.map((rm) => <option key={rm} value={rm}>{rm}</option>)}
         </select>
       ) : draft.interview_mode === "Video Call" ? (
         <input
@@ -547,59 +536,47 @@ export default function InterviewSchedulingPage() {
           value={draft.meeting_link || ""}
           onChange={(e) => updateDraftField(r.pipeline_id, "meeting_link", e.target.value)}
           placeholder="meet.google.com/..."
-          className="text-[11px] text-blue-600 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 w-full focus:outline-none font-mono"
+          className={`${CELL_CTL} text-blue-600 bg-slate-50 font-mono`}
         />
       ) : (
-        <span className="text-[11px] text-slate-500 block">Direct Phone Dial</span>
+        <span className="text-[10.5px] text-slate-500 block">Direct Phone Dial</span>
       )}
     </div>
   );
 
   const renderConflict = (draft, hasConflict) =>
     hasConflict ? (
-      <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-red-300 bg-red-50 text-red-700 font-semibold text-xs max-w-full">
-        <AlertTriangle size={12} className="text-red-500 shrink-0" />
+      <span className="inline-flex items-center gap-1 h-[22px] px-2 rounded-full border border-red-300 bg-red-50 text-red-700 font-semibold text-[10.5px] leading-none max-w-full">
+        <AlertTriangle size={11} className="text-red-500 shrink-0" />
         <span className="truncate" title={draft.conflict_remarks || draft.conflict_status}>
-          {draft.conflict_remarks ? `OVERLAP: ${draft.conflict_remarks}` : `OVERLAP: ${draft.conflict_status}`}
+          {draft.conflict_remarks ? `Overlap: ${draft.conflict_remarks}` : `Overlap: ${draft.conflict_status}`}
         </span>
-      </div>
+      </span>
     ) : (
-      <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs max-w-full">
-        <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
-        <span>Slot Available (No Overlap)</span>
-      </div>
+      <span className="inline-flex items-center gap-1 h-[22px] px-2 rounded-full border border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-[10.5px] leading-none whitespace-nowrap">
+        <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+        Slot Available
+      </span>
     );
 
   const renderAction = (r, hasConflict, isDispatched, isSaving, fullWidthMobile = false) => {
-    const w = fullWidthMobile ? "w-full xl:w-auto justify-center" : "";
+    const base = `h-[24px] px-2.5 rounded text-[11px] font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-1 whitespace-nowrap ${fullWidthMobile ? "w-full xl:w-auto h-[30px] xl:h-[24px]" : ""}`;
     if (hasConflict) {
       return (
-        <button
-          onClick={() => handleOpenResolveModal(r)}
-          className={`px-3 py-1.5 xl:py-1 rounded bg-[#dc2626] hover:bg-[#b91c1c] text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1 ${w}`}
-        >
-          <Sparkles size={12} />
-          <span>Resolve Slot</span>
+        <button onClick={() => handleOpenResolveModal(r)} className={`${base} bg-[#dc2626] hover:bg-[#b91c1c] text-white`}>
+          <Sparkles size={11} /> Resolve Slot
         </button>
       );
     }
     if (isDispatched) {
       return (
-        <button
-          onClick={() => handleSaveSchedule(r.pipeline_id)}
-          disabled={isSaving}
-          className={`px-3 py-1.5 xl:py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 font-semibold text-xs transition-colors cursor-pointer inline-flex items-center ${w}`}
-        >
+        <button onClick={() => handleSaveSchedule(r.pipeline_id)} disabled={isSaving} className={`${base} border border-slate-300 bg-white hover:bg-slate-50 text-slate-600`}>
           Re-send
         </button>
       );
     }
     return (
-      <button
-        onClick={() => handleSaveSchedule(r.pipeline_id)}
-        disabled={isSaving}
-        className={`px-3 py-1.5 xl:py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors cursor-pointer inline-flex items-center ${w}`}
-      >
+      <button onClick={() => handleSaveSchedule(r.pipeline_id)} disabled={isSaving} className={`${base} border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700`}>
         {isSaving ? "Saving..." : "Save Slot"}
       </button>
     );
@@ -626,107 +603,79 @@ export default function InterviewSchedulingPage() {
       />
 
       {/* ── Top ERP Filter Strip ── */}
-      <div className="px-2.5 sm:px-3 py-2 bg-[#eef1f8] border-b border-[#dde1ea] flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2.5 shrink-0 shadow-2xs">
-        {/* Left Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-wrap items-center gap-2 min-w-0">
-          {/* Search */}
-          <div className="relative w-full xl:w-auto">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search candidate..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-7 pr-2.5 py-1.5 xl:py-1 text-xs border border-slate-300 rounded bg-white focus:outline-none focus:border-blue-500 w-full xl:w-40"
-            />
-          </div>
-
-          {/* Date Picker */}
-          <div className="flex items-center gap-1 bg-white border border-slate-300 rounded px-2 py-1 xl:py-0.5 w-full xl:w-auto min-w-0">
+      <div className="px-2.5 sm:px-3 py-1.5 bg-[#eef1f8] border-b border-[#dde1ea] flex flex-wrap items-center gap-1.5 shrink-0">
+        {/* Left: filters */}
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1 [&>select]:flex-1 sm:[&>select]:flex-none">
+          <div className="flex items-center gap-1 bg-white border border-slate-300 rounded px-2 h-[26px] min-w-0">
             <span className="text-[11px] font-semibold text-slate-500 shrink-0">Date:</span>
             <input
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="text-xs text-slate-800 bg-transparent focus:outline-none w-full min-w-0"
+              className="text-[11px] text-slate-800 bg-transparent focus:outline-none min-w-0"
             />
           </div>
 
-          {/* Vacancy Scope */}
-          <select
-            value={filterVacancy}
-            onChange={(e) => setFilterVacancy(e.target.value)}
-            className="px-2 py-1.5 xl:py-1 text-xs border border-slate-300 rounded text-slate-800 bg-white focus:outline-none focus:border-blue-500 w-full xl:w-auto xl:max-w-[200px] min-w-0"
-          >
+          <select value={filterVacancy} onChange={(e) => setFilterVacancy(e.target.value)} className={`${CTL} sm:max-w-[200px]`}>
             <option value="">Vacancy: All ({vacancies.length})</option>
             {vacancies.map((v) => (
-              <option key={v.vacancy_id} value={v.vacancy_id}>
-                {v.vacancy_no}: {v.job_role || "Job Vacancy"}
-              </option>
+              <option key={v.vacancy_id} value={v.vacancy_id}>{v.vacancy_no}: {v.job_role || "Job Vacancy"}</option>
             ))}
           </select>
 
-          {/* Round Filter */}
-          <select
-            value={filterRound}
-            onChange={(e) => setFilterRound(e.target.value)}
-            className="px-2 py-1.5 xl:py-1 text-xs border border-slate-300 rounded text-slate-800 bg-white focus:outline-none focus:border-blue-500 w-full xl:w-auto min-w-0"
-          >
+          <select value={filterRound} onChange={(e) => setFilterRound(e.target.value)} className={CTL}>
             <option value="">Round: All</option>
-            {ROUND_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
+            {ROUND_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
 
-          {/* Assigned Panelist */}
-          <select
-            value={filterPanelist}
-            onChange={(e) => setFilterPanelist(e.target.value)}
-            className="px-2 py-1.5 xl:py-1 text-xs border border-slate-300 rounded text-slate-800 bg-white focus:outline-none focus:border-blue-500 w-full xl:w-auto xl:max-w-[170px] min-w-0"
-          >
+          <select value={filterPanelist} onChange={(e) => setFilterPanelist(e.target.value)} className={`${CTL} sm:max-w-[170px]`}>
             <option value="">Panelist: All ({panelists.length})</option>
-            {panelists.map((p) => (
-              <option key={p.employee_id} value={p.employee_id}>
-                {p.employee_name}
-              </option>
-            ))}
+            {panelists.map((p) => <option key={p.employee_id} value={p.employee_id}>{p.employee_name}</option>)}
           </select>
 
-          {/* Clear Filters */}
           {hasAnyFilter && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-[11px] text-blue-600 hover:underline font-medium cursor-pointer text-left sm:text-center xl:text-left py-1"
-            >
+            <button type="button" onClick={clearFilters} className="text-[11px] text-blue-600 hover:underline font-medium cursor-pointer whitespace-nowrap">
               Clear filters
             </button>
           )}
         </div>
 
-        {/* Right Action & Alerts */}
-        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+        {/* Right: alerts + search + refresh + dispatch */}
+        <div className="flex flex-wrap items-center justify-end gap-1.5 w-full xl:w-auto ml-auto">
           {activeConflicts.length > 0 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-rose-300 bg-rose-50 text-rose-700 font-semibold text-[11px]">
-              <AlertTriangle size={13} className="text-rose-600 shrink-0" />
-              <span>
-                {activeConflicts.length} Time Overlap{activeConflicts.length > 1 ? "s" : ""}
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-1 h-[22px] px-2 rounded-full border border-rose-300 bg-rose-50 text-rose-700 font-semibold text-[10.5px] leading-none whitespace-nowrap">
+              <AlertTriangle size={11} className="text-rose-600 shrink-0" />
+              {activeConflicts.length} Overlap{activeConflicts.length > 1 ? "s" : ""}
+            </span>
           )}
 
-          <div className="shrink-0">
-            <RefreshButton onClick={fetchBoard} loading={loading} />
+          <div className="relative flex-1 xl:flex-none min-w-[140px]">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search candidate..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`${CTL} pl-6 w-full xl:w-[170px] text-[16px] sm:text-[11px]`}
+            />
           </div>
+
+          <button
+            type="button"
+            onClick={fetchBoard}
+            title="Refresh (Alt+Y)"
+            aria-label="Refresh"
+            className="h-[26px] w-[26px] shrink-0 flex items-center justify-center rounded border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 cursor-pointer"
+          >
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          </button>
 
           <button
             onClick={handleOpenDispatchModal}
             disabled={filteredRows.length === 0 || activeConflicts.length > 0}
-            className="flex flex-1 xl:flex-none items-center justify-center gap-1.5 px-3 py-1.5 xl:py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs disabled:opacity-50 cursor-pointer whitespace-nowrap"
+            className="h-[26px] flex items-center justify-center gap-1 px-2.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
           >
-            <Send size={12} />
+            <Send size={11} />
             <span className="sm:hidden">Dispatch ({filteredRows.length})</span>
             <span className="hidden sm:inline">Dispatch All Invites ({filteredRows.length})</span>
           </button>
@@ -740,15 +689,15 @@ export default function InterviewSchedulingPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 font-bold text-xs border-b border-slate-200 select-none">
-                  <th className="py-2.5 px-3 min-w-[170px] border-r border-slate-200">Candidate Name & ID</th>
-                  <th className="py-2.5 px-3 min-w-[140px] border-r border-slate-200">Target Round</th>
-                  <th className="py-2.5 px-3 min-w-[150px] border-r border-slate-200">Candidate Preferred Slot</th>
-                  <th className="py-2.5 px-3 min-w-[210px] border-r border-slate-200">Adjusted / Confirmed Time Slot</th>
-                  <th className="py-2.5 px-3 min-w-[120px] border-r border-slate-200">Interview Mode</th>
-                  <th className="py-2.5 px-3 min-w-[190px] border-r border-slate-200">Assigned Panelist & Venue/Link</th>
-                  <th className="py-2.5 px-3 min-w-[190px] border-r border-slate-200">Slot Conflict / Validation Status</th>
-                  <th className="py-2.5 px-3 text-center min-w-[100px]">Actions</th>
+                <tr className="bg-[#eef1f8] text-[#0f2137] font-bold text-[11px] border-b border-[#dde1ea] select-none">
+                  <th className="py-2 px-2.5 min-w-[170px] border-r border-[#dde1ea]">Candidate</th>
+                  <th className="py-2 px-2.5 min-w-[150px] border-r border-[#dde1ea]">Target Round</th>
+                  <th className="py-2 px-2.5 min-w-[140px] border-r border-[#dde1ea]">Preferred Slot</th>
+                  <th className="py-2 px-2.5 min-w-[190px] border-r border-[#dde1ea]">Confirmed Time Slot</th>
+                  <th className="py-2 px-2.5 min-w-[130px] border-r border-[#dde1ea]">Mode</th>
+                  <th className="py-2 px-2.5 min-w-[190px] border-r border-[#dde1ea]">Panelist & Venue/Link</th>
+                  <th className="py-2 px-2.5 min-w-[140px] border-r border-[#dde1ea]">Conflict Status</th>
+                  <th className="py-2 px-2.5 text-center min-w-[100px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -781,14 +730,12 @@ export default function InterviewSchedulingPage() {
                         key={r.pipeline_id}
                         className={`transition-colors ${hasConflict ? "bg-[#fffbeb]" : "hover:bg-slate-50/70"}`}
                       >
-                        <td className="py-2.5 px-3">
-                          <span className="font-bold text-slate-900 block text-xs">
-                            {r.candidate_name || "—"}{" "}
-                            <span className="font-normal text-slate-500">[{r.candidate_code || "CAN"}]</span>
+                        <td className="py-1.5 px-2.5 align-middle">
+                          <span className="block truncate font-bold text-slate-900 text-[11.5px]" title={r.candidate_name}>
+                            {r.candidate_name || "—"} <span className="font-normal text-slate-400 text-[10px]">[{r.candidate_code || "CAN"}]</span>
                           </span>
-                          <span className="text-[11px] text-slate-500 block">
-                            {r.job_role || "General Role"} | Exp:{" "}
-                            {r.total_experience_years ? `${r.total_experience_years} Yrs` : "1.5 Yrs"}
+                          <span className="text-[10.5px] text-slate-500 block truncate">
+                            {r.job_role || "General Role"} · {r.total_experience_years ? `${r.total_experience_years} Yrs` : "—"}
                           </span>
                         </td>
                         <td className="py-2.5 px-3">{renderRoundSelect(r, draft)}</td>

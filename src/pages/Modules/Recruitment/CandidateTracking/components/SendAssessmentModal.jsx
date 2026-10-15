@@ -49,6 +49,7 @@ const SendAssessmentModal = ({ isOpen, onClose, pipelineRow, onSuccess }) => {
         candidate_id: pipelineRow.candidate_id,
         vacancy_id: pipelineRow.vacancy_id,
         assessment_id: selectedAssessmentId,
+        mobile: pipelineRow.mobile,
       });
 
       if (res?.success && res?.data) {

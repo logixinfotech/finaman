@@ -21,6 +21,7 @@ import { useAuth } from "./theme/AuthContext";
 import { ShortcutsProvider } from "./utils/Shortcuts/ShortcutsContext";
 import { NavShortcutsProvider } from "./utils/Shortcuts/NavShortcutContext";
 import { RecentProvider, useRecent } from "./theme/Recentcontext";
+import { QuickAddProvider } from "./components/Reusable/QuickAdd/QuickAddProvider";
 function AppShell({
   theme,
   sidebarCollapsed,
@@ -55,8 +56,8 @@ function AppShell({
   };
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const isWebView =
-    /wv/.test(navigator.userAgent) ||                          // Android WebView
-    (isIOS && !/Safari/.test(navigator.userAgent));             // iOS WebView (real Safari always has "Safari" token)
+    /wv/.test(navigator.userAgent) ||                           
+    (isIOS && !/Safari/.test(navigator.userAgent));              
 
 
 
@@ -266,7 +267,8 @@ function App() {
       setActiveTabId(moduleTabId);
       return updatedTabs;
     });
-    navigate("/app");
+    // navigate("/app");
+    navigate(`/app?module=${module.masmod_id}`);
   };
   const handleOpenPageFromMenu = (menuItem, opts = {}) => {
     const { newTab = true } = opts; // Header/Notification ka purana behaviour: naya tab
@@ -302,6 +304,7 @@ function App() {
 
     const goTo = (tab) => {
       const url = `/app?page=${tab.appl_name}&tab=${tab.id}`;
+    
       if (window.location.pathname + window.location.search !== url) navigate(url);
     };
 
@@ -392,34 +395,100 @@ function App() {
     goTo(newTab_);
   };
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const page = params.get("page");
-    const tabId = params.get("tab");
+  const params = new URLSearchParams(location.search);
+  const page = params.get("page");
+  const tabId = params.get("tab");
+  const moduleId = params.get("module");
 
-    if (!page || !menusFromBackend.length) return;
-
-    const currentTabs = tabsRef.current;
-
-    // Pehle exact tab id se dhundo, phir appl_name se
-    const existingTab =
-      (tabId && currentTabs.find((t) => t.id === tabId)) ||
-      currentTabs.find((t) => t.appl_name === page);
-
-    if (existingTab) {
-      if (activeTabIdRef.current !== existingTab.id) {
-        activeTabIdRef.current = existingTab.id;
-        setActiveTabId(existingTab.id);
+  // Module URL: module tab active karo
+  if (moduleId && !page) {
+    const modTab = tabsRef.current.find(
+      (t) => t.type === "module" && String(t.module?.masmod_id) === moduleId
+    );
+    if (modTab) {
+      if (activeTabIdRef.current !== modTab.id) {
+        activeTabIdRef.current = modTab.id;
+        setActiveTabId(modTab.id);
+        setActiveModule(modTab.module);
       }
-      return;
+    } else {
+      // tab band ho chuka: home par bhejo
+      navigate("/app", { replace: true });
     }
+    return;
+  }
 
-    const menuItem = menusFromBackend.find((menu) => menu.appl_name === page);
-    if (!menuItem) {
-      console.warn(`No menu found for page: ${page}`);
-      return;
+  // Plain /app: home dashboard
+  if (!page) {
+    if (activeTabIdRef.current !== null) {
+      activeTabIdRef.current = null;
+      setActiveTabId(null);
     }
-    handleOpenPageFromMenu(menuItem, { newTab: true });
-  }, [location.search, menusFromBackend]);
+    return;
+  }
+
+  if (!menusFromBackend.length) return;
+
+  const currentTabs = tabsRef.current;
+  const existingTab =
+    (tabId && currentTabs.find((t) => t.id === tabId)) ||
+    currentTabs.find((t) => t.appl_name === page);
+
+  if (existingTab) {
+    if (activeTabIdRef.current !== existingTab.id) {
+      activeTabIdRef.current = existingTab.id;
+      setActiveTabId(existingTab.id);
+    }
+    return;
+  }
+  if (!page && !moduleId) {
+  activeTabIdRef.current = null;
+  setActiveTabId(null);
+  return;
+}
+
+  // Band hua tab back se wapas na khule
+  if (tabId && currentTabs.length > 0) {
+    navigate("/app", { replace: true });
+    return;
+  }
+
+  const menuItem = menusFromBackend.find((menu) => menu.appl_name === page);
+  if (!menuItem) {
+    console.warn(`No menu found for page: ${page}`);
+    return;
+  }
+  handleOpenPageFromMenu(menuItem, { newTab: true });
+}, [location.search,location.key, menusFromBackend]);
+  // useEffect(() => {
+  //   const params = new URLSearchParams(location.search);
+  //   const page = params.get("page");
+  //   const tabId = params.get("tab");
+
+  //   if (!page || !menusFromBackend.length) return;
+
+  //   const currentTabs = tabsRef.current;
+
+  //   // Pehle exact tab id se dhundo, phir appl_name se
+  //   const existingTab =
+  //     (tabId && currentTabs.find((t) => t.id === tabId)) ||
+  //     currentTabs.find((t) => t.appl_name === page);
+
+  //   if (existingTab) {
+  //     if (activeTabIdRef.current !== existingTab.id) {
+  //       activeTabIdRef.current = existingTab.id;
+  //       setActiveTabId(existingTab.id);
+  //     }
+  //     return;
+  //   }
+
+  //   const menuItem = menusFromBackend.find((menu) => menu.appl_name === page);
+  //   if (!menuItem) {
+  //     console.warn(`No menu found for page: ${page}`);
+  //     return;
+  //   }
+  //   handleOpenPageFromMenu(menuItem, { newTab: true });
+  // }, [location.search, menusFromBackend]);
   // const handleOpenPageFromMenu = (menuItem) => {
   //   const baseId = `page-${menuItem.masmnu_id}`;
   //   const currentTabs = tabsRef.current;
@@ -511,7 +580,11 @@ function App() {
     activeTabIdRef.current = tabId;
     setActiveTabId(tabId);
     const tab = tabsRef.current.find((t) => t.id === tabId);
-    const targetUrl = tab?.appl_name ? `/app?page=${tab.appl_name}&tab=${tab.id}` : "/app";
+    const targetUrl = tab?.appl_name
+  ? `/app?page=${tab.appl_name}&tab=${tab.id}`
+  : tab?.type === "module"
+    ? `/app?module=${tab.module.masmod_id}`
+    : "/app";
 
     if (window.location.pathname + window.location.search !== targetUrl) {
       navigate(targetUrl);
@@ -560,6 +633,7 @@ function App() {
           onOpenPage={handleOpenPageFromMenu}
           onChangeActiveTab={handleChangeActiveTab}
         >
+          <QuickAddProvider>
           <Routes>
             <Route
               path="/login"
@@ -607,6 +681,7 @@ function App() {
             <Route path="/candidate-assessment" element={<PublicCandidateAssessment />} />
             <Route path="*" element={<Navigate to="/app" replace />} />
           </Routes>
+          </QuickAddProvider>
         </NavShortcutsProvider>
       </ShortcutsProvider>
     </RecentProvider>

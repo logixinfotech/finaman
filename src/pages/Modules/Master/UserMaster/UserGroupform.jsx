@@ -47,6 +47,7 @@ const UserGroupForm = ({
   title,
   formData,
   setFormData,
+  compact = false,
   onSave,
   onCancel,
   onDelete,
@@ -167,11 +168,13 @@ const UserGroupForm = ({
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div
-      className="w-full h-full  sm:h-[calc(100vh-100px)] bg-[#eef1f6] flex flex-col overflow-hidden font-sans"
-      style={{ fontFamily: FONT }}
-    >
-      <ERPHeader
+  <div
+  className={`w-full flex flex-col font-sans ${
+    compact ? "min-h-0 flex-1 bg-white" : "h-full sm:h-[calc(100vh-100px)] bg-[#eef1f6] overflow-hidden"
+  }`}
+  style={{ fontFamily: FONT }}
+>
+    {!compact&&(  <ERPHeader
         title={title || "User Group Master"}
         isAddMode={isAddMode}
         isEditMode={isEditMode}
@@ -186,7 +189,7 @@ const UserGroupForm = ({
         totalRecords={totalRecords}
         onPrevRecord={onPrevRecord}
         onNextRecord={onNextRecord}
-      />
+      />)}
 
       {isSettings ? (
         <ERPSettings
@@ -198,7 +201,7 @@ const UserGroupForm = ({
         />
       ) : (
         <>
-          <div className="flex-1 p-4 overflow-y-auto min-w-[450px] lg:min-w-[750px] mx-auto flex justify-center">
+          <div className={`flex-1 overflow-y-auto ${compact ? "px-5 py-4" : "p-4 mx-auto flex justify-center min-w-[450px] lg:min-w-[750px]"}`}>
             <div
               id="usergroup-form-container"
               ref={containerRef}
@@ -289,20 +292,22 @@ const UserGroupForm = ({
                 </>
               )}
               {showDepartment && (
-                <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
-                  <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
-                    Department
-                  </label>
-                  <ERPAutocomplete
-                    className={`${getInputStyle(false)} lg:min-w-[435px]`}
-                    value={formData.category || ""}
-                    onChange={(val) => setFormData({ ...formData, category: val })}
-                    onKeyDown={handleKeyDown}
-                    disabled={isViewMode}
-                    options={departmentOptions}
-                  />
-                </div>
-              )}
+  <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
+    <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
+      Department
+    </label>
+    <div className={compact ? "flex-1 min-w-0 [&>*]:w-full [&_input]:w-full" : ""}>
+      <ERPAutocomplete
+        className={`${getInputStyle(false)} ${compact ? "w-full" : "lg:min-w-[435px]"}`}
+        value={formData.category || ""}
+        onChange={(val) => setFormData({ ...formData, category: val })}
+        onKeyDown={handleKeyDown}
+        disabled={isViewMode}
+        options={departmentOptions}
+      />
+    </div>
+  </div>
+)}
               {showDesignation && (
                 <>
                   <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
@@ -324,7 +329,7 @@ const UserGroupForm = ({
                     />
                   </div>
                   <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 w-full px-1">
-                    <label className="text-black-800 text-[15px] min-w-[120px] sm:min-w-[140px] shrink-0 whitespace-nowrap">
+                    <label className={`flex w-full px-1 ${compact ? "flex-col gap-1" : "flex-col lg:flex-row lg:items-center gap-2 lg:gap-4"}`}>
                       Department
                     </label>
                     <input

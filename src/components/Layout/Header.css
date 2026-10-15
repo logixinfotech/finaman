@@ -41,12 +41,12 @@
  }
 
  .erp-product-name {
-   font-size: 16px;
+   font-size: calc(16rem / 16);
    font-weight: 800;
  }
 
  .erp-product-sub {
-   font-size: 12px;
+   font-size: calc(12rem / 16);
    opacity: 0.85;
  }
 
@@ -57,7 +57,7 @@
    padding: 8px;
    border-radius: 999px;
    color: var(--text-active);
-   font-size: 18px;
+   font-size: calc(18rem / 16);
    transition: 0.25s;
  }
 
@@ -89,7 +89,7 @@
  }
 
  .notification-icon {
-   font-size: 20px;
+   font-size: calc(20rem / 16);
  }
 
  .notification-badge {
@@ -98,7 +98,7 @@
    right: -4px;
    background: #dc2626;
    color: #fff;
-   font-size: 10px;
+   font-size: calc(10rem / 16);
    font-weight: 700;
    padding: 3px 6px;
    border-radius: 999px;
@@ -131,7 +131,7 @@
  }
 
  .user-name {
-   font-size: 14px;
+   font-size: calc(14rem / 16);
    font-weight: 600;
  }
 
@@ -155,7 +155,7 @@
 
  .user-menu li {
    padding: 8px;
-   font-size: 14px;
+   font-size: calc(14rem / 16);
    cursor: pointer;
    border-radius: 6px;
  }
@@ -212,7 +212,7 @@
    display: flex;
    align-items: center;
    gap: 8px;
-   font-size: 14px;
+   font-size: calc(14rem / 16);
    font-weight: 600;
  }
 
@@ -220,7 +220,7 @@
    background: rgba(255, 255, 255, 0.25);
    padding: 3px 10px;
    border-radius: 999px;
-   font-size: 11px;
+   font-size: calc(11rem / 16);
    font-weight: 600;
  }
 
@@ -237,7 +237,7 @@
    border: none;
    background: transparent;
    padding: 6px 0;
-   font-size: 12px;
+   font-size: calc(12rem / 16);
    font-weight: 600;
    color: #6b7280;
    border-radius: 6px;
@@ -282,7 +282,7 @@
    display: flex;
    align-items: center;
    gap: 8px;
-   font-size: 14px;
+   font-size: calc(14rem / 16);
    font-weight: 700;
    letter-spacing: 0.02em;
    color: var(--text-main);
@@ -293,7 +293,7 @@
    color: #fff;
    padding: 4px 12px;
    border-radius: 999px;
-   font-size: 11px;
+   font-size: calc(11rem / 16);
    font-weight: 700;
  }
 
@@ -312,7 +312,7 @@
    border: none;
    background: transparent;
    padding: 6px 0;
-   font-size: 12px;
+   font-size: calc(12rem / 16);
    font-weight: 600;
    color: #6b7280;
    border-radius: 999px;
@@ -353,7 +353,7 @@
  }
 
  .np-group-label {
-   font-size: 11px;
+   font-size: calc(11rem / 16);
    font-weight: 700;
    color: #6b7280;
    padding: 6px 16px;
@@ -426,14 +426,14 @@
  }
 
  .np-text {
-   font-size: 13px;
+   font-size: calc(13rem / 16);
    font-weight: 600;
    color: #111827;
    line-height: 1.3;
  }
 
  .np-time {
-   font-size: 11px;
+   font-size: calc(11rem / 16);
    color: #6b7280;
    margin-top: 2px;
  }
@@ -441,14 +441,14 @@
  .np-empty {
    text-align: center;
    padding: 40px 0;
-   font-size: 13px;
+   font-size: calc(13rem / 16);
    color: #9ca3af;
  }
 
  .np-footer {
    padding: 12px;
    text-align: center;
-   font-size: 13px;
+   font-size: calc(13rem / 16);
    font-weight: 600;
    color: var(--bg-active);
    cursor: pointer;
@@ -514,7 +514,7 @@
    display: inline-flex;
    align-items: center;
    gap: 6px;
-   font-size: 11.5px;
+   font-size: calc(11.5rem / 16);
    padding: 6px 10px;
    border-radius: 999px;
    border: 1px solid var(--border-main);
@@ -543,7 +543,7 @@
    }
 
    .np-text {
-     font-size: 13px;
+     font-size: calc(13rem / 16);
    }
 
    .np-filters {
@@ -551,7 +551,7 @@
    }
 
    .np-mark-all {
-     font-size: 11px;
+     font-size: calc(11rem / 16);
      padding: 5px 8px;
    }
  }

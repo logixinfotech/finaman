@@ -10,12 +10,12 @@
   }
   
   .tab-content h1 {
-    font-size: 24px;
+    font-size: calc(24rem / 16);
     margin-bottom: 10px;
   }
   
   .tab-content p {
-    font-size: 16px;
+    font-size: calc(16rem / 16);
     line-height: 1.5;
   }
   

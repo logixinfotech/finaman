@@ -327,7 +327,7 @@ const AssessmentMasterForm = ({
   };
   return (
     <div className="p-3 space-y-3">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start lg:min-h-[calc(100vh-24px)]">
         {/* ══════════════ LEFT: BUILDER ══════════════ */}
         <div className="lg:col-span-7 space-y-3">
           {/* ── Section 1: Assessment Header Settings ── */}
@@ -796,12 +796,13 @@ const AssessmentMasterForm = ({
           </SectionCard>
         </div>
         {/* ══════════════ RIGHT: LIVE CANDIDATE PREVIEW ══════════════ */}
-        <div className="lg:col-span-5 lg:sticky lg:top-3">
+        <div className="lg:col-span-5 lg:sticky lg:top-3 lg:h-[calc(100vh-24px)] flex flex-col">
           <SectionCard
             title="Candidate View – Live Preview"
             icon={<Eye className="w-3 h-3" />}
             theme="violet"
-            bodyClassName="block space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto"
+            className="flex-1 min-h-0 flex flex-col"
+            bodyClassName="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden"
           >
             {/* Mock assessment start screen strip */}
             <div className="space-y-1.5 pb-2.5 border-b border-dashed border-slate-200">
@@ -829,9 +830,10 @@ const AssessmentMasterForm = ({
               )}
             </div>
             {/* Questions List (clickable to switch editing) */}
+            {/* Questions List */}
             {questions.length > 0 && (
-              <div className="space-y-2 mb-4 pb-3 border-b">
-                <div className="flex items-center justify-between">
+              <div className="flex flex-col min-h-0 flex-1 space-y-2 pb-3 border-b">
+                <div className="flex items-center justify-between shrink-0">
                   <span className="text-xs font-bold text-slate-700">Questions ({questions.length})</span>
                   {!isViewMode && (
                     <button
@@ -844,7 +846,7 @@ const AssessmentMasterForm = ({
                     </button>
                   )}
                 </div>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
+                <div className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
                   {questions.map((q, idx) => {
                     const isComplete = isQuestionComplete(q);
                     const isSelected = idx === previewIdx;
@@ -859,8 +861,7 @@ const AssessmentMasterForm = ({
                           }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${isComplete ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"
-                            }`}>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${isComplete ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
                             {idx + 1}
                           </span>
                           <span className="truncate flex-1">{q.question_text || `Question ${idx + 1}`}</span>
@@ -874,14 +875,12 @@ const AssessmentMasterForm = ({
             )}
             {/* Selected question, rendered as the candidate will see it */}
             {previewQuestion ? (
-              <>
-                <div className="flex items-center justify-between text-[10.5px] font-semibold text-slate-400">
-                  <span>
-                    Question {previewIdx + 1} of {questions.length}
-                  </span>
+              <div className="shrink-0 max-h-[40%] overflow-y-auto space-y-2">
+                <div className="text-[10.5px] font-semibold text-slate-400">
+                  Question {previewIdx + 1} of {questions.length}
                 </div>
                 <PreviewQuestion q={previewQuestion} index={previewIdx} />
-              </>
+              </div>
             ) : (
               <div className="text-center py-8 text-slate-400 text-xs border border-dashed rounded-lg bg-slate-50">
                 Add a question on the left to preview how it will look to the candidate.

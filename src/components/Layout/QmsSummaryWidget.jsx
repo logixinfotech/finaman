@@ -106,7 +106,7 @@ const DUE = { r: "text-red-500", a: "text-amber-600", "": "text-gray-400" };
  *  - onOpenPage:  same prop MyWork receives — pass it from the dashboard if you have it
  *  - myWorkPage:  appl_name of the full My Work page (CONFIRM this value)
  */
-export default function QmsSummaryWidget({ limit = 4, onOpenPage, myWorkPage = "QmsMyWork" }) {
+export default function QmsSummaryWidget({ limit = 4, onOpenPage, myWorkPage = "Maindashboard" }) {
   const navigate = useNavigate();
   const openModule = useOpenQmsModule(onOpenPage || navigate);
   const lastGo = useRef(0);

@@ -282,10 +282,10 @@ function Header({
         )}
 
         <div className="flex flex-col leading-none  sm:flex">
-          <span className="relative inline-block text-[12px] font-bold uppercase tracking-wider text-white/90">
+          <span className="relative inline-block text-[length:calc(12px*var(--fs,1))] font-bold uppercase tracking-wider text-white/90">
             FINAMAN ERP
           </span>
-          <span className="text-[9px] text-white/50 font-medium pt-[2px] tracking-wide hidden md:block">
+          <span className="text-[length:calc(9px*var(--fs,1))] text-white/50 font-medium pt-[2px] tracking-wide hidden md:block">
             Process Manufacturing Management Software
           </span>
         </div>
@@ -293,13 +293,13 @@ function Header({
 
       {/* CENTER - COMPANY INFO (smaller) */}
       <div className="hidden lg:flex flex-col items-center justify-center leading-none">
-        <span className="relative inline-block text-[12px] font-bold uppercase tracking-wider text-white/90">
+        <span className="relative inline-block text-[length:calc(12px*var(--fs,1))] font-bold uppercase tracking-wider text-white/90">
           {companyInfo.name}
           <span className="absolute left-0 -bottom-[1px] w-full h-[1px] bg-blue-500/50 rounded-full"></span>
         </span>
-        <div className="flex items-center gap-2 mt-0.5 text-[11px] font-semibold text-white/60">
+        <div className="flex items-center gap-2 mt-0.5 text-[length:calc(11px*var(--fs,1))] font-semibold text-white/60">
           <span className="flex items-center gap-1">
-            <FaMapMarkerAlt className="text-blue-400 text-[8px]" />
+            <FaMapMarkerAlt className="text-blue-400 text-[length:calc(8px*var(--fs,1))]" />
             {companyInfo.loc}
           </span>
           <span className="opacity-30 text-white">|</span>
@@ -319,7 +319,7 @@ function Header({
             >
               <FaBell className="text-base" />
               {unreadCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 bg-red-600 text-[8px] font-bold px-1 rounded-full">
+                <span className="absolute top-0.5 right-0.5 bg-red-600 text-[length:calc(8px*var(--fs,1))] font-bold px-1 rounded-full">
                   {unreadCount}
                 </span>
               )}
@@ -342,21 +342,21 @@ function Header({
               </div>
             )}
           </div>
-          <RecentMenu
+          {/* <RecentMenu
             onOpen={(it) => it.page && onOpenPage(it.page, { reuse: true })}
             onViewAll={() => onOpenPage({ masmnu_id: "RECENT", bar_name: "Recent", appl_name: "RECENT_PAGE" }, { reuse: true })}
             className="text-white"
-          />
+          /> */}
           <div className="relative">
             <div
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               ref={userChipRef}
               className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 cursor-pointer transition border border-white/10"
             >
-              <div className="h-6 w-6 rounded bg-white/30 text-white flex items-center justify-center font-bold text-[10px] uppercase">
+              <div className="h-6 w-6 rounded bg-white/30 text-white flex items-center justify-center font-bold text-[length:calc(10px*var(--fs,1))] uppercase">
                 {username?.charAt(0)}
               </div>
-              <span className="text-white text-[11px] font-semibold hidden sm:block uppercase tracking-tight">
+              <span className="text-white text-[length:calc(11px*var(--fs,1))] font-semibold hidden sm:block uppercase tracking-tight">
                 {username}
               </span>
             </div>
@@ -367,7 +367,7 @@ function Header({
                 className="absolute right-0 mt-2 w-48 bg-white rounded shadow-xl border border-slate-100 py-1 overflow-hidden"
               >
                 <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">
+                  <p className="text-[length:calc(10px*var(--fs,1))] text-slate-400 font-bold uppercase">
                     Settings
                   </p>
                 </div>
@@ -383,7 +383,7 @@ function Header({
                     )}{" "}
                     Mode
                   </span>
-                  <span className="text-[10px] opacity-40 uppercase font-bold">
+                  <span className="text-[length:calc(10px*var(--fs,1))] opacity-40 uppercase font-bold">
                     {theme.split("-")[1]}
                   </span>
                 </button>
@@ -454,8 +454,8 @@ function Header({
             <div className="px-6 py-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-[15px] font-bold text-slate-900">Switch Company</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <h3 className="text-[length:calc(15px*var(--fs,1))] font-bold text-slate-900">Switch Company</h3>
+                  <p className="text-[length:calc(11px*var(--fs,1))] text-slate-400 mt-0.5">
                     Currently working in <span className="font-semibold text-slate-600">{companyInfo.name}</span>
                   </p>
                 </div>
@@ -474,7 +474,7 @@ function Header({
 
               {/* Search */}
               <div className="relative mb-3">
-                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 text-[12px]" />
+                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 text-[length:calc(12px*var(--fs,1))]" />
                 <input
                   ref={searchRef}
                   type="text"
@@ -484,7 +484,7 @@ function Header({
                   placeholder="Search by company name or code…  (↑ ↓ to navigate, Enter to select)"
                   disabled={!!switching}
                   className="w-full h-[34px] pl-9 pr-3.5 rounded-xl border border-slate-200 bg-white
-                             text-[12.5px] text-slate-700 outline-none placeholder:text-slate-300
+                             text-[length:calc(12.5px*var(--fs,1))] text-slate-700 outline-none placeholder:text-slate-300
                              focus:border-blue-400
                              focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]
                              transition-all duration-200 disabled:bg-slate-50"
@@ -494,7 +494,7 @@ function Header({
               {/* Error */}
               {switchError && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-100
-                                rounded-xl px-3.5 py-2.5 text-red-700 text-[12.5px] mb-3">
+                                rounded-xl px-3.5 py-2.5 text-red-700 text-[length:calc(12.5px*var(--fs,1))] mb-3">
                   <FaExclamationCircle className="shrink-0 text-red-500" size={13} />
                   <span>{switchError}</span>
                 </div>
@@ -504,7 +504,7 @@ function Header({
               <div className="flex gap-0 rounded-xl border border-slate-200 overflow-hidden">
                 {/* Sr No. */}
                 <div className="w-[60px] shrink-0 border-r border-slate-200">
-                  <div className="bg-[#2563eb] text-white text-[11px] font-semibold
+                  <div className="bg-[#2563eb] text-white text-[length:calc(11px*var(--fs,1))] font-semibold
                                   tracking-[0.08em] uppercase px-3 py-2.5
                                   flex items-center gap-1.5">
                     <FaHashtag size={10} />Sr.
@@ -520,7 +520,7 @@ function Header({
                       filteredCompanies.map((company, i) => (
                         <div
                           key={company.com_id}
-                          className={`px-3 py-2.5 text-[13px] font-semibold text-center
+                          className={`px-3 py-2.5 text-[length:calc(13px*var(--fs,1))] font-semibold text-center
                                       border-b border-slate-100 last:border-b-0
                                       ${i === highlightedIndex ? "bg-blue-50 text-blue-700" : "text-slate-500"}`}
                         >
@@ -533,7 +533,7 @@ function Header({
 
                 {/* A/C Year */}
                 <div className="w-[100px] shrink-0 border-r border-slate-200">
-                  <div className="bg-[#2563eb] text-white text-[11px] font-semibold
+                  <div className="bg-[#2563eb] text-white text-[length:calc(11px*var(--fs,1))] font-semibold
                                   tracking-[0.08em] uppercase px-3 py-2.5
                                   flex items-center gap-1.5">
                     <FaCalendarAlt size={10} /> A/C Year
@@ -549,7 +549,7 @@ function Header({
                       filteredCompanies.map((company, i) => (
                         <div
                           key={company.com_id}
-                          className={`px-3 py-2.5 text-[13px] font-medium text-center
+                          className={`px-3 py-2.5 text-[length:calc(13px*var(--fs,1))] font-medium text-center
                                       border-b border-slate-100 last:border-b-0
                                       ${i === highlightedIndex ? "bg-blue-50 text-blue-700" : "text-slate-600"}`}
                         >
@@ -562,7 +562,7 @@ function Header({
 
                 {/* Company Name */}
                 <div className="flex-1 min-w-0">
-                  <div className="bg-[#2563eb] text-white text-[11px] font-semibold
+                  <div className="bg-[#2563eb] text-white text-[length:calc(11px*var(--fs,1))] font-semibold
                                   tracking-[0.08em] uppercase px-4 py-2.5
                                   flex items-center gap-1.5">
                     <FaBuilding size={10} /> Company Name
@@ -574,11 +574,11 @@ function Header({
                     className="max-h-[360px] overflow-y-auto divide-y divide-slate-100"
                   >
                     {companiesLoading ? (
-                      <div className="flex items-center justify-center py-8 text-slate-400 text-[13px] gap-2">
+                      <div className="flex items-center justify-center py-8 text-slate-400 text-[length:calc(13px*var(--fs,1))] gap-2">
                         <FaSpinner className="animate-spin" /> Loading companies…
                       </div>
                     ) : filteredCompanies.length === 0 ? (
-                      <p className="text-[13px] text-slate-400 text-center py-8">
+                      <p className="text-[length:calc(13px*var(--fs,1))] text-slate-400 text-center py-8">
                         No companies match your search.
                       </p>
                     ) : (
@@ -608,7 +608,7 @@ function Header({
                               {isThisSwitching && (
                                 <FaSpinner className="text-blue-500 animate-spin shrink-0" size={12} />
                               )}
-                              <span className={`text-[14px] font-medium truncate
+                              <span className={`text-[length:calc(14px*var(--fs,1))] font-medium truncate
                                                 ${isCurrent
                                   ? "text-indigo-700"
                                   : isThisSwitching || isHighlighted
@@ -618,7 +618,7 @@ function Header({
                               </span>
                             </span>
                             {isCurrent && (
-                              <span className="text-[10px] font-semibold text-indigo-600 bg-white
+                              <span className="text-[length:calc(10px*var(--fs,1))] font-semibold text-indigo-600 bg-white
                                                px-2 py-0.5 rounded-full shrink-0">
                                 Current
                               </span>

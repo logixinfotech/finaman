@@ -8,7 +8,7 @@ import { useGroupOptions } from "../../../Hooks/useUserGroupOption";
 import { useAuth } from "../../../theme/AuthContext";   // same masters source as every QMS module
 import RegisterView from "./Logbook/RegisterView";
 import IssueRegisterModal from "./Logbook/IssueRegisterModal";
-import LogbookTypesModal from "./Logbook/LogbookTypesModal";
+import LogbookSettings from "./Logbook/LogbookSettings";
 import { Pill, fmtDate, fmtDateTime, statusTone } from "./Logbook/LogbookUi";
 
 const STATUS = ["Active", "Closed", "All"];
@@ -45,6 +45,8 @@ export default function LogbookPage({ tab }) {
   const [list, setList] = useState([]);
   const [allRegisters, setAllRegisters] = useState([]);   // for the type → register switcher inside a register
   const [types, setTypes] = useState([]);
+  const [typesMe, setTypesMe] = useState(null);          // template permissions { canDesign, canApprove, ... }
+  const [, setTypesLoading] = useState(false);
   const { options: groupOptions } = useGroupOptions();
   const { user } = useAuth();
   const company = user?.com_name || user?.company_name || user?.companyName || "";
@@ -56,7 +58,7 @@ export default function LogbookPage({ tab }) {
   const status = filters.Status || "All";
   const [openId, setOpenId] = useState(null);
   const [showIssue, setShowIssue] = useState(false);
-  const [showTypes, setShowTypes] = useState(false);
+  const [view, setView] = useState("registers");          // registers | templates
 
   const ModuleIcon = useMemo(() => {
     const name = tab?.icon_name || tab?.module?.icon_name;
@@ -78,18 +80,24 @@ export default function LogbookPage({ tab }) {
   }, []);
 
   const loadTypes = useCallback(async () => {
-    const res = await getLogbookTypes();
-    setTypes(Array.isArray(res?.data) ? res.data : []);
+    setTypesLoading(true);
+    try {
+      const res = await getLogbookTypes();
+      setTypes(Array.isArray(res?.data) ? res.data : []);
+      setTypesMe(res?.me || null);
+    } finally { setTypesLoading(false); }
   }, []);
+  // only approved, non-retired templates can be used to issue a register / filter the list
+  const issuableTypes = useMemo(() => types.filter((t) => t.effective !== false && !t.isRetired), [types]);
 
   useEffect(() => { loadList(); }, [loadList]);
 
   // Ctrl+N = issue register (list view only)
   useEffect(() => {
-    const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n" && !openId && !showIssue && !showTypes) { e.preventDefault(); setShowIssue(true); } };
+    const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n" && !openId && !showIssue && view === "registers") { e.preventDefault(); setShowIssue(true); } };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [openId, showIssue, showTypes]);
+  }, [openId, showIssue, view]);
   useEffect(() => { loadTypes(); loadAll(); }, [loadTypes, loadAll]);
 
   const rows = useMemo(() => {
@@ -101,14 +109,24 @@ export default function LogbookPage({ tab }) {
       .map((r, i) => ({ ...r, Sr: i + 1 }));
   }, [list, filters]);
 
-  // Table header tabs: "settings" (gear) opens Logbook Types — the module's configuration
-  const onHeaderTab = useCallback((t) => { if (t === "settings") setShowTypes(true); else setActiveTab(t); }, []);
+  // Table header tabs: "settings" (gear) opens Logbook templates — the module's configuration
+  const onHeaderTab = useCallback((t) => { if (t === "settings") { setView("templates"); loadTypes(); } else setActiveTab(t); }, [loadTypes]);
   const pendingTotal = useMemo(() => list.reduce((a, r) => a + (r.PendingCount || 0), 0), [list]);
+
+  // Settings (gear) → Logbook templates: sidebar list + tabs, no table
+  if (view === "templates") {
+    return (
+      <div className="h-full w-full">
+        <LogbookSettings types={types} me={typesMe} company={company}
+          onBack={() => setView("registers")} onChanged={() => { loadTypes(); loadList(); }} />
+      </div>
+    );
+  }
 
   if (openId) {
     return (
       <div className="h-full w-full">
-        <RegisterView registerId={openId} masters={masters} company={company} types={types} registers={allRegisters} onSwitch={setOpenId} onBack={() => setOpenId(null)} onChanged={() => { loadList(); loadAll(); }} />
+        <RegisterView registerId={openId} masters={masters} company={company} types={issuableTypes} registers={allRegisters} onSwitch={setOpenId} onBack={() => setOpenId(null)} onChanged={() => { loadList(); loadAll(); }} />
       </div>
     );
   }
@@ -139,7 +157,7 @@ export default function LogbookPage({ tab }) {
               options={{
                 ...groupOptions,
                 status: STATUS,
-                logbookType: ["All", ...types.map((t) => t.name)],
+                logbookType: ["All", ...types.filter((t) => t.effective !== false).map((t) => t.name)],
               }}
               onApply={() => { }}
               onClear={() => setFilters(EMPTY_FILTERS)}
@@ -150,12 +168,8 @@ export default function LogbookPage({ tab }) {
       </div>
 
       {showIssue && (
-        <IssueRegisterModal types={types} masters={masters} onClose={() => setShowIssue(false)}
+        <IssueRegisterModal types={issuableTypes} masters={masters} onClose={() => setShowIssue(false)}
           onIssued={(id) => { setShowIssue(false); loadList(); setOpenId(id); }} />
-      )}
-      {showTypes && (
-        <LogbookTypesModal types={types} onClose={() => setShowTypes(false)}
-          onSaved={() => { loadTypes(); loadList(); }} />
       )}
     </div>
   );

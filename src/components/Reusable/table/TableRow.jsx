@@ -32,6 +32,8 @@ const TableRow = memo(
         onRowClick,
         onRowDoubleClick,
         actions,
+        alwaysShowActions = false,
+        actionWidth,
         index,
         isFocused,
         isSelected,
@@ -193,9 +195,15 @@ const TableRow = memo(
                   ? "bg-amber-100 border-amber-200"
                   : "bg-white border-slate-100 group-hover:bg-slate-50",
               ].join(" ")}
-              style={{ width: 68, height: rowHeight }}
+              style={{ width: actionWidth || 68, height: rowHeight }}
             >
-              <div className="flex justify-end items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-100">
+              <div
+                className={`flex justify-end items-center gap-0.5 ${
+                  alwaysShowActions
+                    ? "opacity-100"
+                    : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                } transition-opacity duration-100`}
+              >
                 {actions(row)}
               </div>
             </td>
